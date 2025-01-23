@@ -153,10 +153,10 @@ ITrayNotifyWin8 : IUnknown
 MIDL_INTERFACE("2F711B17-773C-41D4-93FA-7F23EDCECB66")
 IAugmentedShellFolder : IShellFolder
 {
-    STDMETHOD(AddNameSpace)(THIS_ LPGUID, IShellFolder*, LPCITEMIDLIST, ULONG, ULONG) PURE;
-    STDMETHOD(GetNameSpaceID)(THIS_ LPCITEMIDLIST, LPGUID) PURE;
-    STDMETHOD(QueryNameSpace)(THIS_ ULONG, LPGUID, IShellFolder**) PURE;
-    STDMETHOD(EnumNameSpace)(THIS_ ULONG, PULONG) PURE;
+    STDMETHOD(AddNameSpace)(THIS_ const GUID * pguidObject, IShellFolder * psf, LPCITEMIDLIST pidl, DWORD dwFlags) PURE;
+    STDMETHOD(GetNameSpaceID)(THIS_ LPCITEMIDLIST pidl, GUID * pguidOut) PURE;
+    STDMETHOD(QueryNameSpace)(THIS_ DWORD dwID, GUID * pguidOut, IShellFolder ** ppsf) PURE;
+    STDMETHOD(EnumNameSpace)(THIS_ DWORD uNameSpace, DWORD * pdwID) PURE;
 };
 
 MIDL_INTERFACE("8DB3B3F4-6CFE-11d1-8AE9-00C04FD918D0")
@@ -175,3 +175,33 @@ IAssociationElement : IUnknown
     STDMETHOD(QueryDirect)(ASSOCQUERY query, PCWSTR lpValueName, FLAGGED_BYTE_BLOB** ) PURE;
     STDMETHOD(QueryObject)(ASSOCQUERY query, PCWSTR lpValueName, REFIID riid, void** ppvObject) PURE;
 };
+
+MIDL_INTERFACE("8BFCB27D-CF1A-11D0-B93D-00A0C90312E1")
+IOrderList : IUnknown
+{
+    // *** IOrderList Methods ***
+    STDMETHOD(GetOrderList)(THIS_ HDPA * phdpa) PURE;
+    STDMETHOD(SetOrderList)(THIS_ HDPA hdpa, IShellFolder *psf) PURE;
+    STDMETHOD(FreeOrderList)(THIS_ HDPA hdpa) PURE;
+    STDMETHOD(SortOrderList)(THIS_ HDPA hdpa, DWORD dw) PURE;
+    STDMETHOD(AllocOrderItem)(THIS_ PORDERITEM * ppoi, LPCITEMIDLIST pidl) PURE;
+    STDMETHOD(FreeOrderItem)(THIS_ PORDERITEM poi) PURE;
+}
+
+MIDL_INTERFACE("AFA7AD8A-51A7-11D2-83A1-0C04FD918D0")
+IOrderList2 : IOrderList
+{
+    // *** IOrderList2
+    STDMETHOD(LoadFromStream)(THIS_ IStream* pstm, HDPA* phdpa, IShellFolder* psf) PURE;
+    STDMETHOD(SaveToStream)(THIS_ IStream* pstm, HDPA hdpa) PURE;
+}
+
+MIDL_INTERFACE("AF4F6511-F982-11D0-8595-00AA004CD6D8")
+IRegTreeOptions : IUnknown
+{
+    // *** IRegTreeOptions specific methods ***
+    STDMETHOD(InitTree)(THIS_ HWND hwndTree, HKEY hkeyRoot, LPCSTR pszRegKey, LPCSTR pszParam) PURE;
+    STDMETHOD(WalkTree)(THIS_ WALK_TREE_CMD cmd ) PURE;
+    STDMETHOD(ToggleItem)(THIS_ HTREEITEM hti ) PURE;
+    STDMETHOD(ShowHelp)(THIS_ HTREEITEM hti , DWORD dwFlags ) PURE;
+}

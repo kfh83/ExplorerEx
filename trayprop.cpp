@@ -12,7 +12,7 @@
 #include "tray.h"
 #include "traycmn.h"
 #include "startmnu.h"
-//#include "desktop2.h"
+#include "desktop2.h"
 #include "uemapp.h"
 
 #define GROUPID_CURRENTITEMS    5
@@ -1569,7 +1569,7 @@ BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
 
         TreeView_SelectSetFirstVisible(hwndTV, TreeView_GetRoot(hwndTV));
 
-        ::CheckDlgButton(hDlg, IDC_SPCUST_RECENT,   _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWRECDOCS, IsOS(OS_PERSONAL) ? FALSE : TRUE));
+        ::CheckDlgButton(hDlg, IDC_SPCUST_RECENT,   _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWRECDOCS, IsOS(OS_HOME) ? FALSE : TRUE));
         ::CheckDlgButton(hDlg, IDC_SPCUST_HOVEROPEN,_ReadStartPageSetting(REGSTR_VAL_DV2_AUTOCASCADE, TRUE));
         ::CheckDlgButton(hDlg, IDC_SPCUST_NOTIFYNEW,_ReadStartPageSetting(REGSTR_VAL_DV2_NOTIFYNEW, TRUE));
 
@@ -2263,7 +2263,7 @@ void MenuOrderSort(HKEY hkeyRoot, IShellFolder* psf)
     if (pstm)
     {
         IOrderList2* pol2;
-        if (SUCCEEDED(CoCreateInstance(CLSID_OrderListExport, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pol2))))
+        if (SUCCEEDED(CoCreateInstance(CLSID_OrderListExport, NULL, CLSCTX_INPROC_SERVER, IOrderList2, IID_PPV_ARGS(&pol2))))
         {
             HDPA hdpa;
             if (SUCCEEDED(pol2->LoadFromStream(pstm, &hdpa, psf)))
