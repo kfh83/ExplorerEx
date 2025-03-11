@@ -4,8 +4,7 @@
 #include <Uxtheme.h>
 #include <ShObjIdl_core.h>
 
-MIDL_INTERFACE("F89C89D6-76E1-42D7-9D11-995976CF7B4C")
-IStartButtonSite : IUnknown
+struct DECLSPEC_NOVTABLE IStartButtonSite
 {
      virtual void STDMETHODCALLTYPE EnableTooltips() = 0;
      virtual void STDMETHODCALLTYPE PurgeRebuildRequests() = 0;
