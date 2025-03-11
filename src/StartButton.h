@@ -13,7 +13,7 @@ struct DECLSPEC_NOVTABLE IStartButtonSite
      virtual void STDMETHODCALLTYPE StartButtonClicked() = 0;
      virtual void STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
      virtual int STDMETHODCALLTYPE GetStartButtonMinHeight() = 0;
-     virtual void STDMETHODCALLTYPE GetStartMenuSuckPlace(POINT*) = 0;
+     virtual UINT STDMETHODCALLTYPE GetStartMenuStuckPlace() = 0;
      virtual void STDMETHODCALLTYPE SetUnhideTimer(LONG, LONG) = 0;
      virtual void STDMETHODCALLTYPE OnStartButtonClosing() = 0;
 };
@@ -45,19 +45,45 @@ public:
 
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
-    STDMETHODIMP OnContextMenu(HWND, LONG) override;
-    STDMETHODIMP CreateStartButtonBalloon() override;
+    STDMETHODIMP OnContextMenu(HWND, LONG) override;    // TODO: do
+    STDMETHODIMP CreateStartButtonBalloon() override;   // TODO: do
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;
     STDMETHODIMP LockStartPane() override;
-    STDMETHODIMP GetPopupPosition(DWORD*) override;
-    STDMETHODIMP GetWindow(HWND*) override;
+    STDMETHODIMP GetPopupPosition(DWORD* out) override;
+    STDMETHODIMP GetWindow(HWND* out) override;
     //~ End IStartButton Interface
 
     //~ Begin IServiceProvider Interface
     STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
     //~ End IServiceProvider Interface
+
+    // TODO: revise
+
+    void BuildStartMenu();
+    void CloseStartMenu();
+    HWND CreateStartButton(HWND hwnd);
+    void DestroyStartMenu();
+    void DisplayStartMenu();
+    void DrawStartButton(int iStateId, bool hdcSrc /*allegedly*/);
+    void ExecRefresh();
+    void ForceButtonUp();
+    void GetRect(RECT* lpRect);
+    void GetSizeAndFont(HTHEME hTheme);
+    BOOL InitBackgroundBitmap();
+    void InitTheme();
+    BOOL IsButtonPushed();
+    HRESULT IsMenuMessage(MSG* pmsg);
+    BOOL IsPopupMenuVisible();
+    void RecalcSize();
+    void RepositionBalloon();
+    void StartButtonReset();
+    BOOL TrackMenu(HMENU hMenu);
+    BOOL TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
+    void UpdateStartButton(bool a2 /*allegedly*/);
+    void _DestroyStartButtonBalloon();
+    void _DontShowTheStartButtonBalloonAnyMore();
 
     WCHAR *pszCurrentThemeName;
     INT _nSomeSize;
@@ -74,7 +100,7 @@ public:
     int _nUnkBool1;
     int _nStartBtnNotPressed;
     int _nIsOnContextMenu;
-    UINT _uLockCode;
+    BOOL _uLockCode;
     int _nBackgroundBitmapInitialized;
     int _nSettingsChangeType;
     int _nStartPaneActiveState;
@@ -88,4 +114,28 @@ public:
     IDeskBand *_pUnk1;
     char padding5[4];
     WCHAR *_pszWindowName;
+
+private:
+
+    // TODO: revise
+
+    HRESULT OnMouseClick(HWND hWndTo, int a3);
+    void _CalcExcludeRect(RECT* lprcDst);
+    void _CalcStartButtonPos(POINT* a2, HRGN* a3);
+    HFONT _CreateStartFont();
+    void _ExploreCommonStartMenu();
+
+    const WCHAR _GetCurrentThemeName();
+
+    void _HandleDestroy();
+    void _OnSettingChanged(UINT a2);
+    char _OnThemeChanged(char a2);
+    BOOL _ShouldDelayClip(RECT* a2, const RECT* lprcSrc2);
+    LRESULT _StartButtonSubclassProc(HWND hWndTo, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+    static LRESULT s_StartButtonSubclassProc(
+        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, CStartButton *dwRefData);
+    static LRESULT s_StartMenuSubclassProc(
+        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+
 };
