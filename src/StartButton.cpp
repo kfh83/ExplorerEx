@@ -47,7 +47,7 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
 
     LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
     IShellFolder* shlFldr;
-    LPITEMIDLIST ppidlLast;
+    LPCITEMIDLIST ppidlLast;
     if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARG(IShellFolder, &shlFldr), &ppidlLast)))
     {
         HMENU hMenu = CreatePopupMenu();
