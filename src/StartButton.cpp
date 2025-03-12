@@ -293,36 +293,40 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
             if (hdcSrca)
             {
                 RECT pRect;
-                BITMAPINFO pbmi;
                 pRect = { 0, 0, _lWidth, _lHeight };
+
+                BITMAPINFO pbmi;
                 pbmi.bmiHeader.biWidth = pRect.right;
                 pbmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
                 pbmi.bmiHeader.biHeight = -_lHeight;
                 pbmi.bmiHeader.biPlanes = 1;
                 pbmi.bmiHeader.biBitCount = 32;
-                pbmi.bmiHeader.biCompression = 0;
-                HBITMAP v6 = CreateDIBSection(DC, &pbmi, 0, 0, 0, 0);
-                HGDIOBJ ho = v6;
-                if (v6)
+                pbmi.bmiHeader.biCompression = BI_RGB;
+                HBITMAP dibBmp = CreateDIBSection(DC, &pbmi, 0, 0, 0, 0);
+                if (dibBmp)
                 {
                     POINT pptSrc;
                     SIZE psize;
-                    HGDIOBJ h = SelectObject(hdcSrca, v6);
+                    HBITMAP hOldBmp = (HBITMAP)SelectObject(hdcSrca, dibBmp);
+
                     bool isThemeEnabled = _hTheme == NULL;
+
                     HDC hdcDst = GetDC(NULL);
                     psize = {_lWidth, _lHeight};
                     pptSrc = {0, 0};
+
                     if (isThemeEnabled)
                     {
-                        SendMessageW(_hwndStartBtn, WM_PRINTCLIENT, (WPARAM)hdcSrca, 4);
+                        SendMessageW(_hwndStartBtn, WM_PRINTCLIENT, (WPARAM)hdcSrca, PRF_CLIENT);
                         UpdateLayeredWindow(_hwndStartBtn, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
                             0, NULL, ULW_OPAQUE);
                     }
                     else
                     {
-                        BLENDFUNCTION pblend;
                         SHFillRectClr(hdcSrca, &pRect, 0);
                         DrawThemeBackground(_hTheme, hdcSrca, 1, iStateId, &pRect, 0);
+
+                        BLENDFUNCTION pblend;
                         pblend.BlendOp = 0;
                         pblend.BlendFlags = 0;
                         pblend.SourceConstantAlpha = 255;
@@ -331,8 +335,8 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
                             0, &pblend, ULW_ALPHA);
                     }
                     ReleaseDC(0, hdcDst);
-                    SelectObject(hdcSrca, h);
-                    DeleteObject(ho);
+                    SelectObject(hdcSrca, hOldBmp);
+                    DeleteObject(dibBmp);
                 }
                 DeleteDC(hdcSrca);
             }
@@ -345,7 +349,7 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
 
     if (started)
     {
-        SetWindowRgn(_hwndStartBtn, hRgn, 1);
+        SetWindowRgn(_hwndStartBtn, hRgn, TRUE);
     }
 }
 

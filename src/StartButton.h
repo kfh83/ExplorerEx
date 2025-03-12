@@ -94,7 +94,7 @@ public:
     LONG _lWidth;
     LONG _lHeight;
     HTHEME _hTheme;
-    HGDIOBJ _nShellBrdBitmap1001;
+    HBITMAP _nShellBrdBitmap1001;
     HFONT _hStartFont;
     char padding[4];
     int _nUnkBool1;
