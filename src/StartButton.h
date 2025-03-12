@@ -46,7 +46,7 @@ public:
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
     STDMETHODIMP OnContextMenu(HWND, POINT) override;    // TODO: do
-    STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;   // TODO: do
+    STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;

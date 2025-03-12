@@ -150,7 +150,7 @@ HRESULT CStartButton::GetWindow(HWND* out)  // taken from ep_taskbar 7-stuff
     return S_OK;
 }
 
-HRESULT CStartButton::QueryService(const GUID& guidService, const IID& riid, void** ppvObject)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)  // taken from ep_taskbar 7-stuff
 {
     *ppvObject = nullptr;
     HRESULT hr = E_FAIL;
