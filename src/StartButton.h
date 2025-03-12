@@ -63,7 +63,6 @@ public:
 
     void BuildStartMenu();
     void CloseStartMenu();
-    HWND CreateStartButton(HWND hwnd);
     void DestroyStartMenu();
     void DisplayStartMenu();
     void DrawStartButton(int iStateId, bool hdcSrc /*allegedly*/);

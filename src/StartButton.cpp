@@ -105,3 +105,48 @@ HRESULT CStartButton::QueryService(const GUID& guidService, const IID& riid, voi
 
     return hr;
 }
+
+void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff
+{
+    if (_pMenuPopup)
+    {
+        _pMenuPopup->OnSelect(MPOS_FULLCANCEL);
+        UnlockStartPane();
+    }
+}
+
+HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
+{
+    HRESULT hr;
+    if (_pMenuBand)
+    {
+        hr = _pMenuBand->IsMenuMessage(pmsg);
+        if (hr != S_OK)
+        {
+            hr = S_FALSE;
+        }
+    }
+    else
+    {
+        hr = S_FALSE;
+    }
+    return hr;
+}
+
+BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff
+{
+    HRESULT hr;
+    if (_pMenuBand)
+    {
+        hr = _pMenuBand->TranslateMenuMessage(pmsg, plRet);
+        if (hr != S_OK)
+        {
+            hr = S_FALSE;
+        }
+    }
+    else
+    {
+        hr = S_FALSE;
+    }
+    return hr;
+}
