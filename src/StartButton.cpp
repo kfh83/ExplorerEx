@@ -349,33 +349,74 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
 
 void CStartButton::DestroyStartMenu()
 {
-    IUnknown_SetSite(_pUnk1, 0);
-    if (_pUnk1)
-    {
-        _pUnk1 = NULL;
-        _pUnk1->Release();
-    }
+    IUnknown_SetSite(_pUnk1, NULL);
+    ATOMICRELEASE(_pUnk1, IDeskBand);
+
     IUnknown_SetSite(_pOldStartMenu, NULL);
-    if (_pOldStartMenu)
-    {
-        _pOldStartMenu = NULL;
-        _pOldStartMenu->Release();
-    }
-    if (_pOldStartMenuBand)
-    {
-        _pOldStartMenuBand = NULL;
-        _pOldStartMenuBand->Release();
-    }
+    ATOMICRELEASE(_pOldStartMenu, IMenuPopup);
+    ATOMICRELEASE(_pOldStartMenuBand, IMenuBand);
+
     IUnknown_SetSite(_pNewStartMenu, NULL);
+    ATOMICRELEASE(_pNewStartMenu, IMenuPopup);
+    ATOMICRELEASE(_pNewStartMenuBand, IMenuBand);
+}
+
+void CStartButton::DisplayStartMenu() // xp
+{
+    RECTL    rcExclude;
+    POINTL   ptPop;
+    DWORD dwFlags = MPPF_KEYBOARD;      // Assume that we're popuping
+    // up because of the keyboard
+    // This is for the underlines on NT5
+
+    if (_hwndStartBalloon)
+    {
+        _DontShowTheStartButtonBalloonAnyMore();
+        _DestroyStartButtonBalloon();
+    }
+
+    if (GetKeyState(GetSystemMetrics(SM_SWAPBUTTON) ? VK_RBUTTON : VK_LBUTTON) < 0)
+    {
+        dwFlags = 0;    // Then set to the default
+    }
+
+    IMenuPopup** ppmpToDisplay = &_pOldStartMenu;
     if (_pNewStartMenu)
     {
-        _pNewStartMenu = NULL;
-        _pNewStartMenu->Release();
+        ppmpToDisplay = &_pNewStartMenu;
     }
-    if (_pNewStartMenuBand)
+
+    if (!*ppmpToDisplay)
     {
-        _pNewStartMenuBand = NULL;
-        _pNewStartMenuBand->Release();
+        BuildStartMenu();
+    }
+
+    //SetActiveWindow(_hwndStartBtn);
+
+    // Exclude rect is the VISIBLE portion of the Start Button.
+    _CalcExcludeRect(&rcExclude);
+    ptPop.x = rcExclude.left;
+    ptPop.y = rcExclude.top;
+
+    if (*ppmpToDisplay && SUCCEEDED((*ppmpToDisplay)->Popup(&ptPop, &rcExclude, dwFlags)))
+    {
+        // All is well - the menu is up
+        //TraceMsg(DM_MISC, "e.tbm: dwFlags=%x (0=mouse 1=key)", dwFlags);
+    }
+    else
+    {
+        //TraceMsg(TF_WARNING, "e.tbm: %08x->Popup failed", *ppmpToDisplay);
+        // Start Menu failed to display -- reset the Start Button
+        // so the user can click it again to try again
+        Tray_OnStartMenuDismissed();
+    }
+
+    if (dwFlags == MPPF_KEYBOARD)
+    {
+        // Since the user has launched the start button by Ctrl-Esc, or some other worldly
+        // means, then turn the rect on.
+        SendMessage(_hwndStartBtn, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
+            UISF_HIDEFOCUS), 0);
     }
 }
 

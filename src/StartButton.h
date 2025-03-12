@@ -133,7 +133,7 @@ private:
     // TODO: revise
 
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
-    void _CalcExcludeRect(RECT* lprcDst);           // TODO
+    void _CalcExcludeRect(RECTL* lprcDst);           // TODO
     BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
