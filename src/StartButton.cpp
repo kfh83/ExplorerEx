@@ -5,6 +5,7 @@
 
 #include "SHFusion.h"
 #include "tray.h"
+#include "Util.h"
 
 CStartButton::CStartButton()
 {
@@ -38,7 +39,108 @@ HRESULT CStartButton::SetFocusToStartButton()  // taken from ep_taskbar 7-stuff
     return S_OK;
 }
 
-STDMETHODIMP_(HRESULT __stdcall) CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
+HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
+{
+    _nIsOnContextMenu = TRUE;
+    _pStartButtonSite->HandleFullScreenApp(hWnd);
+    SetForegroundWindow(hWnd);
+
+    LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
+    IShellFolder* shlFldr;
+    LPITEMIDLIST ppidlLast;
+    if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARG(IShellFolder, &shlFldr), &ppidlLast)))
+    {
+        HMENU hMenu = CreatePopupMenu();
+        IContextMenu* iContext;
+        if (SUCCEEDED(shlFldr->GetUIObjectOf(hWnd, CSIDL_INTERNET, &ppidlLast, IID_IContextMenu, NULL, (void**)&iContext)))
+        {
+            if (SUCCEEDED(iContext->QueryContextMenu(hMenu, 0, 2, 32751, CMF_VERBSONLY)))
+            {
+                WCHAR Buffer[260];
+                LoadStringW(GetModuleHandle(NULL), 720u, Buffer, 260);
+                AppendMenuW(hMenu, 0, 32755u, Buffer);
+                if (!SHRestricted(REST_NOCOMMONGROUPS))
+                {
+                    if (SHGetFolderPathW(0, CSIDL_COMMON_STARTMENU, 0, 0, Buffer) != S_OK)
+                    {
+                        // some LUA crap
+                    }
+                }
+                int bResult;
+                if (lParam == -1)
+                {
+                    bResult = TrackMenu(hMenu);
+                }
+                else
+                {
+                    _pStartButtonSite->EnableTooltips(FALSE);
+                    UINT uFlag = TPM_RETURNCMD | TPM_RIGHTBUTTON;
+                    if (IsBiDiLocalizedSystem())
+                    {
+                        uFlag |= TPM_LAYOUTRTL;
+                    }
+                    bResult = TrackPopupMenu(hMenu, uFlag,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) , 0, hWnd, 0);
+                }
+                if (bResult)
+                {
+                    LPITEMIDLIST ppidl;
+                    switch (bResult)
+                    {
+                        case 32752:
+                            _ExploreCommonStartMenu(FALSE);
+                            break;
+                        case 32753:
+                            _ExploreCommonStartMenu(TRUE);
+                            break;
+                        case 32755:
+                            Tray_DoProperties(TPF_STARTMENUPAGE);
+                            break;
+                        default:
+                        {
+                            WCHAR pszStr1[260];
+                            ContextMenu_GetCommandStringVerb(iContext, bResult - 2, pszStr1, 260);
+                            if (StrCmpICW(pszStr1, L"find"))
+                            {
+                                CHAR pszStr[260];
+                                SHUnicodeToAnsi(pszStr1, pszStr, 260);
+
+                                CMINVOKECOMMANDINFO cmInvokeInfo = {};
+                                cmInvokeInfo.hwnd = hWnd;
+                                cmInvokeInfo.lpVerb = pszStr;
+                                cmInvokeInfo.nShow = SW_NORMAL;
+
+                                CHAR pszPath[260];
+                                SHGetPathFromIDListA(pidl, pszPath);
+                                cmInvokeInfo.fMask |= SEE_MASK_UNICODE;
+                                cmInvokeInfo.lpDirectory = pszPath;
+                                iContext->InvokeCommand(&cmInvokeInfo);
+                            }
+                            else if (SUCCEEDED(SHGetKnownFolderIDList(FOLDERID_SearchHome, NULL, 0, &ppidl)))
+                            {
+                                SHELLEXECUTEINFO execInfo = {};
+                                execInfo.lpVerb = L"open";
+                                execInfo.fMask = SEE_MASK_IDLIST;
+                                execInfo.nShow = SW_NORMAL;
+                                execInfo.lpIDList = ppidl;
+                                ShellExecuteEx(&execInfo);
+                                ILFree(ppidl);
+                            }
+                            break;
+                        }
+                    }
+                }
+                iContext->Release();
+            }
+            DestroyMenu(hMenu);
+        }
+        shlFldr->Release();
+    }
+    ILFree(pidl);
+    _nIsOnContextMenu = FALSE;
+    return S_OK;
+}
+
+HRESULT CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
 {
     if (!_hwndStartBalloon)
     {
@@ -58,9 +160,7 @@ STDMETHODIMP_(HRESULT __stdcall) CStartButton::CreateStartButtonBalloon(UINT a2,
     WCHAR Buffer[260];
     if (LoadString(GetModuleHandle(NULL), uID, Buffer, 260))
     {
-        TOOLINFO toolInfo;
-        toolInfo.cbSize = sizeof(toolInfo);
-        //memset(&toolInfo.uFlags, 0, 0x2Cu); ?
+        TOOLINFO toolInfo = { sizeof(toolInfo) };
         toolInfo.uFlags = TTF_TRANSPARENT | TTF_TRACK | TTF_IDISHWND; // 0x0100|0x0020|0x0001 -> 0x121 -> 289
         toolInfo.hwnd = _hwndStartBtn;
         toolInfo.uId = (UINT)_hwndStartBtn;  //TTF_IDISHWND

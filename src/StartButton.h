@@ -6,7 +6,7 @@
 
 struct DECLSPEC_NOVTABLE IStartButtonSite
 {
-     STDMETHOD_(VOID,EnableTooltips()) PURE;
+     STDMETHOD_(VOID,EnableTooltips(BOOL bEnable)) PURE;
      STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
      STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
      STDMETHOD_(VOID, HandleFullScreenApp(HWND)) PURE;
@@ -22,7 +22,7 @@ MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
 {
     STDMETHOD(SetFocusToStartButton()) PURE;
-    STDMETHOD(OnContextMenu(HWND hWnd, POINT point /*think so its a POINT*/)) PURE;
+    STDMETHOD(OnContextMenu(HWND hWnd, LPARAM lParam)) PURE;
     STDMETHOD(CreateStartButtonBalloon(UINT a2, UINT uID)) PURE;
     STDMETHOD(SetStartPaneActive(BOOL bActive)) PURE;
     STDMETHOD(OnStartMenuDismissed()) PURE;
@@ -45,7 +45,7 @@ public:
 
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
-    STDMETHODIMP OnContextMenu(HWND, POINT) override;    // TODO: do
+    STDMETHODIMP OnContextMenu(HWND, LPARAM) override;
     STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
@@ -123,7 +123,7 @@ private:
     void _CalcExcludeRect(RECT* lprcDst);
     void _CalcStartButtonPos(POINT* a2, HRGN* a3);
     HFONT _CreateStartFont();
-    void _ExploreCommonStartMenu();
+    void _ExploreCommonStartMenu(BOOL bExplore);
 
     const WCHAR _GetCurrentThemeName();
 
