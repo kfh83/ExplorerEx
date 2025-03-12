@@ -23,12 +23,12 @@ IStartButton : IUnknown
 {
     STDMETHOD(SetFocusToStartButton()) PURE;
     STDMETHOD(OnContextMenu(HWND hWnd, POINT point /*think so its a POINT*/)) PURE;
-    STDMETHOD(CreateStartButtonBalloon()) PURE;
+    STDMETHOD(CreateStartButtonBalloon(UINT a2, UINT uID)) PURE;
     STDMETHOD(SetStartPaneActive(BOOL bActive)) PURE;
     STDMETHOD(OnStartMenuDismissed()) PURE;
     STDMETHOD(UnlockStartPane()) PURE;
     STDMETHOD(LockStartPane()) PURE;
-    STDMETHOD(GetPopupPosition(DWORD* pos)) PURE;
+    STDMETHOD(GetPopupPosition(DWORD* out)) PURE;
     STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
 };
 
@@ -46,7 +46,7 @@ public:
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
     STDMETHODIMP OnContextMenu(HWND, POINT) override;    // TODO: do
-    STDMETHODIMP CreateStartButtonBalloon() override;   // TODO: do
+    STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;   // TODO: do
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;
@@ -63,6 +63,7 @@ public:
 
     void BuildStartMenu();
     void CloseStartMenu();
+    HWND CreateStartButton(HWND);
     void DestroyStartMenu();
     void DisplayStartMenu();
     void DrawStartButton(int iStateId, bool hdcSrc /*allegedly*/);

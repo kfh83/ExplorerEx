@@ -1,6 +1,7 @@
 #include "StartButton.h"
 
 #include <shlwapi.h>
+#include "SHFusion.h"
 
 CStartButton::CStartButton()
 {
@@ -31,6 +32,58 @@ ULONG CStartButton::Release()
 HRESULT CStartButton::SetFocusToStartButton()  // taken from ep_taskbar 7-stuff
 {
     SetFocus(_hwndStartBtn);
+    return S_OK;
+}
+
+STDMETHODIMP_(HRESULT __stdcall) CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
+{
+    if (!_hwndStartBalloon)
+    {
+        _hwndStartBalloon = SHFusionCreateWindow(TOOLTIPS_CLASS, NULL, 
+            WS_POPUP | TTS_BALLOON | TTS_NOPREFIX | TTS_ALWAYSTIP, 
+            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+            _hwndStartBtn, NULL, GetModuleHandle(NULL), NULL);
+
+        if (_hwndStartBalloon)
+        {
+            SendMessage(_hwndStartBalloon, 0x2007u, 6, 0);
+            SendMessage(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, 300);
+            SendMessage(_hwndStartBalloon, 0x200Bu, 0, (LPARAM)L"TaskBar");
+            SetPropW(_hwndStartBalloon, L"StartMenuBalloonTip", (HANDLE)3);
+        }
+    }
+    WCHAR Buffer[260];
+    if (LoadString(GetModuleHandle(NULL), uID, Buffer, 260))
+    {
+        TOOLINFO toolInfo;
+        toolInfo.cbSize = sizeof(toolInfo);
+        //memset(&toolInfo.uFlags, 0, 0x2Cu); ?
+        toolInfo.uFlags = TTF_TRANSPARENT | TTF_TRACK | TTF_IDISHWND; // 0x0100|0x0020|0x0001 -> 0x121 -> 289
+        toolInfo.hwnd = _hwndStartBtn;
+        toolInfo.uId = (UINT)_hwndStartBtn;  //TTF_IDISHWND
+        
+        SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)&toolInfo);
+        SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, 0, 0);
+
+        toolInfo.lpszText = Buffer;
+        SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&toolInfo);
+
+        if (LoadString(GetModuleHandle(NULL), a2, Buffer, 260))
+        {
+            SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)Buffer);
+        }
+
+        RECT Rect;
+        GetWindowRect(_hwndStartBtn, &Rect);
+        WORD xCoordinate = (WORD)((Rect.left + Rect.right) / 2);
+        WORD yCoordinate = LOWORD(Rect.top);
+
+        SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELONG(xCoordinate, yCoordinate));
+        SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, TRUE, (LPARAM)&toolInfo);
+
+        // show tooltip for 10 seconds
+        SetTimer(_hwndStartBtn, 1u, 10000, 0);
+    }
     return S_OK;
 }
 
