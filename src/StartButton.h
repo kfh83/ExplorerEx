@@ -6,30 +6,30 @@
 
 struct DECLSPEC_NOVTABLE IStartButtonSite
 {
-     virtual void STDMETHODCALLTYPE EnableTooltips() = 0;
-     virtual void STDMETHODCALLTYPE PurgeRebuildRequests() = 0;
-     virtual bool STDMETHODCALLTYPE ShouldUseSmallIcons() = 0;
-     virtual void STDMETHODCALLTYPE HandleFullScreenApp(HWND) = 0;
-     virtual void STDMETHODCALLTYPE StartButtonClicked() = 0;
-     virtual void STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
-     virtual int STDMETHODCALLTYPE GetStartButtonMinHeight() = 0;
-     virtual UINT STDMETHODCALLTYPE GetStartMenuStuckPlace() = 0;
-     virtual void STDMETHODCALLTYPE SetUnhideTimer(LONG, LONG) = 0;
-     virtual void STDMETHODCALLTYPE OnStartButtonClosing() = 0;
+     STDMETHOD_(VOID,EnableTooltips()) PURE;
+     STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
+     STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
+     STDMETHOD_(VOID, HandleFullScreenApp(HWND)) PURE;
+     STDMETHOD_(VOID, StartButtonClicked()) PURE;
+     STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
+     STDMETHOD_(INT, GetStartButtonMinHeight()) PURE;
+     STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
+     STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
+     STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
 };
 
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
 {
-    virtual HRESULT STDMETHODCALLTYPE SetFocusToStartButton() = 0;
-    virtual HRESULT STDMETHODCALLTYPE OnContextMenu(HWND, LONG) = 0;
-    virtual HRESULT STDMETHODCALLTYPE CreateStartButtonBalloon() = 0;
-    virtual HRESULT STDMETHODCALLTYPE SetStartPaneActive(BOOL bActive) = 0;
-    virtual HRESULT STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
-    virtual HRESULT STDMETHODCALLTYPE UnlockStartPane() = 0;
-    virtual HRESULT STDMETHODCALLTYPE LockStartPane() = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetPopupPosition(DWORD*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetWindow(HWND*) = 0;
+    STDMETHOD(SetFocusToStartButton()) PURE;
+    STDMETHOD(OnContextMenu(HWND hWnd, POINT point /*think so its a POINT*/)) PURE;
+    STDMETHOD(CreateStartButtonBalloon()) PURE;
+    STDMETHOD(SetStartPaneActive(BOOL bActive)) PURE;
+    STDMETHOD(OnStartMenuDismissed()) PURE;
+    STDMETHOD(UnlockStartPane()) PURE;
+    STDMETHOD(LockStartPane()) PURE;
+    STDMETHOD(GetPopupPosition(DWORD* pos)) PURE;
+    STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
 };
 
 class CStartButton : public IStartButton, public IServiceProvider
@@ -45,7 +45,7 @@ public:
 
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
-    STDMETHODIMP OnContextMenu(HWND, LONG) override;    // TODO: do
+    STDMETHODIMP OnContextMenu(HWND, POINT) override;    // TODO: do
     STDMETHODIMP CreateStartButtonBalloon() override;   // TODO: do
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
@@ -106,10 +106,10 @@ public:
     DWORD _dwTickCount;
     HIMAGELIST _hIml;
     IStartButtonSite *_pStartButtonSite;
-    IMenuBand *_pMenuBand;
-    IMenuPopup *_pMenuPopup;
-    IDeskBand *_pDv2CreateArg2;
-    IMenuPopup *_pDv2CreateArg1;
+    IMenuBand *_pOldStartMenuBand;
+    IMenuPopup *_pOldStartMenu;
+    IMenuBand *_pNewStartMenuBand;
+    IMenuPopup *_pNewStartMenu;
     IDeskBand *_pUnk1;
     char padding5[4];
     WCHAR *_pszWindowName;

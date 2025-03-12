@@ -2,6 +2,10 @@
 
 #include <shlwapi.h>
 
+CStartButton::CStartButton()
+{
+}
+
 HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)  // taken from ep_taskbar 7-stuff (?)
 {
     static const QITAB qit[] =
@@ -38,7 +42,7 @@ HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
     }
     else if (_nStartPaneActiveState != 2)
     {
-        _nStartPaneActiveState = 1;
+        _nStartPaneActiveState = 0;
         UnlockStartPane();
     }
     return S_OK;
@@ -106,21 +110,33 @@ HRESULT CStartButton::QueryService(const GUID& guidService, const IID& riid, voi
     return hr;
 }
 
-void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff
+void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
 {
-    if (_pMenuPopup)
+    if (_pOldStartMenu)
     {
-        _pMenuPopup->OnSelect(MPOS_FULLCANCEL);
-        UnlockStartPane();
+        _pOldStartMenu->OnSelect(MPOS_FULLCANCEL);
+        // UnlockStartPane(); ?
+    }
+    if (_pNewStartMenu)
+    {
+        _pNewStartMenu->OnSelect(MPOS_FULLCANCEL);
     }
 }
 
-HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff @MOD
 {
     HRESULT hr;
-    if (_pMenuBand)
+    if (_pOldStartMenuBand)
     {
-        hr = _pMenuBand->IsMenuMessage(pmsg);
+        hr = _pOldStartMenuBand->IsMenuMessage(pmsg);
+        if (hr != S_OK)
+        {
+            hr = S_FALSE;
+        }
+    }
+    else if (_pNewStartMenuBand)
+    {
+        hr = _pNewStartMenuBand->IsMenuMessage(pmsg);
         if (hr != S_OK)
         {
             hr = S_FALSE;
@@ -133,20 +149,20 @@ HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
     return hr;
 }
 
-BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff
+BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff @MOD
 {
-    HRESULT hr;
-    if (_pMenuBand)
+    BOOL result = TRUE;
+    if (_pOldStartMenuBand)
     {
-        hr = _pMenuBand->TranslateMenuMessage(pmsg, plRet);
-        if (hr != S_OK)
+        // S_FALSE is same as TRUE
+        // S_OK is same as FALSE
+        // in pseudocode, it checks if TranslateMenuMessage is TRUE (S_FALSE)
+        result = (_pOldStartMenuBand->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
+
+        if (result && _pNewStartMenuBand)
         {
-            hr = S_FALSE;
+            result = (_pNewStartMenuBand->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
         }
     }
-    else
-    {
-        hr = S_FALSE;
-    }
-    return hr;
+    return result;
 }
