@@ -288,7 +288,7 @@ public:
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
-    HBITMAP _hbmpStartBkg;
+    HBITMAP _hbmpStartBkg; // XXX-Vista (isabella): Moved to CStartButton in Vista.
     HFONT   _hFontStart;
 
     RECT _arStuckRects[4];   // temporary for hit-testing

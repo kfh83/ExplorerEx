@@ -94,14 +94,14 @@ public:
     LONG _lWidth;
     LONG _lHeight;
     HTHEME _hTheme;
-    HBITMAP _nShellBrdBitmap1001;
+    HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
     char padding[4];
     int _nUnkBool1;
     int _nStartBtnNotPressed;
     int _nIsOnContextMenu;
     BOOL _uLockCode;
-    int _nBackgroundBitmapInitialized;
+    BOOL _fBackgroundBitmapInitialized;
     bool _nSettingsChangeType;
     int _nStartPaneActiveState;
     DWORD _dwTickCount;

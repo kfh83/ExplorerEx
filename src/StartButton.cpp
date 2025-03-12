@@ -6,6 +6,7 @@
 #include "SHFusion.h"
 #include "tray.h"
 #include "Util.h"
+#include "rcids.h"
 
 CStartButton::CStartButton()
 {
@@ -394,8 +395,14 @@ void CStartButton::GetRect(RECT* lpRect)
 
 BOOL CStartButton::InitBackgroundBitmap()
 {
-    // NOTICE: Do like XP (shellbrd images are gone)
-    return TRUE;
+    _fBackgroundBitmapInitialized = TRUE;
+
+    // @MOD (isabella): Vista loads this bitmap from ShellBrd, but we store the bitmap in our own
+    // module. Vista's original code is such (link against WinBrand.dll):
+    //    _hbmpStartBkg = BrandingLoadBitmap(L"Shellbrd", 1001);
+    _hbmpStartBkg = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
+
+    return _hbmpStartBkg != nullptr;
 }
 
 void CStartButton::InitTheme()
@@ -616,12 +623,12 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
 
 void CStartButton::_HandleDestroy()
 {
-    _nBackgroundBitmapInitialized = 0;
+    _fBackgroundBitmapInitialized = 0;
     _DestroyStartButtonBalloon();
 
-    if (_nShellBrdBitmap1001)
+    if (_hbmpStartBkg)
     {
-        DeleteObject(_nShellBrdBitmap1001);
+        DeleteObject(_hbmpStartBkg);
     }
     if (_hStartFont)
     {

@@ -1223,10 +1223,9 @@ LRESULT CTray::_InitStartButtonEtc()
     // NOTE: This bitmap is used as a flag in CTaskBar::OnPosRectChangeDB to
     // tell when we are done initializing, so we don't resize prematurely
 
-    // @MOD (isabella): Vista loads this bitmap from ShellBrd, but we store the bitmap in our own
-    // module. Vista's original code is such (link against WinBrand.dll):
-    //    _hbmpStartBkg = BrandingLoadBitmap(L"Shellbrd", 1001);
-    _hbmpStartBkg = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
+    // XXX-Vista (isabella): Remove the above comment? And call this function once
+    // we have an instance going:
+    // CStartButton::InitBackgroundBitmap();
 
     UpdateWindow(_hwnd);
     _BuildStartMenu(); // TODO: Moved to CStartButton::BuildStartMenu()
