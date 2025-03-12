@@ -85,7 +85,7 @@ public:
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
-    WCHAR *pszCurrentThemeName;
+    LPCWSTR pszCurrentThemeName;
     INT _nSomeSize;
     int _nUnkBool2;
     int _nUnkBool3;
@@ -115,6 +115,7 @@ public:
     char padding5[4];
     WCHAR *_pszWindowName;
     UINT g_nReplaceMe1;
+    WCHAR WindowName;
 
 private:
 
@@ -122,7 +123,7 @@ private:
 
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
     void _CalcExcludeRect(RECT* lprcDst);           // TODO
-    void _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
+    BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 

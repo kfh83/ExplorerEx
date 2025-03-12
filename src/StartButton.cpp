@@ -279,9 +279,130 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
     }
 }
 
+void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
+{
+    POINT pptDst;
+    HRGN hRgn;
+    BOOL started = _CalcStartButtonPos(&pptDst, &hRgn);
+    if (hdcSrc)
+    {
+        HDC DC = GetDC(_hwndStartBtn);
+        if (DC)
+        {
+            HDC hdcSrca = CreateCompatibleDC(DC);
+            if (hdcSrca)
+            {
+                RECT pRect;
+                BITMAPINFO pbmi;
+                pRect = { 0, 0, _lWidth, _lHeight };
+                pbmi.bmiHeader.biWidth = pRect.right;
+                pbmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                pbmi.bmiHeader.biHeight = -_lHeight;
+                pbmi.bmiHeader.biPlanes = 1;
+                pbmi.bmiHeader.biBitCount = 32;
+                pbmi.bmiHeader.biCompression = 0;
+                HBITMAP v6 = CreateDIBSection(DC, &pbmi, 0, 0, 0, 0);
+                HGDIOBJ ho = v6;
+                if (v6)
+                {
+                    POINT pptSrc;
+                    SIZE psize;
+                    HGDIOBJ h = SelectObject(hdcSrca, v6);
+                    bool isThemeEnabled = _hTheme == NULL;
+                    HDC hdcDst = GetDC(NULL);
+                    psize = {_lWidth, _lHeight};
+                    pptSrc = {0, 0};
+                    if (isThemeEnabled)
+                    {
+                        SendMessageW(_hwndStartBtn, WM_PRINTCLIENT, (WPARAM)hdcSrca, 4);
+                        UpdateLayeredWindow(_hwndStartBtn, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
+                            0, NULL, ULW_OPAQUE);
+                    }
+                    else
+                    {
+                        BLENDFUNCTION pblend;
+                        SHFillRectClr(hdcSrca, &pRect, 0);
+                        DrawThemeBackground(_hTheme, hdcSrca, 1, iStateId, &pRect, 0);
+                        pblend.BlendOp = 0;
+                        pblend.BlendFlags = 0;
+                        pblend.SourceConstantAlpha = 255;
+                        pblend.AlphaFormat = 1;
+                        UpdateLayeredWindow(_hwndStartBtn, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
+                            0, &pblend, ULW_ALPHA);
+                    }
+                    ReleaseDC(0, hdcDst);
+                    SelectObject(hdcSrca, h);
+                    DeleteObject(ho);
+                }
+                DeleteDC(hdcSrca);
+            }
+            ReleaseDC(_hwndStartBtn, DC);
+        }
+    }
+
+    UpdateLayeredWindow(
+        _hwndStartBtn, NULL, &pptDst, NULL, NULL, NULL, 0, NULL, 0);
+
+    if (started)
+    {
+        SetWindowRgn(_hwndStartBtn, hRgn, 1);
+    }
+}
+
+void CStartButton::ExecRefresh()
+{
+    if (_pOldStartMenuBand)
+    {
+        IUnknown_Exec(_pOldStartMenuBand, &CLSID_MenuBand, 0x10000000, 0, 0, 0);
+    }
+    else
+    {
+        if (_pNewStartMenu)
+        {
+            IUnknown_Exec(_pNewStartMenu, &CLSID_MenuBand, 0x10000000, 0, 0, 0);
+        }
+    }
+}
+
+void CStartButton::ForceButtonUp()
+{
+    if (!_nStartBtnNotPressed)
+    {
+        MSG Msg;
+        _nStartBtnNotPressed = 1;
+        PeekMessageW(
+            &Msg, _hwndStartBtn, WM_MOUSEFIRST + 1, WM_MOUSEFIRST + 1, PM_REMOVE);
+        PeekMessageW(
+            &Msg, _hwndStartBtn, WM_MOUSEFIRST + 1, WM_MOUSEFIRST + 1, PM_REMOVE);
+
+        SendMessageW(
+            _hwndStartBtn, WM_PASTE, 0, 0);
+
+        PeekMessageW(
+            &Msg, _hwndStartBtn, WM_MOUSEFIRST + 3, WM_MOUSEFIRST + 3, PM_REMOVE);
+    }
+}
+
 void CStartButton::GetRect(RECT* lpRect)
 {
     GetWindowRect(_hwndStartBtn, lpRect);
+}
+
+BOOL CStartButton::InitBackgroundBitmap()
+{
+    // NOTICE: Do like XP (shellbrd images are gone)
+    return TRUE;
+}
+
+void CStartButton::InitTheme()
+{
+    pszCurrentThemeName = _GetCurrentThemeName();
+    SetWindowTheme(_hwndStartBtn, _GetCurrentThemeName(), 0);
+}
+
+BOOL CStartButton::IsButtonPushed()
+{
+    return SendMessageW(_hwndStartBtn, BM_GETSTATE, 0, 0) & BST_PUSHED;
 }
 
 HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff @MOD
@@ -310,6 +431,49 @@ HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
     return hr;
 }
 
+BOOL CStartButton::IsPopupMenuVisible()
+{
+    HWND phwnd;
+    return SUCCEEDED(IUnknown_GetWindow(_pOldStartMenu, &phwnd)) && IsWindowVisible(phwnd)
+        || SUCCEEDED(IUnknown_GetWindow(_pNewStartMenu, &phwnd)) && IsWindowVisible(phwnd);
+}
+
+void CStartButton::RecalcSize()
+{
+    if (!_hTheme)
+    {
+        RECT rc;
+        GetClientRect(v_hwndTray, &rc);
+        LPCWSTR p_windowName = &WindowName;
+        if (rc.right >= _lWidth)
+        {
+            p_windowName = _pszWindowName;
+        }
+
+        SetWindowTextW(_hwndStartBtn, p_windowName);
+
+        int height = _pStartButtonSite->GetStartButtonMinHeight();
+        if (!height && _lHeight >= 0)
+        {
+            height = _lHeight;
+        }
+        _lHeight = height;
+    }
+}
+
+void CStartButton::RepositionBalloon()
+{
+    if (_hwndStartBalloon)
+    {
+        RECT rc;
+        GetWindowRect(_hwndStartBtn, &rc);
+        WORD xCoordinate = (WORD)((rc.left + rc.right) / 2);
+        WORD yCoordinate = LOWORD(rc.top);
+        SendMessageW(
+            _hwndStartBalloon, 0x412u, 0, MAKELONG(xCoordinate, yCoordinate));
+    }
+}
+
 void CStartButton::StartButtonReset()
 {
     GetSizeAndFont(_hTheme);
@@ -332,6 +496,36 @@ BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken fro
         }
     }
     return result;
+}
+
+void CStartButton::UpdateStartButton(bool a2)
+{
+    if (_hTheme && _GetCurrentThemeName() != pszCurrentThemeName)
+    {
+        pszCurrentThemeName = _GetCurrentThemeName();
+        SetWindowTheme(_hwndStartBtn, _GetCurrentThemeName(), 0);
+    }
+    else
+    {
+        DrawStartButton(1, a2);
+    }
+}
+
+void CStartButton::_DestroyStartButtonBalloon()
+{
+    if (_hwndStartBalloon)
+    {
+        DestroyWindow(_hwndStartBalloon);
+        _hwndStartBalloon = nullptr;
+    }
+    KillTimer(_hwndStartBtn, 1);
+}
+
+void CStartButton::_DontShowTheStartButtonBalloonAnyMore()
+{
+    DWORD dwData = 2;
+    SHSetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        L"StartButtonBalloonTip", REG_DWORD, &dwData, sizeof(dwData));
 }
 
 LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
