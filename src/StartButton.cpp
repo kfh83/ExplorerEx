@@ -192,6 +192,38 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
     return S_OK;
 }
 
+// dwRefData-> CTray+988 -> CStartButton
+HWND CStartButton::CreateStartButton(HWND hWnd)
+{
+    DWORD dwStyleEx =  GetWindowLongW(hWnd, GWL_EXSTYLE);
+    HWND hWndStartBtn = (HWND)SHFusionCreateWindowEx(
+        dwStyleEx & (WS_EX_LAYOUTRTL | WS_EX_RTLREADING | WS_EX_RIGHT) | (WS_EX_LAYERED | WS_EX_TOOLWINDOW),
+        L"Button",
+        nullptr,
+        WS_POPUP | WS_CLIPSIBLINGS | BS_VCENTER,
+        0, 0, 1, 1,
+        hWnd,
+        nullptr,
+        g_hinstCabinet,
+        nullptr);
+    _hwndStartBtn = hWndStartBtn;
+
+    if (hWndStartBtn)
+    {
+        SetPropW(hWndStartBtn, L"StartButtonTag", (HANDLE)0x130);
+        SendMessageW(_hwndStartBtn, CCM_DPISCALE, TRUE, 0);
+        SetWindowSubclass(
+            _hwndStartBtn,
+            (SUBCLASSPROC)CStartButton::s_StartButtonSubclassProc,
+            0,
+            (DWORD_PTR)this);
+        LoadStringW(g_hinstCabinet, /* TODO: Document. */ 0x253u, (LPWSTR)_pszWindowName, 50);
+        SetWindowTextW(_hwndStartBtn, (LPCWSTR)_pszWindowName);
+    }
+
+    return _hwndStartBtn;
+}
+
 HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
 {
     if (bActive)
