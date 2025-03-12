@@ -313,23 +313,6 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
     }
 }
 
-HWND CStartButton::CreateStartButton(HWND hwnd)
-{
-    LONG WindowLongW = GetWindowLongW(hwnd, -20);
-    HWND Window = SHFusionCreateWindowEx(
-        WindowLongW & 0x403000 | 0x80080, L"Button", 0, 0x84000C00, 0, 0, 1, 1, hwnd, 0, g_hinstCabinet, 0);
-    _hwndStartBtn = Window;
-    if (Window)
-    {
-        SetPropW(Window, L"StartButtonTag", 0x130);
-        SendMessageW(_hwndStartBtn, 0x200Cu, 1u, 0);
-        SetWindowSubclass(_hwndStartBtn, s_StartButtonSubclassProc, 0, (DWORD_PTR)this);
-        LoadStringW(GetModuleHandle(NULL), 0x253, _pszWindowName, 50);
-        SetWindowTextW(_hwndStartBtn, _pszWindowName);
-    }
-    return _hwndStartBtn;
-}
-
 void CStartButton::DestroyStartMenu()
 {
     IUnknown_SetSite(_pUnk1, 0);
