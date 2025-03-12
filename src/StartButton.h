@@ -63,7 +63,7 @@ public:
 
     void BuildStartMenu();
     void CloseStartMenu();
-    HWND CreateStartButton(HWND);
+    HWND CreateStartButton(HWND hwnd);
     void DestroyStartMenu();
     void DisplayStartMenu();
     void DrawStartButton(int iStateId, bool hdcSrc /*allegedly*/);
@@ -79,7 +79,7 @@ public:
     void RecalcSize();
     void RepositionBalloon();
     void StartButtonReset();
-    BOOL TrackMenu(HMENU hMenu);
+    int TrackMenu(HMENU hMenu);
     BOOL TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
     void UpdateStartButton(bool a2 /*allegedly*/);
     void _DestroyStartButtonBalloon();
@@ -113,7 +113,7 @@ public:
     IMenuPopup *_pNewStartMenu;
     IDeskBand *_pUnk1;
     char padding5[4];
-    WCHAR *_pszWindowName;
+    LPWSTR _pszWindowName;
     UINT g_nReplaceMe1;
     WCHAR WindowName;
 

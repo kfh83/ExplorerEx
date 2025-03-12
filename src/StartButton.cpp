@@ -81,6 +81,7 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                         uFlag |= TPM_LAYOUTRTL;
                     }
                     bResult = TrackPopupMenu(hMenu, uFlag,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) , 0, hWnd, 0);
+                    _pStartButtonSite->EnableTooltips(TRUE);
                 }
                 if (bResult)
                 {
@@ -277,6 +278,55 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
     if (_pNewStartMenu)
     {
         _pNewStartMenu->OnSelect(MPOS_FULLCANCEL);
+    }
+}
+
+HWND CStartButton::CreateStartButton(HWND hwnd)
+{
+    LONG WindowLongW = GetWindowLongW(hwnd, -20);
+    HWND Window = SHFusionCreateWindowEx(
+        WindowLongW & 0x403000 | 0x80080, L"Button", 0, 0x84000C00, 0, 0, 1, 1, hwnd, 0, g_hinstCabinet, 0);
+    _hwndStartBtn = Window;
+    if (Window)
+    {
+        SetPropW(Window, L"StartButtonTag", 0x130);
+        SendMessageW(_hwndStartBtn, 0x200Cu, 1u, 0);
+        SetWindowSubclass(_hwndStartBtn, s_StartButtonSubclassProc, 0, (DWORD_PTR)this);
+        LoadStringW(GetModuleHandle(NULL), 0x253, _pszWindowName, 50);
+        SetWindowTextW(_hwndStartBtn, _pszWindowName);
+    }
+    return _hwndStartBtn;
+}
+
+void CStartButton::DestroyStartMenu()
+{
+    IUnknown_SetSite(_pUnk1, 0);
+    if (_pUnk1)
+    {
+        _pUnk1 = NULL;
+        _pUnk1->Release();
+    }
+    IUnknown_SetSite(_pOldStartMenu, NULL);
+    if (_pOldStartMenu)
+    {
+        _pOldStartMenu = NULL;
+        _pOldStartMenu->Release();
+    }
+    if (_pOldStartMenuBand)
+    {
+        _pOldStartMenuBand = NULL;
+        _pOldStartMenuBand->Release();
+    }
+    IUnknown_SetSite(_pNewStartMenu, NULL);
+    if (_pNewStartMenu)
+    {
+        _pNewStartMenu = NULL;
+        _pNewStartMenu->Release();
+    }
+    if (_pNewStartMenuBand)
+    {
+        _pNewStartMenuBand = NULL;
+        _pNewStartMenuBand->Release();
     }
 }
 
@@ -489,6 +539,30 @@ void CStartButton::StartButtonReset()
 {
     GetSizeAndFont(_hTheme);
     RecalcSize();
+}
+
+int CStartButton::TrackMenu(HMENU hMenu)
+{
+    TPMPARAMS tpm;
+    RECT rc;
+    tpm.cbSize = sizeof(tpm);
+    GetClientRect(_hwndStartBtn, &tpm.rcExclude);
+    HWND Parent = GetParent(_hwndStartBtn);
+    GetClientRect(Parent, &rc);
+    if (tpm.rcExclude.bottom >= rc.bottom)
+    {
+        tpm.rcExclude.bottom = rc.bottom;
+    }
+    MapWindowRect(_hwndStartBtn, NULL, &tpm.rcExclude);
+    UINT uFlag = TPM_RETURNCMD | TPM_RIGHTBUTTON;
+    if (IsBiDiLocalizedSystem())
+    {
+        uFlag |= TPM_LAYOUTRTL;
+    }
+    _pStartButtonSite->EnableTooltips(FALSE);
+    int nMenuResult = TrackPopupMenuEx(hMenu, uFlag, tpm.rcExclude.left, tpm.rcExclude.bottom, _hwndStartBtn, &tpm);
+    _pStartButtonSite->EnableTooltips(TRUE);
+    return nMenuResult;
 }
 
 BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff @MOD
