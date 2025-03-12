@@ -65,15 +65,20 @@ ICO_INTERNETMAIL        ICON "resources\\inetmail.ico"
 ICO_WORDMAIL            ICON "resources\\smwmail.ico"
 ICO_CLASSICSM           ICON "resources\\clasicSM.ico"
 
+ICO_SHOWDESKTOP ICON "resources\\ShowDesktop.ico"
+ICO_MARKETPLACE ICON "resources\\Marketplace.ico"
+ICO_WINDOWSWEB  ICON "resources\\WindowsWeb.ico"
+ICO_MSNMESSENGER ICON "resources\\Messenger.ico"
+ICO_NOPROGRAM ICON "resources\\NoProgram.ico"
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Bitmap
 //
 
-IDB_START              BITMAP DISCARDABLE PURE "resources\\start.bmp"
-IDB_STARTCLASSIC       BITMAP DISCARDABLE PURE "resources\\startclassic.bmp"
-IDB_START16            BITMAP DISCARDABLE PURE "resources\\start16.bmp"
-IDB_START16MASK        BITMAP DISCARDABLE PURE "resources\\start16mask.bmp"
+IDB_STARTCLASSIC       BITMAP DISCARDABLE PURE "resources\\ShellBrd\\startclassic.bmp"
+IDB_START16            BITMAP DISCARDABLE PURE "resources\\ShellBrd\\start16.bmp"
+IDB_START16MASK        BITMAP DISCARDABLE PURE "resources\\ShellBrd\\start16mask.bmp"
 
 IDB_TAAUTOHIDE         BITMAP DISCARDABLE PURE "resources\\taautohide.bmp"
 IDB_TALOCKGROUP        BITMAP DISCARDABLE PURE "resources\\talockgroup.bmp"
@@ -85,38 +90,54 @@ IDB_TAQLNOLOCKGROUP    BITMAP DISCARDABLE PURE "resources\\taqlnolockgroup.bmp"
 IDB_TAQLLOCKNOGROUP    BITMAP DISCARDABLE PURE "resources\\taqllocknogroup.bmp"
 IDB_TAQLNOLOCKNOGROUP  BITMAP DISCARDABLE PURE "resources\\taqlnolocknogroup.bmp"
 
-IDB_NACLOCKCLEAN       BITMAP DISCARDABLE PURE "resources\\naclockclean.bmp"
-IDB_NANOCLOCKCLEAN     BITMAP DISCARDABLE PURE "resources\\nanoclockclean.bmp"
-IDB_NACLOCKNOCLEAN     BITMAP DISCARDABLE PURE "resources\\naclocknoclean.bmp"
-IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE "resources\\nanoclocknoclean.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_NOBATTERY_NONETWORK_NOSOUND  BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_NoBattery_NoNetwork_NoSound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_BATTERY_NONETWORK_NOSOUND    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_Battery_NoNetwork_NoSound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_NOBATTERY_NETWORK_NOSOUND    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_NoBattery_Network_NoSound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_BATTERY_NETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_Battery_Network_NoSound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_NOBATTERY_NONETWORK_SOUND    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_BATTERY_NONETWORK_SOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_Battery_NoNetwork_Sound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_NOBATTERY_NETWORK_SOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_NoBattery_Network_Sound.bmp"
+IDB_NA_NOCLEAN_NOCLOCK_BATTERY_NETWORK_SOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_NoClock_Battery_Network_Sound.bmp"
+IDB_NA_NOCLEAN_CLOCK_NOBATTERY_NONETWORK_NOSOUND    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_NoBattery_NoNetwork_NoSound.bmp"
+IDB_NA_NOCLEAN_CLOCK_BATTERY_NONETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_Battery_NoNetwork_NoSound.bmp"
+IDB_NA_NOCLEAN_CLOCK_NOBATTERY_NETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_NoBattery_Network_NoSound.bmp"
+IDB_NA_NOCLEAN_CLOCK_BATTERY_NETWORK_NOSOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_Battery_Network_NoSound.bmp"
+IDB_NA_NOCLEAN_CLOCK_NOBATTERY_NONETWORK_SOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_NOCLEAN_CLOCK_NOBATTERY_NONETWORK_SOUND_DUP  BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_NOCLEAN_CLOCK_NOBATTERY_NETWORK_SOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_NoBattery_Network_Sound.bmp"
+IDB_NA_NOCLEAN_CLOCK_BATTERY_NETWORK_SOUND          BITMAP DISCARDABLE PURE "resources\\NotificationArea\\NoClean_Clock_Battery_Network_Sound.bmp"
+IDB_NA_CLEAN_NOCLOCK_NOBATTERY_NONETWORK_NOSOUND    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_NoBattery_NoNetwork_NoSound.bmp"
+IDB_NA_CLEAN_NOCLOCK_BATTERY_NONETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_Battery_NoNetwork_NoSound.bmp"
+IDB_NA_CLEAN_NOCLOCK_NOBATTERY_NETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_NoBattery_Network_NoSound.bmp"
+IDB_NA_CLEAN_NOCLOCK_BATTERY_NETWORK_NOSOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_Battery_Network_NoSound.bmp"
+IDB_NA_CLEAN_NOCLOCK_NOBATTERY_NONETWORK_SOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_CLEAN_NOCLOCK_BATTERY_NONETWORK_SOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_Battery_NoNetwork_Sound.bmp"
+IDB_NA_CLEAN_NOCLOCK_NOBATTERY_NETWORK_SOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_NoBattery_Network_Sound.bmp"
+IDB_NA_CLEAN_NOCLOCK_BATTERY_NETWORK_SOUND          BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_NoClock_Battery_Network_Sound.bmp"
+IDB_NA_CLEAN_CLOCK_NOBATTERY_NONETWORK_NOSOUND      BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_NoBattery_NoNetwork_NoSound.bmp"
+IDB_NA_CLEAN_CLOCK_BATTERY_NONETWORK_NOSOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_Battery_NoNetwork_NoSound.bmp"
+IDB_NA_CLEAN_CLOCK_NOBATTERY_NETWORK_NOSOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_NoBattery_Network_NoSound.bmp"
+IDB_NA_CLEAN_CLOCK_BATTERY_NETWORK_NOSOUND          BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_Battery_Network_NoSound.bmp"
+IDB_NA_CLEAN_CLOCK_NOBATTERY_NONETWORK_SOUND        BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_CLEAN_CLOCK_NOBATTERY_NONETWORK_SOUND_DUP    BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_NoBattery_NoNetwork_Sound.bmp"
+IDB_NA_CLEAN_CLOCK_NOBATTERY_NETWORK_SOUND          BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_NoBattery_Network_Sound.bmp"
+IDB_NA_CLEAN_CLOCK_BATTERY_NETWORK_SOUND            BITMAP DISCARDABLE PURE "resources\\NotificationArea\\Clean_Clock_Battery_Network_Sound.bmp"
 
 //
 //  These are the Start Menu bitmaps that are used on Win32 machines.
 //
-#ifdef _WIN64
-IDB_SERVERSTARTBKG     BITMAP DISCARDABLE PURE "resources\\srvbkx64.bmp"
-#else
-IDB_SERVERSTARTBKG     BITMAP DISCARDABLE PURE "resources\\srvbkg.bmp"
-#endif
-IDB_TERMINALSERVICESBKG BITMAP DISCARDABLE PURE "resources\\tsbanner.bmp"
-IDB_PERSONALSTARTBKG    BITMAP DISCARDABLE PURE "resources\\stmuper.bmp"
-IDB_PROFESSIONALSTARTBKG BITMAP DISCARDABLE PURE "resources\\stmupro.bmp"
-IDB_PROFESSIONAL64STARTBKG BITMAP DISCARDABLE PURE "resources\\stmupr64.bmp"
-IDB_DCSERVERSTARTBKG   BITMAP DISCARDABLE PURE "resources\\srvdc2.bmp"
-IDB_ADVSERVERSTARTBKG  BITMAP DISCARDABLE PURE "resources\\srvadv2.bmp"
-IDB_EMBEDDED           BITMAP DISCARDABLE PURE "resources\\startem.bmp"
-IDB_BLADESTARTBKG      BITMAP DISCARDABLE PURE "resources\\srvweb.bmp"
-IDB_SMALLBUSINESSSTARTBKG BITMAP DISCARDABLE PURE "resources\\sbsbkg.bmp"
-IDB_TABLETPCSTARTBKG   BITMAP DISCARDABLE PURE "resources\\stmutab.bmp"
-IDB_APPLIANCESTARTBKG BITMAP DISCARDABLE PURE "resources\\srvapp.bmp"
-
-IDB_STARTPREVIEWNEW     BITMAP DISCARDABLE PURE "resources\\NewSM.bmp"
-IDB_STARTPREVIEWCLASSIC BITMAP DISCARDABLE PURE "resources\\ClassicSM.bmp"
+IDB_CLASSICSTARTBKG BITMAP DISCARDABLE PURE "resources\\ShellBrd\\ClassicSMBanner.bmp"
 
 IDB_TRAYCHEVRONHORIZ     BITMAP DISCARDABLE PURE "resources\\traych.bmp"
 IDB_TRAYCHEVRONHORIZOPEN BITMAP DISCARDABLE PURE "resources\\traycho.bmp"
 IDB_TRAYCHEVRONVERT      BITMAP DISCARDABLE PURE "resources\\traycv.bmp"
 IDB_TRAYCHEVRONVERTOPEN  BITMAP DISCARDABLE PURE "resources\\traycvo.bmp"
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// PNG
+//
+IDR_FRAME PNG DISCARDABLE PURE "resources\\Frame.png"
 
 
 #ifndef APSTUDIO_INVOKED

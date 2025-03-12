@@ -1127,61 +1127,6 @@ HWND CTray::_GetClockWindow(void)
     return (HWND)SendMessage(_hwndNotify, TNM_GETCLOCK, 0, 0L);
 }
 
-UINT _GetStartIDB()
-{
-    UINT id;
-
-    if (IsOS(OS_TABLETPC))
-    {
-        id = IDB_TABLETPCSTARTBKG;
-    }
-    else if (IsOS(OS_EMBEDDED))
-    {
-        if (IsOS(OS_ANYSERVER))
-            id = IDB_EMBEDDEDSERVER;
-        else
-            id = IDB_EMBEDDED;
-    }
-    else if (IsOS(OS_DATACENTER))
-    {
-        id = IDB_DCSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_ADVSERVER))
-    {
-        id = IDB_ADVSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_SERVER))
-    {
-        id = IDB_SERVERSTARTBKG;
-    }
-    else if (IsOS(OS_PERSONAL))
-    {
-        id = IDB_PERSONALSTARTBKG;
-    }
-    else if (IsOS(OS_WEBSERVER))
-    {
-        id = IDB_BLADESTARTBKG;
-    }
-    else if (IsOS(OS_SMALLBUSINESSSERVER))
-    {
-        id = IDB_SMALLBUSINESSSTARTBKG;
-    }
-    else if (IsOS(OS_APPLIANCE))
-    {
-        id = IDB_APPLIANCESTARTBKG;
-    }
-    else
-    {
-#ifdef _WIN64
-        id = IDB_PROFESSIONAL64STARTBKG;
-#else
-        id = IDB_PROFESSIONALSTARTBKG;
-#endif
-    }
-
-    return id;
-}
-
 void CTray::_CreateTrayTips()
 {
     _hwndTrayTips = CreateWindowEx(WS_EX_TRANSPARENT, TOOLTIPS_CLASS, NULL,
@@ -1277,24 +1222,23 @@ LRESULT CTray::_InitStartButtonEtc()
 {
     // NOTE: This bitmap is used as a flag in CTaskBar::OnPosRectChangeDB to
     // tell when we are done initializing, so we don't resize prematurely
-    _hbmpStartBkg = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(_GetStartIDB()));
 
-    if (_hbmpStartBkg)
-    {
-        UpdateWindow(_hwnd);
-        _BuildStartMenu();
-        _RegisterDropTargets();
+    // @MOD (isabella): Vista loads this bitmap from ShellBrd, but we store the bitmap in our own
+    // module. Vista's original code is such (link against WinBrand.dll):
+    //    _hbmpStartBkg = BrandingLoadBitmap(L"Shellbrd", 1001);
+    _hbmpStartBkg = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
 
-		if (_CheckAssociations())
-		    CheckWinIniForAssocs();
+    UpdateWindow(_hwnd);
+    _BuildStartMenu(); // TODO: Moved to CStartButton::BuildStartMenu()
+    _RegisterDropTargets();
 
-        SendNotifyMessage(HWND_BROADCAST,
-            RegisterWindowMessage(TEXT("TaskbarCreated")), 0, 0);
+	if (_CheckAssociations())
+		CheckWinIniForAssocs();
 
-        return 1;
-    }
+    SendNotifyMessage(HWND_BROADCAST,
+        RegisterWindowMessage(TEXT("TaskbarCreated")), 0, 0);
 
-    return -1;
+    return 1;
 }
 
 void CTray::_AdjustMinimizedMetrics()
@@ -3847,7 +3791,7 @@ void CTray::_StartButtonReset()
         int bpp = GetDeviceCaps(hdc, BITSPIXEL) * GetDeviceCaps(hdc, PLANES);
         if (bpp > 8)
         {
-            idbStart = _hTheme ? IDB_START : IDB_STARTCLASSIC;
+            idbStart = IDB_STARTCLASSIC; // XXX (isabella): Differs from Vista, because this was seemingly moved to CStartButton.
         }
 
         ReleaseDC(NULL, hdc);

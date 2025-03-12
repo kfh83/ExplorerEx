@@ -255,6 +255,7 @@
     <ClInclude Include="UEMApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -268,6 +269,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="immersive\Hooks.h">
+=======
+    <ClInclude Include="StartButton.h">
+>>>>>>> adcc2ee (Bring in all Vista graphical resources)
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -457,6 +461,159 @@
     <Image Include="resources\underflow.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="resources\LogoffButtonsAero.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsAeroDisabled.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsAeroPressed.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsExpander.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsExpanderLarge.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsLarge.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsLargeAero.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsLargeAeroDisabled.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsLargeAeroPressed.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsLargePressed.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\LogoffButtonsPressed.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\Marketplace.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\Messenger.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NoProgram.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\ShowDesktop.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\starter.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\WindowsWeb.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_NoSound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_Sound.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\ShellBrd\ClassicSMBanner.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\ShellBrd\start16.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\ShellBrd\start16mask.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\ShellBrd\startclassic.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hostutil.cpp">
@@ -585,10 +742,14 @@
     <ClCompile Include="desktop2\wrapctl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+<<<<<<< HEAD
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="immersive\ImmersiveInit.cpp">
+=======
+    <ClCompile Include="StartButton.cpp">
+>>>>>>> adcc2ee (Bring in all Vista graphical resources)
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
