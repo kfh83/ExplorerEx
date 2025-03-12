@@ -2,6 +2,7 @@
 
 #ifndef _TRAY_H
 #define _TRAY_H
+#include "StartButton.h"
 
 #ifdef __cplusplus
 
@@ -188,7 +189,7 @@ EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 #define AH_ON           0x01
 #define AH_HIDING       0x02
 
-class CTray : public CImpWndProc
+class CTray : public CImpWndProc, IStartButtonSite
 {
 public:
 
@@ -196,6 +197,20 @@ public:
     // miscellaneous public methods
     //
     CTray();
+
+    //~ Begin IStartButtonSite Interface
+    STDMETHODIMP_(VOID) EnableTooltips(BOOL bEnable) override;
+    STDMETHODIMP_(VOID) PurgeRebuildRequests() override;
+    STDMETHODIMP_(BOOL) ShouldUseSmallIcons() override;
+    STDMETHODIMP_(VOID) HandleFullScreenApp(HWND hwnd) override;
+    STDMETHODIMP_(VOID) StartButtonClicked() override;
+    STDMETHODIMP_(VOID) OnStartMenuDismissed() override;
+    STDMETHODIMP_(INT) GetStartButtonMinHeight() override;
+    STDMETHODIMP_(UINT) GetStartMenuStuckPlace() override;
+    STDMETHODIMP_(VOID) SetUnhideTimer(LONG a2, LONG a3) override;
+    STDMETHODIMP_(VOID) OnStartButtonClosing() override;
+    //~ End IStartButtonSite Interface
+
     void HandleWindowDestroyed(HWND hwnd);
     void HandleFullScreenApp(HWND hwnd);
     void RealityCheck();
