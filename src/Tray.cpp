@@ -171,7 +171,7 @@ void CTray::ClosePopupMenus()
         _pmpStartPane->OnSelect(MPOS_FULLCANCEL);
 }
 
-BOOL Tray_StartPanelEnabled()
+EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
 {
     SHELLSTATE  ss = { 0 };
     SHGetSetSettings(&ss, SSF_STARTPANELON, FALSE);

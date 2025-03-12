@@ -7,6 +7,7 @@
 #include "tray.h"
 #include "Util.h"
 #include "rcids.h"
+#include <DeskHost.h>
 
 CStartButton::CStartButton()
 {
@@ -204,7 +205,7 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
         0, 0, 1, 1,
         hWnd,
         nullptr,
-        g_hinstCabinet,
+        GetModuleHandle(NULL),
         nullptr);
     _hwndStartBtn = hWndStartBtn;
 
@@ -217,7 +218,7 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
             (SUBCLASSPROC)CStartButton::s_StartButtonSubclassProc,
             0,
             (DWORD_PTR)this);
-        LoadStringW(g_hinstCabinet, /* TODO: Document. */ 0x253u, (LPWSTR)_pszWindowName, 50);
+        LoadStringW(GetModuleHandle(NULL), /* TODO: Document. */ 0x253u, (LPWSTR)_pszWindowName, 50);
         SetWindowTextW(_hwndStartBtn, (LPCWSTR)_pszWindowName);
     }
 
@@ -298,6 +299,39 @@ HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvO
     }
 
     return hr;
+}
+
+void CStartButton::BuildStartMenu() // from xp
+{
+    CloseStartMenu();
+    _pStartButtonSite->PurgeRebuildRequests();
+    DestroyStartMenu();
+    if (Tray_StartPanelEnabled())
+    {
+        LPVOID pDeskHost;
+        DesktopV2_Create(&_pNewStartMenu, &_pNewStartMenuBand, &pDeskHost);
+        DesktopV2_Build(pDeskHost);
+    }
+    else
+    {
+        HRESULT hr = StartMenuHost_Create(&_pOldStartMenu, &_pOldStartMenuBand);
+        if (SUCCEEDED(hr))
+        {
+            IBanneredBar* pbb;
+
+            hr = _pOldStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
+            if (SUCCEEDED(hr))
+            {
+                pbb->SetBitmap(_hbmpStartBkg);
+                if (_pStartButtonSite->ShouldUseSmallIcons())
+                    pbb->SetIconSize(BMICON_SMALL);
+                else
+                    pbb->SetIconSize(BMICON_LARGE);
+
+                pbb->Release();
+            }
+        }
+    }
 }
 
 void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
@@ -693,9 +727,9 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
     GetWindowRect(v_hwndTray, &rc);
     LPCWSTR pszResult = L"StartTop";
 
-    if (g_nReplaceMe1 != 1)
+    if (g_traystuckplace != 1)
     {
-        if (g_nReplaceMe1 == 3 && RECTHEIGHT(rc) < _lHeight)
+        if (g_traystuckplace == 3 && RECTHEIGHT(rc) < _lHeight)
         {
             return L"StartBottom";
         }

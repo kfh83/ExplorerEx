@@ -4,6 +4,14 @@
 #include <Uxtheme.h>
 #include <ShObjIdl_core.h>
 
+// from explorer\desktop2
+STDAPI DesktopV2_Create(
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane);
+STDAPI DesktopV2_Build(void* pvStartPane);
+
+// from tray
+EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
+
 struct DECLSPEC_NOVTABLE IStartButtonSite
 {
      STDMETHOD_(VOID,EnableTooltips(BOOL bEnable)) PURE;
@@ -114,7 +122,10 @@ public:
     IDeskBand *_pUnk1;
     char padding5[4];
     LPWSTR _pszWindowName;
-    UINT g_nReplaceMe1;
+
+    // set in constructor passed from CTray
+    UINT g_traystuckplace; // _uStuckPlace
+
     WCHAR WindowName;
 
 private:
@@ -128,7 +139,7 @@ private:
     void _ExploreCommonStartMenu(BOOL bExplore);
 
     LPCWSTR _GetCurrentThemeName();
-
+    
     void _HandleDestroy();
     void _OnSettingChanged(UINT a2);
     bool _OnThemeChanged(bool bForceUpdate);
