@@ -11,7 +11,7 @@ CStartButton::CStartButton()
 {
 }
 
-HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)  // taken from ep_taskbar 7-stuff (?)
+HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)
 {
     static const QITAB qit[] =
     {
@@ -391,4 +391,117 @@ void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
         ShellExecuteExW(&execInfo);
         ILFree(ppidl);
     }
+}
+
+LPCWSTR CStartButton::_GetCurrentThemeName()
+{
+    RECT rc;
+    GetWindowRect(v_hwndTray, &rc);
+    LPCWSTR pszResult = L"StartTop";
+
+    if (g_nReplaceMe1 != 1)
+    {
+        if (g_nReplaceMe1 == 3 && RECTHEIGHT(rc) < _lHeight)
+        {
+            return L"StartBottom";
+        }
+        return L"StartMiddle";
+    }
+
+    if (RECTHEIGHT(rc) >= _lHeight)
+    {
+        return L"StartMiddle";
+    }
+
+    return pszResult;
+}
+
+void CStartButton::_HandleDestroy()
+{
+    _nBackgroundBitmapInitialized = 0;
+    _DestroyStartButtonBalloon();
+
+    if (_nShellBrdBitmap1001)
+    {
+        DeleteObject(_nShellBrdBitmap1001);
+    }
+    if (_hStartFont)
+    {
+        DeleteObject(_hStartFont);
+    }
+    if (_hIml)
+    {
+        ImageList_Destroy(_hIml);
+    }
+
+    RemovePropW(_hwndStartBtn, L"StartButtonTag");
+}
+
+void CStartButton::_OnSettingChanged(UINT a2)
+{
+    if (!_hTheme && a2 != 47)
+    {
+        bool v3 = !_nSettingsChangeType;
+        if (_nSettingsChangeType)
+        {
+            PostMessageW(_hwndStartBtn, 0x31Au, 0, 0);
+            v3 = !_nSettingsChangeType;
+        }
+        _nSettingsChangeType = v3;
+    }
+}
+
+bool CStartButton::_OnThemeChanged(bool bForceUpdate)
+{
+    if (_hTheme)
+    {
+        CloseThemeData(_hTheme);
+        _hTheme = NULL;
+    }
+
+    bool bThemeApplied = false;
+    HTHEME hTheme = OpenThemeData(_hwndStartBtn, L"Button");
+    _hTheme = hTheme;
+    if (hTheme)
+    {
+        StartButtonReset();
+        DrawStartButton(1, true);
+    }
+    else if (!bForceUpdate)
+    {
+        bool bSettingsChanged = !_nSettingsChangeType;
+        pszCurrentThemeName = NULL;
+        if (bSettingsChanged)
+        {
+            StartButtonReset();
+            DrawStartButton(1, true);
+            bThemeApplied = true;
+        }
+        else
+        {
+            PostMessageW(_hwndStartBtn, 0x31Au, 0, 0);
+        }
+        _nSettingsChangeType = !_nSettingsChangeType;
+    }
+
+    return bThemeApplied;
+}
+
+BOOL CStartButton::_ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2)
+{
+    RECT rc1;
+    RECT rcClip;
+    RECT rcDst;
+
+    GetWindowRect(_hwndStartBtn, &rcClip);
+    IntersectRect(&rcDst, &rcClip, lprcSrc2);
+    IntersectRect(&rc1, &rcDst, a2);
+
+    return EqualRect(&rc1, &rcDst);
+}
+
+LRESULT CStartButton::s_StartButtonSubclassProc(
+    HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, CStartButton* dwRefData)
+{
+    return dwRefData->_StartButtonSubclassProc(hWnd, uMsg, wParam, lParam);
 }

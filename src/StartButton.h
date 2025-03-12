@@ -94,7 +94,7 @@ public:
     LONG _lWidth;
     LONG _lHeight;
     HTHEME _hTheme;
-    int _nShellBrdBitmap1001;
+    HGDIOBJ _nShellBrdBitmap1001;
     HFONT _hStartFont;
     char padding[4];
     int _nUnkBool1;
@@ -102,7 +102,7 @@ public:
     int _nIsOnContextMenu;
     BOOL _uLockCode;
     int _nBackgroundBitmapInitialized;
-    int _nSettingsChangeType;
+    bool _nSettingsChangeType;
     int _nStartPaneActiveState;
     DWORD _dwTickCount;
     HIMAGELIST _hIml;
@@ -114,28 +114,28 @@ public:
     IDeskBand *_pUnk1;
     char padding5[4];
     WCHAR *_pszWindowName;
+    UINT g_nReplaceMe1;
 
 private:
 
     // TODO: revise
 
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
-    void _CalcExcludeRect(RECT* lprcDst);
-    void _CalcStartButtonPos(POINT* a2, HRGN* a3);
+    void _CalcExcludeRect(RECT* lprcDst);           // TODO
+    void _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 
-    const WCHAR _GetCurrentThemeName();
+    LPCWSTR _GetCurrentThemeName();
 
     void _HandleDestroy();
     void _OnSettingChanged(UINT a2);
-    char _OnThemeChanged(char a2);
-    BOOL _ShouldDelayClip(RECT* a2, const RECT* lprcSrc2);
+    bool _OnThemeChanged(bool bForceUpdate);
+    BOOL _ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2);
     LRESULT _StartButtonSubclassProc(HWND hWndTo, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static LRESULT s_StartButtonSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, CStartButton *dwRefData);
     static LRESULT s_StartMenuSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-
 };
