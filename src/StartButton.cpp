@@ -723,6 +723,22 @@ LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
     return lRes;
 }
 
+void CStartButton::_CalcExcludeRect(RECTL* lprcDst) // from xp
+{
+    RECTL rcExclude;
+    RECT rcParent;
+
+    GetClientRect(_hwndStartBtn, (RECT*)&rcExclude);
+    MapWindowRect(_hwndStartBtn, HWND_DESKTOP, &rcExclude);
+
+    GetClientRect(v_hwndTray, &rcParent);
+    MapWindowRect(v_hwndTray, HWND_DESKTOP, &rcParent);
+
+    IntersectRect((RECT*)&rcExclude, (RECT*)&rcExclude, &rcParent);
+
+    *lprcDst = rcExclude;
+}
+
 HFONT CStartButton::_CreateStartFont()  // taken from xp
 {
     HFONT hfontStart = NULL;
