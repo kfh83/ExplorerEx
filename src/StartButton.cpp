@@ -70,7 +70,7 @@ STDMETHODIMP_(HRESULT __stdcall) CStartButton::CreateStartButtonBalloon(UINT a2,
 
         if (LoadString(GetModuleHandle(NULL), a2, Buffer, 260))
         {
-            SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)Buffer);
+            SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)&Buffer);
         }
 
         RECT Rect;
