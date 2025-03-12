@@ -353,3 +353,42 @@ LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
 
     return lRes;
 }
+
+HFONT CStartButton::_CreateStartFont()  // taken from xp
+{
+    HFONT hfontStart = NULL;
+    NONCLIENTMETRICS ncm;
+
+    ncm.cbSize = sizeof(ncm);
+    if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, FALSE))
+    {
+        WORD wLang = GetUserDefaultLangID();
+
+        // Select normal weight font for chinese language.
+        if (PRIMARYLANGID(wLang) == LANG_CHINESE &&
+           ((SUBLANGID(wLang) == SUBLANG_CHINESE_TRADITIONAL) ||
+             (SUBLANGID(wLang) == SUBLANG_CHINESE_SIMPLIFIED)))
+            ncm.lfCaptionFont.lfWeight = FW_NORMAL;
+        else
+            ncm.lfCaptionFont.lfWeight = FW_BOLD;
+
+        hfontStart = CreateFontIndirect(&ncm.lfCaptionFont);
+    }
+
+    return hfontStart;
+}
+
+void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
+{
+    LPITEMIDLIST ppidl;
+    if (SUCCEEDED(SHGetFolderLocation(nullptr, CSIDL_COMMON_STARTMENU, nullptr, KF_FLAG_DEFAULT, &ppidl)))
+    {
+        SHELLEXECUTEINFOW execInfo = { sizeof(execInfo) };
+        execInfo.fMask = SEE_MASK_IDLIST | SEE_MASK_ASYNCOK;
+        execInfo.lpVerb = a2 ? L"explore" : L"open";
+        execInfo.nShow = SW_NORMAL;
+        execInfo.lpIDList = ppidl;
+        ShellExecuteExW(&execInfo);
+        ILFree(ppidl);
+    }
+}
