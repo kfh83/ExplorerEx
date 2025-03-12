@@ -4,6 +4,7 @@
 #include <windowsx.h>
 
 #include "SHFusion.h"
+#include "tray.h"
 
 CStartButton::CStartButton()
 {
@@ -178,6 +179,11 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
     }
 }
 
+void CStartButton::GetRect(RECT* lpRect)
+{
+    GetWindowRect(_hwndStartBtn, lpRect);
+}
+
 HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff @MOD
 {
     HRESULT hr;
@@ -202,6 +208,12 @@ HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
         hr = S_FALSE;
     }
     return hr;
+}
+
+void CStartButton::StartButtonReset()
+{
+    GetSizeAndFont(_hTheme);
+    RecalcSize();
 }
 
 BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff @MOD
