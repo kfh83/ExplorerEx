@@ -119,7 +119,7 @@ private:
 
     // TODO: revise
 
-    HRESULT OnMouseClick(HWND hWndTo, int a3);
+    LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
     void _CalcExcludeRect(RECT* lprcDst);
     void _CalcStartButtonPos(POINT* a2, HRGN* a3);
     HFONT _CreateStartFont();

@@ -1,6 +1,8 @@
 #include "StartButton.h"
 
 #include <shlwapi.h>
+#include <windowsx.h>
+
 #include "SHFusion.h"
 
 CStartButton::CStartButton()
@@ -218,4 +220,24 @@ BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken fro
         }
     }
     return result;
+}
+
+LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
+{
+    LRESULT lRes = S_OK;
+    if (_hwndStartBalloon)
+    {
+        RECT rcBalloon;
+        GetWindowRect(_hwndStartBalloon, &rcBalloon);
+        MapWindowRect(nullptr, hWndTo, &rcBalloon);
+        if (PtInRect(&rcBalloon, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}))
+        {
+            ShowWindow(_hwndStartBalloon, SW_HIDE);
+            _DontShowTheStartButtonBalloonAnyMore();
+            _DestroyStartButtonBalloon();
+            lRes = S_FALSE;
+        }
+    }
+
+    return lRes;
 }
