@@ -14,6 +14,15 @@ STDAPI DesktopV2_Build(void* pvStartPane);
 // from tray
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
 
+struct goofyStruct
+{
+    HWND hWnd;      //0x4
+    LONG xCord;     //0x8
+    LONG yCord;     //0xC
+    DWORD flag;     //0x18
+};
+
+
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
 {
@@ -132,7 +141,7 @@ private:
     LRESULT _StartButtonSubclassProc(HWND hWndTo, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static LRESULT s_StartButtonSubclassProc(
-        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, CStartButton *dwRefData);
+        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     static LRESULT s_StartMenuSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 };
