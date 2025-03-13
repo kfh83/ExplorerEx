@@ -1288,3 +1288,8 @@ LRESULT CStartButton::s_StartButtonSubclassProc(
     CStartButton* cst = (CStartButton*)dwRefData;
     return cst->_StartButtonSubclassProc(hWnd, uMsg, wParam, lParam);
 }
+
+LRESULT CStartButton::s_StartMenuSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    return LRESULT();
+}
