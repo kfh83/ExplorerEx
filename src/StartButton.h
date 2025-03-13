@@ -93,14 +93,13 @@ public:
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
-    LPCWSTR pszCurrentThemeName;
+    LPCWSTR _pszCurrentThemeName;
     INT _nSomeSize;
     int _nUnkBool2;
     int _nUnkBool3;
     HWND _hwndStartBtn;
     HWND _hwndStartBalloon;
-    LONG _lWidth;
-    LONG _lHeight;
+    SIZE _size;
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
@@ -132,7 +131,7 @@ private:
 
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
     void _CalcExcludeRect(RECTL* lprcDst);
-    int _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
+    BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 
