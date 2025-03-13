@@ -14,7 +14,7 @@ EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
 
 struct DECLSPEC_NOVTABLE IStartButtonSite
 {
-     STDMETHOD_(VOID, EnableTooltips(WPARAM wParam)) PURE;
+     STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
      STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
      STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
      STDMETHOD_(VOID, HandleFullScreenApp(HWND)) PURE;
