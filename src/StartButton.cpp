@@ -1347,5 +1347,19 @@ LRESULT CStartButton::s_StartButtonSubclassProc(
 
 LRESULT CStartButton::s_StartMenuSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
-    return LRESULT();
+    if (uMsg != WM_WINDOWPOSCHANGING)
+    {
+        if (uMsg == WM_NCDESTROY)
+            RemoveWindowSubclass(hWnd, s_StartMenuSubclassProc, uIdSubclass);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    WINDOWPOS* wndPos = (WINDOWPOS*)lParam;
+    if ((wndPos->flags & SWP_NOZORDER) != 0 || c_tray._uStuckPlace != 1 && c_tray._uStuckPlace != 3)
+    {
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+    wndPos->hwndInsertAfter = v_hwndTray;
+
+    return 0;
 }
