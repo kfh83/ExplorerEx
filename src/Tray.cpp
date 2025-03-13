@@ -5884,6 +5884,11 @@ BOOL    CALLBACK    CountOfRunningProgramsEnumWindowsProc(HWND hwnd, LPARAM lPar
     return(TRUE);
 }
 
+void CTray::GetStuckMonitorRect(RECT* prcStuck)
+{
+    GetMonitorRects(_hmonStuck, prcStuck, NULL);
+}
+
 DWORD CTray::CountOfRunningPrograms()
 {
     tProcessIDList processIDList = { 0 };

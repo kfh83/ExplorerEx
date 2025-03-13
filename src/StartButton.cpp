@@ -783,7 +783,7 @@ int CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *hRgn)
         }
         else
         {
-            c_tray._GetStuckDisplayRect(g_traystuckplace, &rc);
+            c_tray.GetStuckMonitorRect(&rc);
             x = pPoint_3->x;
             y = pPoint_3->y;
             v21 = x + _size.cx;
