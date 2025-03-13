@@ -757,7 +757,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         }
         else
         {
-            c_tray.GetStuckMonitorRects(&rc);
+            c_tray.GetStuckMonitorRect(&rc);
 
             RECT rcSrc;
             rcSrc.left = pPoint->x;
