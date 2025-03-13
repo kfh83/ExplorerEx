@@ -8,6 +8,7 @@
 #include "Util.h"
 #include "rcids.h"
 #include <DeskHost.h>
+#include <vssym32.h>
 
 CStartButton::CStartButton()
 {
@@ -434,12 +435,12 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
             if (hdcSrca)
             {
                 RECT pRect;
-                pRect = { 0, 0, _lWidth, _lHeight };
+                pRect = { 0, 0, _size.cx, _size.cy };
 
                 BITMAPINFO pbmi;
                 pbmi.bmiHeader.biWidth = pRect.right;
                 pbmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-                pbmi.bmiHeader.biHeight = -_lHeight;
+                pbmi.bmiHeader.biHeight = -_size.cy;
                 pbmi.bmiHeader.biPlanes = 1;
                 pbmi.bmiHeader.biBitCount = 32;
                 pbmi.bmiHeader.biCompression = BI_RGB;
@@ -453,7 +454,7 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
                     bool isThemeEnabled = _hTheme == NULL;
 
                     HDC hdcDst = GetDC(NULL);
-                    psize = {_lWidth, _lHeight};
+                    psize = {_size.cx, _size.cy};
                     pptSrc = {0, 0};
 
                     if (isThemeEnabled)
@@ -547,7 +548,7 @@ BOOL CStartButton::InitBackgroundBitmap()
 
 void CStartButton::InitTheme()
 {
-    pszCurrentThemeName = _GetCurrentThemeName();
+    _pszCurrentThemeName = _GetCurrentThemeName();
     SetWindowTheme(_hwndStartBtn, _GetCurrentThemeName(), 0);
 }
 
@@ -589,6 +590,151 @@ BOOL CStartButton::IsPopupMenuVisible()
         || SUCCEEDED(IUnknown_GetWindow(_pNewStartMenu, &phwnd)) && IsWindowVisible(phwnd);
 }
 
+int CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *hRgn)
+{
+    int ptOrigin; // eax
+    int height; // eax
+    int v5; // eax
+    struct tagPOINT *pPoint_3; // edi
+    HMONITOR hMon; // eax
+    int ptY; // eax
+    int cyDlgFrame; // ebx
+    int cyBorder; // edi
+    LONG ptX; // eax
+    LONG x; // eax
+    LONG y; // edi
+    LONG v21; // ecx
+    int v22; // eax
+    int v23; // ecx
+    HRGN v24; // eax
+    struct tagRECT rcRgn; // [esp+Ch] [ebp-54h] BYREF
+    struct tagRECT rc; // [esp+1Ch] [ebp-44h] BYREF
+    struct tagRECT rcDst; // [esp+2Ch] [ebp-34h] BYREF
+    RECT rcSrc1; // [esp+3Ch] [ebp-24h] BYREF
+    int cyBorder_2; // [esp+5Ch] [ebp-4h]
+    int fRes; // [esp+68h] [ebp+8h]
+
+    RECT rcTrayWnd;
+    GetWindowRect(v_hwndTray, &rcTrayWnd);
+
+    LONG cyFrameHalf = g_cyFrame / 2;
+
+    if (_pszCurrentThemeName == L"StartTop")
+    {
+        pPoint_3 = pPoint;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
+
+        if (rcTrayWnd.bottom <= cyFrameHalf)
+            ptY = rcTrayWnd.top - _size.cy - cyFrameHalf;
+        else
+            ptY = rcTrayWnd.bottom + _nSomeSize - _size.cy;
+    }
+    else if (_pszCurrentThemeName == L"StartBottom")
+    {
+        pPoint_3 = pPoint;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
+
+        hMon = MonitorFromRect(&rcTrayWnd, MONITOR_DEFAULTTONEAREST);
+        GetMonitorRects(hMon, &rc, FALSE);
+
+        if (rc.bottom - rcTrayWnd.top <= cyFrameHalf)
+            ptY = cyFrameHalf + rcTrayWnd.top;
+        else
+            ptY = rcTrayWnd.top - _nSomeSize;
+    }
+    else
+    {
+        if (_hTheme)
+        {
+            if (g_offsetRECT == 1 || g_offsetRECT == 3)
+            {
+                if (IsBiDiLocalizedSystem())
+                    ptOrigin = rcTrayWnd.right - _size.cx;
+                else
+                    ptOrigin = rcTrayWnd.left;
+                pPoint_3 = pPoint;
+                pPoint->x = ptOrigin;
+                height = rcTrayWnd.bottom - _size.cy - rcTrayWnd.top;
+            }
+            else
+            {
+                pPoint_3 = pPoint;
+                pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _size.cx - rcTrayWnd.left) / 2;
+                height = g_cyTabSpace;
+            }
+            v5 = height / 2;
+        }
+        else
+        {
+            cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
+            cyBorder = GetSystemMetrics(SM_CYBORDER);
+            cyBorder_2 = cyBorder;
+            if (IsBiDiLocalizedSystem() && (g_offsetRECT & 1) != 0) // compiler optimised 1 or 3
+                ptX = rcTrayWnd.right - _size.cx - cyBorder - cyDlgFrame;
+            else
+                ptX = rcTrayWnd.left + cyBorder + cyDlgFrame;
+            pPoint_3 = pPoint;
+            pPoint->x = ptX;
+            v5 = cyDlgFrame + cyBorder_2;
+        }
+
+        ptY = rcTrayWnd.top + v5;
+    }
+    fRes = 0;
+    pPoint_3->y = ptY;
+    if (hRgn)
+    {
+        if (GetSystemMetrics(SM_CMONITORS) == 1)
+        {
+            if (GetWindowRgnBox(_hwndStartBtn, &rc))
+                SetWindowRgn(_hwndStartBtn, 0, 1);
+        }
+        else
+        {
+            c_tray.GetStuckMonitorRect(&rc);
+            x = pPoint_3->x;
+            y = pPoint_3->y;
+            v21 = x + _size.cx;
+            rcSrc1.left = x;
+            rcSrc1.bottom = y + _size.cy;
+            rcSrc1.top = y;
+            rcSrc1.right = v21;
+            IntersectRect(&rcDst, &rcSrc1, &rc);
+            if (EqualRect(&rcDst, &rcSrc1))
+            {
+                if (GetWindowRgnBox(_hwndStartBtn, &rcRgn))
+                {
+                    *hRgn = 0;
+                    return 1;
+                }
+            }
+            else
+            {
+                fRes = _ShouldDelayClip(&rcDst, &rc);
+                v22 = -rcDst.left;
+                v23 = -rcDst.top;
+                if (g_offsetRECT)
+                {
+                    if (g_offsetRECT == 1)
+                        v23 = rcSrc1.bottom + -rcDst.bottom - rcSrc1.top;
+                }
+                else
+                {
+                    v22 = rcSrc1.right + -rcDst.right - rcSrc1.left;
+                }
+                OffsetRect(&rcDst, v22, v23);
+                v24 = CreateRectRgnIndirect(&rcDst);
+                if (fRes)
+                    *hRgn = v24;
+                else
+                    SetWindowRgn(_hwndStartBtn, v24, 1);
+            }
+        }
+    }
+
+    return fRes;
+}
+
 void CStartButton::RecalcSize()
 {
     if (!_hTheme)
@@ -596,7 +742,7 @@ void CStartButton::RecalcSize()
         RECT rc;
         GetClientRect(v_hwndTray, &rc);
         LPCWSTR p_windowName = &WindowName;
-        if (rc.right >= _lWidth)
+        if (rc.right >= _size.cx)
         {
             p_windowName = _pszWindowName;
         }
@@ -604,11 +750,11 @@ void CStartButton::RecalcSize()
         SetWindowTextW(_hwndStartBtn, p_windowName);
 
         int height = _pStartButtonSite->GetStartButtonMinHeight();
-        if (!height && _lHeight >= 0)
+        if (!height && _size.cy >= 0)
         {
-            height = _lHeight;
+            height = _size.cy;
         }
-        _lHeight = height;
+        _size.cy = height;
     }
 }
 
@@ -675,9 +821,9 @@ BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken fro
 
 void CStartButton::UpdateStartButton(bool a2)
 {
-    if (_hTheme && _GetCurrentThemeName() != pszCurrentThemeName)
+    if (_hTheme && _GetCurrentThemeName() != _pszCurrentThemeName)
     {
-        pszCurrentThemeName = _GetCurrentThemeName();
+        _pszCurrentThemeName = _GetCurrentThemeName();
         SetWindowTheme(_hwndStartBtn, _GetCurrentThemeName(), 0);
     }
     else
@@ -786,14 +932,14 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
 
     if (g_traystuckplace != 1)
     {
-        if (g_traystuckplace == 3 && RECTHEIGHT(rc) < _lHeight)
+        if (g_traystuckplace == 3 && RECTHEIGHT(rc) < _size.cy)
         {
             return L"StartBottom";
         }
         return L"StartMiddle";
     }
 
-    if (RECTHEIGHT(rc) >= _lHeight)
+    if (RECTHEIGHT(rc) >= _size.cy)
     {
         return L"StartMiddle";
     }
@@ -855,7 +1001,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     else if (!bForceUpdate)
     {
         bool bSettingsChanged = !_nSettingsChangeType;
-        pszCurrentThemeName = NULL;
+        _pszCurrentThemeName = NULL;
         if (bSettingsChanged)
         {
             StartButtonReset();

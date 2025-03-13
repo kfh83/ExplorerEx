@@ -93,14 +93,13 @@ public:
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
-    LPCWSTR pszCurrentThemeName;
+    LPCWSTR _pszCurrentThemeName;
     INT _nSomeSize;
     int _nUnkBool2;
     int _nUnkBool3;
     HWND _hwndStartBtn;
     HWND _hwndStartBalloon;
-    LONG _lWidth;
-    LONG _lHeight;
+    SIZE _size;
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
