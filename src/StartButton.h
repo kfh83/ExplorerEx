@@ -138,7 +138,7 @@ private:
     void _OnSettingChanged(UINT a2);
     bool _OnThemeChanged(bool bForceUpdate);
     BOOL _ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2);
-    LRESULT _StartButtonSubclassProc(HWND hWndTo, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static LRESULT s_StartButtonSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
