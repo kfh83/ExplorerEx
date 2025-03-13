@@ -249,6 +249,7 @@ public:
     void StartMenuContextMenu(HWND hwnd, DWORD dwPos);
     BOOL IsTaskbarFading() { return _fTaskbarFading; };
     void GetStuckMonitorRect(RECT* prcStuck);
+    BOOL IsMouseOverStartButton();
 
     DWORD CountOfRunningPrograms();
     void ClosePopupMenus();

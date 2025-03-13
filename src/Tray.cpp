@@ -5889,6 +5889,63 @@ void CTray::GetStuckMonitorRect(RECT* prcStuck)
     GetMonitorRects(_hmonStuck, prcStuck, NULL);
 }
 
+BOOL CTray::IsMouseOverStartButton()    // TODO: revise
+{
+    BOOL bRet = FALSE;
+
+    if ((_uAutoHide & AH_HIDING) == 0)
+    {
+        RECT rc;
+
+        rc.top = _arStuckRects[_uStuckPlace].top;
+        if ((_uStuckPlace & 1) != 0)
+            rc.bottom = _arStuckRects[_uStuckPlace].bottom;
+        else
+            rc.bottom = _sizeStart.cy + _arStuckRects[_uStuckPlace].top;
+        if (IsBiDiLocalizedSystem())
+        {
+            if ((_uStuckPlace & 1) != 0)
+                rc.left = _arStuckRects[_uStuckPlace].right - _sizeStart.cx;
+            else
+                rc.left = _arStuckRects[_uStuckPlace].left;
+            rc.right = _arStuckRects[_uStuckPlace].right;
+        }
+        else
+        {
+            rc.left = _arStuckRects[_uStuckPlace].left;
+            if ((_uStuckPlace & 1) != 0)
+                rc.right = _sizeStart.cx + _arStuckRects[_uStuckPlace].left;
+            else
+                rc.right = _arStuckRects[_uStuckPlace].right;
+        }
+        if (_fCanSizeMove)
+        {
+            if (!_uStuckPlace)
+            {
+                rc.right = rc.right - _sizeSizingBar.cy;
+            }
+            else
+            {
+                if (!(_uStuckPlace - 1))
+                {
+                    rc.bottom -= _sizeSizingBar.cy;
+                }
+                else
+                {
+                    if (_uStuckPlace - 1 == 1)
+                        rc.left = _sizeSizingBar.cy + rc.left;
+                    else
+                        rc.top += _sizeSizingBar.cy;
+                }
+            }
+        }
+        DWORD messagePos = GetMessagePos();
+        bRet = PtInRect(&rc, { GET_X_LPARAM(messagePos), GET_Y_LPARAM(messagePos) });
+    }
+
+    return bRet;
+}
+
 DWORD CTray::CountOfRunningPrograms()
 {
     tProcessIDList processIDList = { 0 };
