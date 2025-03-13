@@ -534,6 +534,95 @@ void CStartButton::GetRect(RECT* lpRect)
     GetWindowRect(_hwndStartBtn, lpRect);
 }
 
+void CStartButton::GetSizeAndFont(HTHEME hTheme)
+{
+    if (hTheme)
+    {
+        HDC hdc = GetDC(_hwndStartBtn);
+        GetThemePartSize(hTheme, hdc, BS_PUSHBUTTON, CBS_UNCHECKEDNORMAL, nullptr, TS_TRUE, &_size);
+        DWORD dwLogPixelsX = GetDeviceCaps(hdc, LOGPIXELSX);
+
+        // XXX(isabella): Looks to be DPI resolution?
+        if (dwLogPixelsX >= 120)
+        {
+            if (dwLogPixelsX >= 144)
+                _nSomeSize = dwLogPixelsX >= 192 ? 14 : 11;
+            else
+                _nSomeSize = 9;
+        }
+        else
+        {
+            _nSomeSize = 8;
+        }
+
+        ReleaseDC(_hwndStartBtn, hdc);
+    }
+    else // Classic theme:
+    {
+        int idResStartIcon = SHGetCurColorRes() <= 8 ? IDB_START16 : IDB_STARTCLASSIC;
+
+        // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
+        HBITMAP hBmpStartIcon = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(idResStartIcon));
+
+        if (hBmpStartIcon)
+        {
+            BITMAP bitmap;
+
+            if (GetObjectW(hBmpStartIcon, 24, &bitmap))
+            {
+                BUTTON_IMAGELIST buttonImageList = { 0 };
+
+                if (_hIml)
+                {
+                    // Clean up any previously-existing image list:
+                    ImageList_Destroy(_hIml);
+                }
+
+                HBITMAP hBmpStartIconMask = nullptr;
+
+                DWORD ilcFlags = ILC_COLOR32;
+
+                if (idResStartIcon == IDB_START16)
+                {
+                    ilcFlags = ILC_COLOR8 | ILC_MASK;
+
+                    // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
+                    hBmpStartIconMask = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK));
+                }
+
+                if ((GetWindowLongW(_hwndStartBtn, GWL_EXSTYLE) & WS_EX_LAYOUTRTL) != 0)
+                {
+                    ilcFlags |= ILC_MIRROR;
+                }
+
+                HIMAGELIST hIml = ImageList_Create(bitmap.bmWidth, bitmap.bmHeight, ilcFlags, 1, 1);
+                _hIml = hIml;
+                buttonImageList.himl = hIml;
+                ImageList_Add(hIml, hBmpStartIcon, hBmpStartIconMask);
+                if (hBmpStartIconMask)
+                    DeleteObject(hBmpStartIconMask);
+                buttonImageList.uAlign = 0;
+                SendMessageW(_hwndStartBtn, BCM_SETIMAGELIST, 0, (LPARAM)&buttonImageList);
+            }
+            DeleteObject(hBmpStartIcon);
+        }
+
+        if (_hStartFont)
+        {
+            DeleteObject(_hStartFont);
+        }
+
+        HFONT hFont = _CreateStartFont();
+        _hStartFont = hFont;
+
+        SendMessageW(_hwndStartBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+        // Recalculate the size:
+        _size = { 0 };
+        SendMessageW(_hwndStartBtn, BCM_GETIDEALSIZE, 0, (LPARAM)&_size);
+    }
+}
+
 BOOL CStartButton::InitBackgroundBitmap()
 {
     _fBackgroundBitmapInitialized = TRUE;
