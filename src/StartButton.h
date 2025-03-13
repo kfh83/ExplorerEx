@@ -4,6 +4,8 @@
 #include <Uxtheme.h>
 #include <ShObjIdl_core.h>
 
+#include "tray.h"
+
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
     IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane);
@@ -11,20 +13,6 @@ STDAPI DesktopV2_Build(void* pvStartPane);
 
 // from tray
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
-
-struct DECLSPEC_NOVTABLE IStartButtonSite
-{
-     STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
-     STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
-     STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
-     STDMETHOD_(VOID, HandleFullScreenApp(HWND)) PURE;
-     STDMETHOD_(VOID, StartButtonClicked()) PURE;
-     STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
-     STDMETHOD_(INT, GetStartButtonMinHeight()) PURE;
-     STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
-     STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
-     STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
-};
 
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown

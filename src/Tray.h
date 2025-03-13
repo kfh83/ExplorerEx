@@ -189,6 +189,20 @@ EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 #define AH_ON           0x01
 #define AH_HIDING       0x02
 
+struct DECLSPEC_NOVTABLE IStartButtonSite
+{
+    STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
+    STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
+    STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
+    STDMETHOD_(VOID, HandleFullScreenApp(HWND)) PURE;
+    STDMETHOD_(VOID, StartButtonClicked()) PURE;
+    STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
+    STDMETHOD_(int, GetStartButtonMinHeight()) PURE;
+    STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
+    STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
+    STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
+};
+
 class CTray : public CImpWndProc, IStartButtonSite
 {
 public:
@@ -205,14 +219,13 @@ public:
     STDMETHODIMP_(VOID) HandleFullScreenApp(HWND hwnd) override;
     STDMETHODIMP_(VOID) StartButtonClicked() override;
     STDMETHODIMP_(VOID) OnStartMenuDismissed() override;
-    STDMETHODIMP_(INT) GetStartButtonMinHeight() override;
+    STDMETHODIMP_(int) GetStartButtonMinHeight() override;
     STDMETHODIMP_(UINT) GetStartMenuStuckPlace() override;
     STDMETHODIMP_(VOID) SetUnhideTimer(LONG a2, LONG a3) override;
     STDMETHODIMP_(VOID) OnStartButtonClosing() override;
     //~ End IStartButtonSite Interface
 
     void HandleWindowDestroyed(HWND hwnd);
-    void HandleFullScreenApp(HWND hwnd);
     void RealityCheck();
     DWORD getStuckPlace() { return _uStuckPlace; }
     void InvisibleUnhide(BOOL fShowWindow);

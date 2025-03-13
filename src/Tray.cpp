@@ -163,6 +163,25 @@ CTray::CTray() : _fCanSizeMove(TRUE), _fIsLogoff(FALSE), _fIsDesktopConnected(TR
 {
 }
 
+void CTray::EnableTooltips(BOOL bEnable)
+{
+    SendMessageW(_hwndTrayTips, TTM_ACTIVATE, bEnable, NULL);
+}
+
+void CTray::PurgeRebuildRequests()
+{
+    MSG msg;
+    while (PeekMessage(&msg, _hwnd, SBM_REBUILDMENU, SBM_REBUILDMENU, PM_REMOVE | PM_NOYIELD))
+    {
+        // Keep sucking them out
+    }
+}
+
+BOOL CTray::ShouldUseSmallIcons()
+{
+    return _fSMSmallIcons;  //_uModalMode possibly
+}
+
 void CTray::ClosePopupMenus()
 {
     if (_pmpStartMenu)
@@ -1498,6 +1517,42 @@ void CTray::HandleFullScreenApp(HWND hwnd)
     // Finally, let traynot know about whether the tray is hiding
     //
     SendMessage(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
+}
+
+void CTray::StartButtonClicked()
+{
+    SendMessageW(_hwnd, WM_COMMAND, IDC_START, NULL);
+}
+
+void CTray::OnStartMenuDismissed()
+{
+    ForceStartButtonUp();
+    _bMainMenuInit = 0;
+    PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
+}
+
+int CTray::GetStartButtonMinHeight()
+{
+    if (!_sizeStart.cx)
+    {
+        Button_GetIdealSize(_hwndStart, &_sizeStart);
+    }
+    return _sizeStart.cy;
+}
+
+UINT CTray::GetStartMenuStuckPlace()
+{
+    return _uStuckPlace;
+}
+
+void CTray::SetUnhideTimer(LONG a2, LONG a3)
+{
+    _SetUnhideTimer(a2, a3);
+}
+
+void CTray::OnStartButtonClosing()
+{
+    _DoExitWindows(v_hwndDesktop);
 }
 
 BOOL CTray::_IsTopmost()
