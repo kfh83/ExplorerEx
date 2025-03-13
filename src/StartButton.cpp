@@ -10,8 +10,11 @@
 #include <DeskHost.h>
 #include <vssym32.h>
 
-CStartButton::CStartButton()
+CStartButton::CStartButton(IStartButtonSite *pStartButtonSite)
+    : _nSettingsChangeType(true)
+    , _pStartButtonSite(pStartButtonSite)
 {
+
 }
 
 HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)

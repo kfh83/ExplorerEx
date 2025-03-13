@@ -43,7 +43,7 @@ IStartButton : IUnknown
 class CStartButton : public IStartButton, public IServiceProvider
 {
 public:
-    CStartButton();
+    CStartButton(IStartButtonSite *pStartButtonSite);
 
     //~ Begin IUnknown Interface
     STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
@@ -93,13 +93,14 @@ public:
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
-    LPCWSTR _pszCurrentThemeName;
+    LPCWSTR pszCurrentThemeName;
     INT _nSomeSize;
     int _nUnkBool2;
     int _nUnkBool3;
     HWND _hwndStartBtn;
     HWND _hwndStartBalloon;
-    SIZE _size;
+    LONG _lWidth;
+    LONG _lHeight;
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
@@ -129,11 +130,9 @@ public:
 
 private:
 
-    // TODO: revise
-
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
-    void _CalcExcludeRect(RECTL* lprcDst);           // TODO
-    BOOL _CalcStartButtonPos(POINT* pPoint, HRGN* hRgn);
+    void _CalcExcludeRect(RECTL* lprcDst);
+    int _CalcStartButtonPos(POINT* a2, HRGN* a3);  // TODO
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 
