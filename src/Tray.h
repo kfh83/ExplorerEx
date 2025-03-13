@@ -199,7 +199,7 @@ public:
     CTray();
 
     //~ Begin IStartButtonSite Interface
-    STDMETHODIMP_(VOID) EnableTooltips(BOOL bEnable) override;
+    STDMETHODIMP_(VOID) EnableTooltips(WPARAM wParam) override;
     STDMETHODIMP_(VOID) PurgeRebuildRequests() override;
     STDMETHODIMP_(BOOL) ShouldUseSmallIcons() override;
     STDMETHODIMP_(VOID) HandleFullScreenApp(HWND hwnd) override;
