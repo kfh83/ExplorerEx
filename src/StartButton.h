@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef _STARTBTN_H
+#define _STARTBTN_H
 #include <Windows.h>
 #include <Uxtheme.h>
 #include <ShObjIdl_core.h>
@@ -14,13 +16,6 @@ STDAPI DesktopV2_Build(void* pvStartPane);
 // from tray
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
 
-struct goofyStruct
-{
-    HWND hWnd;      //0x4
-    LONG xCord;     //0x8
-    LONG yCord;     //0xC
-    DWORD flag;     //0x18
-};
 
 
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
@@ -40,7 +35,7 @@ IStartButton : IUnknown
 class CStartButton : public IStartButton, public IServiceProvider
 {
 public:
-    CStartButton(IStartButtonSite *pStartButtonSite);
+    CStartButton();
 
     //~ Begin IUnknown Interface
     STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
@@ -145,3 +140,6 @@ private:
     static LRESULT s_StartMenuSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 };
+
+
+#endif 

@@ -10,9 +10,7 @@
 #include <DeskHost.h>
 #include <vssym32.h>
 
-CStartButton::CStartButton(IStartButtonSite *pStartButtonSite)
-    : _nSettingsChangeType(true)
-    , _pStartButtonSite(pStartButtonSite)
+CStartButton::CStartButton()
 {
 
 }
@@ -48,7 +46,7 @@ HRESULT CStartButton::SetFocusToStartButton()  // taken from ep_taskbar 7-stuff
 HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
 {
     _nIsOnContextMenu = TRUE;
-    _pStartButtonSite->HandleFullScreenApp(hWnd);
+    _pStartButtonSite->HandleFullScreenApp2(hWnd);
     SetForegroundWindow(hWnd);
 
     LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
@@ -354,15 +352,15 @@ void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
 void CStartButton::DestroyStartMenu()
 {
     IUnknown_SetSite(_pUnk1, NULL);
-    ATOMICRELEASE(_pUnk1, IDeskBand);
+    ATOMICRELEASE(_pUnk1);
 
     IUnknown_SetSite(_pOldStartMenu, NULL);
-    ATOMICRELEASE(_pOldStartMenu, IMenuPopup);
-    ATOMICRELEASE(_pOldStartMenuBand, IMenuBand);
+    ATOMICRELEASE(_pOldStartMenu);
+    ATOMICRELEASE(_pOldStartMenuBand);
 
     IUnknown_SetSite(_pNewStartMenu, NULL);
-    ATOMICRELEASE(_pNewStartMenu, IMenuPopup);
-    ATOMICRELEASE(_pNewStartMenuBand, IMenuBand);
+    ATOMICRELEASE(_pNewStartMenu);
+    ATOMICRELEASE(_pNewStartMenuBand);
 }
 
 void CStartButton::DisplayStartMenu() // xp

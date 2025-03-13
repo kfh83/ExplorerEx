@@ -5,6 +5,8 @@
 #include "dpa.h"
 #include "startmnu.h"
 #include "cowsite.h"
+#include <desktop2.h>
+#include "hostutil.h"
 
 #define WC_DV2      TEXT("DV2ControlHost")
 

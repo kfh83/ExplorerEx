@@ -339,7 +339,7 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
             // if we don't have a theme, or failed at setting the images from the theme
             // set buttons images from the rc file
             _SetTBButtons(IDB_LOGOFF_NORMAL, TB_SETIMAGELIST);
-            _SetTBButtons(IDB_LOGOFF_HOT, TB_SETHOTIMAGELIST);
+            _SetTBButtons(IDB_LOGOFF_PRESSED, TB_SETHOTIMAGELIST);
         }
         
         SendMessage(_hwndTB, TB_ADDBUTTONS, ARRAYSIZE(tbButtonsCreate), (LPARAM) tbButtonsCreate);

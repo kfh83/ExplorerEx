@@ -1748,7 +1748,7 @@ void _StartOptions_OnInitDialog(HWND hDlg)
 
         // TODO - PM's need to figure out what to do in the case where new start menu is restricted
         //        or not available.  This propsheet page is rather pointless in that case...
-        SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW, IDB_STARTPREVIEWCLASSIC);
+        SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW, IDB_STARTCLASSIC);
     }
     else
     {
@@ -1758,7 +1758,7 @@ void _StartOptions_OnInitDialog(HWND hDlg)
         CheckDlgButton(hDlg, IDC_OLDSCHOOL, !BOOLIFY(ss.fStartPanelOn));
 
         SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW,
-            ss.fStartPanelOn ? IDB_STARTPREVIEWNEW : IDB_STARTPREVIEWCLASSIC);
+            ss.fStartPanelOn ? IDB_START16 : IDB_STARTCLASSIC);
         
         // disable "customize" for the style thats off.
         EnableWindow(GetDlgItem(hDlg, ss.fStartPanelOn ? IDC_OLDSTARTCUSTOMIZE : IDC_NEWSTARTCUSTOMIZE), FALSE);
@@ -1811,7 +1811,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
                     ::EnableWindow(::GetDlgItem(hDlg, IDC_NEWSTARTCUSTOMIZE), GET_WM_COMMAND_ID(wParam, lParam) == IDC_NEWSCHOOL);
                     ::EnableWindow(::GetDlgItem(hDlg, IDC_OLDSTARTCUSTOMIZE), GET_WM_COMMAND_ID(wParam, lParam) == IDC_OLDSCHOOL);
                     SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW,
-                        GET_WM_COMMAND_ID(wParam, lParam) == IDC_NEWSCHOOL ? IDB_STARTPREVIEWNEW : IDB_STARTPREVIEWCLASSIC);
+                        GET_WM_COMMAND_ID(wParam, lParam) == IDC_NEWSCHOOL ? IDB_START16 : IDB_STARTCLASSIC);
     
                     SendPSMChanged(hDlg);
                 }
@@ -2042,7 +2042,7 @@ void _TaskbarOptionsUpdateDisplay(HWND hDlg)
     //
     // bottom preview
     //
-    iBmp = _TaskbarPickBitmap(hDlg, IDB_NACLOCKCLEAN, c_caNotify, ARRAYSIZE(c_caNotify));
+    iBmp = _TaskbarPickBitmap(hDlg, IDB_NA_CLEAN_CLOCK_BATTERY_NETWORK_SOUND, c_caNotify, ARRAYSIZE(c_caNotify));
     SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, iBmp);
 
     //
