@@ -682,30 +682,8 @@ BOOL CStartButton::IsPopupMenuVisible()
         || SUCCEEDED(IUnknown_GetWindow(_pNewStartMenu, &phwnd)) && IsWindowVisible(phwnd);
 }
 
-int CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *hRgn)
+BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 {
-    int ptOrigin; // eax
-    int height; // eax
-    int v5; // eax
-    struct tagPOINT *pPoint_3; // edi
-    HMONITOR hMon; // eax
-    int ptY; // eax
-    int cyDlgFrame; // ebx
-    int cyBorder; // edi
-    LONG ptX; // eax
-    LONG x; // eax
-    LONG y; // edi
-    LONG v21; // ecx
-    int v22; // eax
-    int v23; // ecx
-    HRGN v24; // eax
-    struct tagRECT rcRgn; // [esp+Ch] [ebp-54h] BYREF
-    struct tagRECT rc; // [esp+1Ch] [ebp-44h] BYREF
-    struct tagRECT rcDst; // [esp+2Ch] [ebp-34h] BYREF
-    RECT rcSrc1; // [esp+3Ch] [ebp-24h] BYREF
-    int cyBorder_2; // [esp+5Ch] [ebp-4h]
-    int fRes; // [esp+68h] [ebp+8h]
-
     RECT rcTrayWnd;
     GetWindowRect(v_hwndTray, &rcTrayWnd);
 
@@ -713,113 +691,115 @@ int CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *hRgn)
 
     if (_pszCurrentThemeName == L"StartTop")
     {
-        pPoint_3 = pPoint;
         pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
 
         if (rcTrayWnd.bottom <= cyFrameHalf)
-            ptY = rcTrayWnd.top - _size.cy - cyFrameHalf;
+            pPoint->y = rcTrayWnd.top - _size.cy - cyFrameHalf;
         else
-            ptY = rcTrayWnd.bottom + _nSomeSize - _size.cy;
+            pPoint->y = rcTrayWnd.bottom + _nSomeSize - _size.cy;
     }
     else if (_pszCurrentThemeName == L"StartBottom")
     {
-        pPoint_3 = pPoint;
+        RECT rc;
+
         pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
 
-        hMon = MonitorFromRect(&rcTrayWnd, MONITOR_DEFAULTTONEAREST);
+        HMONITOR hMon = MonitorFromRect(&rcTrayWnd, MONITOR_DEFAULTTONEAREST);
         GetMonitorRects(hMon, &rc, FALSE);
 
         if (rc.bottom - rcTrayWnd.top <= cyFrameHalf)
-            ptY = cyFrameHalf + rcTrayWnd.top;
+            pPoint->y = cyFrameHalf + rcTrayWnd.top;
         else
-            ptY = rcTrayWnd.top - _nSomeSize;
+            pPoint->y = rcTrayWnd.top - _nSomeSize;
+    }
+    else if (_hTheme)
+    {
+        int height;
+
+        if (c_tray._uStuckPlace == 1 || c_tray._uStuckPlace == 3)
+        {
+            pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
+            height = rcTrayWnd.bottom - _size.cy - rcTrayWnd.top;
+        }
+        else
+        {
+            pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _size.cx - rcTrayWnd.left) / 2;
+            height = g_cyTabSpace;
+        }
+
+        pPoint->y = rcTrayWnd.top +  height / 2;
     }
     else
     {
-        if (_hTheme)
-        {
-            if (g_offsetRECT == 1 || g_offsetRECT == 3)
-            {
-                if (IsBiDiLocalizedSystem())
-                    ptOrigin = rcTrayWnd.right - _size.cx;
-                else
-                    ptOrigin = rcTrayWnd.left;
-                pPoint_3 = pPoint;
-                pPoint->x = ptOrigin;
-                height = rcTrayWnd.bottom - _size.cy - rcTrayWnd.top;
-            }
-            else
-            {
-                pPoint_3 = pPoint;
-                pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _size.cx - rcTrayWnd.left) / 2;
-                height = g_cyTabSpace;
-            }
-            v5 = height / 2;
-        }
+        int cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
+        int cyBorder = GetSystemMetrics(SM_CYBORDER);
+        if (IsBiDiLocalizedSystem() && (c_tray._uStuckPlace == 1 || c_tray._uStuckPlace == 3) != 0)
+            pPoint->x = rcTrayWnd.right - _size.cx - cyBorder - cyDlgFrame;
         else
-        {
-            cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
-            cyBorder = GetSystemMetrics(SM_CYBORDER);
-            cyBorder_2 = cyBorder;
-            if (IsBiDiLocalizedSystem() && (g_offsetRECT & 1) != 0) // compiler optimised 1 or 3
-                ptX = rcTrayWnd.right - _size.cx - cyBorder - cyDlgFrame;
-            else
-                ptX = rcTrayWnd.left + cyBorder + cyDlgFrame;
-            pPoint_3 = pPoint;
-            pPoint->x = ptX;
-            v5 = cyDlgFrame + cyBorder_2;
-        }
-
-        ptY = rcTrayWnd.top + v5;
+            pPoint->x = rcTrayWnd.left + cyBorder + cyDlgFrame;
+        pPoint->y = rcTrayWnd.top + cyDlgFrame + cyBorder;
     }
-    fRes = 0;
-    pPoint_3->y = ptY;
-    if (hRgn)
+
+    // XXX(isabella): Inlined function? New result variable in the middle of the call may be indicative.
+    BOOL fRes = FALSE;
+    if (phRgn)
     {
+        RECT rc;
+        RECT rcDst;
+        RECT rcRgn;
+
         if (GetSystemMetrics(SM_CMONITORS) == 1)
         {
             if (GetWindowRgnBox(_hwndStartBtn, &rc))
-                SetWindowRgn(_hwndStartBtn, 0, 1);
+            {
+                SetWindowRgn(_hwndStartBtn, nullptr, TRUE);
+            }
         }
         else
         {
-            c_tray.GetStuckMonitorRect(&rc);
-            x = pPoint_3->x;
-            y = pPoint_3->y;
-            v21 = x + _size.cx;
-            rcSrc1.left = x;
-            rcSrc1.bottom = y + _size.cy;
-            rcSrc1.top = y;
-            rcSrc1.right = v21;
-            IntersectRect(&rcDst, &rcSrc1, &rc);
-            if (EqualRect(&rcDst, &rcSrc1))
+            c_tray.GetStuckMonitorRects(&rc);
+
+            RECT rcSrc;
+            rcSrc.left = pPoint->x;
+            rcSrc.bottom = pPoint->y + _size.cy;
+            rcSrc.top = pPoint->y;
+            rcSrc.right = pPoint->x + _size.cx;
+            IntersectRect(&rcDst, &rcSrc, &rc);
+
+            if (EqualRect(&rcDst, &rcSrc))
             {
                 if (GetWindowRgnBox(_hwndStartBtn, &rcRgn))
                 {
-                    *hRgn = 0;
+                    *phRgn = 0;
                     return 1;
                 }
             }
             else
             {
                 fRes = _ShouldDelayClip(&rcDst, &rc);
-                v22 = -rcDst.left;
-                v23 = -rcDst.top;
-                if (g_offsetRECT)
+
+                int dx = -rcDst.left;
+                int dy = -rcDst.top;
+
+                if (c_tray._uStuckPlace == 1)
                 {
-                    if (g_offsetRECT == 1)
-                        v23 = rcSrc1.bottom + -rcDst.bottom - rcSrc1.top;
+                    dy = rcSrc.bottom + -rcDst.bottom - rcSrc.top;
                 }
                 else
                 {
-                    v22 = rcSrc1.right + -rcDst.right - rcSrc1.left;
+                    dx = rcSrc.right + -rcDst.right - rcSrc.left;
                 }
-                OffsetRect(&rcDst, v22, v23);
-                v24 = CreateRectRgnIndirect(&rcDst);
+
+                OffsetRect(&rcDst, dx, dy);
+                HRGN hRgn = CreateRectRgnIndirect(&rcDst);
                 if (fRes)
-                    *hRgn = v24;
+                {
+                    *phRgn = hRgn;
+                }
                 else
-                    SetWindowRgn(_hwndStartBtn, v24, 1);
+                {
+                    SetWindowRgn(_hwndStartBtn, hRgn, TRUE);
+                }
             }
         }
     }

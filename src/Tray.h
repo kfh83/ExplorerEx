@@ -677,6 +677,7 @@ protected:
     friend class CStartDropTarget;
     friend class CTrayDropTarget;
     friend class CDropTargetBase;
+    friend class CStartButton; // XXX (isabella): Temporary?
 
     friend void Tray_OnStartMenuDismissed();
     friend void Tray_SetStartPaneActive(BOOL fActive);
