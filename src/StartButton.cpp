@@ -1000,23 +1000,19 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
 {
     RECT rc;
     GetWindowRect(v_hwndTray, &rc);
-    LPCWSTR pszResult = L"StartTop";
 
-    if (g_traystuckplace != 1)
+    if (c_tray._uStuckPlace == 3 && RECTHEIGHT(rc) < _size.cy)
     {
-        if (g_traystuckplace == 3 && RECTHEIGHT(rc) < _size.cy)
-        {
-            return L"StartBottom";
-        }
-        return L"StartMiddle";
+        return L"StartBottom";
     }
-
-    if (RECTHEIGHT(rc) >= _size.cy)
+    else if (c_tray._uStuckPlace == 1 && RECTHEIGHT(rc) < _size.cy)
+    {
+        return L"StartTop";
+    }
+    else
     {
         return L"StartMiddle";
     }
-
-    return pszResult;
 }
 
 void CStartButton::_HandleDestroy()
