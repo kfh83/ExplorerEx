@@ -1,11 +1,5 @@
 #pragma once
 
-#ifndef _TRAY_H
-#define _TRAY_H
-
-#ifdef __cplusplus
-
-#include "pch.h"
 #include "trayp.h"
 #include "cwndproc.h"
 
@@ -190,7 +184,7 @@ EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 #define AH_ON           0x01
 #define AH_HIDING       0x02
 
-class CTray : public CImpWndProc, IStartButtonSite
+class CTray : public CImpWndProc, public IStartButtonSite
 {
 public:
 
@@ -682,8 +676,3 @@ extern UINT g_uStartButtonAllowPopup;
 
 BOOL _IsSizeMoveEnabled();
 BOOL _IsSizeMoveRestricted();
-
-
-#endif  // __cplusplus
-
-#endif  // _TRAY_H

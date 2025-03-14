@@ -1,12 +1,7 @@
 #pragma once
-
-#ifndef _STARTBTN_H
-#define _STARTBTN_H
 #include <Windows.h>
 #include <Uxtheme.h>
 #include <ShObjIdl_core.h>
-
-#include "tray.h"
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
@@ -32,7 +27,7 @@ IStartButton : IUnknown
     STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
 };
 
-struct IStartButtonSite
+struct __declspec(novtable) IStartButtonSite
 {
     STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
     STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
@@ -154,6 +149,3 @@ private:
     static LRESULT s_StartMenuSubclassProc(
         HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 };
-
-
-#endif 
