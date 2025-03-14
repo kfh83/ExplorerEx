@@ -127,6 +127,18 @@ protected:
     int _HitTest(POINTL ptl);
     void _FreePopupMenu();
 
+    /* Vista thumbnail-related methods */
+    //int _CanShowThumbnail();
+    //void _CreateThumbnailWindows();
+    //void _HandleThumbnail();
+    //void _HideThumbnail();
+    //void _HideThumbnailWindows();
+    //void _InitializeThumbnailMetrics();
+    //void _RegisterThumbnail();
+    //void _ShowThumbnail();
+    //void _UpdateThumbnailBackgroundBrush();
+    //void _UpdateThumbnailTitle();
+
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
     void _CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows,
