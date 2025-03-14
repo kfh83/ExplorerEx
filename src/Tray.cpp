@@ -882,6 +882,15 @@ HWND CTray::_CreateStartButton()
 	// Register for MM device changes
 	_uWinMM_DeviceChange = RegisterWindowMessage(WINMMDEVICECHANGEMSGSTRING);
 
+    // Yes, apparently this isn't enough to completely make the start button. Rounak bait! Check xrefs on methods.
+    // I stuck wprintfs where i thought it was important (this function, drawstartbutton, etc)
+    HWND StartButton = _startButton.CreateStartButton(_hwnd);
+    int pvAttribute = 1;
+    DwmSetWindowAttribute(StartButton, 8, &pvAttribute, 4u);
+    wprintf(L"Returning StartButton\n");
+    return StartButton;
+
+    /*
 	HWND hwnd = CreateWindowEx(0, WC_BUTTON, TEXT("Start"),
 		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS |
 		BS_PUSHBUTTON | BS_LEFT | BS_VCENTER | dwStyle,
@@ -901,6 +910,7 @@ HWND CTray::_CreateStartButton()
 	}
 
 	return hwnd;
+	*/
 }
 
 void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify)

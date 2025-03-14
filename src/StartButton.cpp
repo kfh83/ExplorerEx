@@ -199,6 +199,8 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
 // dwRefData-> CTray+988 -> CStartButton
 HWND CStartButton::CreateStartButton(HWND hWnd)
 {
+    wprintf(L"CStartButton::CreateStartButton zero\n");
+
     DWORD dwStyleEx =  GetWindowLongW(hWnd, GWL_EXSTYLE);
     HWND hWndStartBtn = (HWND)SHFusionCreateWindowEx(
         dwStyleEx & (WS_EX_LAYOUTRTL | WS_EX_RTLREADING | WS_EX_RIGHT) | (WS_EX_LAYERED | WS_EX_TOOLWINDOW),
@@ -212,6 +214,8 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
         nullptr);
     _hwndStartBtn = hWndStartBtn;
 
+    wprintf(L"CStartButton::CreateStartButton one\n");
+
     if (hWndStartBtn)
     {
         SetPropW(hWndStartBtn, L"StartButtonTag", (HANDLE)0x130);
@@ -224,6 +228,8 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
         LoadStringW(GetModuleHandle(NULL), /* TODO: Document. */ 0x253u, (LPWSTR)_pszWindowName, 50);
         SetWindowTextW(_hwndStartBtn, (LPCWSTR)_pszWindowName);
     }
+
+    wprintf(L"CStartButton::CreateStartButton two\n");
 
     return _hwndStartBtn;
 }
@@ -425,9 +431,13 @@ void CStartButton::DisplayStartMenu() // xp
 
 void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
 {
+    wprintf(L"CStartButton::DrawStartButton zero\n");
     POINT pptDst;
     HRGN hRgn;
     BOOL started = _CalcStartButtonPos(&pptDst, &hRgn);
+
+    wprintf(L"CStartButton::DrawStartButton zero point five\n");
+
     if (hdcSrc)
     {
         HDC DC = GetDC(_hwndStartBtn);
@@ -487,9 +497,12 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
             ReleaseDC(_hwndStartBtn, DC);
         }
     }
+    wprintf(L"CStartButton::DrawStartButton one\n");
 
     UpdateLayeredWindow(
         _hwndStartBtn, NULL, &pptDst, NULL, NULL, NULL, 0, NULL, 0);
+
+    wprintf(L"CStartButton::DrawStartButton two\n");
 
     if (started)
     {
@@ -688,6 +701,8 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
     LONG cyFrameHalf = g_cyFrame / 2;
 
+    wprintf(L"CStartButton::_CalcStartButtonPos zero\n");
+
     if (_pszCurrentThemeName == L"StartTop")
     {
         pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
@@ -802,6 +817,8 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
             }
         }
     }
+
+    wprintf(L"CStartButton::_CalcStartButtonPos one\n");
 
     return fRes;
 }
