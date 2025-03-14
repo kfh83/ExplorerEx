@@ -228,21 +228,16 @@ public:
     HWND GetTrayTips() { return _hwndTrayTips; }
     IDeskTray* GetDeskTray() { return &_desktray; }
     IMenuPopup* GetStartMenu() { return _pmpStartMenu; };
-    void StartMenuContextMenu(HWND hwnd, DWORD dwPos);
     BOOL IsTaskbarFading() { return _fTaskbarFading; };
     void GetStuckMonitorRect(RECT* prcStuck);
     BOOL IsMouseOverStartButton();
 
     DWORD CountOfRunningPrograms();
-    void ClosePopupMenus();
+
     HWND GetTrayNotifyHWND()
     {
         return _hwndNotify;
     }
-
-    void TellTaskBandWeWantToOpenThisShit();
-
-    void CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage);
 
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
     {
@@ -293,7 +288,6 @@ public:
 
     BOOL _fIsLogoff;
 
-    HWND _hwndStart;
     HWND _hwndLastActive;
 
     CStartButton _startButton;
@@ -301,9 +295,6 @@ public:
     IBandSite* _ptbs;
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
-
-    HBITMAP _hbmpStartBkg; // XXX-Vista (isabella): Moved to CStartButton in Vista.
-    HFONT   _hFontStart;
 
     RECT _arStuckRects[4];   // temporary for hit-testing
 
@@ -340,9 +331,8 @@ protected:
     void _AdjustMinimizedMetrics();
     void _MessageLoop();
 
-    void _BuildStartMenu();
     void _DestroyStartMenu();
-    int _TrackMenu(HMENU hmenu);
+    SIZE *_GetStartButtonPadding(SIZE *pSize);
 
     static DWORD WINAPI RunDlgThreadProc(void* pv);
     DWORD _RunDlgThreadProc(HANDLE hdata);
@@ -399,10 +389,6 @@ protected:
     BOOL _MinimizeAll(BOOL fPostRaiseDesktop);
     void _Command(UINT idCmd);
     LONG _SetAutoHideState(BOOL fAutoHide);
-    BOOL _ShouldWeShowTheStartButtonBalloon();
-    void _DontShowTheStartButtonBalloonAnyMore();
-    void _DestroyStartButtonBalloon();
-    void _ShowStartButtonToolTip();
     void _ToolbarMenu();
     HFONT _CreateStartFont(HWND hwndTray);
     void _SaveTrayStuff(void);
@@ -410,9 +396,6 @@ protected:
     void _SaveTrayAndDesktop(void);
     void _SlideStep(HWND hwnd, const RECT* prcMonitor, const RECT* prcOld, const RECT* prcNew);
     void _DoExitWindows(HWND hwnd);
-
-    static LRESULT WINAPI StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    LRESULT _StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     void _ResizeStuckRects(RECT* arStuckRects);
 
@@ -532,14 +515,10 @@ protected:
 
     // protected data
     HWND _hwndNotify;     // clock window
-    HWND _hwndStartBalloon;
     HWND _hwndRude;
     HWND _hwndTrayTips;
     HWND _hwndTasks;
 
-    HMENU _hmenuStart;
-
-    SIZE _sizeStart;  // height/width of the start button
     SIZE _sizeSizingBar;
     int  _iAlpha;
 

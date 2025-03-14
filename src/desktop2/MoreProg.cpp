@@ -684,7 +684,7 @@ LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         lParam = MAKELPARAM(rc.left, rc.top);
     }
 
-    c_tray.StartMenuContextMenu(_hwnd, (DWORD)lParam);
+    c_tray._startButton.OnContextMenu(_hwnd, (DWORD)lParam);
     return 0;
 }
 

@@ -201,7 +201,7 @@ HRESULT CTaskBar::OnPosRectChangeDB(LPRECT prc)
 {
     // if we haven't fully initialized the tray, don't resize in response to (bogus) rebar sizes
     // OR we're in the moving code, don't do this stuff..
-    if (!c_tray._hbmpStartBkg || c_tray._fDeferedPosRectChange) 
+    if (!c_tray._startButton._hbmpStartBkg /* || c_tray._startButton._fDeferedPosRectChange*/) 
     {
         return S_FALSE;
     }

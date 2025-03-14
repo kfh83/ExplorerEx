@@ -191,206 +191,12 @@ VOID CTray::HandleFullScreenApp2(HWND hwnd)
     return HandleFullScreenApp(hwnd);
 }
 
-void CTray::ClosePopupMenus()
-{
-    if (_pmpStartMenu)
-        _pmpStartMenu->OnSelect(MPOS_FULLCANCEL);
-    if (_pmpStartPane)
-        _pmpStartPane->OnSelect(MPOS_FULLCANCEL);
-}
-
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
 {
     SHELLSTATE  ss = { 0 };
     SHGetSetSettings(&ss, SSF_STARTPANELON, FALSE);
     return ss.fStartPanelOn;
 }
-
-//
-//  The StartButtonBalloonTip registry value can have one of these values:
-//
-//  0 (or nonexistent): User has never clicked the Start Button.
-//  1: User has clicked the Start Button on a pre-Whistler system.
-//  2: User has clicked the Start Button on a Whistler system.
-//
-//  In case 0, we always want to show the balloon tip regardless of whether
-//  the user is running Classic or Personal.
-//
-//  In case 1, we want to show the balloon tip if the user is using the
-//  Personal Start Menu, but not if using Classic (since he's already
-//  seen the Classic Start Menu).  In the Classic case, upgrade the counter
-//  to 2 so the user won't be annoyed when they switch from Classic to
-//  Personal.
-//
-//  In case 2, we don't want to show the balloon tip at all since the
-//  user has seen all we have to offer.
-//
-BOOL CTray::_ShouldWeShowTheStartButtonBalloon()
-{
-    DWORD dwType;
-    DWORD dwData = 0;
-    DWORD cbSize = sizeof(DWORD);
-    SHGetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED,
-        TEXT("StartButtonBalloonTip"), &dwType, (BYTE*)&dwData, &cbSize);
-
-    if (Tray_StartPanelEnabled())
-    {
-        // Personal Start Menu is enabled, so show the balloon if the
-        // user has never logged on to a Whistler machine before.
-        return dwData < 2;
-    }
-    else
-    {
-        // Classic Start Menu is enabled.
-        switch (dwData)
-        {
-        case 0:
-            // User has never seen the Start Menu before, not even the
-            // classic one.  So show the tip.
-            return TRUE;
-
-        case 1:
-            // User has already seen the Classic Start Menu, so don't
-            // prompt them again.  Note that this means that they aren't
-            // prompted when they turn on the Personal Start Menu, but
-            // that's okay, because by the time they switch to Personal,
-            // they clearly have demonstrated that they know how the
-            // Start Button works and don't need a tip.
-            _DontShowTheStartButtonBalloonAnyMore();
-            return FALSE;
-
-        default:
-            // User has seen Whistler Start menu before, so don't show tip.
-            return FALSE;
-        }
-    }
-}
-
-//
-//  Set the value to 2 to indicate that the user has seen a Whistler
-//  Start Menu (either Classic or Personal).
-//
-void CTray::_DontShowTheStartButtonBalloonAnyMore()
-{
-    DWORD dwData = 2;
-    SHSetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED,
-        TEXT("StartButtonBalloonTip"), REG_DWORD, (BYTE*)&dwData, sizeof(dwData));
-}
-
-void CTray::_DestroyStartButtonBalloon()
-{
-    if (_hwndStartBalloon)
-    {
-        DestroyWindow(_hwndStartBalloon);
-        _hwndStartBalloon = NULL;
-    }
-    KillTimer(_hwnd, IDT_STARTBUTTONBALLOON);
-}
-
-void CTray::TellTaskBandWeWantToOpenThisShit()
-{
-    static UINT WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
-    SendMessage(_hwndTasks, WM_ShellHook,7,0);
-}
-
-void CTray::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
-{
-    if (!_hwndStartBalloon)
-    {
-
-        _hwndStartBalloon = CreateWindow(TOOLTIPS_CLASS, NULL,
-            WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP | TTS_BALLOON,
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            _hwnd, NULL, hinstCabinet,
-            NULL);
-
-        if (_hwndStartBalloon)
-        {
-            // set the version so we can have non buggy mouse event forwarding
-            SendMessage(_hwndStartBalloon, CCM_SETVERSION, COMCTL32_VERSION, 0);
-            SendMessage(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, (LPARAM)300);
-
-            // taskbar windows are themed under Taskbar subapp name
-            SendMessage(_hwndStartBalloon, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
-
-            // Tell the Start Menu that this is a special balloon tip
-            SetProp(_hwndStartBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_STARTBUTTON);
-        }
-    }
-
-    if (_hwndStartBalloon)
-    {
-        TCHAR szTip[MAX_PATH];
-        szTip[0] = TEXT('\0');
-        LoadString(hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip));
-        if (szTip[0])
-        {
-            RECT rc;
-            TOOLINFO ti = { 0 };
-
-            ti.cbSize = sizeof(ti);
-            ti.uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT;
-            ti.hwnd = _hwnd;
-            ti.uId = (UINT_PTR)_hwndStart;
-            //ti.lpszText = NULL;
-            SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
-            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)0);
-
-            ti.lpszText = szTip;
-            SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&ti);
-
-            LoadString(hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip));
-            if (szTip[0])
-            {
-                SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)szTip);
-            }
-
-            GetWindowRect(_hwndStart, &rc);
-
-            SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELONG((rc.left + rc.right) / 2, rc.top));
-
-            SetWindowZorder(_hwndStartBalloon, HWND_TOPMOST);
-
-            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)TRUE, (LPARAM)&ti);
-
-            SetTimer(_hwnd, IDT_STARTBUTTONBALLOON, BALLOONTIPDELAY, NULL);
-        }
-    }
-}
-
-void CTray::_ShowStartButtonToolTip()
-{
-    if (!_ShouldWeShowTheStartButtonBalloon() || SHRestricted(REST_NOSMBALLOONTIP))
-    {
-        PostMessage(_hwnd, TM_SHOWTRAYBALLOON, TRUE, 0);
-        return;
-    }
-
-    if (Tray_StartPanelEnabled())
-    {
-        // In order to display the Start Menu, we need foreground activation
-        // so keyboard focus will work properly.
-        if (SetForegroundWindow(_hwnd))
-        {
-            // Inform the tray that start button is auto-popping, so the tray
-            // can hold off on showing balloons.
-            PostMessage(_hwnd, TM_SHOWTRAYBALLOON, FALSE, 0);
-
-            // This pushes the start button and causes the start menu to popup.
-            SendMessage(GetDlgItem(_hwnd, IDC_START), BM_SETSTATE, TRUE, 0);
-
-            // Once successfully done once, don't do it again.
-            _DontShowTheStartButtonBalloonAnyMore();
-        }
-    }
-    else
-    {
-        PostMessage(_hwnd, TM_SHOWTRAYBALLOON, TRUE, 0);
-        CreateStartButtonBalloon(IDS_STARTMENUBALLOON_TITLE, IDS_STARTMENUBALLOON_TIP);
-    }
-}
-
 
 BOOL CTray::_CreateClockWindow()
 {
@@ -489,6 +295,7 @@ DWORD _GetDefaultTVSDFlags()
     return dwFlags;
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_GetSaveStateAndInitRects()
 {
     TVSDCOMPAT tvsd;
@@ -501,12 +308,12 @@ void CTray::_GetSaveStateAndInitRects()
     SetRect(&rcDisplay, 0, 0, g_cxPrimaryDisplay, g_cyPrimaryDisplay);
 
     // size gets defaults
-    size.cx = _sizeStart.cx + 2 * (g_cxDlgFrame + g_cxBorder);
-    size.cy = _sizeStart.cy + 2 * (g_cyDlgFrame + g_cyBorder);
+    size.cx = _startButton._size.cx + 2 * (g_cxDlgFrame + g_cxBorder);
+    size.cy = _startButton._size.cy + 2 * (g_cyDlgFrame + g_cyBorder);
 
     // sStuckWidths gets minimum
     _sStuckWidths.cx = 2 * (g_cxDlgFrame + g_cxBorder);
-    _sStuckWidths.cy = _sizeStart.cy + 2 * (g_cyDlgFrame + g_cyBorder);
+    _sStuckWidths.cy = _startButton._size.cy + 2 * (g_cyDlgFrame + g_cyBorder);
 
     _uStuckPlace = STICK_BOTTOM;
     dwTrayFlags = _GetDefaultTVSDFlags();
@@ -630,48 +437,6 @@ void CTray::_SaveTrayStuff(void)
     return;
 }
 
-// align toolbar so that buttons are flush with client area
-// and make toolbar's buttons to be MENU style
-void CTray::_AlignStartButton()
-{
-    HWND hwndStart = _hwndStart;
-    if (hwndStart)
-    {
-        TCHAR szStart[50];
-        LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
-        SetWindowText(_hwndStart, szStart);
-
-        RECT rcClient;
-        if (!_sizeStart.cx)
-        {
-            Button_GetIdealSize(hwndStart, &_sizeStart);
-        }
-        GetClientRect(_hwnd, &rcClient);
-
-        if (rcClient.right < _sizeStart.cx)
-        {
-            SetWindowText(_hwndStart, L"");
-        }
-
-        int cyStart = _sizeStart.cy;
-
-        if (_hwndTasks)
-        {
-            if (_hTheme)
-            {
-                cyStart = max(cyStart, SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0));
-            }
-            else
-            {
-                cyStart = SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
-            }
-        }
-
-        SetWindowPos(hwndStart, NULL, 0, 0, min(rcClient.right, _sizeStart.cx),
-            cyStart, SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-}
-
 //  Helper function for CDesktopHost so clicking twice on the Start Button
 //  treats the second click as a dismiss rather than a redisplay.
 //
@@ -713,159 +478,6 @@ void Tray_SetStartPaneActive(BOOL fActive)
     }
 }
 
-// Allow us to do stuff on a "button-down".
-
-LRESULT WINAPI CTray::StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    return c_tray._StartButtonSubclassWndProc(hwnd, uMsg, wParam, lParam);
-}
-
-LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    LRESULT lRet;
-
-    ASSERT(_pfnButtonProc)
-
-        // Is the button going down?
-        if (uMsg == BM_SETSTATE)
-        {
-            // Is it going Down?
-            if (wParam)
-            {
-                // DebugMsg(DM_TRACE, "c.stswp: Set state %d", wParam);
-                // Yes - proceed if it's currently up and it's allowed to be down
-                if (!_uDown)
-                {
-                    // Nope.
-                    INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_DOWN);
-                    _uDown = 1;
-
-                    // If we are going down, then we do not want to popup again until the Start Menu is collapsed
-                    _fAllowUp = FALSE;
-
-                    SendMessage(_hwndTrayTips, TTM_ACTIVATE, FALSE, 0L);
-
-                    // Show the button down.
-                    lRet = CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
-                    // Notify the parent.
-                    SendMessage(GetParent(hwnd), WM_COMMAND, (WPARAM)LOWORD(GetDlgCtrlID(hwnd)), (LPARAM)hwnd);
-                    _tmOpen = GetTickCount();
-                    return lRet;
-                }
-                else
-                {
-                    // Yep. Do nothing.
-                    // fDown = FALSE;
-                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
-                }
-            }
-            else
-            {
-                // DebugMsg(DM_TRACE, "c.stswp: Set state %d", wParam);
-                // Nope, buttons coming up.
-
-                // Is it supposed to be down?   Is it not allowed to be up?
-                if (_uDown == 1 || !_fAllowUp)
-                {
-                    INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_UP);
-
-                    // Yep, do nothing.
-                    _uDown = 2;
-                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
-                }
-                else
-                {
-                    SendMessage(_hwndTrayTips, TTM_ACTIVATE, TRUE, 0L);
-                    // Nope, Forward it on.
-                    _uDown = 0;
-                    return CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
-                }
-            }
-        }
-        else
-        {
-            if (_uStartButtonState == SBSM_EATING &&
-                uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
-            {
-                _uStartButtonState = SBSM_NORMAL;
-
-                // Explicitly dismiss the Start Panel because it might be
-                // stuck in this limbo state where it is open but not the
-                // foreground window (_ShowStartButtonToolTip does this)
-                // so it doesn't know that it needs to go away.
-                ClosePopupMenus();
-            }
-
-            switch (uMsg) {
-            case WM_LBUTTONDOWN:
-                // The button was clicked on, then we don't need no stink'n focus rect.
-                SendMessage(GetParent(hwnd), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET,
-                    UISF_HIDEFOCUS), 0);
-
-                goto ProcessCapture;
-                break;
-
-
-            case WM_KEYDOWN:
-                // The user pressed enter or return or some other bogus key combination when
-                // the start button had keyboard focus, so show the rect....
-                SendMessage(GetParent(hwnd), WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
-                    UISF_HIDEFOCUS), 0);
-
-                if (wParam == VK_RETURN)
-                    PostMessage(_hwnd, WM_COMMAND, IDC_KBSTART, 0);
-
-                // We do not need the capture, because we do all of our button processing
-                // on the button down. In fact taking capture for no good reason screws with
-                // drag and drop into the menus. We're overriding user.
-            ProcessCapture:
-                lRet = CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
-                SetCapture(NULL);
-                return lRet;
-                break;
-
-            case WM_MOUSEMOVE:
-            {
-                MSG msg;
-
-                msg.lParam = lParam;
-                msg.wParam = wParam;
-                msg.message = uMsg;
-                msg.hwnd = hwnd;
-                SendMessage(_hwndTrayTips, TTM_RELAYEVENT, 0, (LPARAM)(LPMSG)&msg);
-
-                break;
-            }
-
-            case WM_MOUSEACTIVATE:
-                if (_uStartButtonState != SBSM_NORMAL)
-                {
-                    _uStartButtonState = SBSM_EATING;
-                    return MA_ACTIVATEANDEAT;
-                }
-                break;
-
-                //
-                //  Debounce the Start Button.  Usability shows that lots of people
-                //  double-click the Start Button, resulting in the menu opening
-                //  and then immediately closing...
-                //
-            case WM_NCHITTEST:
-                if (GetTickCount() - _tmOpen < GetDoubleClickTime())
-                {
-                    return HTNOWHERE;
-                }
-                break;
-
-
-            case WM_NULL:
-                break;
-            }
-
-            return CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
-        }
-}
-
 EXTERN_C const WCHAR c_wzTaskbarTheme[] = L"Taskbar";
 EXTERN_C const WCHAR c_wzTaskbarVertTheme[] = L"TaskbarVert";
 
@@ -885,32 +497,10 @@ HWND CTray::_CreateStartButton()
     // Yes, apparently this isn't enough to completely make the start button. Rounak bait! Check xrefs on methods.
     // I stuck wprintfs where i thought it was important (this function, drawstartbutton, etc)
     HWND StartButton = _startButton.CreateStartButton(_hwnd);
-    int pvAttribute = 1;
-    DwmSetWindowAttribute(StartButton, 8, &pvAttribute, 4u);
-    wprintf(L"Returning StartButton\n");
+    BOOL fFlip3dAttribute = TRUE;
+    DwmSetWindowAttribute(StartButton, DWMWA_FLIP3D_POLICY, &fFlip3dAttribute, sizeof(fFlip3dAttribute));
+    wprintf(L"Returning StartButton %p\n", StartButton);
     return StartButton;
-
-    /*
-	HWND hwnd = CreateWindowEx(0, WC_BUTTON, TEXT("Start"),
-		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS |
-		BS_PUSHBUTTON | BS_LEFT | BS_VCENTER | dwStyle,
-		0, 0, 0, 0, _hwnd, (HMENU)IDC_START, hinstCabinet, NULL);
-	if (hwnd)
-	{
-		// taskbar windows are themed under Taskbar subapp name
-		SetWindowTheme(hwnd, L"Start", NULL);
-
-		SendMessage(hwnd, CCM_DPISCALE, TRUE, 0);
-
-		// Subclass it.
-		_hwndStart = hwnd;
-		_pfnButtonProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LPARAM)StartButtonSubclassWndProc);
-
-		_StartButtonReset();
-	}
-
-	return hwnd;
-	*/
 }
 
 void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify)
@@ -928,7 +518,7 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
         prcNotify->bottom = HIWORD(dwNotifySize);
         prcNotify->right = prcClient->right;
 
-        prcView->left = _sizeStart.cx + g_cxFrame + 1;
+        prcView->left = _startButton._size.cx + g_cxFrame + 1;
         prcView->right = prcNotify->left;
     }
     else
@@ -939,7 +529,7 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
         prcNotify->bottom = prcClient->bottom;
         prcNotify->right = LOWORD(dwNotifySize);
 
-        prcView->top = _sizeStart.cy + g_cyTabSpace;
+        prcView->top = _startButton._size.cy + g_cyTabSpace;
         prcView->bottom = prcNotify->top;
     }
 }
@@ -1186,7 +776,7 @@ void CTray::_CreateTrayTips()
         ti.cbSize = sizeof(ti);
         ti.uFlags = TTF_IDISHWND | TTF_EXCLUDETOOLAREA;
         ti.hwnd = _hwnd;
-        ti.uId = (UINT_PTR)_hwndStart;
+        ti.uId = (UINT_PTR)_startButton._hwndStartBtn;
         ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_STARTBUTTONTIP);
         ti.hinst = hinstCabinet;
         SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
@@ -1258,15 +848,12 @@ LRESULT CTray::_CreateWindows()
 
 LRESULT CTray::_InitStartButtonEtc()
 {
-    // NOTE: This bitmap is used as a flag in CTaskBar::OnPosRectChangeDB to
-    // tell when we are done initializing, so we don't resize prematurely
-
-    // XXX-Vista (isabella): Remove the above comment? And call this function once
-    // we have an instance going:
-    // CStartButton::InitBackgroundBitmap();
+    _startButton.InitBackgroundBitmap();
 
     UpdateWindow(_hwnd);
-    _BuildStartMenu(); // TODO: Moved to CStartButton::BuildStartMenu()
+
+    _startButton.BuildStartMenu();
+
     _RegisterDropTargets();
 
 	if (_CheckAssociations())
@@ -1394,14 +981,10 @@ void CTray::_RefreshSettings()
 
 LRESULT CTray::_OnCreateAsync()
 {
-    LRESULT lres;
-
     if (g_dwProfileCAP & 0x00000004)
     {
         StartCAP();
     }
-
-    lres = _InitStartButtonEtc();
 
     if (g_dwProfileCAP & 0x00000004)
     {
@@ -1424,7 +1007,7 @@ LRESULT CTray::_OnCreateAsync()
     // class so that it can respond even on a stressed system.
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 
-    return lres;
+    return 1;
 }
 
 LRESULT CTray::_OnCreate(HWND hwnd)
@@ -1550,13 +1133,15 @@ void CTray::OnStartMenuDismissed()
     PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
 }
 
+// EXEX-VISTA: Reimplemented.
 int CTray::GetStartButtonMinHeight()
 {
-    if (!_sizeStart.cx)
+    if (_hwndTasks)
     {
-        Button_GetIdealSize(_hwndStart, &_sizeStart);
+        return SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
     }
-    return _sizeStart.cy;
+    
+    return 0;
 }
 
 UINT CTray::GetStartMenuStuckPlace()
@@ -1612,6 +1197,7 @@ BOOL CTray::_IsActive()
     return fActive;
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_ResetZorder()
 {
     HWND hwndZorder, hwndZorderCurrent;
@@ -1647,8 +1233,12 @@ void CTray::_ResetZorder()
         // only do this if somehting has changed.
         // this keeps us from popping up over menus as desktop async
         // notifies us of it's state
+        SetWindowPos(_startButton._hwndStartBtn, hwndZorder, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
 
         SHForceWindowZorder(_hwnd, hwndZorder);
+
+        // EXEX-VISTA TODO (isabella):
+        // EnumWindows(CTray::s_EnumTooltipWindowsProc, v3);
     }
 }
 
@@ -1936,6 +1526,8 @@ DWORD CTray::_SyncThreadProc()
 
     if (_hwnd && _ptbs)
     {
+        // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later. Partially reversed from Vista.
+
         _ResetZorder(); // obey the "always on top" flag
         _KickStartAutohide();
 
@@ -1943,13 +1535,23 @@ DWORD CTray::_SyncThreadProc()
 
         _ClipWindow(TRUE);  // make sure we clip the taskbar to the current monitor before showing it
 
+        // @MOD - Skipped telemetry SHTracePerf(&ShellTraceId_Explorer_InitStartButton_Start)
+
+        _InitStartButtonEtc();
+
+        // @MOD - Skipped telemetry SHTracePerf(&ShellTraceId_Explorer_InitStartButton_Stop)
+
         // it looks really strange for the tray to pop up and rehide at logon
         // if we are autohide don't activate the tray when we show it
         // if we aren't autohide do what Win95 did (tray is active by default)
         ShowWindow(_hwnd, (_uAutoHide & AH_HIDING) ? SW_SHOWNA : SW_SHOW);
 
         UpdateWindow(_hwnd);
-        _StuckTrayChange();
+        // _StuckTrayChange(); // seems removed in Vista
+
+        ShowWindow(_startButton._hwndStartBtn, SW_SHOW);
+        _startButton.InitTheme();
+        _startButton.UpdateStartButton(true);
 
         // get the system background scheduler thread
         IShellTaskScheduler* pScheduler;
@@ -2232,124 +1834,21 @@ BOOL CTray::_HotkeyCreate(void)
     return FALSE;
 }
 
-void CTray::_BuildStartMenu()
-{
-    HRESULT hr;
-
-    ClosePopupMenus();
-
-    //
-    //  Avoid redundant rebuilds: Peek out any pending SBM_REBUILDMENU messages
-    //  since the rebuild we're about to do will take care of it.  Do this
-    //  before destroying the Start Menu so we never yield while there isn't
-    //  a Start Menu.
-    //
-    MSG msg;
-    while (PeekMessage(&msg, _hwnd, SBM_REBUILDMENU, SBM_REBUILDMENU, PM_REMOVE | PM_NOYIELD))
-    {
-        // Keep sucking them out
-    }
-
-
-    _DestroyStartMenu();
-
-    if (Tray_StartPanelEnabled())
-    {
-        hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &_pvStartPane);
-        DesktopV2_Build(_pvStartPane);
-    }
-    else
-    {
-        hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu);
-        if (SUCCEEDED(hr))
-        {
-            IBanneredBar* pbb;
-
-            hr = _pmpStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
-            if (SUCCEEDED(hr))
-            {
-                pbb->SetBitmap(_hbmpStartBkg);
-                if (_fSMSmallIcons)
-                    pbb->SetIconSize(BMICON_SMALL);
-                else
-                    pbb->SetIconSize(BMICON_LARGE);
-
-                pbb->Release();
-            }
-        }
-    }
-
-    if (FAILED(hr))
-    {
-        //TraceMsg(TF_ERROR, "Could not create StartMenu");
-    }
-}
-
 void CTray::_DestroyStartMenu()
 {
-    IUnknown_SetSite(_pmpStartMenu, NULL);
-    ATOMICRELEASET(_pmpStartMenu, IMenuPopup);
-    ATOMICRELEASET(_pmbStartMenu, IMenuBand);
-    IUnknown_SetSite(_pmpStartPane, NULL);
-    ATOMICRELEASET(_pmpStartPane, IMenuPopup);
-    ATOMICRELEASET(_pmbStartPane, IMenuBand);
+    _startButton.DestroyStartMenu();
+
     ATOMICRELEASET(_pmpTasks, IMenuPopup);
     ATOMICRELEASET(_pmbTasks, IMenuBand);
 }
-
 void CTray::ForceStartButtonUp()
 {
-    MSG msg;
-    // don't do that check message pos because it gets screwy with
-    // keyboard cancel.  and besides, we always want it cleared after
-    // track menu popup is done.
-    // do it twice to be sure it's up due to the _uDown cycling twice in
-    // the subclassing stuff
-    // pull off any button downs
-    PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
-    SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
-    SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
+    _startButton.ForceButtonUp();
 
     if (_hwndTasks)
         SendMessage(_hwndTasks, TBC_SETPREVFOCUS, 0, NULL);
 
     PostMessage(_hwnd, TM_STARTMENUDISMISSED, 0, 0);
-}
-
-void Tray_OnStartMenuDismissed()
-{
-    c_tray._bMainMenuInit = FALSE;
-    // Tell the Start Button that it's allowed to be in the up position now. This
-    // prevents the problem where the start menu is displayed but the button is
-    // in the up position... This happens when dialog boxes are displayed
-    c_tray._fAllowUp = TRUE;
-
-    // Now tell it to be in the up position
-    c_tray.ForceStartButtonUp();
-
-    PostMessage(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
-}
-
-int CTray::_TrackMenu(HMENU hmenu)
-{
-    TPMPARAMS tpm;
-    int iret;
-
-    tpm.cbSize = sizeof(tpm);
-    GetClientRect(_hwndStart, &tpm.rcExclude);
-
-    RECT rcClient;
-    GetClientRect(_hwnd, &rcClient);
-    tpm.rcExclude.bottom = min(tpm.rcExclude.bottom, rcClient.bottom);
-
-    MapWindowPoints(_hwndStart, NULL, (LPPOINT)&tpm.rcExclude, 2);
-
-    SendMessage(_hwndTrayTips, TTM_ACTIVATE, FALSE, 0L);
-    iret = TrackPopupMenuEx(hmenu, TPM_VERTICAL | TPM_BOTTOMALIGN | TPM_RETURNCMD,
-        tpm.rcExclude.left, tpm.rcExclude.bottom, _hwnd, &tpm);
-
-    SendMessage(_hwndTrayTips, TTM_ACTIVATE, TRUE, 0L);
-    return iret;
 }
 
 /*------------------------------------------------------------------
@@ -2358,86 +1857,20 @@ int CTray::_TrackMenu(HMENU hmenu)
 **------------------------------------------------------------------*/
 void CTray::_ToolbarMenu()
 {
-    RECTL    rcExclude;
-    POINTL   ptPop;
-    DWORD dwFlags = MPPF_KEYBOARD;      // Assume that we're popuping
-    // up because of the keyboard
-    // This is for the underlines on NT5
+    // EXEX-VISTA: Completely reversed from Vista.
 
     if (_hwndTasks)
         SendMessage(_hwndTasks, TBC_FREEPOPUPMENUS, 0, 0);
 
-    if (_hwndStartBalloon)
-    {
-        _DontShowTheStartButtonBalloonAnyMore();
-        ShowWindow(_hwndStartBalloon, SW_HIDE);
-        _DestroyStartButtonBalloon();
-    }
+    // Close any Context Menus
+    SendMessage(_hwnd, WM_CANCELMODE, 0, 0);
 
     SetActiveWindow(_hwnd);
     _bMainMenuInit = TRUE;
 
-    // Exclude rect is the VISIBLE portion of the Start Button.
-    {
-        RECT rcParent;
-        GetClientRect(_hwndStart, (RECT*)&rcExclude);
-        MapWindowRect(_hwndStart, HWND_DESKTOP, &rcExclude);
+    SendMessage(_hwndTasks, /* undocumented new TBC_ */ 0x43F, 1, 0);
 
-        GetClientRect(_hwnd, &rcParent);
-        MapWindowRect(_hwnd, HWND_DESKTOP, &rcParent);
-
-        IntersectRect((RECT*)&rcExclude, (RECT*)&rcExclude, &rcParent);
-    }
-    ptPop.x = rcExclude.left;
-    ptPop.y = rcExclude.top;
-
-    // Close any Context Menus
-    SendMessage(_hwnd, WM_CANCELMODE, 0, 0);
-
-    // Is the "Activate" button down (If the buttons are swapped, then it's the
-    // right button, otherwise the left button)
-    if (GetKeyState(GetSystemMetrics(SM_SWAPBUTTON) ? VK_RBUTTON : VK_LBUTTON) < 0)
-    {
-        dwFlags = 0;    // Then set to the default
-    }
-
-    IMenuPopup** ppmpToDisplay = &_pmpStartMenu;
-
-    if (_pmpStartPane)
-    {
-        ppmpToDisplay = &_pmpStartPane;
-    }
-
-    // Close race window:  The user can click on the Start Button
-    // before we get a chance to rebuild the Start Menu in its new
-    // form.  In such case, rebuild it now.
-    if (!*ppmpToDisplay)
-    {
-        //TraceMsg(TF_WARNING, "e.tbm: Rebuilding Start Menu");
-        _BuildStartMenu();
-    }
-
-
-    if (*ppmpToDisplay && SUCCEEDED((*ppmpToDisplay)->Popup(&ptPop, &rcExclude, dwFlags)))
-    {
-        // All is well - the menu is up
-        //TraceMsg(DM_MISC, "e.tbm: dwFlags=%x (0=mouse 1=key)", dwFlags);
-    }
-    else
-    {
-        //TraceMsg(TF_WARNING, "e.tbm: %08x->Popup failed", *ppmpToDisplay);
-        // Start Menu failed to display -- reset the Start Button
-        // so the user can click it again to try again
-        Tray_OnStartMenuDismissed();
-    }
-
-    if (dwFlags == MPPF_KEYBOARD)
-    {
-        // Since the user has launched the start button by Ctrl-Esc, or some other worldly
-        // means, then turn the rect on.
-        SendMessage(_hwndStart, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
-            UISF_HIDEFOCUS), 0);
-    }
+    _startButton.DisplayStartMenu();
 }
 
 
@@ -2950,6 +2383,7 @@ void CTray::_SnapshotStuckRectSize(UINT uPlace)
 
 // Size the icon area to fill as much of the tray window as it can.
 
+// EXEX-VISTA: Fairly confidently reversed from Vista.
 void CTray::SizeWindows()
 {
     RECT rcView, rcNotify, rcClient;
@@ -2966,14 +2400,12 @@ void CTray::SizeWindows()
 
     // remember our current size
     _SnapshotStuckRectSize(_uStuckPlace);
+    
+    _startButton.RecalcSize();
 
     GetClientRect(_hwnd, &rcClient);
-    _AlignStartButton();
 
     _GetWindowSizes(_uStuckPlace, &rcClient, &rcView, &rcNotify);
-
-    InvalidateRect(_hwndStart, NULL, TRUE);
-    InvalidateRect(_hwnd, NULL, TRUE);
 
     // position the view
     SetWindowPos(_hwndRebar, NULL, rcView.left, rcView.top,
@@ -2986,19 +2418,8 @@ void CTray::SizeWindows()
         RECTWIDTH(rcNotify), RECTHEIGHT(rcNotify),
         SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
 
-    {
-        TOOLINFO ti;
-        HWND hwndClock = _GetClockWindow();
-
-        ti.cbSize = sizeof(ti);
-        ti.uFlags = 0;
-        ti.hwnd = _hwnd;
-        ti.lpszText = LPSTR_TEXTCALLBACK;
-        ti.uId = (UINT_PTR)hwndClock;
-        GetWindowRect(hwndClock, &ti.rect);
-        MapWindowPoints(HWND_DESKTOP, _hwnd, (LPPOINT)&ti.rect, 2);
-        SendMessage(_hwndTrayTips, TTM_NEWTOOLRECT, 0, (LPARAM)((LPTOOLINFO)&ti));
-    }
+    InvalidateRect(_hwnd, NULL, TRUE);
+    UpdateWindow(_hwnd);
 
     if (fHiding)
     {
@@ -3073,13 +2494,7 @@ void CTray::_HandleSize()
         _ClipWindow(TRUE);
     }
 
-    if (_hwndStartBalloon)
-    {
-        RECT rc;
-        GetWindowRect(_hwndStart, &rc);
-        SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELONG((rc.left + rc.right) / 2, rc.top));
-        SetWindowZorder(_hwndStartBalloon, HWND_TOPMOST);
-    }
+    _startButton.RepositionBalloon();
 }
 
 BOOL _IsSliverHeight(int cy)
@@ -3091,6 +2506,14 @@ BOOL _IsSliverHeight(int cy)
     return (cy < (3 * (g_cyDlgFrame + g_cyBorder)));
 }
 
+SIZE *CTray::_GetStartButtonPadding(SIZE *pSize)
+{
+    pSize->cx = 2 * (GetSystemMetrics(SM_CXBORDER) + GetSystemMetrics(SM_CXDLGFRAME));
+    pSize->cy = 2 * (GetSystemMetrics(SM_CYDLGFRAME) + GetSystemMetrics(SM_CYBORDER));
+    return pSize;
+}
+
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
 {
     BOOL fChangedSize = FALSE;
@@ -3099,10 +2522,32 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
     RECT rcTemp;
     BOOL fHiding;
 
-    if (!lprc)
+    if (!lprc || !_fCanSizeMove)
     {
         rcTemp = _arStuckRects[uStuckPlace];
         lprc = &rcTemp;
+    }
+
+    if (!_fSelfSizing)
+    {
+        SIZE sizeStartButtonPadding;
+        _GetStartButtonPadding(&sizeStartButtonPadding);
+
+        int cx = sizeStartButtonPadding.cx;
+        int cy = sizeStartButtonPadding.cy;
+
+        if (uStuckPlace != STICK_TOP && uStuckPlace != STICK_BOTTOM)
+        {
+            cy = _startButton._size.cy + sizeStartButtonPadding.cy;
+        }
+        else
+        {
+            cx = _startButton._size.cx + sizeStartButtonPadding.cx;
+        }
+
+        // XXX (isabella): Stuck rect behaviour not fully reimplemented.
+
+        *lprc = _arStuckRects[uStuckPlace];
     }
 
     fHiding = (_uAutoHide & AH_HIDING);
@@ -3284,13 +2729,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
         InvisibleUnhide(TRUE);
     }
 
-    if (_hwndStartBalloon)
-    {
-        RECT rc;
-        GetWindowRect(_hwndStart, &rc);
-        SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELONG((rc.left + rc.right) / 2, rc.top));
-        SetWindowZorder(_hwndStartBalloon, HWND_TOPMOST);
-    }
+    _startButton.RepositionBalloon();
 
     return fChangedSize;
 }
@@ -3844,84 +3283,10 @@ void CTray::_SetUnhideTimer(LONG x, LONG y)
     }
 }
 
-void CTray::_StartButtonReset()
-{
-    // Get an idea about how big we need everyhting to be.
-    TCHAR szStart[50];
-    LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
-    SetWindowText(_hwndStart, szStart);
-
-    if (_hFontStart)
-        DeleteObject(_hFontStart);
-
-    _hFontStart = _CreateStartFont(_hwndStart);
-
-    int idbStart = IDB_START16;
-
-    HDC hdc = GetDC(NULL);
-    if (hdc)
-    {
-        int bpp = GetDeviceCaps(hdc, BITSPIXEL) * GetDeviceCaps(hdc, PLANES);
-        if (bpp > 8)
-        {
-            idbStart = IDB_STARTCLASSIC; // XXX (isabella): Differs from Vista, because this was seemingly moved to CStartButton.
-        }
-
-        ReleaseDC(NULL, hdc);
-    }
-
-    HBITMAP hbmFlag = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(idbStart), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
-    if (hbmFlag)
-    {
-        BITMAP bm;
-        if (GetObject(hbmFlag, sizeof(BITMAP), &bm))
-        {
-            BUTTON_IMAGELIST biml = { 0 };
-            if (_himlStartFlag)
-                ImageList_Destroy(_himlStartFlag);
-
-
-            DWORD dwFlags = ILC_COLOR32;
-            HBITMAP hbmFlagMask = NULL;
-            if (idbStart == IDB_START16)
-            {
-                dwFlags = ILC_COLOR8 | ILC_MASK;
-                hbmFlagMask = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK), IMAGE_BITMAP, 0, 0, LR_MONOCHROME);
-            }
-
-            if (IS_WINDOW_RTL_MIRRORED(_hwndStart))
-            {
-                dwFlags |= ILC_MIRROR;
-            }
-            biml.himl = _himlStartFlag = ImageList_Create(bm.bmWidth, bm.bmHeight, dwFlags, 1, 1);
-            ImageList_Add(_himlStartFlag, hbmFlag, hbmFlagMask);
-
-            if (hbmFlagMask)
-            {
-                DeleteObject(hbmFlagMask);
-            }
-
-            biml.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
-
-            Button_SetImageList(_hwndStart, &biml);
-        }
-        DeleteObject(hbmFlag);
-    }
-
-    if (_hFontStart)
-    {
-        SendMessage(_hwndStart, WM_SETFONT, (WPARAM)_hFontStart, TRUE);
-        _sizeStart.cx = 0;
-    }
-
-    _AlignStartButton();
-
-}
-
 void CTray::_OnNewSystemSizes()
 {
     //TraceMsg(TF_TRAY, "Handling win ini change.");
-    _StartButtonReset();
+    _startButton.StartButtonReset();
     VerifySize(TRUE);
 }
 
@@ -3972,6 +3337,7 @@ BOOL BandSite_PermitAutoHide(IUnknown* punk)
     return TRUE;
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_HandleTimer(WPARAM wTimerID)
 {
     switch (wTimerID)
@@ -4008,8 +3374,8 @@ void CTray::_HandleTimer(WPARAM wTimerID)
         SetForegroundWindow(_hwnd);
         KillTimer(_hwnd, wTimerID);
         DAD_ShowDragImage(FALSE);       // unlock the drag sink if we are dragging.
-        SendMessage(_hwndStart, BM_SETSTATE, TRUE, 0);
-        UpdateWindow(_hwndStart);
+        SendMessage(_startButton._hwndStartBtn, BM_SETSTATE, TRUE, 0);
+        UpdateWindow(_startButton._hwndStartBtn);
         DAD_ShowDragImage(TRUE);        // restore the lock state.
         break;
 
@@ -4079,8 +3445,9 @@ void CTray::_HandleTimer(WPARAM wTimerID)
         }
         break;
 
+    // EXEX-VISTA: LAZILY MODIFIED. Redo later.
     case IDT_STARTBUTTONBALLOON:
-        _DestroyStartButtonBalloon();
+        // _DestroyStartButtonBalloon();
         break;
 
     case IDT_COFREEUNUSED:
@@ -4150,6 +3517,7 @@ BOOL _ExecItemByPidls(HWND hwnd, LPITEMIDLIST pidlFolder, LPITEMIDLIST pidlItem)
 
 void _DestroySavedWindowPositions(LPWINDOWPOSITIONS pPositions);
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 LRESULT CTray::_HandleDestroy()
 {
     MINIMIZEDMETRICS mm;
@@ -4195,20 +3563,8 @@ LRESULT CTray::_HandleDestroy()
         _hwndTrayTips = NULL;
     }
 
-    _DestroyStartButtonBalloon();
-
     // REVIEW
     PostQuitMessage(0);
-
-    if (_hbmpStartBkg)
-    {
-        DeleteBitmap(_hbmpStartBkg);
-    }
-
-    if (_hFontStart)
-    {
-        DeleteObject(_hFontStart);
-    }
 
     if (_himlStartFlag)
     {
@@ -4263,7 +3619,7 @@ LRESULT CTray::_HandleDestroy()
     // End of order-sensitive operations ----------------------------------
 
     v_hwndTray = NULL;
-    _hwndStart = NULL;
+    _startButton._hwndStartBtn = NULL;
 
 
     //TraceMsg(DM_SHUTDOWN, "_HD: leave");
@@ -4278,6 +3634,7 @@ void CTray::_SetFocus(HWND hwnd)
 
 #define TRIEDTOOMANYTIMES 100
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Confidently incomplete.
 void CTray::_ActAsSwitcher()
 {
     if (_uModalMode)
@@ -4311,12 +3668,12 @@ void CTray::_ActAsSwitcher()
         {
             // This code path causes the start button to do something because
             // of the keyboard. So reflect that with the focus rect.
-            SendMessage(_hwndStart, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
+            SendMessage(_startButton._hwndStartBtn, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
                 UISF_HIDEFOCUS), 0);
 
-            if (SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED)
+            if (_startButton.IsButtonPushed())
             {
-                ClosePopupMenus();
+                _startButton.CloseStartMenu();
                 ForceStartButtonUp();
             }
             else
@@ -4343,8 +3700,8 @@ void CTray::_ActAsSwitcher()
             HandleFullScreenApp(NULL);
             if (hwndForeground == v_hwndDesktop)
             {
-                _SetFocus(_hwndStart);
-                if (GetFocus() != _hwndStart)
+                _SetFocus(_startButton._hwndStartBtn);
+                if (GetFocus() != _startButton._hwndStartBtn)
                     return;
             }
 
@@ -5368,6 +4725,7 @@ void CTray::_HandlePrivateCommand(LPARAM lParam)
 //
 void CTray::_OnFocusMsg(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     BOOL fActivate = (BOOL)wParam;
 
     switch (uMsg)
@@ -5400,7 +4758,7 @@ void CTray::_OnFocusMsg(UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else
             {
-                _SetFocus(_hwndStart);
+                _SetFocus(_startButton._hwndStartBtn);
             }
         }
         else
@@ -5699,14 +5057,14 @@ int CTray::_OnFactoryMessage(WPARAM wParam, LPARAM lParam)
     switch (wParam)
     {
     case 0:         // FACTORY_OEMLINK:  factory.exe has dorked the OEM link
-        ClosePopupMenus();
-        _BuildStartMenu();  // Force a rebuild
+        _startButton.CloseStartMenu();
+        _startButton.BuildStartMenu();  // Force a rebuild
         return 1;
 
     case 1:         // FACTORY_MFU:  factory.exe has written a new MFU
         HandleFirstTime();      // Rebuild the default MFU
-        ClosePopupMenus();
-        _BuildStartMenu();  // Force a rebuild
+        _startButton.CloseStartMenu();
+        _startButton.BuildStartMenu();  // Force a rebuild
         return 1;
     }
 
@@ -5908,6 +5266,7 @@ void CTray::GetStuckMonitorRect(RECT* prcStuck)
     GetMonitorRects(_hmonStuck, prcStuck, NULL);
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 BOOL CTray::IsMouseOverStartButton()    // TODO: revise
 {
     BOOL bRet = FALSE;
@@ -5920,11 +5279,11 @@ BOOL CTray::IsMouseOverStartButton()    // TODO: revise
         if ((_uStuckPlace & 1) != 0)
             rc.bottom = _arStuckRects[_uStuckPlace].bottom;
         else
-            rc.bottom = _sizeStart.cy + _arStuckRects[_uStuckPlace].top;
+            rc.bottom = _startButton._size.cy + _arStuckRects[_uStuckPlace].top;
         if (IsBiDiLocalizedSystem())
         {
             if ((_uStuckPlace & 1) != 0)
-                rc.left = _arStuckRects[_uStuckPlace].right - _sizeStart.cx;
+                rc.left = _arStuckRects[_uStuckPlace].right - _startButton._size.cx;
             else
                 rc.left = _arStuckRects[_uStuckPlace].left;
             rc.right = _arStuckRects[_uStuckPlace].right;
@@ -5933,7 +5292,7 @@ BOOL CTray::IsMouseOverStartButton()    // TODO: revise
         {
             rc.left = _arStuckRects[_uStuckPlace].left;
             if ((_uStuckPlace & 1) != 0)
-                rc.right = _sizeStart.cx + _arStuckRects[_uStuckPlace].left;
+                rc.right = _startButton._size.cx + _arStuckRects[_uStuckPlace].left;
             else
                 rc.right = _arStuckRects[_uStuckPlace].right;
         }
@@ -5985,6 +5344,7 @@ DWORD CTray::CountOfRunningPrograms()
 //  History:    2000-07-12  vtan        created
 //  --------------------------------------------------------------------------
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Validate later.
 LRESULT CTray::_OnSessionChange(WPARAM wParam, LPARAM lParam)
 {
     ASSERTMSG(DWORD(lParam) == NtCurrentPeb()->SessionId, "Session ID mismatch in CTray::_OnSessionChange");
@@ -6023,7 +5383,7 @@ LRESULT CTray::_OnSessionChange(WPARAM wParam, LPARAM lParam)
     {
         // optimization not needed on remote sessions
         if (!GetSystemMetrics(SM_REMOTESESSION)) {
-            _BuildStartMenu();
+            _startButton.BuildStartMenu();
         }
     }
 
@@ -6078,12 +5438,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     msg.wParam = wParam;
     msg.lParam = lParam;
 
-    if (_pmbStartMenu &&
-        _pmbStartMenu->TranslateMenuMessage(&msg, &lres) == S_OK)
-        return lres;
-
-    if (_pmbStartPane &&
-        _pmbStartPane->TranslateMenuMessage(&msg, &lres) == S_OK)
+    if (_startButton.TranslateMenuMessage(&msg, &lres) == S_OK)
         return lres;
 
     if (_pmbTasks &&
@@ -6112,8 +5467,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WMTRAY_SETHOTKEYENABLE:
         return _SetHotkeyEnable(hwnd, (BOOL)wParam);
 
+    // EXEX-VISTA: LAZILY MODIFIED. Redo later.
     case WMTRAY_QUERY_MENU:
-        return (LRESULT)_hmenuStart;
+        // return (LRESULT)_hmenuStart;
+        return 0;
 
     case WMTRAY_QUERY_VIEW:
         return (LRESULT)_hwndTasks;
@@ -6185,16 +5542,39 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         break;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_NCLBUTTONDOWN:
+    {
+        if (IsMouseOverStartButton())
+        {
+            if (!_startButton.IsButtonPushed())
+            {
+                SendMessageW(_startButton._hwndStartBtn, BM_SETSTATE, 1, 0);
+            }
+        }
+
+        /*
+        if ( CTray::ShowClockFlyoutAsNeeded(this, (int)lprc) )
+            return v43;
+        */
+
+        // break (once WM_NCLBUTTONUP is removed)
+    }
+
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_NCLBUTTONUP:
+        // This handler was removed in Vista:
         if (!_TryForwardNCToClient(uMsg, lParam))
         {
             goto L_WM_NCMOUSEMOVE;
         }
         break;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_NCMOUSEMOVE:
     L_WM_NCMOUSEMOVE:
+        // Vista: if ( CTray::IsMouseOverClock(this) )
+        // seems likely rewritten
         if (IsPosInHwnd(lParam, _hwndNotify))
         {
             MSG msgInner;
@@ -6206,7 +5586,33 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (uMsg == WM_NCLBUTTONDOWN)
                 _SetFocus(_hwndNotify);
         }
+        else
+        {
+            if (!_hTheme /* || this->GAP_ResponseMonitor[56] */ || _startButton.IsButtonPushed() || !IsMouseOverStartButton())
+            {
+                goto DoDefault;
+            }
+            
+            _startButton.DrawStartButton(PBS_HOT, true);
+        }
         goto DoDefault;
+
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
+    case WM_NCMOUSELEAVE:
+    {
+        // if ( !IsPosInHwnd(v40.lParam, *(HWND *)&this->GAP_ResponseMonitor[52]) )
+        if (1)
+        {
+            // SendMessageW(*(HWND *)&this->GAP_ResponseMonitor[52], 0x467u, 0, 0);
+            if (_hTheme)
+            {
+                if (!_startButton.IsButtonPushed() && !IsMouseOverStartButton())
+                {
+                    _startButton.DrawStartButton(PBS_NORMAL, true);
+                }
+            }
+        }
+    }
 
     case WM_CREATE:
         return _OnCreate(hwnd);
@@ -6345,9 +5751,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     0, 0); // forward it along
                 break;
 
+            // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
             case NM_THEMECHANGED:
-                // Force the start button to recalc its size
-                _sizeStart.cx = 0;
                 SizeWindows();
                 break;
 
@@ -6479,7 +5884,23 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         _HandleSizing(wParam, (LPRECT)lParam, _uStuckPlace);
         break;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
+    case WM_MOVE:
+        // if ( this->GAP_ResponseMonitor[57] )
+        if (1)
+        {
+            _startButton.UpdateStartButton(false);
+        }
+        break;
+
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_SIZE:
+        // if ( v39.lParam && this->GAP_ResponseMonitor[57] )
+        if (1)
+        {
+            _startButton.UpdateStartButton(false);
+        }
+
         _HandleSize();
         break;
 
@@ -6562,6 +5983,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         IUnknown_UIActivateIO(_ptbs, TRUE, NULL);
         break;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_SYSCHAR:
         if (wParam == TEXT(' ')) {
             HMENU hmenu;
@@ -6576,7 +5998,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 EnableMenuItem(hmenu, SC_MOVE, (_fCanSizeMove ? MFS_ENABLED : MFS_GRAYED) | MF_BYCOMMAND);
                 EnableMenuItem(hmenu, SC_SIZE, (_fCanSizeMove ? MFS_ENABLED : MFS_GRAYED) | MF_BYCOMMAND);
 
-                idCmd = _TrackMenu(hmenu);
+                idCmd = _startButton.TrackMenu(hmenu);
                 if (idCmd)
                     SendMessage(_hwnd, WM_SYSCOMMAND, idCmd, 0L);
             }
@@ -6697,24 +6119,13 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         wParam = (WPARAM)_hwndTasks;
         goto L_WM_CONTEXTMENU;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_CONTEXTMENU:
     L_WM_CONTEXTMENU:
 
         if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
         {
-            if (((HWND)wParam) == _hwndStart)
-            {
-                // Don't display of the Start Menu is up.
-                if (SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED)
-                    break;
-
-                _fFromStart = TRUE;
-
-                StartMenuContextMenu(_hwnd, (DWORD)lParam);
-
-                _fFromStart = FALSE;
-            }
-            else if (IsPosInHwnd(lParam, _hwndNotify) || SHIsChildOrSelf(_hwndNotify, GetFocus()) == S_OK)
+            if (IsPosInHwnd(lParam, _hwndNotify) || SHIsChildOrSelf(_hwndNotify, GetFocus()) == S_OK)
             {
                 // if click was inthe clock, include
                 // the time
@@ -6762,12 +6173,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             _Command(GET_WM_COMMAND_ID(wParam, lParam));
         break;
 
+    // EXEX-VISTA: LAZILY MODIFIED. Redo later.
     case SBM_CANCELMENU:
-        ClosePopupMenus();
+        //ClosePopupMenus();
         break;
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case SBM_REBUILDMENU:
-        _BuildStartMenu();
+        _startButton.CloseStartMenu();
         break;
 
     case WM_WINDOWPOSCHANGED:
@@ -6775,21 +6188,22 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SendMessage(_hwndNotify, TNM_TRAYPOSCHANGED, 0, 0);
         goto DoDefault;
 
+    // EXEX-VISTA: LAZYILY MODIFIED. Redo later.
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
     case WM_MBUTTONDOWN:
-        if (_hwndStartBalloon)
+        if (_startButton._hwndStartBalloon)
         {
             RECT rc;
             POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            GetWindowRect(_hwndStartBalloon, &rc);
+            GetWindowRect(_startButton._hwndStartBalloon, &rc);
             MapWindowRect(HWND_DESKTOP, _hwnd, &rc);
 
             if (PtInRect(&rc, pt))
             {
-                ShowWindow(_hwndStartBalloon, SW_HIDE);
+                /*ShowWindow(_hwndStartBalloon, SW_HIDE);
                 _DontShowTheStartButtonBalloonAnyMore();
-                _DestroyStartButtonBalloon();
+                _DestroyStartButtonBalloon();*/
             }
         }
         break;
@@ -6835,6 +6249,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
 
+    // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
     case WM_THEMECHANGED:
     {
         if (_hTheme)
@@ -6856,8 +6271,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
 
         // Force the start button to recalc its size
-        _sizeStart.cx = 0;
-        _StartButtonReset();
+        _startButton.StartButtonReset();
         InvalidateRect(_hwnd, NULL, TRUE);
 
         // Force the Start Pane to rebuild with new theme
@@ -6898,6 +6312,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         Mixer_ControlChange(wParam, lParam);
         break;
 
+    // EXEX-VISTA: LAZILY MODIFIED. Redo later.
     default:
     L_default:
         if (uMsg == GetDDEExecMsg())
@@ -6909,7 +6324,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else if (uMsg == _uStartButtonBalloonTip)
         {
-            _ShowStartButtonToolTip();
+            // _ShowStartButtonToolTip();
         }
         else if (uMsg == _uLogoffUser)
         {
@@ -7010,13 +6425,14 @@ DWORD WINAPI CTray::PropertiesThreadProc(void* pv)
     return c_tray._PropertiesThreadProc(PtrToUlong(pv));
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
 DWORD CTray::_PropertiesThreadProc(DWORD dwFlags)
 {
     HWND hwnd;
     RECT rc;
     DWORD dwExStyle = WS_EX_TOOLWINDOW;
 
-    GetWindowRect(_hwndStart, &rc);
+    GetWindowRect(_startButton._hwndStartBtn, &rc);
     dwExStyle |= IS_BIDI_LOCALIZED_SYSTEM() ? dwExStyleRTLMirrorWnd : 0L;
 
     _hwndProp = hwnd = CreateWindowEx(dwExStyle, TEXT("static"), NULL, 0,
@@ -7594,6 +7010,7 @@ __inline WNDPROC SubclassWindow(HWND hwnd, WNDPROC lpfn) { return (WNDPROC)SetWi
 // See if the root of the instance is as specified
 #define CWM_COMPAREROOT                 (WM_USER + 13)
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
 DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
 {
     RECT            rc, rcTemp;
@@ -7618,7 +7035,7 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
 
     // Get the co-ordinates of the "Start" button.
 
-    GetWindowRect(_hwndStart, &rc);
+    GetWindowRect(_startButton._hwndStartBtn, &rc);
 
     // Look for an intersection in the monitor.
 
@@ -7940,130 +7357,6 @@ int CTray::_ToggleQL(int iVisible)
     return iQLBandID;
 }
 
-void CTray::StartMenuContextMenu(HWND hwnd, DWORD dwPos)
-{
-    LPITEMIDLIST pidlStart = SHCloneSpecialIDList(hwnd, CSIDL_STARTMENU, TRUE);
-    INSTRUMENT_STATECHANGE(SHCNFI_STATE_TRAY_CONTEXT_START);
-    HandleFullScreenApp(NULL);
-
-    SetForegroundWindow(hwnd);
-
-    if (pidlStart)
-    {
-        LPITEMIDLIST pidlLast = ILClone(ILFindLastID(pidlStart));
-        ILRemoveLastID(pidlStart);
-
-        if (pidlLast)
-        {
-            IShellFolder* psf = BindToFolder(pidlStart);
-            if (psf)
-            {
-                HMENU hmenu = CreatePopupMenu();
-                if (hmenu)
-                {
-                    IContextMenu* pcm = 0;
-                    HRESULT hr = psf->GetUIObjectOf(hwnd, 1, (LPCITEMIDLIST*)&pidlLast, IID_IContextMenu, nullptr, (void**)&pcm);
-                    if (SUCCEEDED(hr))
-                    {
-                        hr = pcm->QueryContextMenu(hmenu, 0, IDSYSPOPUP_FIRST, IDSYSPOPUP_LAST, CMF_VERBSONLY);
-                        if (SUCCEEDED(hr))
-                        {
-                            int idCmd;
-                            TCHAR szCommon[MAX_PATH];
-
-                            //Add the menu to invoke the "Start Menu Properties"
-                            LoadString(hinstCabinet, IDS_STARTMENUPROP, szCommon, ARRAYSIZE(szCommon));
-                            AppendMenu(hmenu, MF_STRING, IDSYSPOPUP_STARTMENUPROP, szCommon);
-                            if (!SHRestricted(REST_NOCOMMONGROUPS))
-                            {
-                                // If the user has access to the Common Start Menu, then we can add those items. If not,
-                                // then we should not.
-                                BOOL fAddCommon = (S_OK == SHGetFolderPath(NULL, CSIDL_COMMON_STARTMENU, NULL, 0, szCommon));
-
-                                if (fAddCommon)
-                                    fAddCommon = IsUserAnAdmin();
-
-
-                                // Since we don't show this on the start button when the user is not an admin, don't show it here... I guess...
-                                if (fAddCommon)
-                                {
-                                    AppendMenu(hmenu, MF_SEPARATOR, 0, NULL);
-                                    LoadString(hinstCabinet, IDS_OPENCOMMON, szCommon, ARRAYSIZE(szCommon));
-                                    AppendMenu(hmenu, MF_STRING, IDSYSPOPUP_OPENCOMMON, szCommon);
-                                    LoadString(hinstCabinet, IDS_EXPLORECOMMON, szCommon, ARRAYSIZE(szCommon));
-                                    AppendMenu(hmenu, MF_STRING, IDSYSPOPUP_EXPLORECOMMON, szCommon);
-                                }
-                            }
-
-                            if (dwPos == (DWORD)-1)
-                            {
-                                idCmd = _TrackMenu(hmenu);
-                            }
-                            else
-                            {
-                                SendMessage(_hwndTrayTips, TTM_ACTIVATE, FALSE, 0L);
-                                idCmd = TrackPopupMenu(hmenu,
-                                    TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN,
-                                    GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos), 0, hwnd, NULL);
-                                SendMessage(_hwndTrayTips, TTM_ACTIVATE, TRUE, 0L);
-                            }
-
-
-                            switch (idCmd)
-                            {
-                            case 0:  //User did not select a menu item; so, nothing to do!
-                                break;
-
-                            case IDSYSPOPUP_OPENCOMMON:
-                                _ExploreCommonStartMenu(FALSE);
-                                break;
-
-                            case IDSYSPOPUP_EXPLORECOMMON:
-                                _ExploreCommonStartMenu(TRUE);
-                                break;
-
-                            case IDSYSPOPUP_STARTMENUPROP:
-                                DoProperties(TPF_STARTMENUPAGE);
-                                break;
-
-                            default:
-                                TCHAR szPath[MAX_PATH];
-                                CMINVOKECOMMANDINFOEX ici = { 0 };
-#ifdef UNICODE
-                                CHAR szPathAnsi[MAX_PATH];
-#endif
-                                ici.cbSize = sizeof(CMINVOKECOMMANDINFOEX);
-                                ici.hwnd = hwnd;
-                                ici.lpVerb = (LPSTR)MAKEINTRESOURCE(idCmd - IDSYSPOPUP_FIRST);
-                                ici.nShow = SW_NORMAL;
-#ifdef UNICODE
-                                SHGetPathFromIDListA(pidlStart, szPathAnsi);
-                                SHGetPathFromIDList(pidlStart, szPath);
-                                ici.lpDirectory = szPathAnsi;
-                                ici.lpDirectoryW = szPath;
-                                ici.fMask |= CMIC_MASK_UNICODE;
-#else
-                                SHGetPathFromIDList(pidlStart, szPath);
-                                ici.lpDirectory = szPath;
-#endif
-                                pcm->InvokeCommand((LPCMINVOKECOMMANDINFO)&ici);
-
-                                break;
-
-                            } // Switch(idCmd)
-                        }
-                        pcm->Release();
-                    }
-                    DestroyMenu(hmenu);
-                }
-                psf->Release();
-            }
-            ILFree(pidlLast);
-        }
-        ILFree(pidlStart);
-    }
-}
-
 void GiveDesktopFocus()
 {
     SetForegroundWindow(v_hwndDesktop);
@@ -8109,14 +7402,7 @@ void _ExecResourceCmd(UINT ids)
 
 void CTray::_RefreshStartMenu()
 {
-    if (_pmbStartMenu)
-    {
-        IUnknown_Exec(_pmbStartMenu, &CLSID_MenuBand, MBANDCID_REFRESH, 0, NULL, NULL);
-    }
-    else if (_pmpStartPane)
-    {
-        IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, NULL, NULL);
-    }
+    _startButton.ExecRefresh();
     _RefreshSettings();
     _UpdateBandSiteStyle();
 }
@@ -8151,6 +7437,7 @@ DWORD CALLBACK _EjectThreadProc(LPVOID lpThreadParameter)
     return 0;
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_Command(UINT idCmd)
 {
     INSTRUMENT_ONCOMMAND(SHCNFI_TRAYCOMMAND, _hwnd, idCmd);
@@ -8308,9 +7595,9 @@ void CTray::_Command(UINT idCmd)
     case IDC_KBSTART:
         SetForegroundWindow(_hwnd);
         // This pushes the start button and causes the start menu to popup.
-        SendMessage(_hwndStart, BM_SETSTATE, TRUE, 0);
+        SendMessage(_startButton._hwndStartBtn, BM_SETSTATE, TRUE, 0);
         // This forces the button back up.
-        SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
+        SendMessage(_startButton._hwndStartBtn, BM_SETSTATE, FALSE, 0);
         break;
 
     case IDC_ASYNCSTART:
@@ -8329,11 +7616,11 @@ void CTray::_Command(UINT idCmd)
         // DebugMsg(DM_TRACE, "c.twp: IDC_START.");
 
         // Make sure the Start button is down.
-        if (!_bMainMenuInit && SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED)
+        if (!_bMainMenuInit && SendMessage(_startButton._hwndStartBtn, BM_GETSTATE, 0, 0) & BST_PUSHED)
         {
             // DebugMsg(DM_TRACE, "c.twp: Start button down.");
             // Set the focus.
-            _SetFocus(_hwndStart);
+            _SetFocus(_startButton._hwndStartBtn);
             _ToolbarMenu();
         }
         break;
@@ -8374,7 +7661,7 @@ void CTray::_Command(UINT idCmd)
 
         BOOL fShift = GetAsyncKeyState(VK_SHIFT) < 0;
 
-        if (hwndFocus && (IsChildOrHWND(_hwndStart, hwndFocus)))
+        if (hwndFocus && (IsChildOrHWND(_startButton._hwndStartBtn, hwndFocus)))
         {
             if (fShift)
             {
@@ -8403,7 +7690,7 @@ void CTray::_Command(UINT idCmd)
             {
                 if (fShift)
                 {
-                    _SetFocus(_hwndStart);
+                    _SetFocus(_startButton._hwndStartBtn);
                 }
                 else
                 {
@@ -8477,10 +7764,11 @@ STDMETHODIMP CDropTargetBase::DragEnter(IDataObject* pdtobj, DWORD grfKeyState, 
     return S_OK;
 }
 
+// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 STDMETHODIMP CDropTargetBase::DragOver(DWORD grfKeyState, POINTL ptl, DWORD* pdwEffect)
 {
     _ptray->_SetUnhideTimer(ptl.x, ptl.y);
-    _DragMove(_ptray->_hwndStart, ptl);
+    _DragMove(_ptray->_startButton._hwndStartBtn, ptl);
 
     return S_OK;
 }
@@ -8533,7 +7821,7 @@ void CStartDropTarget::_StartAutoOpenTimer(POINTL* pptl)
     POINT pt = { pptl->x, pptl->y };
     RECT rc;
     //Make sure it really is in the start menu..
-    GetWindowRect(_ptray->_hwndStart, &rc);
+    GetWindowRect(_ptray->_startButton._hwndStartBtn, &rc);
     if (PtInRect(&rc, pt))
     {
         SetTimer(_ptray->_hwnd, IDT_STARTMENU, 1000, NULL);
@@ -8664,18 +7952,18 @@ STDMETHODIMP CStartDropTarget::Drop(IDataObject* pdtobj, DWORD grfKeyState, POIN
 
 void CTray::_RegisterDropTargets()
 {
-    THR(RegisterDragDrop(_hwndStart, &_dtStart));
+    THR(RegisterDragDrop(_startButton._hwndStartBtn, &_dtStart));
     THR(RegisterDragDrop(_hwnd, &_dtTray));
 
-    // It is not a serious error if this fails; it just means that
-    // drag/drop to the Start Button will not add to the pin list
-    CoCreateInstance(CLSID_StartMenuPin, NULL, CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&_psmpin));
+    //// It is not a serious error if this fails; it just means that
+    //// drag/drop to the Start Button will not add to the pin list
+    //CoCreateInstance(CLSID_StartMenuPin, NULL, CLSCTX_INPROC_SERVER,
+    //    IID_PPV_ARGS(&_psmpin));
 }
 
 void CTray::_RevokeDropTargets()
 {
-    RevokeDragDrop(_hwndStart);
+    RevokeDragDrop(_startButton._hwndStartBtn);
     RevokeDragDrop(_hwnd);
     ATOMICRELEASET(_psmpin, IStartMenuPin);
 }
@@ -8817,7 +8105,7 @@ void CTray::_RaiseDesktop(BOOL fRaise, BOOL fRestoreWindows)
                 SetForegroundWindow(hwnd);
                 if (hwnd == _hwnd)
                 {
-                    _SetFocus(_hwndStart);
+                    _SetFocus(_startButton._hwndStartBtn);
                 }
             }
 

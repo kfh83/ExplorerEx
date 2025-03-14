@@ -71,8 +71,6 @@ HRESULT SHCoCreateInstanceHook(_In_opt_ PCWSTR pszCLSID, _In_opt_ const CLSID* p
 #ifndef RELEASE
 	if (FAILED(hr))
 	{
-		CreateThread(0, 0, BeepThread, 0, 0, 0);
-
 		wchar_t* iidstring = 0;
 		if (FAILED(StringFromCLSID(riid, &iidstring)))
 		{

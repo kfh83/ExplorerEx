@@ -214,6 +214,8 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
         nullptr);
     _hwndStartBtn = hWndStartBtn;
 
+    wprintf(L"CStartButton::CreateStartButton parent HWND = %p\n", hWnd);
+
     wprintf(L"CStartButton::CreateStartButton one\n");
 
     if (hWndStartBtn)
@@ -225,8 +227,8 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
             (SUBCLASSPROC)CStartButton::s_StartButtonSubclassProc,
             0,
             (DWORD_PTR)this);
-        LoadStringW(GetModuleHandle(NULL), /* TODO: Document. */ 0x253u, (LPWSTR)_pszWindowName, 50);
-        SetWindowTextW(_hwndStartBtn, (LPCWSTR)_pszWindowName);
+        LoadStringW(GetModuleHandle(NULL), IDS_STARTCLASSIC, (LPWSTR)_szWindowName, 50);
+        SetWindowTextW(_hwndStartBtn, (LPCWSTR)_szWindowName);
     }
 
     wprintf(L"CStartButton::CreateStartButton two\n");
@@ -370,7 +372,8 @@ void CStartButton::DestroyStartMenu()
     ATOMICRELEASE(_pNewStartMenuBand);
 }
 
-void CStartButton::DisplayStartMenu() // xp
+// EXEX-VISTA: REVALIDATE. Partially reversed from Vista.
+void CStartButton::DisplayStartMenu()
 {
     RECTL    rcExclude;
     POINTL   ptPop;
@@ -400,7 +403,23 @@ void CStartButton::DisplayStartMenu() // xp
         BuildStartMenu();
     }
 
-    //SetActiveWindow(_hwndStartBtn);
+    // Recalculate the position of the taskbar and start button:
+    bool fMoveTaskbar = false;
+    if ((GetWindowLongW(this->_hwndStartBtn, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
+        && _pszCurrentThemeName == L"StartBottom"
+        || _pszCurrentThemeName == L"StartTop")
+    {
+        fMoveTaskbar = true;
+        SetWindowPos(v_hwndTray, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SetWindowPos(_hwndStartBtn, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    }
+
+    HWND hWndMenu;
+    if (IUnknown_GetWindow((IUnknown *)*ppmpToDisplay, &hWndMenu) >= 0)
+    {
+        SetWindowPos(hWndMenu, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        SetWindowPos(hWndMenu, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
 
     // Exclude rect is the VISIBLE portion of the Start Button.
     _CalcExcludeRect(&rcExclude);
@@ -411,21 +430,32 @@ void CStartButton::DisplayStartMenu() // xp
     {
         // All is well - the menu is up
         //TraceMsg(DM_MISC, "e.tbm: dwFlags=%x (0=mouse 1=key)", dwFlags);
+
+        if (dwFlags == MPPF_KEYBOARD)
+        {
+            SendMessage(_hwndStartBtn, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR, UISF_HIDEFOCUS), 0);
+        }
     }
     else
     {
         //TraceMsg(TF_WARNING, "e.tbm: %08x->Popup failed", *ppmpToDisplay);
+        if (dwFlags == MPPF_KEYBOARD)
+        {
+            // Since the user has launched the start button by Ctrl-Esc, or some other worldly
+            // means, then turn the rect on.
+            SendMessage(_hwndStartBtn, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR, UISF_HIDEFOCUS), 0);
+        }
+
         // Start Menu failed to display -- reset the Start Button
         // so the user can click it again to try again
-        Tray_OnStartMenuDismissed();
+        OnStartMenuDismissed();
     }
 
-    if (dwFlags == MPPF_KEYBOARD)
+    if (fMoveTaskbar)
     {
-        // Since the user has launched the start button by Ctrl-Esc, or some other worldly
-        // means, then turn the rect on.
-        SendMessage(_hwndStartBtn, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
-            UISF_HIDEFOCUS), 0);
+        SetWindowPos(v_hwndTray, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SetWindowPos(_hwndStartBtn, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SetWindowPos(v_hwndTray, _hwndStartBtn, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
 }
 
@@ -549,12 +579,12 @@ void CStartButton::GetRect(RECT* lpRect)
     GetWindowRect(_hwndStartBtn, lpRect);
 }
 
-void CStartButton::GetSizeAndFont(HTHEME hTheme)
+void CStartButton::GetSizeAndFont(const HTHEME hTheme)
 {
     if (hTheme)
     {
         HDC hdc = GetDC(_hwndStartBtn);
-        GetThemePartSize(hTheme, hdc, BS_PUSHBUTTON, CBS_UNCHECKEDNORMAL, nullptr, TS_TRUE, &_size);
+        GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, CBS_UNCHECKEDNORMAL, nullptr, TS_TRUE, &_size);
         DWORD dwLogPixelsX = GetDeviceCaps(hdc, LOGPIXELSX);
 
         // XXX(isabella): Looks to be DPI resolution?
@@ -581,9 +611,9 @@ void CStartButton::GetSizeAndFont(HTHEME hTheme)
 
         if (hBmpStartIcon)
         {
-            BITMAP bitmap;
+            BITMAP bitmap{};
 
-            if (GetObjectW(hBmpStartIcon, 24, &bitmap))
+            if (GetObjectW(hBmpStartIcon, sizeof(bitmap), &bitmap))
             {
                 BUTTON_IMAGELIST buttonImageList = { 0 };
 
@@ -696,6 +726,9 @@ BOOL CStartButton::IsPopupMenuVisible()
 
 BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 {
+    //*pPoint = { 0, 0 };
+    //return TRUE;
+
     RECT rcTrayWnd;
     GetWindowRect(v_hwndTray, &rcTrayWnd);
 
@@ -730,7 +763,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
     {
         int height;
 
-        if (c_tray._uStuckPlace == 1 || c_tray._uStuckPlace == 3)
+        if (STUCK_HORIZONTAL(c_tray._uStuckPlace))
         {
             pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
             height = rcTrayWnd.bottom - _size.cy - rcTrayWnd.top;
@@ -829,13 +862,13 @@ void CStartButton::RecalcSize()
     {
         RECT rc;
         GetClientRect(v_hwndTray, &rc);
-        LPCWSTR p_windowName = &WindowName;
+        LPCWSTR pszWindowName = L"";
         if (rc.right >= _size.cx)
         {
-            p_windowName = _pszWindowName;
+            pszWindowName = _szWindowName;
         }
 
-        SetWindowTextW(_hwndStartBtn, p_windowName);
+        SetWindowTextW(_hwndStartBtn, pszWindowName);
 
         int height = _pStartButtonSite->GetStartButtonMinHeight();
         if (!height && _size.cy >= 0)
@@ -1017,11 +1050,11 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
     RECT rc;
     GetWindowRect(v_hwndTray, &rc);
 
-    if (c_tray._uStuckPlace == 3 && RECTHEIGHT(rc) < _size.cy)
+    if (c_tray._uStuckPlace == STICK_BOTTOM && RECTHEIGHT(rc) < _size.cy)
     {
         return L"StartBottom";
     }
-    else if (c_tray._uStuckPlace == 1 && RECTHEIGHT(rc) < _size.cy)
+    else if (c_tray._uStuckPlace == STICK_TOP && RECTHEIGHT(rc) < _size.cy)
     {
         return L"StartTop";
     }
@@ -1071,25 +1104,24 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     bool bThemeApplied = false;
-    HTHEME hTheme = OpenThemeData(_hwndStartBtn, L"Button");
-    _hTheme = hTheme;
-    if (hTheme)
+    _hTheme = OpenThemeData(_hwndStartBtn, L"Button");
+
+    if (_hTheme)
     {
         StartButtonReset();
-        DrawStartButton(1, true);
+        DrawStartButton(PBS_NORMAL, true);
     }
     else if (!bForceUpdate)
     {
-        bool bSettingsChanged = !_nSettingsChangeType;
-        _pszCurrentThemeName = NULL;
-        if (bSettingsChanged)
+        _pszCurrentThemeName = nullptr;
+        if (!_nSettingsChangeType)
         {
             StartButtonReset();
-            DrawStartButton(1, true);
+            DrawStartButton(PBS_NORMAL, true);
             bThemeApplied = true;
         }
         else

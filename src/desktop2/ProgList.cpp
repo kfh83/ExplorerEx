@@ -3681,7 +3681,8 @@ HRESULT ByUsage::ContextMenuDeleteItem(PaneItem *p, IContextMenu *pcm, CMINVOKEC
 
         if (IsSpecialPinnedItem(pitem))
         {
-            c_tray.CreateStartButtonBalloon(0, IDS_STARTPANE_SPECIALITEMSTIP);
+            // EXEX-VISTA(isabella): Disabled temporarily.
+            // c_tray.CreateStartButtonBalloon(0, IDS_STARTPANE_SPECIALITEMSTIP);
         }
 
         // If the item wasn't pinned, then all we did was dork some usage

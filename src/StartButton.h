@@ -121,12 +121,7 @@ public:
     IMenuPopup *_pNewStartMenu;
     IDeskBand *_pUnk1;
     char padding5[4];
-    LPWSTR _pszWindowName;
-
-    // set in constructor passed from CTray
-    UINT g_traystuckplace; // _uStuckPlace
-
-    WCHAR WindowName;
+    WCHAR _szWindowName[50];
 
 private:
 
