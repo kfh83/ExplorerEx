@@ -240,11 +240,11 @@ HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
 {
     if (bActive)
     {
-        _nStartPaneActiveState = 1;
+        _uStartButtonState = 1;
     }
-    else if (_nStartPaneActiveState != 2)
+    else if (_uStartButtonState != 2)
     {
-        _nStartPaneActiveState = 0;
+        _uStartButtonState = 0;
         UnlockStartPane();
     }
     return S_OK;
@@ -1149,238 +1149,268 @@ BOOL CStartButton::_ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2)
 
 LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    switch (uMsg)
+    if (uMsg == BM_SETSTATE)
     {
-        case WM_WINDOWPOSCHANGING:
+        if (wParam)
         {
-            WINDOWPOS *pWindowPos = (WINDOWPOS *)lParam;
-
-            if (!(pWindowPos->flags & SWP_NOMOVE))
+            if (!_uDown)
             {
-                POINT pt;
-                _CalcStartButtonPos(&pt, nullptr);
+                // Nope.
+                INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_DOWN);
+                _uDown = 1;
 
-                if (pWindowPos->x != pt.x || pWindowPos->y != pt.y)
-                {
-                    pWindowPos->x = pt.x;
-                    pWindowPos->y = pt.y;
-                    return 0;
-                }
-            }
-            break;
-        }
-
-        case WM_SETFOCUS:
-        {
-            if (_hTheme && !_nUnkBool1)
-            {
-                DrawStartButton(PBS_HOT, true);
-            }
-            break;
-        }
-
-        case WM_KILLFOCUS:
-        {
-            if (!_nUnkBool2 && _hTheme && !_nUnkBool1)
-            {
-                DrawStartButton(PBS_NORMAL, true);
-            }
-            break;
-        }
-
-        case WM_CLOSE:
-        {
-            _pStartButtonSite->OnStartButtonClosing();
-            return 0;
-        }
-
-        case WM_SETTINGCHANGE:
-        {
-            _OnSettingChanged(wParam);
-            break;
-        }
-
-        case WM_MOUSEMOVE:
-        {
-            if (_hTheme && !_nUnkBool2 && !_nUnkBool3)
-            {
-                DrawStartButton(PBS_HOT, true);
-
-                TRACKMOUSEEVENT evt;
-                evt.dwHoverTime = 0;
-                evt.hwndTrack = hWnd;
-                evt.cbSize = 16;
-                evt.dwFlags = 2;
-
-                TrackMouseEvent(&evt);
-
-                _nUnkBool2 = 1;
-            }
-
-            return 0;
-        }
-
-        case WM_MOUSELEAVE:
-        {
-            if (_hTheme && !_nUnkBool3 && !c_tray.IsMouseOverStartButton())
-            {
-                DrawStartButton(PBS_NORMAL, true);
-            }
-
-            _nUnkBool2 = 0;
-            return 0;
-        }
-
-        case WM_THEMECHANGED:
-        case WM_DWMCOMPOSITIONCHANGED:
-        {
-            if (_OnThemeChanged(uMsg == WM_DWMCOMPOSITIONCHANGED))
-            {
-                return 0;
-            }
-
-            break;
-        }
-
-        case BM_SETSTATE:
-        {
-            if (wParam)
-            {
-                if (_nUnkBool1)
-                {
-                    return DefWindowProcW(hWnd, BM_SETSTATE, wParam, lParam);
-                }
-
-                _nUnkBool1 = 1;
-                _nStartBtnNotPressed = 0;
+                _fAllowUp = FALSE;
                 _pStartButtonSite->EnableTooltips(FALSE);
-                LRESULT lRes = DefSubclassProc(hWnd, BM_SETSTATE, wParam, lParam);
-                _nUnkBool3 = 1;
-                DrawStartButton(PBS_PRESSED, true);
-                _pStartButtonSite->StartButtonClicked();
-                _dwTickCount = GetTickCount();
 
-                return lRes;
+                // Show the button down.
+                LRESULT lRet = DefWindowProc(hWnd, uMsg, wParam, lParam);
+                SendMessage(GetParent(hWnd), WM_COMMAND, (WPARAM)LOWORD(GetDlgCtrlID(hWnd)), (LPARAM)hWnd);
+                _pStartButtonSite->StartButtonClicked();
+                DrawStartButton(PBS_PRESSED, true);
+                _tmOpen = GetTickCount();
+                return lRet;
             }
             else
             {
-                if (_nUnkBool1 == 1 || !_nStartBtnNotPressed)
+                // Yep. Do nothing.
+                // fDown = FALSE;
+                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            }
+        }
+        else
+        {
+            if (_uDown == 1 || !_fAllowUp)
+            {
+                INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_UP);
+
+                _uDown = 2;
+                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            }
+            else
+            {
+                _pStartButtonSite->EnableTooltips(TRUE);
+
+                // Nope, Forward it on.
+                _uDown = 0;
+                DrawStartButton(PBS_NORMAL, true);
+                return DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
+            }
+        }
+    }
+    else
+    {
+
+        if (_uStartButtonState == 2 && uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
+        {
+            _uStartButtonState = 0;
+            CloseStartMenu();
+        }
+
+        switch (uMsg)
+        {
+            case WM_WINDOWPOSCHANGING:
+            {
+                WINDOWPOS* pWindowPos = (WINDOWPOS*)lParam;
+
+                if (!(pWindowPos->flags & SWP_NOMOVE))
                 {
-                    _nUnkBool1 = 2;
-                    return DefWindowProcW(hWnd, BM_SETSTATE, 0, lParam);
+                    POINT pt;
+                    _CalcStartButtonPos(&pt, nullptr);
+
+                    if (pWindowPos->x != pt.x || pWindowPos->y != pt.y)
+                    {
+                        pWindowPos->x = pt.x;
+                        pWindowPos->y = pt.y;
+                        return 0;
+                    }
+                }
+                break;
+            }
+
+            case WM_SETFOCUS:
+            {
+                if (_hTheme && !_uDown)
+                {
+                    DrawStartButton(PBS_HOT, true);
+                }
+                break;
+            }
+
+            case WM_KILLFOCUS:
+            {
+                if (!_fAllowUp && _hTheme && !_uDown)
+                {
+                    DrawStartButton(PBS_NORMAL, true);
+                }
+                break;
+            }
+
+            case WM_CLOSE:
+            {
+                _pStartButtonSite->OnStartButtonClosing();
+                return 0;
+            }
+
+            case WM_SETTINGCHANGE:
+            {
+                _OnSettingChanged(wParam);
+                break;
+            }
+
+            case WM_MOUSEMOVE:
+            {
+                if (_hTheme && !_mouseOver && !_uDown)
+                {
+                    DrawStartButton(PBS_HOT, true);
+
+                    TRACKMOUSEEVENT evt;
+                    evt.dwHoverTime = HOVER_DEFAULT;
+                    evt.hwndTrack = _hwndStartBtn;
+                    evt.cbSize = sizeof(TRACKMOUSEEVENT);
+                    evt.dwFlags = TME_LEAVE;
+
+                    TrackMouseEvent(&evt);
+
+                    _mouseOver = 1;
+                }
+                break;
+            }
+
+            case WM_MOUSELEAVE:
+            {
+                if (_hTheme && !_uDown)
+                {
+                    DrawStartButton(PBS_NORMAL, true);
                 }
 
-                _nUnkBool3 = 0;
-                LRESULT lRes = DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
-                DrawStartButton(PBS_NORMAL, true);
-                _pStartButtonSite->EnableTooltips(TRUE);
-                _nUnkBool1 = 0;
-
-                return lRes;
-            }
-        }
-
-        case WM_LBUTTONDOWN:
-        case WM_RBUTTONDOWN:
-        case WM_MBUTTONDOWN:
-        {
-            if (OnMouseClick(hWnd, lParam))
-            {
+                _mouseOver = 0;
                 return 0;
             }
 
-            if (uMsg == WM_LBUTTONDOWN)
+            case WM_THEMECHANGED:
+            case WM_DWMCOMPOSITIONCHANGED:
             {
-                SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
-                LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-                SetCapture(0);
-                return lr;
+                if (_OnThemeChanged(uMsg == WM_DWMCOMPOSITIONCHANGED))
+                {
+                    return 0;
+                }
+
+                break;
             }
 
-            break;
-        }
-
-        // _nStatePaneActiveState... HERE
-
-        case WM_TIMER:
-        {
-            if (wParam == 1) // Timer ID
+            case WM_NCLBUTTONDOWN:
             {
-                _DestroyStartButtonBalloon();
+                if (!IsButtonPushed())
+                {
+                    SetStartPaneActive(TRUE);
+                    DrawStartButton(PBS_PRESSED, true);
+                    DisplayStartMenu();
+                }
+                else
+                {
+                    SetStartPaneActive(FALSE);
+                    DrawStartButton(PBS_NORMAL, true);
+                    CloseStartMenu();
+                }
+                break;
             }
 
-            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        }
-
-        case WM_APP: // probably like "recalc size"
-        {
-            RecalcSize();
-            return 0;
-        }
-
-        case WM_APP + 1: // probably like "get size"
-        {
-            return MAKELRESULT(_size.cx, _size.cy);
-        }
-
-        case WM_KEYDOWN:
-        {
-            SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEACCEL), 0);
-
-            if (wParam == VK_RETURN)
+            case WM_LBUTTONDOWN:
+            case WM_RBUTTONDOWN:
+            case WM_MBUTTONDOWN:
             {
-                PostMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_COMMAND, 0x131, 0);
+                if (OnMouseClick(hWnd, lParam))
+                {
+                    return 0;
+                }
+
+                if (uMsg == WM_LBUTTONDOWN)
+                {
+                    SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
+                    LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+                    SetCapture(0);
+                    return lr;
+                }
+
+                break;
             }
 
-            LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            SetCapture(0);
-            return lr;
-        }
+            // _nStatePaneActiveState... HERE
 
-        case WM_DESTROY:
-        {
-            _HandleDestroy();
-            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        }
-
-        case WM_CONTEXTMENU:
-        {
-            if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
-                OnContextMenu(hWnd, lParam);
-            return 0;
-        }
-        case WM_NCDESTROY:
-        {
-            RemoveWindowSubclass(hWnd, s_StartButtonSubclassProc, 0);
-            break;
-        }
-        case WM_NCHITTEST:
-        {
-            if (GetTickCount() - _dwTickCount < GetDoubleClickTime())
+            case WM_TIMER:
             {
-                return 0;
-            }
+                if (wParam == 1) // Timer ID
+                {
+                    _DestroyStartButtonBalloon();
+                }
 
-            _pStartButtonSite->SetUnhideTimer(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            break;
-        }
-
-        case WM_MOUSEACTIVATE:
-        {
-            if (!_nStartPaneActiveState)
-            {
                 return DefSubclassProc(hWnd, uMsg, wParam, lParam);
             }
 
-            _nStartPaneActiveState = 2;
-            return 2;
-        }
-    }
+            case WM_APP: // probably like "recalc size"
+            {
+                RecalcSize();
+                return 0;
+            }
 
-    if (_nStartPaneActiveState == 2 && uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
-    {
-        _nStartPaneActiveState = 0;
-        CloseStartMenu();
+            case WM_APP + 1: // probably like "get size"
+            {
+                return MAKELRESULT(_size.cx, _size.cy);
+            }
+
+            case WM_KEYDOWN:
+            {
+                SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEACCEL), 0);
+
+                if (wParam == VK_RETURN)
+                {
+                    PostMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_COMMAND, 0x131, 0);
+                }
+
+                LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+                return lr;
+            }
+
+            case WM_DESTROY:
+            {
+                _HandleDestroy();
+                return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            }
+
+            case WM_CONTEXTMENU:
+            {
+                if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
+                    OnContextMenu(hWnd, lParam);
+                return 0;
+            }
+            case WM_NCDESTROY:
+            {
+                RemoveWindowSubclass(hWnd, s_StartButtonSubclassProc, 0);
+                break;
+            }
+            case WM_NCHITTEST:
+            {
+                if (GetTickCount() - _tmOpen < GetDoubleClickTime())
+                {
+                    return 0;
+                }
+
+                _pStartButtonSite->SetUnhideTimer(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                break;
+            }
+
+            case WM_MOUSEACTIVATE:
+            {
+                if (!_uStartButtonState)
+                {
+                    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+                }
+
+                _uStartButtonState = 2;
+                return 2;
+            }
+            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        }
     }
 
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
