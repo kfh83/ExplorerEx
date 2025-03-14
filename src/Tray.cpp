@@ -1123,12 +1123,20 @@ void CTray::HandleFullScreenApp(HWND hwnd)
 
 void CTray::StartButtonClicked()
 {
+    // TEMP
+    _startButton.DisplayStartMenu();
+
     SendMessageW(_hwnd, WM_COMMAND, IDC_START, NULL);
 }
 
 // to not break functionality
 void Tray_OnStartMenuDismissed()
 {
+    // called only from classic start menu, thus 
+    // the start button works propely, only while
+    // classic start button is enabled
+
+    printf("tray_onstartmenu dismissing\n");
     c_tray.OnStartMenuDismissed();
 }
 
@@ -1136,9 +1144,13 @@ void CTray::OnStartMenuDismissed()
 {
     _bMainMenuInit = 0;
     _startButton._fAllowUp = TRUE;
-    Button_SetState(_startButton._hwndStartBtn, 0);
+    _startButton._uDown = 0;
 
     ForceStartButtonUp();
+
+    _startButton.SetStartPaneActive(FALSE);
+    _startButton.DrawStartButton(PBS_NORMAL, true);
+
     PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
 }
 
@@ -5329,10 +5341,6 @@ BOOL CTray::IsMouseOverStartButton()    // TODO: revise
         POINT pt;
         GetCursorPos(&pt);
         bRet = PtInRect(&rc, pt);
-        if (bRet)
-            printf("mouse in start\n");
-        else
-            printf("mouse not in start\n");
     }
 
     return bRet;
@@ -5560,15 +5568,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (!_startButton.IsButtonPushed())
                 {
-                    _startButton.SetStartPaneActive(TRUE);
-                    _startButton.DrawStartButton(PBS_PRESSED, true);
-                    _startButton.DisplayStartMenu();
-                }
-                else
-                {
-                    _startButton.SetStartPaneActive(FALSE);
-                    _startButton.DrawStartButton(PBS_NORMAL, true);
-                    _startButton.CloseStartMenu();
+                    SendMessageW(_startButton._hwndStartBtn, BM_SETSTATE, 1, 0);
                 }
             }
             break;
@@ -5627,8 +5627,6 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // insane work
                     if (!_startButton.IsButtonPushed() && !IsMouseOverStartButton())
                     {
-                        _startButton.SetStartPaneActive(FALSE);
-                        SendMessageW(_startButton._hwndStartBtn, BM_SETSTATE, 0, 0);
                         _startButton.DrawStartButton(PBS_NORMAL, true);
                     }
                 }
@@ -6227,9 +6225,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 if (PtInRect(&rc, pt))
                 {
-                    ShowWindow(_startButton._hwndStartBalloon, SW_HIDE);
-                    //_DontShowTheStartButtonBalloonAnyMore();
-                    _startButton._DestroyStartButtonBalloon();
+                    
+                    /*ShowWindow(_startButton._hwndStartBalloon, SW_HIDE);
+                    _DontShowTheStartButtonBalloonAnyMore();
+                    _startButton._DestroyStartButtonBalloon();*/
                 }
             }
             break;
@@ -6350,7 +6349,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if (uMsg == _uStartButtonBalloonTip)
             {
-                ShowWindow(_startButton._hwndStartBalloon, SW_NORMAL);
+                // _ShowStartButtonToolTip();
             }
             else if (uMsg == _uLogoffUser)
             {

@@ -169,7 +169,7 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
         TOOLINFO toolInfo = { sizeof(toolInfo) };
         toolInfo.uFlags = TTF_TRANSPARENT | TTF_TRACK | TTF_IDISHWND; // 0x0100|0x0020|0x0001 -> 0x121 -> 289
         toolInfo.hwnd = _hwndStartBtn;
-        toolInfo.uId = (UINT)_hwndStartBtn;  //TTF_IDISHWND
+        toolInfo.uId = (UINT_PTR)_hwndStartBtn;  //TTF_IDISHWND
         
         SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)&toolInfo);
         SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, 0, 0);
@@ -241,10 +241,17 @@ HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
     if (bActive)
     {
         _uStartButtonState = 1;
+
+        // @MOD check if this happens
+        _uDown = 1;
     }
     else if (_uStartButtonState != 2)
     {
         _uStartButtonState = 0;
+
+        // @MOD check if this happens
+
+        _uDown = 0;
         UnlockStartPane();
     }
     return S_OK;
@@ -417,7 +424,6 @@ void CStartButton::DisplayStartMenu()
     HWND hWndMenu;
     if (IUnknown_GetWindow((IUnknown *)*ppmpToDisplay, &hWndMenu) >= 0)
     {
-        SetWindowPos(hWndMenu, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         SetWindowPos(hWndMenu, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
@@ -461,12 +467,9 @@ void CStartButton::DisplayStartMenu()
 
 void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
 {
-    wprintf(L"CStartButton::DrawStartButton zero\n");
     POINT pptDst;
     HRGN hRgn;
     BOOL started = _CalcStartButtonPos(&pptDst, &hRgn);
-
-    wprintf(L"CStartButton::DrawStartButton zero point five\n");
 
     if (hdcSrc)
     {
@@ -527,12 +530,10 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
             ReleaseDC(_hwndStartBtn, DC);
         }
     }
-    wprintf(L"CStartButton::DrawStartButton one\n");
 
     UpdateLayeredWindow(
         _hwndStartBtn, NULL, &pptDst, NULL, NULL, NULL, 0, NULL, 0);
 
-    wprintf(L"CStartButton::DrawStartButton two\n");
 
     if (started)
     {
@@ -1151,6 +1152,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 {
     if (uMsg == BM_SETSTATE)
     {
+        // this part is mixed with xp code, 
         if (wParam)
         {
             if (!_uDown)
@@ -1199,6 +1201,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
     }
     else
     {
+        // all vista reimpl'd code
 
         if (_uStartButtonState == 2 && uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
         {
@@ -1298,32 +1301,14 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 break;
             }
 
-            case WM_NCLBUTTONDOWN:
-            {
-                if (!IsButtonPushed())
-                {
-                    SetStartPaneActive(TRUE);
-                    DrawStartButton(PBS_PRESSED, true);
-                    DisplayStartMenu();
-                }
-                else
-                {
-                    SetStartPaneActive(FALSE);
-                    DrawStartButton(PBS_NORMAL, true);
-                    CloseStartMenu();
-                }
-                break;
-            }
-
             case WM_LBUTTONDOWN:
             case WM_RBUTTONDOWN:
             case WM_MBUTTONDOWN:
             {
                 if (OnMouseClick(hWnd, lParam))
                 {
-                    return 0;
+                    return 0;   
                 }
-
                 if (uMsg == WM_LBUTTONDOWN)
                 {
                     SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
