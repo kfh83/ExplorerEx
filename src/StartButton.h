@@ -32,10 +32,24 @@ IStartButton : IUnknown
     STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
 };
 
+struct IStartButtonSite
+{
+    STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
+    STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
+    STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
+    STDMETHOD_(VOID, HandleFullScreenApp2(HWND)) PURE;
+    STDMETHOD_(VOID, StartButtonClicked()) PURE;
+    STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
+    STDMETHOD_(int, GetStartButtonMinHeight()) PURE;
+    STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
+    STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
+    STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
+};
+
 class CStartButton : public IStartButton, public IServiceProvider
 {
 public:
-    CStartButton();
+    CStartButton(IStartButtonSite *pStartButtonSite);
 
     //~ Begin IUnknown Interface
     STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;

@@ -14,6 +14,8 @@
 
 #include "shundoc.h"
 
+#include "StartButton.h"
+
 typedef struct tagHWNDANDPLACEMENT
 {
     HWND hwnd;
@@ -188,20 +190,6 @@ EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 #define AH_ON           0x01
 #define AH_HIDING       0x02
 
-struct IStartButtonSite
-{
-    STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
-    STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
-    STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
-    STDMETHOD_(VOID, HandleFullScreenApp2(HWND)) PURE;
-    STDMETHOD_(VOID, StartButtonClicked()) PURE;
-    STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
-    STDMETHOD_(int, GetStartButtonMinHeight()) PURE;
-    STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
-    STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
-    STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
-};
-
 class CTray : public CImpWndProc, IStartButtonSite
 {
 public:
@@ -313,6 +301,8 @@ public:
 
     HWND _hwndStart;
     HWND _hwndLastActive;
+
+    CStartButton _startButton;
 
     IBandSite* _ptbs;
 
