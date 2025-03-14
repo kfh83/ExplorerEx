@@ -96,8 +96,8 @@ public:
 
     LPCWSTR _pszCurrentThemeName;
     INT _nSomeSize;
-    int _uDown;                   // start btn pressed?
-    int _fAllowUp;                // can we un-press it?
+    int _nUnkBool2;
+    int _nUnkBool3;
     HWND _hwndStartBtn;
     HWND _hwndStartBalloon;
     SIZE _size;
@@ -105,14 +105,14 @@ public:
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
     char padding[4];
-    int _mouseOver;                // verify
+    int _nUnkBool1;
     int _nStartBtnNotPressed;
     int _nIsOnContextMenu;
     BOOL _uLockCode;
     BOOL _fBackgroundBitmapInitialized;
     bool _nSettingsChangeType;
-    int _uStartButtonState;
-    DWORD _tmOpen;
+    int _nStartPaneActiveState;
+    DWORD _dwTickCount;
     HIMAGELIST _hIml;
     IStartButtonSite *_pStartButtonSite;
     IMenuBand *_pOldStartMenuBand;
