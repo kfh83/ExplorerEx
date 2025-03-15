@@ -1,5 +1,6 @@
 #ifndef TASKBAND_H_
 #define TASKBAND_H_
+#include <dwmapi.h>
 
 #ifdef __cplusplus
 
@@ -30,6 +31,7 @@ public:
     int iIconPref;
     BOOL fMarkedFullscreen;
     BOOL fHungApp;
+    HTHUMBNAIL hTh;
 };
 
 typedef TASKITEM *PTASKITEM;
@@ -128,16 +130,16 @@ protected:
     void _FreePopupMenu();
 
     /* Vista thumbnail-related methods */
-    //int _CanShowThumbnail();
-    //void _CreateThumbnailWindows();
-    //void _HandleThumbnail();
-    //void _HideThumbnail();
-    //void _HideThumbnailWindows();
-    //void _InitializeThumbnailMetrics();
-    //void _RegisterThumbnail();
-    //void _ShowThumbnail();
-    //void _UpdateThumbnailBackgroundBrush();
-    //void _UpdateThumbnailTitle();
+    int _CanShowThumbnail();
+    void _CreateThumbnailWindows();
+    void _HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool hoveredItemInfo);
+    void _HideThumbnail();
+    void _HideThumbnailWindows();
+    void _InitializeThumbnailMetrics();
+    void _RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumbnailId);
+    void _ShowThumbnail(HWND hwnd, WPARAM wParam, char a4);     // TODO
+    //void _UpdateThumbnailBackgroundBrush(DWORD pcrColorization, BOOL pfOpaqueBlend); // TODO
+    void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4);
 
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
@@ -310,8 +312,6 @@ protected:
     int _iOldPriority;
     int _iNewPriority;
 
-    ULONG _cRef;
-
     // Drag & drop stuff
     int _iDropItem;
     DWORD _dwTriggerStart;
@@ -336,6 +336,56 @@ protected:
     CComPtr<CTaskmanWindow> _spTaskmanWnd;
 #endif
 
+    // Vista unique
+
+    HWND _thumbnailWnd[4];                ///< 30 confident
+    INT _noOfThumbnails;                  ///< 3C confident
+    SIZE long_40;
+    SIZE long_44;
+    SIZE long_48;
+    SIZE long_4c;
+    SIZE _thumbnailpaddingX;
+    SIZE _thumbnailpaddingY;
+    SIZE long_58;
+    SIZE long_5c;
+    SIZE long_60;
+    SIZE long_64;
+    HWND hwnd_70_toolbar;                 ///< 70 confident
+    UINT WM_FrostedWindow;                ///< 75 confident, made the name up
+
+    IUnknown *IUnknown_9C;                ///< some interface, to find
+    HTHEME _hThemeComposited;             ///< may or may not be this but its used the same as the above
+
+    DWORD *dword_ptr_CC;
+    BOOL _isDrag;                         ///< D0 confident (shifted from C8 by 8)
+    ULONG _cRef;
+    LRESULT lresult_d8;                   ///< D8 confident (shifted from D0 by 8)
+    DWORD dword_DC_tickCount;             ///< DC confident (shifted from D4 by 8)
+    DWORD dword_E0_someDelay;             ///< E0 confident (shifted from D8 by 8)
+    void *something;
+    DWORD dword_F4;                       ///< F4 confident (shifted from EC by 8)
+
+    IDropTarget *_dadDropTarget;          ///< 110 confident (shifted from 108 by 8)
+    DWORD _dwInitialThumbDelayTime;        ///< 114 confident
+    DWORD _dwInitialTooltipDelayTime;
+    DWORD _dwAutoPosDelayTime;
+    HWND _hwSomeHwnd;                     ///< 120 confident
+    BOOL _canShowThumbnail;               ///< 124 confident
+    DWORD *dword_ptr_128;
+    HWND unkStruct_hwnd;
+    int unkStruct_int;
+    char unkStruct_char;                  ///< 134 confident
+    DWORD unkStruct_dword;
+    DWORD dword_13C_tickCount;            ///< 13C confident
+    HWND hwnd_140;                        ///< 140 confident
+    char dword_144_1;
+    char dword_144_2;
+    char dword_144_3;
+    char dword_144_4;
+
+    const WCHAR WindowName; // global?
+>>>>>>> 7834778 (Begin thumbnail methods)
+
         
     CTaskBand();
     ~CTaskBand();
@@ -349,6 +399,7 @@ protected:
 
     friend HRESULT CTaskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
     friend class CTaskBandSMC;
+
 };
 
 #endif  // __cplusplus

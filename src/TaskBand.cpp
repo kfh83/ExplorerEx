@@ -4558,6 +4558,229 @@ void CTaskBand::_FreePopupMenu()
     _menuPopup.Detach();
 }
 
+int CTaskBand::_CanShowThumbnail()
+{
+    return dword_ptr_CC && IsCompositionActive();
+}
+
+void CTaskBand::_CreateThumbnailWindows()
+{
+    WNDCLASSW WndClass;
+    WndClass.lpfnWndProc = DefWindowProcW;
+    WndClass.style = CS_VREDRAW | CS_HREDRAW;
+    WndClass.hInstance = g_hinstCabinet;
+    WndClass.hCursor = LoadCursorW(0, IDC_ARROW);
+    WndClass.hbrBackground = CreateSolidBrush(RGB(200, 200, 200));
+    WndClass.lpszClassName = L"ThumbnailClass";
+    RegisterClassW(&WndClass);
+    WndClass.lpszClassName = L"ThumbnailStackClass";
+    RegisterClassW(&WndClass);
+
+    HWND Window = SHFusionCreateWindowEx(
+        WS_EX_TOPMOST, L"ThumbnailClass", &WindowName, WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0, _hwnd, NULL,
+        g_hinstCabinet, NULL);
+    _thumbnailWnd[0] = Window;
+
+    INT counter = 0;
+    HWND* v8 = &_thumbnailWnd[1];
+    while (counter < _noOfThumbnails)
+    {
+        HWND stackWnd = SHFusionCreateWindowEx(
+            WS_EX_TOPMOST, L"ThumbnailStackClass", &WindowName, WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0,
+            _hwnd, NULL, g_hinstCabinet, NULL);
+        HWND* stackWndPointer = v8;
+        ++counter;
+        ++v8;
+        *stackWndPointer = stackWnd;
+    }
+}
+
+void CTaskBand::_HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool hoveredItemInfo)
+{
+    _HideThumbnail();
+    if (!hwnd || dword_ptr_128 || !_hTheme || !_CanShowThumbnail())
+    {
+        KillTimer(_hwnd, 10);
+        _canShowThumbnail = FALSE;
+        return;
+    }
+    DWORD TickCount = GetTickCount();
+    dword_13C_tickCount = TickCount;
+    if ((hotItemInfo->dwFlags & HICF_LEAVING) != 0)
+    {
+        KillTimer(_hwnd, 10);
+        KillTimer(_hwnd, 11);
+        _canShowThumbnail = FALSE;
+        return;
+    }
+    if (_canShowThumbnail)
+    {
+        _ShowThumbnail(hwnd, hotItemInfo->idNew, hoveredItemInfo);
+    }
+    else
+    {
+        UINT dwInitialThumbDelayTime = _dwInitialThumbDelayTime;
+        unkStruct_char = hoveredItemInfo;
+        _hwnd = hwnd;
+        unkStruct_hwnd = hwnd;
+        unkStruct_int = hotItemInfo->idNew;
+        unkStruct_dword = TickCount;
+        SetTimer(_hwnd, 10, dwInitialThumbDelayTime, NULL);
+    }
+}
+
+void CTaskBand::_HideThumbnail()
+{
+    CToolTipCtrl ttc = _tb.GetToolTips();
+    ttc.SendMessage(TTM_POP, 0, 0);
+
+    _HideThumbnailWindows();
+
+    LRESULT IndexByHwnd = _FindIndexByHwnd(hwnd_140);
+    TASKITEM* Item = _GetItem(IndexByHwnd, NULL, 1);
+    if (Item)
+    {
+        DWM_THUMBNAIL_PROPERTIES ptnProperties;
+        HTHUMBNAIL hTh = Item->hTh;
+        ptnProperties.dwFlags = 8;
+        ptnProperties.fVisible = TRUE;
+        DwmUpdateThumbnailProperties(hTh, &ptnProperties);
+    }
+    hwnd_140 = NULL;
+}
+
+void CTaskBand::_HideThumbnailWindows()
+{
+    HDWP hWinPosInfo = BeginDeferWindowPos(_noOfThumbnails + 1);
+    if (hWinPosInfo)
+    {
+        int thumbnailIndex = _noOfThumbnails - 1;
+        HWND* v4 = &_thumbnailWnd[thumbnailIndex + 1];
+        while (thumbnailIndex >= 0)
+        {
+            DeferWindowPos(hWinPosInfo, *v4--, HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+            --thumbnailIndex;
+        }
+        DeferWindowPos(hWinPosInfo, _thumbnailWnd[0], HWND_TOP, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+        EndDeferWindowPos(hWinPosInfo);
+    }
+}
+
+
+int g_iLPX;
+
+int g_iLPY;
+
+void __stdcall SHLogicalToPhysicalDPI(SIZE *a1)
+{
+    //InitDPI(); @MOD
+    a1->cx = MulDiv(a1->cx, g_iLPX, 96);
+    a1->cy = MulDiv(a1->cy, g_iLPY, 96);
+}
+
+void CTaskBand::_InitializeThumbnailMetrics()
+{
+    long_40.cx = 160;
+    long_44.cy = 160;
+    SHLogicalToPhysicalDPI(&long_40);
+    long_48.cx = 3;
+    long_4c.cy = 3;
+    SHLogicalToPhysicalDPI(&long_48);
+    _thumbnailpaddingX.cx = 3;
+    _thumbnailpaddingY.cy = 3;
+    SHLogicalToPhysicalDPI(&_thumbnailpaddingX);
+    long_60.cx = 0;
+    long_64.cy = 21;
+    SHLogicalToPhysicalDPI(&long_60);
+    long_58.cx = 0;
+    long_5c.cy = 2;
+    SHLogicalToPhysicalDPI(&long_58);
+
+    WCHAR szPath[260] = { 0 };
+    memcpy(szPath, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer", 102);
+    StringCchCatW(szPath, 260, L"Thumbnails");
+    HUSKEY phNewUSKey;
+    if (SHRegOpenUSKeyW(szPath, 1u, 0, &phNewUSKey, 0))
+    {
+        _dwInitialThumbDelayTime = 500;
+        _dwInitialTooltipDelayTime = 1000;
+        _dwAutoPosDelayTime = 5000;
+    }
+    else
+    {
+        int pvDefaultData;
+        DWORD pcbData;
+        DWORD pdwType;
+        pdwType = REG_DWORD;
+        pcbData = REG_DWORD;
+        pvDefaultData = 500;
+        SHRegQueryUSValueW(phNewUSKey, L"InitialThumbnail", &pdwType, &_dwInitialThumbDelayTime,
+            &pcbData, 0, &pvDefaultData, REG_DWORD);
+
+        pdwType = REG_DWORD;
+        pcbData = REG_DWORD;
+        pvDefaultData = 1000;
+        SHRegQueryUSValueW(phNewUSKey, L"InitialTooltip", &pdwType, &_dwInitialTooltipDelayTime,
+            &pcbData, 0, &pvDefaultData, REG_DWORD);
+
+        pdwType = REG_DWORD;
+        pcbData = REG_DWORD;
+        pvDefaultData = 5000;
+        SHRegQueryUSValueW(phNewUSKey, L"AutoPopTooltip", &pdwType, &_dwAutoPosDelayTime,
+            &pcbData, 0, &pvDefaultData, REG_DWORD);
+    }
+}
+
+void CTaskBand::_RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumbnailId)
+{
+    // @MOD Skipped telemetry ShellTraceID_RegisterThumbnail_Start
+    //SHTracePerfDWORDDWORD(&ShellTraceId_Taskbar_RegisterThumbnail_Start, hWnd, *phThumbnailId);
+
+    if (*phThumbnailId)
+        DwmUnregisterThumbnail(*phThumbnailId);
+    if (IsWindow(hwnd) && SUCCEEDED(DwmRegisterThumbnail(_thumbnailWnd[0], hwnd, (PHTHUMBNAIL)phThumbnailId)))
+    {
+        DWM_THUMBNAIL_PROPERTIES ptnProperties;
+        DWM_THUMBNAIL_PROPERTIES* v4 = *phThumbnailId;
+        ptnProperties.dwFlags = 20;
+        ptnProperties.opacity = -1;
+        ptnProperties.fSourceClientAreaOnly = 1;
+        DwmUpdateThumbnailProperties(v4, &ptnProperties);
+    }
+
+    // @MOD Skipped telemetry ShellTraceID_RegisterThumbnail_Stop
+    //SHTracePerfDWORDDWORD(&ShellTraceId_Taskbar_RegisterThumbnail_Stop, hWnd, *phThumbnailId);
+}
+
+void CTaskBand::_ShowThumbnail(HWND hwnd, WPARAM wParam, char a4)
+{
+    //big func
+    ;
+}
+
+void CTaskBand::_UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4)
+{
+    TBBUTTONINFOW tbbi;
+    WCHAR buffer[260];
+    tbbi.cbSize = 32;
+    tbbi.pszText = buffer;
+    tbbi.dwMask = TBIF_TEXT;
+    tbbi.cchText = 260;
+    if (SendMessageW(hwnd, TB_GETBUTTONINFOW, wParam, (LPARAM)&tbbi) != -1)
+    {
+        SetWindowTextW(_thumbnailWnd[0], buffer);
+        HWND* v5 = &_thumbnailWnd[a4];
+        int v6 = a4;
+        while (v6)
+        {
+            SetWindowTextW(*v5--, buffer);
+            --v6;
+        }
+    }
+}
+
 HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
 {
     HRESULT hr = E_FAIL;
