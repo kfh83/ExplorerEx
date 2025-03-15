@@ -138,7 +138,7 @@ protected:
     void _InitializeThumbnailMetrics();
     void _RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumbnailId);
     void _ShowThumbnail(HWND hwnd, WPARAM wParam, char a4);     // TODO
-    //void _UpdateThumbnailBackgroundBrush(DWORD pcrColorization, BOOL pfOpaqueBlend); // TODO
+    void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
     void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4);
 
     void _RealityCheck();

@@ -4760,6 +4760,50 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, WPARAM wParam, char a4)
     ;
 }
 
+#define GET_ARGB_A(argb) ((argb & 0xff000000) >> 24)
+#define GET_ARGB_R(argb) ((argb & 0x00ff0000) >> 16)
+#define GET_ARGB_G(argb) ((argb & 0x0000ff00) >> 8)
+#define GET_ARGB_B(argb) ((argb & 0x000000ff))
+
+void CTaskBand::_UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend)
+{
+    if (!fOpaqueBlend || !dword_144_1 && SUCCEEDED(DwmGetColorizationColor(&crColorization, &fOpaqueBlend)))
+    {
+        dword_144_1 = 0;
+
+        DWORD dwThemeBaseColorization;
+        if (GetThemeInt(_hTheme, 0, 0, TMT_COLORIZATIONCOLOR, (int *)&dwThemeBaseColorization) >= 0)
+        {
+            DWORD dwOpacity = GET_ARGB_A(crColorization);
+            DWORD dwOpacityBlend = 256 - GET_ARGB_A(crColorization);
+
+            DWORD dwThemeBaseRed = MulDiv(GET_ARGB_R(dwThemeBaseColorization), dwOpacityBlend, 256);
+            DWORD dwRed = MulDiv(GET_ARGB_R(crColorization), dwOpacity, 256) + dwThemeBaseRed;
+
+            DWORD dwThemeBaseGreen = MulDiv(GET_ARGB_G(dwThemeBaseColorization), dwOpacityBlend, 256);
+            DWORD dwGreen = MulDiv(GET_ARGB_G(crColorization), dwOpacity, 256) + dwThemeBaseGreen;
+
+            DWORD dwThemeBaseBlue = MulDiv(GET_ARGB_B(dwThemeBaseColorization), dwOpacityBlend, 256);
+            DWORD dwBlue = MulDiv(GET_ARGB_B(crColorization), dwOpacity, 256) + dwThemeBaseBlue;
+
+            HBRUSH hBrush = CreateSolidBrush(RGB(dwRed, dwGreen, dwBlue));
+            if (hBrush)
+            {
+                HGDIOBJ hBrushOld = (HGDIOBJ)SetClassLongPtrW(_thumbnailWnd[0], GCLP_HBRBACKGROUND, (LONG)hBrush);
+                if (hBrushOld)
+                {
+                    DeleteObject(hBrushOld);
+                    dword_144_1 = 1;
+                }
+                else
+                {
+                    DeleteObject(hBrush);
+                }
+            }
+        }
+    }
+}
+
 void CTaskBand::_UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4)
 {
     TBBUTTONINFOW tbbi;
