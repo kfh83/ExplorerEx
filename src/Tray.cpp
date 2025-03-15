@@ -200,7 +200,7 @@ EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
 
 BOOL CTray::_CreateClockWindow()
 {
-    _hwndNotify = _trayNotify.TrayNotifyCreate(_hwnd, IDC_CLOCK, hinstCabinet);
+    _hwndNotify = _trayNotify.TrayNotifyCreate(_hwnd, IDC_CLOCK, g_hinstCabinet);
     SendMessage(_hwndNotify, TNM_UPDATEVERTICAL, 0, !STUCK_HORIZONTAL(_uStuckPlace));
 
     return BOOLFROMPTR(_hwndNotify);
@@ -213,7 +213,7 @@ BOOL CTray::_InitTrayClass()
     wc.lpszClassName = TEXT("Shell_TrayWnd");
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = s_WndProc;
-    wc.hInstance = hinstCabinet;
+    wc.hInstance = g_hinstCabinet;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
     wc.cbWndExtra = sizeof(LONG_PTR);
@@ -761,7 +761,7 @@ void CTray::_CreateTrayTips()
         WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
         CW_USEDEFAULT, CW_USEDEFAULT,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        _hwnd, NULL, hinstCabinet,
+        _hwnd, NULL, g_hinstCabinet,
         NULL);
 
     if (_hwndTrayTips)
@@ -778,7 +778,7 @@ void CTray::_CreateTrayTips()
         ti.hwnd = _hwnd;
         ti.uId = (UINT_PTR)_startButton._hwndStartBtn;
         ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_STARTBUTTONTIP);
-        ti.hinst = hinstCabinet;
+        ti.hinst = g_hinstCabinet;
         SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
 
         HWND hwndClock = _GetClockWindow();
@@ -991,7 +991,7 @@ LRESULT CTray::_OnCreateAsync()
         StopCAP();
     }
 
-    _hMainAccel = LoadAccelerators(hinstCabinet, MAKEINTRESOURCE(ACCEL_TRAY));
+    _hMainAccel = LoadAccelerators(g_hinstCabinet, MAKEINTRESOURCE(ACCEL_TRAY));
 
     _RegisterGlobalHotkeys();
 
@@ -1465,7 +1465,7 @@ void CTray::_CreateTrayWindow()
 
     CreateWindowEx(dwExStyle, TEXT("Shell_TrayWnd"), NULL,
         WS_CLIPCHILDREN | WS_POPUP,
-        0, 0, 0, 0, NULL, NULL, hinstCabinet, (void*)this);
+        0, 0, 0, 0, NULL, NULL, g_hinstCabinet, (void*)this);
 
 
     // Fix for DWM borders on classic theme
@@ -3529,7 +3529,7 @@ BOOL _ExecItemByPidls(HWND hwnd, LPITEMIDLIST pidlFolder, LPITEMIDLIST pidlItem)
         {
             TCHAR szPath[MAX_PATH];
             SHGetPathFromIDList(pidlFolder, szPath);
-            ShellMessageBox(hinstCabinet, hwnd, MAKEINTRESOURCE(IDS_CANTFINDSPECIALDIR),
+            ShellMessageBox(g_hinstCabinet, hwnd, MAKEINTRESOURCE(IDS_CANTFINDSPECIALDIR),
                 NULL, MB_ICONEXCLAMATION, szPath);
         }
     }
@@ -4666,7 +4666,7 @@ void CTray::_CheckForRogueProgramFile()
                 {
 
                     iRet = SHMessageBoxCheckExW(GetDesktopWindow(),
-                        hinstCabinet,
+                        g_hinstCabinet,
                         MAKEINTRESOURCE(DLG_PROGRAMFILECONFLICT),
                         RogueProgramFileDlgProc,
                         (void*)szRogueFileName,
@@ -6085,7 +6085,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if ((!_fSysSizing || !g_fDragFullWindows) &&
                 (!wParam || LOWORD(_SetAutoHideState(FALSE))))
             {
-                ShellMessageBox(hinstCabinet, hwnd,
+                ShellMessageBox(g_hinstCabinet, hwnd,
                     MAKEINTRESOURCE(IDS_ALREADYAUTOHIDEBAR),
                     MAKEINTRESOURCE(IDS_TASKBAR), MB_OK | MB_ICONINFORMATION);
             }
@@ -6461,7 +6461,7 @@ DWORD CTray::_PropertiesThreadProc(DWORD dwFlags)
     dwExStyle |= IS_BIDI_LOCALIZED_SYSTEM() ? dwExStyleRTLMirrorWnd : 0L;
 
     _hwndProp = hwnd = CreateWindowEx(dwExStyle, TEXT("static"), NULL, 0,
-        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hinstCabinet, NULL);
+        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, g_hinstCabinet, NULL);
 
     #define IDI_STTASKBR 40         // stolen from shell32\ids.h
     if (_hwndProp)
@@ -6585,8 +6585,8 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
         TCHAR szTemplate[30];
         TCHAR szCommand[30];
         TCHAR szMenu[64];
-        LoadString(hinstCabinet, IDS_UNDOTEMPLATE, szTemplate, ARRAYSIZE(szTemplate));
-        LoadString(hinstCabinet, _pPositions->idRes, szCommand, ARRAYSIZE(szCommand));
+        LoadString(g_hinstCabinet, IDS_UNDOTEMPLATE, szTemplate, ARRAYSIZE(szTemplate));
+        LoadString(g_hinstCabinet, _pPositions->idRes, szCommand, ARRAYSIZE(szCommand));
         StringCchPrintf(szMenu, ARRAYSIZE(szMenu), szTemplate, szCommand);
         ModifyMenu(hmContext, IDM_UNDO, MF_BYCOMMAND | MF_STRING, IDM_UNDO, szMenu);
     }
@@ -6594,7 +6594,7 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
     if (g_fDesktopRaised)
     {
         TCHAR szHideDesktop[64];
-        LoadString(hinstCabinet, IDS_HIDEDESKTOP, szHideDesktop, ARRAYSIZE(szHideDesktop));
+        LoadString(g_hinstCabinet, IDS_HIDEDESKTOP, szHideDesktop, ARRAYSIZE(szHideDesktop));
         ModifyMenu(hmContext, IDM_TOGGLEDESKTOP, MF_BYCOMMAND | MF_STRING, IDM_TOGGLEDESKTOP, szHideDesktop);
     }
 
@@ -6718,7 +6718,7 @@ void _RunFileDlg(HWND hwnd, UINT idIcon, LPCITEMIDLIST pidlWorkingDir, UINT idTi
     dwFlags |= RFD_USEFULLPATHDIR;
     szWorkingDir[0] = 0;
 
-    hIcon = idIcon ? LoadIcon(hinstCabinet, MAKEINTRESOURCE(idIcon)) : NULL;
+    hIcon = idIcon ? LoadIcon(g_hinstCabinet, MAKEINTRESOURCE(idIcon)) : NULL;
 
     if (!pidlWorkingDir || !SHGetPathFromIDList(pidlWorkingDir, szWorkingDir))
     {
@@ -6760,14 +6760,14 @@ void _RunFileDlg(HWND hwnd, UINT idIcon, LPCITEMIDLIST pidlWorkingDir, UINT idTi
 
     if (idTitle)
     {
-        LoadString(hinstCabinet, idTitle, szTitle, ARRAYSIZE(szTitle));
+        LoadString(g_hinstCabinet, idTitle, szTitle, ARRAYSIZE(szTitle));
         lpszTitle = szTitle;
     }
     else
         lpszTitle = NULL;
     if (idPrompt)
     {
-        LoadString(hinstCabinet, idPrompt, szPrompt, ARRAYSIZE(szPrompt));
+        LoadString(g_hinstCabinet, idPrompt, szPrompt, ARRAYSIZE(szPrompt));
         lpszPrompt = szPrompt;
     }
     else
@@ -7101,7 +7101,7 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
     }
 
     HWND hwnd = CreateWindowEx(WS_EX_TOOLWINDOW, TEXT("static"), NULL, 0,
-        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hinstCabinet, NULL);
+        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, g_hinstCabinet, NULL);
     if (hwnd)
     {
         BOOL fSimple = FALSE;
@@ -7205,7 +7205,7 @@ void CTray::_RunDlg()
     {
         TCHAR szRunDlgTitle[MAX_PATH];
         HWND  hwndOldRun;
-        LoadString(hinstCabinet, IDS_RUNDLGTITLE, szRunDlgTitle, ARRAYSIZE(szRunDlgTitle));
+        LoadString(g_hinstCabinet, IDS_RUNDLGTITLE, szRunDlgTitle, ARRAYSIZE(szRunDlgTitle));
 
         // See if there is already a run dialog up, and if so, try to activate it
 
@@ -7403,7 +7403,7 @@ void _ExecResourceCmd(UINT ids)
 {
     TCHAR szCmd[2 * MAX_PATH];
 
-    if (LoadString(hinstCabinet, ids, szCmd, SIZECHARS(szCmd)))
+    if (LoadString(g_hinstCabinet, ids, szCmd, SIZECHARS(szCmd)))
     {
         SHELLEXECUTEINFO sei = { 0 };
 

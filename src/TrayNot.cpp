@@ -1452,7 +1452,7 @@ LRESULT CALLBACK CTrayNotify::ChevronSubClassWndProc(HWND hwnd, UINT uMsg, WPARA
                     ti.hwnd = pTrayNotify->_hwndNotify;
                     ti.uId = (UINT_PTR)pTrayNotify->_hwndChevron;
                     ti.lpszText = (LPTSTR)MAKEINTRESOURCE(!pTrayNotify->_fBangMenuOpen ? IDS_SHOWDEMOTEDTIP : IDS_HIDEDEMOTEDTIP);
-                    ti.hinst = hinstCabinet;
+                    ti.hinst = g_hinstCabinet;
 
                     SendMessage(pTrayNotify->_hwndChevronToolTip, TTM_UPDATETIPTEXT, 0, (LPARAM)(LPTOOLINFO)&ti); 
                     bBangMenuOpenLastTime = pTrayNotify->_fBangMenuOpen;
@@ -1602,10 +1602,10 @@ void CTrayNotify::_ShowChevronInfoTip()
     if (m_TrayItemRegistry.ShouldChevronInfoTipBeShown() && !SHRestricted(REST_NOSMBALLOONTIP))
     {
         TCHAR szInfoTitle[64];
-        LoadString(hinstCabinet, IDS_BANGICONINFOTITLE, szInfoTitle, ARRAYSIZE(szInfoTitle));
+        LoadString(g_hinstCabinet, IDS_BANGICONINFOTITLE, szInfoTitle, ARRAYSIZE(szInfoTitle));
 
         TCHAR szInfoTip[256];
-        LoadString(hinstCabinet, IDS_BANGICONINFOTIP1, szInfoTip, ARRAYSIZE(szInfoTip));
+        LoadString(g_hinstCabinet, IDS_BANGICONINFOTIP1, szInfoTip, ARRAYSIZE(szInfoTip));
 
         _SetInfoTip(_hwndNotify, UID_CHEVRONBUTTON, szInfoTip, szInfoTitle, 
                 TT_CHEVRON_INFOTIP_INTERVAL, NIIF_INFO, FALSE);
@@ -1710,7 +1710,7 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     _idMouseActiveIcon      = -1;
 
     _hwndNotify = hWnd;
-    _hwndClock   = ClockCtl_Create(_hwndNotify, IDC_CLOCK, hinstCabinet);
+    _hwndClock   = ClockCtl_Create(_hwndNotify, IDC_CLOCK, g_hinstCabinet);
 
     _hwndPager = CreateWindowEx(0, WC_PAGESCROLLER, NULL,
                         WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | PGS_HORZ,
@@ -1718,11 +1718,11 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     _hwndToolbar = CreateWindowEx(WS_EX_TOOLWINDOW, TOOLBARCLASSNAME, NULL,
                         WS_VISIBLE | WS_CHILD | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | WS_CLIPCHILDREN | TBSTYLE_TRANSPARENT |
                         WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CCS_NORESIZE | TBSTYLE_WRAPABLE,
-                        0, 0, 0, 0, _hwndPager, 0, hinstCabinet, NULL);
+                        0, 0, 0, 0, _hwndPager, 0, g_hinstCabinet, NULL);
                         
     _hwndChevron = CreateWindowEx(  0, WC_BUTTON, NULL, 
                         WS_VISIBLE | WS_CHILD, 
-                        0, 0, 0, 0, _hwndNotify, (HMENU)IDC_TRAYNOTIFY_CHEVRON, hinstCabinet, NULL);
+                        0, 0, 0, 0, _hwndNotify, (HMENU)IDC_TRAYNOTIFY_CHEVRON, g_hinstCabinet, NULL);
 
     if (_hwndNotify)
     {
@@ -1732,11 +1732,11 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
 
         _hwndChevronToolTip = CreateWindowEx( dwExStyle, TOOLTIPS_CLASS, NULL,
                                 WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
-                                0, 0, 0, 0, _hwndNotify, NULL, hinstCabinet, NULL);
+                                0, 0, 0, 0, _hwndNotify, NULL, g_hinstCabinet, NULL);
 
         _hwndInfoTip = CreateWindowEx( dwExStyle, TOOLTIPS_CLASS, NULL,
                                 WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP | TTS_BALLOON | TTS_CLOSE,
-                                0, 0, 0, 0, _hwndNotify, NULL, hinstCabinet, NULL);
+                                0, 0, 0, 0, _hwndNotify, NULL, g_hinstCabinet, NULL);
 
         _himlIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
                                         SHGetImageListFlags(_hwndToolbar), 0, 1);
@@ -1779,7 +1779,7 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
         
         // Set the window title to help out accessibility apps
         TCHAR szTitle[64];
-        LoadString(hinstCabinet, IDS_TRAYNOTIFYTITLE, szTitle, ARRAYSIZE(szTitle));
+        LoadString(g_hinstCabinet, IDS_TRAYNOTIFYTITLE, szTitle, ARRAYSIZE(szTitle));
         SetWindowText(_hwndToolbar, szTitle);
 
         // Toolbar settings - customize the tray toolbar...
@@ -1805,7 +1805,7 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
         ti.uFlags = TTF_IDISHWND | TTF_EXCLUDETOOLAREA;
         ti.uId = (UINT_PTR)_hwndChevron;
         ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_SHOWDEMOTEDTIP);
-        ti.hinst = hinstCabinet;
+        ti.hinst = g_hinstCabinet;
 
         SetWindowZorder(_hwndChevronToolTip, HWND_TOPMOST);
         // Set the Chevron as the tool for the tooltip

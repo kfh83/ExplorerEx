@@ -83,7 +83,7 @@ void DoSetMark(LPCSTR pszMark, ULONG cbSz)
 //Do not change this stock5.lib use this as a BOOL not a bit.
 BOOL g_bMirroredOS = FALSE;
 
-HINSTANCE hinstCabinet = 0;
+HINSTANCE g_hinstCabinet = 0;
 
 CRITICAL_SECTION g_csDll = { 0 };
 
@@ -315,7 +315,7 @@ BOOL ExecuteOldEqualsLine(LPTSTR pszCmdLine, int nCmdShow)
 
                 if (!ShellExecuteEx(&ei))
                 {
-                    ShellMessageBox(hinstCabinet,
+                    ShellMessageBox(g_hinstCabinet,
                                     NULL,
                                     MAKEINTRESOURCE(IDS_WINININORUN),
                                     MAKEINTRESOURCE(IDS_DESKTOP),
@@ -1029,8 +1029,8 @@ void DisplayCleanBootMsg()
     WCHAR szTitle[80];
     WCHAR szMessage[1024];
 
-    LoadString(hinstCabinet, IDS_DESKTOP, szTitle, ARRAYSIZE(szTitle));
-    LoadString(hinstCabinet, uiMessage, szMessage, ARRAYSIZE(szMessage));
+    LoadString(g_hinstCabinet, IDS_DESKTOP, szTitle, ARRAYSIZE(szTitle));
+    LoadString(g_hinstCabinet, uiMessage, szMessage, ARRAYSIZE(szMessage));
 
     // on IA64 the msgbox will always return IDOK, so this "if" will always fail.
     if (IDNO == MessageBox(NULL, szMessage, szTitle, uiMessageBoxFlags))
@@ -1690,8 +1690,8 @@ void _CheckScreenResolution(void)
     WCHAR szText[512];
     SHELLREMINDER sr = {0};
 
-    LoadString(hinstCabinet, IDS_FIXSCREENRES_TITLE, szTitle, ARRAYSIZE(szTitle));
-    LoadString(hinstCabinet, IDS_FIXSCREENRES_TEXT, szText, ARRAYSIZE(szText));
+    LoadString(g_hinstCabinet, IDS_FIXSCREENRES_TITLE, szTitle, ARRAYSIZE(szTitle));
+    LoadString(g_hinstCabinet, IDS_FIXSCREENRES_TEXT, szText, ARRAYSIZE(szText));
 
     sr.cbSize = sizeof (sr);
     sr.pszName = L"Microsoft.FixScreenResolution";
@@ -1718,8 +1718,8 @@ void _OfferTour(void)
     WCHAR szText[512];
     SHELLREMINDER sr = {0};
 
-    LoadString(hinstCabinet, IDS_OFFERTOUR_TITLE, szTitle, ARRAYSIZE(szTitle));
-    LoadString(hinstCabinet, IDS_OFFERTOUR_TEXT, szText, ARRAYSIZE(szText));
+    LoadString(g_hinstCabinet, IDS_OFFERTOUR_TITLE, szTitle, ARRAYSIZE(szTitle));
+    LoadString(g_hinstCabinet, IDS_OFFERTOUR_TEXT, szText, ARRAYSIZE(szText));
 
     sr.cbSize = sizeof (sr);
     sr.pszName = L"Microsoft.OfferTour";
@@ -1891,7 +1891,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
     if (g_dwProfileCAP & 0x00000001)
         StartCAP();
 
-    hinstCabinet = hInstance;
+    g_hinstCabinet = hInstance;
 
     if (SUCCEEDED(_Module.Init(ObjectMap, hInstance)))
     {

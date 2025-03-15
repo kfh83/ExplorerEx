@@ -549,7 +549,7 @@ HMENU GetStaticStartMenu(BOOL fEdit)
             }
             StringCchPrintf(szMenuText,ARRAYSIZE(szMenuText), szTemp, szUserName);
         }
-        else if (!LoadString(hinstCabinet, IDS_LOGOFFNOUSER, 
+        else if (!LoadString(g_hinstCabinet, IDS_LOGOFFNOUSER, 
                                           szMenuText, ARRAYSIZE(szMenuText)))
         {
             // mem error, use the current string.
@@ -586,7 +586,7 @@ HMENU GetStaticStartMenu(BOOL fEdit)
             MENUITEMINFO    mii;
             TCHAR           szMenuText[256];
 
-            (int)LoadString(hinstCabinet, IDS_TURNOFFCOMPUTER, szMenuText, ARRAYSIZE(szMenuText));
+            (int)LoadString(g_hinstCabinet, IDS_TURNOFFCOMPUTER, szMenuText, ARRAYSIZE(szMenuText));
             ZeroMemory(&mii, sizeof(mii));
             mii.cbSize = sizeof(mii);
             mii.fMask = MIIM_TYPE;

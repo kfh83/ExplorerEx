@@ -136,7 +136,7 @@ BOOL Reg_SetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *lpData,
 HMENU LoadMenuPopup(LPCTSTR id)
 {
     HMENU hMenuSub = NULL;
-    HMENU hMenu = LoadMenu(hinstCabinet, id);
+    HMENU hMenu = LoadMenu(g_hinstCabinet, id);
     if (hMenu) {
         hMenuSub = GetSubMenu(hMenu, 0);
         if (hMenuSub) {
@@ -180,7 +180,7 @@ BOOL _Restricted(HWND hwnd, RESTRICTIONS rest)
 {
     if (SHRestricted(rest))
     {
-        ShellMessageBox(hinstCabinet, hwnd, MAKEINTRESOURCE(IDS_RESTRICTIONS),
+        ShellMessageBox(g_hinstCabinet, hwnd, MAKEINTRESOURCE(IDS_RESTRICTIONS),
             MAKEINTRESOURCE(IDS_RESTRICTIONSTITLE), MB_OK|MB_ICONSTOP);
         return TRUE;
     }

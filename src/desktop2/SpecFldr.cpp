@@ -24,7 +24,7 @@ BOOL ShouldShowOEMLink();
 typedef HRESULT (CALLBACK *CREATESHELLMENUCALLBACK)(IShellMenuCallback **ppsmc);
 typedef BOOL (CALLBACK *SHOULDSHOWFOLDERCALLBACK)();
 
-EXTERN_C HINSTANCE hinstCabinet;
+EXTERN_C HINSTANCE g_hinstCabinet;
 
 void ShowFolder(UINT csidl);
 BOOL IsNetConPidlRAS(IShellFolder2 *psfNetCon, LPCITEMIDLIST pidlNetConItem);

@@ -302,7 +302,7 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     {
         if (!_hPlaceholderIcon)
         {
-            _hPlaceholderIcon = (HICON)LoadImage(hinstCabinet, 
+            _hPlaceholderIcon = (HICON)LoadImage(g_hinstCabinet, 
                 MAKEINTRESOURCE(ICO_TRAYPROP_PLACEHOLDER), IMAGE_ICON,
                 GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 
                 LR_LOADMAP3DCOLORS);
@@ -332,7 +332,7 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     if (!ni.pszIconText || ni.pszIconText[0] == 0)
     {
         TCHAR szTemp[MAX_PATH];
-        if (LoadString(hinstCabinet, IDS_NOTITLE, szTemp, ARRAYSIZE(szTemp)))
+        if (LoadString(g_hinstCabinet, IDS_NOTITLE, szTemp, ARRAYSIZE(szTemp)))
             ni.SetIconText(szTemp);
         // ni.m_strText.LoadString(IDS_NOTITLE);
     }
@@ -782,7 +782,7 @@ public:
         CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)NULL, nStartPage, hwndParent),
         _dwFlags(dwFlags)
     {
-        LoadString(hinstCabinet, IDS_STARTMENUANDTASKBAR, szPath, ARRAYSIZE(szPath));
+        LoadString(g_hinstCabinet, IDS_STARTMENUANDTASKBAR, szPath, ARRAYSIZE(szPath));
         SetTitle(szPath);
 
         HPROPSHEETPAGE hpage;
@@ -790,7 +790,7 @@ public:
 
         psp.dwSize = sizeof(psp);
         psp.dwFlags = PSP_DEFAULT;
-        psp.hInstance = hinstCabinet;
+        psp.hInstance = g_hinstCabinet;
 
         //taskbar page
         psp.pszTemplate = MAKEINTRESOURCE(DLG_TRAY_OPTIONS);
@@ -972,14 +972,14 @@ public:
         //ASSERT(_prto == NULL);
         //ASSERT(_pph == NULL);
 
-        LoadString(hinstCabinet, IDS_SPCUST_TITLE, _szTitle, ARRAYSIZE(_szTitle));
+        LoadString(g_hinstCabinet, IDS_SPCUST_TITLE, _szTitle, ARRAYSIZE(_szTitle));
         SetTitle(_szTitle);
 
         m_psh.dwFlags |= PSH_NOAPPLYNOW;
 
         psp.dwSize = sizeof(psp);
         psp.dwFlags = PSP_DEFAULT;
-        psp.hInstance = hinstCabinet;
+        psp.hInstance = g_hinstCabinet;
 
         //General page
         psp.pszTemplate = MAKEINTRESOURCE(DLG_PAGE_SMGENERAL);
@@ -1839,7 +1839,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
                     break;
                 }
 
-                if (DialogBoxParam(hinstCabinet, MAKEINTRESOURCE(DLG_STARTMENU_CONFIG), hDlg, AdvancedOptDlgProc, (LPARAM)&_Adv))
+                if (DialogBoxParam(g_hinstCabinet, MAKEINTRESOURCE(DLG_STARTMENU_CONFIG), hDlg, AdvancedOptDlgProc, (LPARAM)&_Adv))
                 {
                     // if anything changed, let the propsheet know
                     SendPSMChanged(hDlg);
@@ -2119,7 +2119,7 @@ BOOL ExecExplorerAtStartMenu(HWND hDlg)
 
         ei.lpParameters = szParams;
         ei.nShow = SW_SHOWDEFAULT;
-        ei.hInstApp = hinstCabinet;
+        ei.hInstApp = g_hinstCabinet;
 
         fRet = ShellExecuteEx(&ei);
     }
@@ -2643,7 +2643,7 @@ void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource)
 
     if (iResource)
     {
-        hbm = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0,0, LR_LOADMAP3DCOLORS);
+        hbm = (HBITMAP)LoadImage(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0,0, LR_LOADMAP3DCOLORS);
     }
     else
     {

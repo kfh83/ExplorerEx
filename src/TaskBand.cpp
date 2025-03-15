@@ -523,7 +523,7 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
 
         HWND hwnd = CreateWindowEx(0, c_szTaskSwClass, NULL,
                 WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
-                0, 0, 0, 0, hwndParent, NULL, hinstCabinet, (void*)(CImpWndProc*)this);
+                0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
 
         SetWindowTheme(hwnd, c_wzTaskBandTheme, NULL);
     }
@@ -3796,17 +3796,17 @@ HWND CTaskBand::_CreateFakeWindow(HWND hwndOwner)
 {
     WNDCLASSEX wc;
 
-    if (!GetClassInfoEx(hinstCabinet, TEXT("_ExplorerFakeWindow"), &wc))
+    if (!GetClassInfoEx(g_hinstCabinet, TEXT("_ExplorerFakeWindow"), &wc))
     {
         ZeroMemory(&wc, sizeof(wc));
         wc.cbSize = sizeof(wc);
         wc.lpfnWndProc = DefWindowProc;
-        wc.hInstance = hinstCabinet;
+        wc.hInstance = g_hinstCabinet;
         wc.lpszClassName = TEXT("_ExplorerFakeWindow");
         RegisterClassEx(&wc);
     }
     return CreateWindow(TEXT("_ExplorerFakeWindow"), NULL, WS_POPUP | WS_SYSMENU, 
-            0, 0, 0, 0, hwndOwner, NULL, hinstCabinet, NULL);
+            0, 0, 0, 0, hwndOwner, NULL, g_hinstCabinet, NULL);
 }
 
 void CTaskBand::_HandleSysMenuTimeout()
@@ -4477,7 +4477,7 @@ LRESULT CTaskBand::_HandleCreate()
                             TBSTYLE_LIST | TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | CCS_NORESIZE | TBSTYLE_TRANSPARENT);
     if (_tb)
     {
-        SendMessage(_tb, TB_ADDSTRING, (WPARAM)hinstCabinet, (LPARAM)IDS_BOGUSLABELS);
+        SendMessage(_tb, TB_ADDSTRING, (WPARAM)g_hinstCabinet, (LPARAM)IDS_BOGUSLABELS);
 
         _OpenTheme();
         SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
@@ -4529,7 +4529,7 @@ LRESULT CTaskBand::_HandleCreate()
 
         // set window text to give accessibility apps something to read
         TCHAR szTitle[80];
-        LoadString(hinstCabinet, IDS_TASKBANDTITLE, szTitle, ARRAYSIZE(szTitle));
+        LoadString(g_hinstCabinet, IDS_TASKBANDTITLE, szTitle, ARRAYSIZE(szTitle));
         SetWindowText(_hwnd, szTitle);
         SetWindowText(_tb, szTitle);
 
@@ -6181,7 +6181,7 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //
         // tell the user they can't drop objects on the taskbar
         //
-        ShellMessageBox(hinstCabinet, _hwnd,
+        ShellMessageBox(g_hinstCabinet, _hwnd,
             MAKEINTRESOURCE(IDS_TASKDROP_ERROR), MAKEINTRESOURCE(IDS_TASKBAR),
             MB_ICONHAND | MB_OK);
         break;
@@ -6297,13 +6297,13 @@ BOOL CTaskBand::_RegisterWindowClass()
     WNDCLASSEX wc = {0};
     wc.cbSize = sizeof(wc);
 
-    if (GetClassInfoEx(hinstCabinet, c_szTaskSwClass, &wc))
+    if (GetClassInfoEx(g_hinstCabinet, c_szTaskSwClass, &wc))
         return TRUE;
 
     wc.lpszClassName    = c_szTaskSwClass;
     wc.lpfnWndProc      = s_WndProc;
     wc.cbWndExtra       = sizeof(LONG_PTR);
-    wc.hInstance        = hinstCabinet;
+    wc.hInstance        = g_hinstCabinet;
     wc.hCursor          = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground    = (HBRUSH)(COLOR_3DFACE + 1);
 

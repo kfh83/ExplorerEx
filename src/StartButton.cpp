@@ -608,7 +608,7 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
         int idResStartIcon = SHGetCurColorRes() <= 8 ? IDB_START16 : IDB_STARTCLASSIC;
 
         // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
-        HBITMAP hBmpStartIcon = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(idResStartIcon));
+        HBITMAP hBmpStartIcon = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(idResStartIcon));
 
         if (hBmpStartIcon)
         {
@@ -633,7 +633,7 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
                     ilcFlags = ILC_COLOR8 | ILC_MASK;
 
                     // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
-                    hBmpStartIconMask = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK));
+                    hBmpStartIconMask = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK));
                 }
 
                 if ((GetWindowLongW(_hwndStartBtn, GWL_EXSTYLE) & WS_EX_LAYOUTRTL) != 0)
@@ -676,7 +676,7 @@ BOOL CStartButton::InitBackgroundBitmap()
     // @MOD (isabella): Vista loads this bitmap from ShellBrd, but we store the bitmap in our own
     // module. Vista's original code is such (link against WinBrand.dll):
     //    _hbmpStartBkg = BrandingLoadBitmap(L"Shellbrd", 1001);
-    _hbmpStartBkg = LoadBitmap(hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
+    _hbmpStartBkg = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
 
     return _hbmpStartBkg != nullptr;
 }
