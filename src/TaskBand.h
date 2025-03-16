@@ -31,7 +31,7 @@ public:
     int iIconPref;
     BOOL fMarkedFullscreen;
     BOOL fHungApp;
-    HTHUMBNAIL hTh;
+    HTHUMBNAIL hThumbnail;
 };
 
 typedef TASKITEM *PTASKITEM;
@@ -132,14 +132,14 @@ protected:
     /* Vista thumbnail-related methods */
     int _CanShowThumbnail();
     void _CreateThumbnailWindows();
-    void _HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool hoveredItemInfo);
+    void _HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool fGlommed);
     void _HideThumbnail();
     void _HideThumbnailWindows();
     void _InitializeThumbnailMetrics();
     void _RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumbnailId);
-    void _ShowThumbnail(HWND hwnd, WPARAM wParam, char a4);     // TODO
+    void _ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu);
     void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
-    void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4);
+    void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int cThumbnails);
 
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
@@ -340,16 +340,11 @@ protected:
 
     HWND _thumbnailWnd[4];                ///< 30 confident
     INT _noOfThumbnails;                  ///< 3C confident
-    SIZE long_40;
-    SIZE long_44;
-    SIZE long_48;
-    SIZE long_4c;
-    SIZE _thumbnailpaddingX;
-    SIZE _thumbnailpaddingY;
-    SIZE long_58;
-    SIZE long_5c;
-    SIZE long_60;
-    SIZE long_64;
+    SIZE _sizeThumbnailImage;
+    SIZE _sizeThumbnailMargin;
+    SIZE _sizeThumbnailGroupOffset;
+    SIZE _sizeThumbnailTooltipMargin;
+    SIZE _sizeThumbnailTooltip;
     HWND hwnd_70_toolbar;                 ///< 70 confident
     UINT WM_FrostedWindow;                ///< 75 confident, made the name up
 
@@ -368,16 +363,19 @@ protected:
     IDropTarget *_dadDropTarget;          ///< 110 confident (shifted from 108 by 8)
     DWORD _dwInitialThumbDelayTime;        ///< 114 confident
     DWORD _dwInitialTooltipDelayTime;
-    DWORD _dwAutoPosDelayTime;
+    DWORD _dwAutoPopTooltipDelayTime;
     HWND _hwSomeHwnd;                     ///< 120 confident
     BOOL _canShowThumbnail;               ///< 124 confident
     DWORD *dword_ptr_128;
+    
+    // Set in CTaskBand::_HandleThumbnail
     HWND unkStruct_hwnd;
     int unkStruct_int;
-    char unkStruct_char;                  ///< 134 confident
+    char unkStruct_isGlommed;                  ///< 134 confident
     DWORD unkStruct_dword;
+
     DWORD dword_13C_tickCount;            ///< 13C confident
-    HWND hwnd_140;                        ///< 140 confident
+    HWND _hWndCurrentThumbnailTarget;                        ///< 140 confident
     char dword_144_1;
     char dword_144_2;
     char dword_144_3;

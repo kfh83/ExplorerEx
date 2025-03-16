@@ -4595,7 +4595,7 @@ void CTaskBand::_CreateThumbnailWindows()
     }
 }
 
-void CTaskBand::_HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool hoveredItemInfo)
+void CTaskBand::_HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool fGlommed)
 {
     _HideThumbnail();
     if (!hwnd || dword_ptr_128 || !_hTheme || !_CanShowThumbnail())
@@ -4615,12 +4615,12 @@ void CTaskBand::_HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool hover
     }
     if (_canShowThumbnail)
     {
-        _ShowThumbnail(hwnd, hotItemInfo->idNew, hoveredItemInfo);
+        _ShowThumbnail(hwnd, hotItemInfo->idNew, fGlommed);
     }
     else
     {
         UINT dwInitialThumbDelayTime = _dwInitialThumbDelayTime;
-        unkStruct_char = hoveredItemInfo;
+        unkStruct_isGlommed = fGlommed;
         _hwnd = hwnd;
         unkStruct_hwnd = hwnd;
         unkStruct_int = hotItemInfo->idNew;
@@ -4636,17 +4636,17 @@ void CTaskBand::_HideThumbnail()
 
     _HideThumbnailWindows();
 
-    LRESULT IndexByHwnd = _FindIndexByHwnd(hwnd_140);
+    LRESULT IndexByHwnd = _FindIndexByHwnd(_hWndCurrentThumbnailTarget);
     TASKITEM* Item = _GetItem(IndexByHwnd, NULL, 1);
     if (Item)
     {
         DWM_THUMBNAIL_PROPERTIES ptnProperties;
-        HTHUMBNAIL hTh = Item->hTh;
+        HTHUMBNAIL hTh = Item->hThumbnail;
         ptnProperties.dwFlags = 8;
         ptnProperties.fVisible = TRUE;
         DwmUpdateThumbnailProperties(hTh, &ptnProperties);
     }
-    hwnd_140 = NULL;
+    _hWndCurrentThumbnailTarget = NULL;
 }
 
 void CTaskBand::_HideThumbnailWindows()
@@ -4682,21 +4682,25 @@ void __stdcall SHLogicalToPhysicalDPI(SIZE *a1)
 
 void CTaskBand::_InitializeThumbnailMetrics()
 {
-    long_40.cx = 160;
-    long_44.cy = 160;
-    SHLogicalToPhysicalDPI(&long_40);
-    long_48.cx = 3;
-    long_4c.cy = 3;
-    SHLogicalToPhysicalDPI(&long_48);
-    _thumbnailpaddingX.cx = 3;
-    _thumbnailpaddingY.cy = 3;
-    SHLogicalToPhysicalDPI(&_thumbnailpaddingX);
-    long_60.cx = 0;
-    long_64.cy = 21;
-    SHLogicalToPhysicalDPI(&long_60);
-    long_58.cx = 0;
-    long_5c.cy = 2;
-    SHLogicalToPhysicalDPI(&long_58);
+    // The maximum dimensions of a thumbnail image.
+    _sizeThumbnailImage = { 160, 160 };
+    SHLogicalToPhysicalDPI(&_sizeThumbnailImage);
+
+    // The margin between a thumbnail and its relative toolbar.
+    _sizeThumbnailMargin = { 3, 3 };
+    SHLogicalToPhysicalDPI(&_sizeThumbnailMargin);
+
+    // The offset distance between each thumbnail in a group stack.
+    _sizeThumbnailGroupOffset = { 3, 3 };
+    SHLogicalToPhysicalDPI(&_sizeThumbnailGroupOffset);
+
+    // The height of a thumbnail tooltip.
+    _sizeThumbnailTooltip = { 0, 21 };
+    SHLogicalToPhysicalDPI(&_sizeThumbnailTooltip);
+
+    // The margin between a thumbnail tooltip and its thumbnail.
+    _sizeThumbnailTooltipMargin = { 0, 2 };
+    SHLogicalToPhysicalDPI(&_sizeThumbnailTooltipMargin);
 
     WCHAR szPath[260] = { 0 };
     memcpy(szPath, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer", 102);
@@ -4706,7 +4710,7 @@ void CTaskBand::_InitializeThumbnailMetrics()
     {
         _dwInitialThumbDelayTime = 500;
         _dwInitialTooltipDelayTime = 1000;
-        _dwAutoPosDelayTime = 5000;
+        _dwAutoPopTooltipDelayTime = 5000;
     }
     else
     {
@@ -4728,7 +4732,7 @@ void CTaskBand::_InitializeThumbnailMetrics()
         pdwType = REG_DWORD;
         pcbData = REG_DWORD;
         pvDefaultData = 5000;
-        SHRegQueryUSValueW(phNewUSKey, L"AutoPopTooltip", &pdwType, &_dwAutoPosDelayTime,
+        SHRegQueryUSValueW(phNewUSKey, L"AutoPopTooltip", &pdwType, &_dwAutoPopTooltipDelayTime,
             &pcbData, 0, &pvDefaultData, REG_DWORD);
     }
 }
@@ -4754,10 +4758,251 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumb
     //SHTracePerfDWORDDWORD(&ShellTraceId_Taskbar_RegisterThumbnail_Stop, hWnd, *phThumbnailId);
 }
 
-void CTaskBand::_ShowThumbnail(HWND hwnd, WPARAM wParam, char a4)
+// @MOD Skips telemetry ShellTraceId_Taskbar_ShowThumbnail_Stop on exit
+void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
 {
-    //big func
-    ;
+    // @MOD Skipped telemetry ShellTraceId_Taskbar_ShowThumbnail_Start
+
+    if (!this->_thumbnailWnd[0] || SendMessageW(hWnd, TB_GETHOTITEM, 0, 0) == -1)
+    {
+        return;
+    }
+
+    int iBtnId = wParam;
+    int iCommandId = SendMessageW(hWnd, TB_COMMANDTOINDEX, wParam, 0);
+    if (!fIsGlomMenu)
+    {
+        iBtnId = iCommandId;
+    }
+
+    TASKITEM *pTaskItem = _GetItem(iBtnId, NULL, TRUE);
+
+    if (!pTaskItem)
+    {
+        return;
+    }
+
+    TASKITEM *pThumbnailTaskItem = NULL;
+
+    if (!pTaskItem->hwnd)
+    {
+        int iGroupSize = _GetGroupSize(iBtnId);
+        pThumbnailTaskItem = _GetItem(iBtnId + iGroupSize, NULL, TRUE);
+    }
+    else
+    {
+        pThumbnailTaskItem = pTaskItem;
+    }
+
+    if (!pThumbnailTaskItem)
+    {
+        return;
+    }
+
+    if (!IsWindow(pThumbnailTaskItem->hwnd))
+    {
+        return;
+    }
+
+    _hWndCurrentThumbnailTarget = pThumbnailTaskItem->hwnd;
+
+    RECT rcTaskItem;
+    if (!SendMessageW(hWnd, TB_GETITEMRECT, iCommandId, (LPARAM)&rcTaskItem))
+    {
+        return;
+    }
+
+    if (fIsGlomMenu)
+    {
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        rcTaskItem.left = rect.left;
+        rcTaskItem.right = rect.right;
+    }
+
+    SIZE size = { 0 };
+    DwmQueryThumbnailSourceSize(pThumbnailTaskItem->hThumbnail, &size);
+    if (size.cx > 0 && size.cy > 0)
+    {
+        // The number of thumbnails, in the case of a group.
+        int cThumbnails = pTaskItem->hwnd ? 0 : _noOfThumbnails;
+
+        RECT rc;
+        SetRectEmpty(&rc);
+        DWORD dwExStyle = GetWindowLongW(this->_thumbnailWnd[0], GWL_EXSTYLE);
+        DWORD dwStyle = GetWindowLongW(this->_thumbnailWnd[0], GWL_STYLE);
+        AdjustWindowRectEx(&rc, dwStyle, FALSE, dwExStyle);
+
+        double fx;
+        if (size.cx < size.cy)
+        {
+            // Thumbnail image is wide:
+            fx = (double)_sizeThumbnailImage.cy * (double)size.cx / (double)size.cy + 0.5;
+        }
+        else
+        {
+            // Thumbnail image is tall or square:
+            fx = (double)_sizeThumbnailImage.cx;
+        }
+
+        double fy;
+        if (size.cy >= size.cx)
+        {
+            // Thumbnail image is wide:
+            fy = (double)_sizeThumbnailImage.cy;
+        }
+        else
+        {
+            // Thumbnail image is tall or square:
+            fy = (double)_sizeThumbnailImage.cx * (double)size.cy / (double)size.cx + 0.5;
+        }
+
+        int iWidth = (int)fx + RECTWIDTH(rc);
+        int iHeight = (int)fy + RECTHEIGHT(rc);
+
+        MapWindowPoints(hWnd, NULL, (LPPOINT)&rcTaskItem, 2);
+        int iPaddingWidth = cThumbnails * _sizeThumbnailGroupOffset.cx;
+
+        DWORD uStuckPlace = _ptray->getStuckPlace();
+
+        // If we're in a glom menu (and the taskbar isn't on the left), then we will manually override
+        // the stuck place of the thumbnail to act as though the "taskbar" is on the right so that the
+        // thumbnail shows to the left of the glom menu. This is not done for glom menus in left-aligned
+        // taskbars, which will keep their value of STICK_LEFT and show to the right of the menu, so as
+        // to not overlap.
+        if (fIsGlomMenu && uStuckPlace != STICK_LEFT)
+        {
+            uStuckPlace = STICK_RIGHT;
+        }
+
+        int x, y;
+
+        switch (uStuckPlace)
+        {
+            // Taskbar is on the top. Show the thumbnail below the taskbar.
+            case STICK_TOP:
+            {
+                x = (rcTaskItem.left + rcTaskItem.right - iWidth) / 2;
+                y = rcTaskItem.bottom + _sizeThumbnailMargin.cy;
+                break;
+            }
+
+            // Taskbar is on the bottom. Show the thumbnail above the taskbar.
+            case STICK_BOTTOM:
+            {
+                x = (rcTaskItem.left + rcTaskItem.right - iWidth) / 2;
+                y = rcTaskItem.top - iHeight - _sizeThumbnailMargin.cy;
+                break;
+            }
+
+            // Taskbar is on the left. Show the thumbnail to the right of the taskbar/glom menu.
+            case STICK_LEFT:
+            {
+                x = rcTaskItem.right + iPaddingWidth + _sizeThumbnailMargin.cx;
+                y = rcTaskItem.bottom - iHeight;
+                break;
+            }
+
+            // Thumbnail is on the right, OR we are a glom menu on a non-left-aligned taskbar.
+            // Show the thumbnail to the left of the taskbar/glom menu.
+            case STICK_RIGHT:
+            {
+                x = rcTaskItem.left - iWidth - _sizeThumbnailMargin.cx;
+                y = rcTaskItem.bottom - iHeight;
+                break;
+            }
+        }
+        
+        RECT rcDst;
+        HMONITOR hMonitor = MonitorFromRect(&rcTaskItem, MONITOR_DEFAULTTONEAREST);
+        GetMonitorRects(hMonitor, &rcDst, FALSE);
+
+        // The X position of the thumbnail should be clamped according to the end of the rcDestination.
+        // Project the value so that we can adjust it further later.
+        int iProjectedX = x;
+        if (x >= rcDst.right - iWidth)
+        {
+            iProjectedX = rcDst.right - iWidth;
+        }
+
+        // The X position is clamped to align with the rcDestination. Clamp it to one of the edges.
+        if (iProjectedX <= iPaddingWidth + rcDst.left)
+        {
+            x = iPaddingWidth + rcDst.left;
+        }
+        else if (x >= rcDst.right - iWidth)
+        {
+            x = rcDst.right - iWidth;
+        }
+
+        // In the case of glom menu thumbnails, display the thumbnail to the right of
+        // the menu if there is not enough space on the left.
+        if (fIsGlomMenu && rcTaskItem.left < x + iWidth + _sizeThumbnailMargin.cx)
+        {
+            x = rcTaskItem.right + _sizeThumbnailMargin.cx;
+        }
+
+        // Ensure that there is enough room on screen above the thumbnail to display the
+        // tooltip:
+        if (y <= rcDst.top + _sizeThumbnailTooltip.cy + _sizeThumbnailTooltipMargin.cy)
+        {
+            y = rcDst.top + _sizeThumbnailTooltip.cy + _sizeThumbnailTooltipMargin.cy;
+        }
+
+        _UpdateThumbnailBackgroundBrush(0, TRUE);
+        SetWindowPos(this->_thumbnailWnd[0], 0, x, y, iWidth, iHeight, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+
+        RECT rcDestination;
+        rcDestination.right = fx;
+        rcDestination.left = 0;
+        rcDestination.top = 0;
+        rcDestination.bottom = fy;
+
+        DWM_THUMBNAIL_PROPERTIES tnProperties;
+        tnProperties.dwFlags = DWM_TNP_VISIBLE | DWM_TNP_RECTDESTINATION;
+        tnProperties.rcDestination = rcDestination;
+        tnProperties.fVisible = TRUE;
+
+        if (SUCCEEDED(DwmUpdateThumbnailProperties(pThumbnailTaskItem->hThumbnail, &tnProperties)))
+        {
+            _UpdateThumbnailTitle(hWnd, wParam, cThumbnails);
+
+            if (cThumbnails > 0) // For groups
+            {
+                HDWP hdwp = BeginDeferWindowPos(cThumbnails + 1);
+                if (hdwp)
+                {
+                    DeferWindowPos(hdwp, this->_thumbnailWnd[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
+
+                    for (int i = cThumbnails; i >= 1; i--)
+                    {
+                        HWND hWndDefer = _thumbnailWnd[i];
+
+                        // Offset each thumbnail in the group to the top left by the
+                        // thumbnail offset amount.
+                        DeferWindowPos(
+                            hdwp,
+                            hWndDefer,
+                            this->_thumbnailWnd[0],
+                            x - i * this->_sizeThumbnailGroupOffset.cx,
+                            y - i * this->_sizeThumbnailGroupOffset.cy,
+                            iWidth,
+                            iHeight,
+                            SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER
+                        );
+                    }
+
+                    EndDeferWindowPos(hdwp);
+                }
+            }
+            else // For single task items
+            {
+                SetWindowPos(this->_thumbnailWnd[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
+            }
+        }
+
+        return;
+    }
 }
 
 #define GET_ARGB_A(argb) ((argb & 0xff000000) >> 24)
@@ -4804,7 +5049,7 @@ void CTaskBand::_UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaq
     }
 }
 
-void CTaskBand::_UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4)
+void CTaskBand::_UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int cThumbnails)
 {
     TBBUTTONINFOW tbbi;
     WCHAR buffer[260];
@@ -4815,8 +5060,8 @@ void CTaskBand::_UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int a4)
     if (SendMessageW(hwnd, TB_GETBUTTONINFOW, wParam, (LPARAM)&tbbi) != -1)
     {
         SetWindowTextW(_thumbnailWnd[0], buffer);
-        HWND* v5 = &_thumbnailWnd[a4];
-        int v6 = a4;
+        HWND* v5 = &_thumbnailWnd[cThumbnails];
+        int v6 = cThumbnails;
         while (v6)
         {
             SetWindowTextW(*v5--, buffer);
@@ -5265,7 +5510,7 @@ void CTaskBand::_HandleGetMinRect(HWND hwndShell, POINTS * prc)
     prc[1].x = (short)rc.right;
     prc[1].y = (short)rc.bottom;
 
-    // make sure the rect is within out client area
+    // make sure the rcDestination is within out client area
     GetClientRect(_hwnd, &rcTask);
     MapWindowPoints(_hwnd, HWND_DESKTOP, (LPPOINT)&rcTask, 2);
     if (prc[0].x < rcTask.left)
@@ -5509,7 +5754,7 @@ BOOL _IsRudeWindow(HMONITOR hmon, HWND hwnd, HMONITOR hmonTask, BOOL fSkipActive
         //
         // The old logic was:
         //
-        // If the app's window rect takes up the whole monitor, then it's rude.
+        // If the app's window rcDestination takes up the whole monitor, then it's rude.
         // (This check could mistake normal maximized apps for rude apps.)
         //
         //
@@ -5521,8 +5766,8 @@ BOOL _IsRudeWindow(HMONITOR hmon, HWND hwnd, HMONITOR hmonTask, BOOL fSkipActive
         // this case to avoid potential compat issues with rude apps that
         // have non-fullscreen client areas.
         //
-        // Otherwise, get the client rect rather than the window rect
-        // and compare that rect against the monitor rect.
+        // Otherwise, get the client rcDestination rather than the window rcDestination
+        // and compare that rcDestination against the monitor rcDestination.
         //
 
         // If (mon U app) == app, then app is filling up entire monitor
@@ -5531,13 +5776,13 @@ BOOL _IsRudeWindow(HMONITOR hmon, HWND hwnd, HMONITOR hmonTask, BOOL fSkipActive
         dwStyle = GetWindowLong(hwnd, GWL_STYLE);
         if ((dwStyle & (WS_CAPTION | WS_THICKFRAME)) == (WS_CAPTION | WS_THICKFRAME))
         {
-            // Doesn't match rude app profile; use client rect
+            // Doesn't match rude app profile; use client rcDestination
             GetClientRect(hwnd, &rcApp);
             MapWindowPoints(hwnd, HWND_DESKTOP, (LPPOINT)&rcApp, 2);
         }
         else
         {
-            // Matches rude app profile; use window rect
+            // Matches rude app profile; use window rcDestination
             GetWindowRect(hwnd, &rcApp);
         }
         UnionRect(&rcTmp, &rcApp, &rcMon);
