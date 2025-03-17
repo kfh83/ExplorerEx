@@ -5544,7 +5544,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (IsPosInHwnd(lParam, _hwndNotify))
                 {
-                    _Command(IDM_SETTIME);
+                    //Command(IDM_SETTIME);
+                    // @NOTE ^ is no longer needed since vista didn't have double click to timedate.cpl propsheet
 
                     // Hack!  If you click on the tray clock, this tells the tooltip
                     // "Hey, I'm using this thing; stop putting up a tip for me."

@@ -4,6 +4,17 @@
 #include "tray.h"
 #include "util.h"
 
+// I have ommited the AcessibleWrapper interface. Beware.
+
+MIDL_INTERFACE("7a5fca8a-76b1-44c8-a97c-e7173cca5f4f") // @MOD taken from ep_taskbar, based on 7/8.x
+IFlyout : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE ShowFlyout(HWND, const RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE HideFlyout() = 0;
+    virtual HRESULT STDMETHODCALLTYPE ShowTooltip(HWND, const RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE HideTooltip() = 0;
+};
+
 class CClockCtl : public CImpWndProc
 {
 public:
@@ -46,6 +57,12 @@ protected:
     // Window procedure
     LRESULT         v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+    // New in vista, @MOD - These are referenced off amr's work which includes 8+ compatible variants. PLEEEEASE NOTE!
+    void _EnsureFlyout();
+    HRESULT _ShowTooltip(BOOL bShow);
+    HRESULT _ShowFlyout(BOOL bShow);
+    IFlyout* _flyout;
+
 private:
     ULONG           _cRef;
 
@@ -74,6 +91,32 @@ private:
 
     friend BOOL ClockCtl_Class(HINSTANCE hinst);
 };
+
+HRESULT CClockCtl::_ShowTooltip(BOOL bShow) // @MOD taken from ep_taskbar, based on8.x
+{
+    HRESULT hr = E_FAIL;
+
+    if (bShow)
+    {
+        _EnsureFlyout();
+    }
+
+    if (_flyout)
+    {
+        if (bShow)
+        {
+            RECT rcExclude;
+            GetWindowRect(_hwnd, &rcExclude);
+            hr = _flyout->ShowTooltip(v_hwndTray, &rcExclude);
+        }
+        else
+        {
+            hr = _flyout->HideTooltip();
+        }
+    }
+
+    return hr;
+}
 
 ULONG CClockCtl::AddRef()
 {
@@ -737,6 +780,7 @@ void CClockCtl::_HandleThemeChanged(WPARAM wParam)
     InvalidateRect(_hwnd, NULL, TRUE);
 }
 
+// @NOTE: Needs more work for tray clock flyout. I only did 2 messages here
 LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -802,12 +846,30 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_SETFOCUS:
-    case WM_KILLFOCUS:
-        _fHasFocus = (uMsg == WM_SETFOCUS);
-        InvalidateRect(_hwnd, NULL, TRUE);
-        break;
-
-    case WM_KEYDOWN:
+    case WM_KILLFOCUS:  // @MOD taken from ep_taskbar, likely based on 8.x
+    {
+        _fHasFocus = uMsg == WM_SETFOCUS;
+        InvalidateRect(_hwnd, nullptr, TRUE);
+        if (_fHasFocus)
+        {
+            SetTimer(hwnd, 1, GetDoubleClickTime(), nullptr);
+        }
+        else
+        {
+            KillTimer(hwnd, 1);
+            _ShowTooltip(0);
+        }
+        return 0;
+    }
+    case WM_KEYDOWN:  // @MOD taken from ep_taskbar, likely based on 8.x
+    {
+        if (wParam == VK_RETURN || wParam == VK_SPACE)
+        {
+            _ShowFlyout(TRUE);
+            return 0;
+        }
+        // Fall through
+    }
     case WM_KEYUP:
     case WM_CHAR:
     case WM_SYSKEYDOWN:
@@ -840,6 +902,46 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 
     return 0;
+}
+
+// @MOD taken from ep_taskbar, based on 8.x
+DEFINE_GUID(CLSID_TrayClock, 0xA323554A, 0x0FE1, 0x4E49, 0xAE, 0xE1, 0x67, 0x22, 0x46, 0x5D, 0x79, 0x9F);
+void CClockCtl::_EnsureFlyout()
+{
+    if (!_flyout)
+    {
+        CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout));
+    }
+}
+
+HRESULT CClockCtl::_ShowFlyout(BOOL bShow)  // @MOD taken from ep_taskbar, based on 8.x
+{
+    wprintf(L"ShowFlyout(%d)\n", bShow);
+
+    HRESULT hr = E_FAIL;
+
+    if (bShow)
+    {
+        _EnsureFlyout();
+        wprintf(L"EnsureFlyout(%d)\n", bShow);
+    }
+
+    if (_flyout)
+    {
+        if (bShow)
+        {
+            wprintf(L"Flyout and bShow(%d)\n", bShow);
+            RECT rcExclude;
+            GetWindowRect(_hwnd, &rcExclude);
+            hr = _flyout->ShowFlyout(v_hwndTray, &rcExclude);
+        }
+        else
+        {
+            hr = _flyout->HideFlyout();
+        }
+    }
+    wprintf(L"ShowFlyout(%d)\n", bShow);
+    return hr;
 }
 
 // Register the clock class.
