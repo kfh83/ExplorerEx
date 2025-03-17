@@ -5649,25 +5649,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_NCLBUTTONDBLCLK:
-            if (!_TryForwardNCToClient(uMsg, lParam))
+            if (!_TryForwardNCToClient(uMsg, lParam) && IsPosInHwnd(lParam, _hwndNotify))   // @NOTE: this is how it was done, but this doesn't solve any of the iffiness relating to the clock flyout
             {
-                if (IsPosInHwnd(lParam, _hwndNotify))
-                {
-                    //Command(IDM_SETTIME);
-                    // @NOTE ^ is no longer needed since vista didn't have double click to timedate.cpl propsheet
-
-                    // Hack!  If you click on the tray clock, this tells the tooltip
-                    // "Hey, I'm using this thing; stop putting up a tip for me."
-                    // You can get the tooltip to lose track of when it needs to
-                    // reset the "stop it!" flag and you get stuck in "stop it!" mode.
-                    // It's particularly easy to make happen on Terminal Server.
-                    //
-                    // So let's assume that the only reason people click on the
-                    // tray clock is to change the time.  when they change the time,
-                    // kick the tooltip in the head to reset the "stop it!" flag.
-
-                    SendMessage(_hwndTrayTips, TTM_POP, 0, 0);
-                }
+                ShowClockFlyoutAsNeeded(lParam);
+                return 0;
             }
             break;
 
@@ -5691,49 +5676,39 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
-        case WM_NCLBUTTONUP:
-            // This handler was removed in Vista:
-            if (!_TryForwardNCToClient(uMsg, lParam))
-            {
-                goto L_WM_NCMOUSEMOVE;
-            }
-            break;
-
-        // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
+        // @UPDATE: Mostly like vista, investigate what that ResponseMonitor gap is
         case WM_NCMOUSEMOVE:
-            L_WM_NCMOUSEMOVE:
-                // Vista: if ( CTray::IsMouseOverClock(this) )
-                // seems likely rewritten
+            //L_WM_NCMOUSEMOVE:
+            TRACKMOUSEEVENT mouseEvent;
             if (IsMouseOverClock())
             {
-                // MSG msgInner;
-                // msgInner.lParam = lParam;
-                // msgInner.wParam = wParam;
-                // msgInner.message = uMsg;
-                // msgInner.hwnd = hwnd;
-                // SendMessage(_hwndTrayTips, TTM_RELAYEVENT, 0, (LPARAM)(LPMSG)&msgInner);
-                // if (uMsg == WM_NCLBUTTONDOWN)
-                // {
-                //     _SetFocus(_hwndNotify);
-                // }
+                if (/* this->GAP_ResponseMonitor[56] ||*/ _startButton.IsButtonPushed())
+                {
+                    return DefWindowProcW(_hwnd, uMsg, wParam, lParam);
+                }
 
-                TRACKMOUSEEVENT mouseEvent;
                 mouseEvent.cbSize = sizeof(mouseEvent);
-                mouseEvent.dwFlags = TME_HOVER | TME_NONCLIENT;
+                mouseEvent.dwFlags = TME_HOVER | TME_LEAVE |TME_NONCLIENT;
                 mouseEvent.hwndTrack = _hwnd;
                 mouseEvent.dwHoverTime = GetDoubleClickTime();
-                TrackMouseEvent(&mouseEvent);
 
-                return 0;
             }
             else
             {
                 if (!_hTheme /* || this->GAP_ResponseMonitor[56] */ || _startButton.IsButtonPushed() || !IsMouseOverStartButton())
                 {
-                    goto DoDefault;
+                    return DefWindowProcW(_hwnd, uMsg, wParam, lParam);
                 }
+
+                mouseEvent.cbSize = sizeof(mouseEvent);
+                mouseEvent.dwFlags = TME_LEAVE |TME_NONCLIENT;
+                mouseEvent.hwndTrack = _hwnd;
+                mouseEvent.dwHoverTime = NULL;
             }
-            goto DoDefault;
+            /* this->GAP_ResponseMonitor[56] = 1*/
+            TrackMouseEvent(&mouseEvent);
+            return 0;
+            //goto DoDefault;
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
         case WM_NCMOUSELEAVE:
@@ -5746,12 +5721,15 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     // insane work
                     // why is this insane work its deadass how its decompiled in ida
+                    // ok i take it back the condition might be different?
                     if (!_startButton.IsButtonPushed() && !IsMouseOverStartButton())
                     {
                         _startButton.DrawStartButton(PBS_NORMAL, true);
                     }
                 }
             }
+
+            break;
         }
 
         case WM_CREATE:
