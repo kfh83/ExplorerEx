@@ -5682,11 +5682,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
             }
 
-
             if (ShowClockFlyoutAsNeeded(lParam))   // @NOTE: lprc
             {
                 break;
             }
+
+            break;
         }
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
@@ -5718,9 +5719,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 TRACKMOUSEEVENT mouseEvent;
                 mouseEvent.cbSize = sizeof(mouseEvent);
-                mouseEvent.dwFlags = TME_NONCLIENT | TME_LEAVE;
+                mouseEvent.dwFlags = TME_HOVER | TME_NONCLIENT;
                 mouseEvent.hwndTrack = _hwnd;
-                mouseEvent.dwHoverTime = NULL;
+                mouseEvent.dwHoverTime = GetDoubleClickTime();
                 TrackMouseEvent(&mouseEvent);
 
                 return 0;
