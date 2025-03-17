@@ -6,13 +6,33 @@
 
 // I have ommited the AcessibleWrapper interface. Beware.
 
-MIDL_INTERFACE("7a5fca8a-76b1-44c8-a97c-e7173cca5f4f") // @MOD taken from ep_taskbar, based on 7/8.x
+// for w8+ IFlyout
+MIDL_INTERFACE("7a5fca8a-76b1-44c8-a97c-e7173cca5f4f") // @MOD taken from ep_taskbar, based on 8.x
+IFlyout8: IUnknown
+{
+    STDMETHOD(ShowFlyout)(HWND, const RECT*) PURE;
+    STDMETHOD(HideFlyout)() PURE;
+    STDMETHOD(ShowTooltip)(HWND , const RECT*) PURE;
+    STDMETHOD(HideTooltip)() PURE;
+};
+
+enum TRAYORIENTATION
+{
+    TO_BOTTOM = 0x0,
+    TO_RIGHT = 0x1,
+    TO_LEFT = 0x2,
+    TO_TOP = 0x3,
+};
+
+// vista timedate.cpl guid
+// 4376df10-a662-420b-b30d-958881461ef9
+MIDL_INTERFACE("4376df10-a662-420b-b30d-958881461ef9")
 IFlyout : IUnknown
 {
-    virtual HRESULT STDMETHODCALLTYPE ShowFlyout(HWND, const RECT*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE HideFlyout() = 0;
-    virtual HRESULT STDMETHODCALLTYPE ShowTooltip(HWND, const RECT*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE HideTooltip() = 0;
+    STDMETHOD(ShowFlyout)(TRAYORIENTATION , const RECT*) PURE;
+    STDMETHOD(HideFlyout)() PURE;
+    STDMETHOD(ShowTooltip)(TRAYORIENTATION, const RECT*) PURE;
+    STDMETHOD(HideTooltip)() PURE;
 };
 
 class CClockCtl : public CImpWndProc
@@ -62,6 +82,7 @@ protected:
     HRESULT _ShowTooltip(BOOL bShow);
     HRESULT _ShowFlyout(BOOL bShow);
     IFlyout* _flyout;
+    IFlyout8* _flyout8;
 
 private:
     ULONG           _cRef;
@@ -102,17 +123,33 @@ HRESULT CClockCtl::_ShowTooltip(BOOL bShow) // @MOD taken from ep_taskbar, based
         _EnsureFlyout();
     }
 
-    if (_flyout)
+    // @MOD support both vista and 8+ interfaces
+    if (_flyout || _flyout8)
     {
         if (bShow)
         {
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
-            hr = _flyout->ShowTooltip(v_hwndTray, &rcExclude);
+            if (_flyout)
+            {
+                // get proper stuck position
+                hr = _flyout->ShowTooltip(TO_BOTTOM, &rcExclude);
+            }
+            else if (_flyout8)
+            {
+                hr = _flyout8->ShowTooltip(_hwnd, &rcExclude);
+            }
         }
         else
         {
-            hr = _flyout->HideTooltip();
+            if (_flyout)
+            {
+                hr = _flyout->HideTooltip();
+            }
+            else if (_flyout8)
+            {
+                hr = _flyout8->HideTooltip();
+            }
         }
         wprintf(L"ShowTooltip(%d)\n", bShow);
     }
@@ -904,11 +941,8 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //
         // Update the text if we are not running and somebody wants it.
         //
-        if (uMsg == WM_GETTEXT)
-        {
-            if (!_fClockRunning)
-                _RecalcCurTime();
-        }
+        if (!_fClockRunning)
+            _RecalcCurTime();
 
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -921,9 +955,13 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 DEFINE_GUID(CLSID_TrayClock, 0xA323554A, 0x0FE1, 0x4E49, 0xAE, 0xE1, 0x67, 0x22, 0x46, 0x5D, 0x79, 0x9F);
 void CClockCtl::_EnsureFlyout()
 {
-    if (!_flyout)
+    if (!_flyout || !_flyout8)
     {
-        CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout));
+        HRESULT hr = CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout));
+        if (FAILED(hr))
+        {
+            hr = CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout8));
+        }
     }
 }
 
@@ -939,18 +977,35 @@ HRESULT CClockCtl::_ShowFlyout(BOOL bShow)  // @MOD taken from ep_taskbar, based
         wprintf(L"EnsureFlyout(%d)\n", bShow);
     }
 
-    if (_flyout)
+    // @MOD support both vista and 8+ interfaces
+    if (_flyout || _flyout8)
     {
         if (bShow)
         {
             wprintf(L"Flyout and bShow(%d)\n", bShow);
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
-            hr = _flyout->ShowFlyout(v_hwndTray, &rcExclude);
+
+            if (_flyout)
+            {
+                // get proper stuck position
+                hr = _flyout->ShowFlyout(TO_BOTTOM, &rcExclude);
+            }
+            else if (_flyout8)
+            {
+                hr = _flyout8->ShowFlyout(_hwnd, &rcExclude);
+            }
         }
         else
         {
-            hr = _flyout->HideFlyout();
+            if (_flyout)
+            {
+                hr = _flyout->HideFlyout();
+            }
+            else if (_flyout8)
+            {
+                hr = _flyout8->HideFlyout();
+            }
         }
     }
     wprintf(L"ShowFlyout(%d)\n", bShow);
