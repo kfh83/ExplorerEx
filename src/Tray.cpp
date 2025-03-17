@@ -5346,6 +5346,115 @@ BOOL CTray::IsMouseOverStartButton()    // TODO: revise
     return bRet;
 }
 
+BOOL CTray::IsMouseOverClock()  // @TODO: Cleanup
+{
+    POINT v8;
+    RECT Rect;
+
+    BOOL result = 0;
+    if ((_uAutoHide & 2) == 0)
+    {
+        GetWindowRect(_GetClockWindow(), &Rect);
+        if (_fCanSizeMove)
+        {
+            if (_uStuckPlace)
+            {
+                UINT v5 = _uStuckPlace - 1;
+                if (v5)
+                {
+                    bool v6 = v5 == 1;
+                    LONG v7 = _sizeClockMargin.cx;
+                    if (v6)
+                        Rect.left += v7;
+                    else
+                        Rect.top += v7;
+                }
+                else
+                {
+                    Rect.bottom -= _sizeClockMargin.cx;
+                }
+            }
+            else
+            {
+                Rect.right -= _sizeClockMargin.cx;
+            }
+        }
+        LPARAM MessagePos = GetMessagePos();
+        v8.y = GET_Y_LPARAM(MessagePos);
+        v8.x = GET_X_LPARAM(MessagePos);
+        return PtInRect(&Rect, v8);
+    }
+    return result;
+}
+
+BOOL CTray::ShowClockFlyoutAsNeeded(LPARAM mousePos)    // @MOD: Stolen from amr, this is what i think the function is
+{
+    bool bInClock = mousePos == -1 || IsMouseOverClock();
+    if (bInClock)
+    {
+        if (&_startButton)
+        {
+            _startButton.CloseStartMenu();
+        }
+        SendMessageW(_GetClockWindow(), WM_SHOWCLOCKFLYOUT, TRUE, 0);
+    }
+    return bInClock;
+}
+
+/*
+BOOL CTray::ShowClockFlyoutAsNeeded(LPARAM lParam)
+{
+    BOOL v7;
+    POINT v9;
+    RECT rc;
+    RECT Rect;
+
+    GetWindowRect(_GetClockWindow(), &Rect);
+    if (lParam == -1)
+    {
+        v7 = 1;
+    }
+    else
+    {
+        rc = Rect;
+        if (_fCanSizeMove)
+        {
+            if (_uStuckPlace)
+            {
+                UINT v5 = _uStuckPlace - 1;
+                if (v5)
+                {
+                    UINT v6 = v5 - 1;
+                    if (v6)
+                    {
+                        if (v6 == 1)
+                            rc.top = Rect.top + _sizeClockMargin.cx;
+                    }
+                    else
+                    {
+                        rc.left = Rect.left + _sizeClockMargin.cx;
+                    }
+                }
+                else
+                {
+                    rc.bottom = Rect.bottom - _sizeClockMargin.cx;
+                }
+            }
+            else
+            {
+                rc.right = Rect.right - _sizeClockMargin.cx;
+            }
+        }
+        v9.y = GET_Y_LPARAM(lParam);
+        v9.x = GET_X_LPARAM(lParam);
+        v7 = PtInRect(&rc, v9);
+    }
+    if (v7)
+        SendMessageW(_GetClockWindow(), WM_SHOWCLOCKFLYOUT, TRUE, 0);
+    return v7;
+}
+*/
+
 DWORD CTray::CountOfRunningPrograms()
 {
     tProcessIDList processIDList = { 0 };
@@ -5572,14 +5681,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     SendMessageW(_startButton._hwndStartBtn, BM_SETSTATE, 1, 0);
                 }
             }
-            break;
 
-            /*
-            if ( CTray::ShowClockFlyoutAsNeeded(this, (int)lprc) )
-                return v43;
-            */
 
-            // break (once WM_NCLBUTTONUP is removed)
+            if (ShowClockFlyoutAsNeeded(lParam))   // @NOTE: lprc
+            {
+                break;
+            }
         }
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
@@ -5596,16 +5703,27 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             L_WM_NCMOUSEMOVE:
                 // Vista: if ( CTray::IsMouseOverClock(this) )
                 // seems likely rewritten
-            if (IsPosInHwnd(lParam, _hwndNotify))
+            if (IsMouseOverClock())
             {
-                MSG msgInner;
-                msgInner.lParam = lParam;
-                msgInner.wParam = wParam;
-                msgInner.message = uMsg;
-                msgInner.hwnd = hwnd;
-                SendMessage(_hwndTrayTips, TTM_RELAYEVENT, 0, (LPARAM)(LPMSG)&msgInner);
-                if (uMsg == WM_NCLBUTTONDOWN)
-                    _SetFocus(_hwndNotify);
+                // MSG msgInner;
+                // msgInner.lParam = lParam;
+                // msgInner.wParam = wParam;
+                // msgInner.message = uMsg;
+                // msgInner.hwnd = hwnd;
+                // SendMessage(_hwndTrayTips, TTM_RELAYEVENT, 0, (LPARAM)(LPMSG)&msgInner);
+                // if (uMsg == WM_NCLBUTTONDOWN)
+                // {
+                //     _SetFocus(_hwndNotify);
+                // }
+
+                TRACKMOUSEEVENT mouseEvent;
+                mouseEvent.cbSize = sizeof(mouseEvent);
+                mouseEvent.dwFlags = TME_NONCLIENT | TME_LEAVE;
+                mouseEvent.hwndTrack = _hwnd;
+                mouseEvent.dwHoverTime = NULL;
+                TrackMouseEvent(&mouseEvent);
+
+                return 0;
             }
             else
             {
@@ -5619,13 +5737,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
         case WM_NCMOUSELEAVE:
         {
-            // if ( !IsPosInHwnd(v40.lParam, *(HWND *)&this->GAP_ResponseMonitor[52]) )
-            if (1)
+            // if (!IsPosInHwnd(v40.lParam, _GetClockWindow()))
+            if (!IsPosInHwnd(lParam, _GetClockWindow()))
             {
-                // SendMessageW(*(HWND *)&this->GAP_ResponseMonitor[52], 0x467u, 0, 0);
+                SendMessageW(_GetClockWindow(), WM_SHOWCLOCKTOOLTIP, FALSE, 0);
                 if (_hTheme)
                 {
                     // insane work
+                    // why is this insane work its deadass how its decompiled in ida
                     if (!_startButton.IsButtonPushed() && !IsMouseOverStartButton())
                     {
                         _startButton.DrawStartButton(PBS_NORMAL, true);
@@ -5897,6 +6016,11 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (IDT_SERVICE0 <= wParam && wParam <= IDT_SERVICELAST)
                 return _OnTimerService(uMsg, wParam, lParam);
             _HandleTimer(wParam);
+            break;
+
+        case WM_NCMOUSEHOVER:
+            wprintf(L"im not doing shit\n");
+            SendMessageW(_GetClockWindow(), WM_SHOWCLOCKTOOLTIP, TRUE, 0);
             break;
 
         case WM_SIZING:

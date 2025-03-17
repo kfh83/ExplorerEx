@@ -231,6 +231,8 @@ public:
     BOOL IsTaskbarFading() { return _fTaskbarFading; };
     void GetStuckMonitorRect(RECT* prcStuck);
     BOOL IsMouseOverStartButton();
+    BOOL IsMouseOverClock();                       // ExplorerEx-Vista
+    BOOL ShowClockFlyoutAsNeeded(LPARAM mousePos); // ExplorerEx-Vista
 
     DWORD CountOfRunningPrograms();
 
@@ -567,6 +569,8 @@ protected:
     UINT _uStuckPlace;       // the stuck place
     SIZE _sStuckWidths;      // width/height of tray
     UINT _uMoveStuckPlace;   // stuck status during a move operation
+
+    SIZE _sizeClockMargin;  // vista
 
     // these two must  go together for save reasons
     RECT _rcOldTray;     // last place we stuck ourselves (for work area diffs)

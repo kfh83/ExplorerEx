@@ -94,6 +94,7 @@ private:
 
 HRESULT CClockCtl::_ShowTooltip(BOOL bShow) // @MOD taken from ep_taskbar, based on8.x
 {
+    wprintf(L"ShowTooltip(%d)\n", bShow);
     HRESULT hr = E_FAIL;
 
     if (bShow)
@@ -113,6 +114,7 @@ HRESULT CClockCtl::_ShowTooltip(BOOL bShow) // @MOD taken from ep_taskbar, based
         {
             hr = _flyout->HideTooltip();
         }
+        wprintf(L"ShowTooltip(%d)\n", bShow);
     }
 
     return hr;
@@ -869,6 +871,17 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return 0;
         }
         // Fall through
+    }
+    case WM_SHOWCLOCKFLYOUT:  // @MOD taken from ep_taskbar, likely based on 8.x
+    {
+        _ShowTooltip(wParam == 0);
+        _ShowFlyout(wParam != 0);
+        return 0;
+    }
+    case WM_SHOWCLOCKTOOLTIP:
+    {
+        _ShowTooltip(wParam != 0);
+        return 0;
     }
     case WM_KEYUP:
     case WM_CHAR:

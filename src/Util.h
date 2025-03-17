@@ -104,4 +104,7 @@ BOOL _IsDirectXExclusiveMode();
 
 HRESULT SHCacheTrackingFolder(LPCITEMIDLIST pidlRoot, int csidlTarget, IShellFolder2** ppsfCache);
 
+#define WM_SHOWCLOCKFLYOUT (WM_USER + 0x66)     // @NOTE these are likely not what they're named in vista,
+#define WM_SHOWCLOCKTOOLTIP (WM_USER + 0x67)    // this is probably also not a good place to keep them
+
 #endif  // _UTIL_H
