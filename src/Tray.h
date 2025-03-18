@@ -302,6 +302,9 @@ public:
 
     CTrayNotify _trayNotify;
 
+    // vista composition related - snatched from amr (but is likely this anyway)
+    BOOL GlassEnabled();
+
 protected:
     // protected methods
     friend class CTaskBarPropertySheet;
@@ -327,6 +330,15 @@ protected:
     void _Hide();
     HWND _GetClockWindow(void);
     HRESULT _LoadInProc(PCOPYDATASTRUCT pcds);
+
+    // Vista composition related
+    BOOL _fIsGlass;
+    void EnableGlass(BOOL bEnable);
+    void _RegisterForGlass();
+
+    // Half related to composition, needed regardless
+    //void _OnThemeChanged();
+
 
     LRESULT _CreateWindows();
     LRESULT _InitStartButtonEtc();

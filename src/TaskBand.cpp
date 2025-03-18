@@ -1175,6 +1175,11 @@ int CTaskBand::_GetAnimationWidth()
     return iTotAnimationWidth;
 }
 
+BOOL CTaskBand::_CanGlassifyTaskbar()
+{
+    return c_tray.GlassEnabled() && IsCompositionActive();
+}
+
 //-----------------------------------------------------------------------------
 // DESCRIPTION:  Synchronizes the indexes held by the animating items to the 
 //               true toolbar indexes.

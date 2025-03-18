@@ -4414,6 +4414,26 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
     return _ssomgr.EnableObject(&plipd->clsid, plipd->dwFlags);
 }
 
+void CTray::EnableGlass(BOOL bEnable)
+{
+    if (_fIsGlass != bEnable)
+    {
+        _fIsGlass = bEnable;
+        _RegisterForGlass();
+        //_OnThemeChanged();
+    }
+}
+
+void CTray::_RegisterForGlass()
+{
+    DWM_BLURBEHIND pBlurBehind;
+    pBlurBehind.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION | DWM_BB_TRANSITIONONMAXIMIZED;
+    pBlurBehind.fEnable = _fIsGlass && IsCompositionActive();
+    pBlurBehind.hRgnBlur = NULL;
+    pBlurBehind.fTransitionOnMaximized = TRUE;
+    DwmEnableBlurBehindWindow(_hwnd, &pBlurBehind);
+}
+
 // Allow the trays global hotkeys to be disabled for a while.
 LRESULT CTray::_SetHotkeyEnable(HWND hwnd, BOOL fEnable)
 {

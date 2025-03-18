@@ -274,6 +274,9 @@ protected:
     int  _CheckAnimationSize();
     void _SizeNonAnimatingItems();
 
+    // vista composition related
+    BOOL _CanGlassifyTaskbar();
+
     // animation helpers
     void  _UpdateAnimationIndices();
     void  _UpdateAnimationIndicesSlow();
