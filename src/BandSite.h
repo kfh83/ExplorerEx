@@ -16,6 +16,8 @@ HRESULT BandSite_SetWindowTheme(IBandSite* pbs, LPWSTR pwzTheme);
 HRESULT BandSite_FindBand(IBandSite* pbs, REFCLSID rclsid, REFIID riid, void **ppv, int* piCount, DWORD* pdwBandID);
 HRESULT BandSite_TestBandCLSID(IBandSite *pbs, DWORD idBand, REFIID riid);
 
+void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething);
+
 HRESULT IUnknown_SimulateDrop(IUnknown* punk, IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, LPDWORD pdwEffect);
 
 #endif

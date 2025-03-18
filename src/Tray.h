@@ -297,6 +297,7 @@ public:
     CStartButton _startButton;
 
     IBandSite* _ptbs;
+    IBandSite* _bandSite;
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
@@ -347,7 +348,8 @@ protected:
     void _SetRebarTheme();
     void _OnThemeChanged();
 
-    //void _AccountAllBandsForTaskbarSizingBar();
+    void _AccountAllBandsForTaskbarSizingBar();
+    BOOL _ShouldSubclassForSizingBar();
 
 
     LRESULT _CreateWindows();

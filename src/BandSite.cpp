@@ -90,6 +90,50 @@ protected:
     WCHAR* _pwzTheme;
 };
 
+// @NOTE (Olivia): Partially taken from ep_taskbar but i was unsure of some parts
+void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething)
+{
+    DWORD dwBandID;
+    UINT v3 = 0;
+
+    for (UINT i = pbs->EnumBands(0, &dwBandID); i >= 0; i = pbs->EnumBands(v3, &dwBandID))
+    {
+        BandSite_AccountBandForTaskbarSizingBar(pbs, dwBandID, bSomething);
+        ++v3;
+    }
+    HWND hwnd;
+    if (IUnknown_GetWindow(pbs, &hwnd) >= 0)
+    {
+        if (bSomething)
+            SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0, 0); // @TODO
+        else
+            RemoveWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0); // @TODO
+    }
+}
+
+// @NOTE (Olivia): Partially taken from ep_taskbar by @amrsatrio
+void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOOL b)
+{
+    IDeskBand* pdb;
+    if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
+    {
+        HWND hwnd;
+        if (SUCCEEDED(IUnknown_GetWindow(pdb, &hwnd)))
+        {
+            if (!BandSite_TestBandCLSID(pbs, dwBandID, CLSID_TaskBand))
+                hwnd = GetWindow(hwnd, GW_CHILD);
+            if (hwnd)
+            {
+                if (b)
+                    SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0, 0);
+                else
+                    RemoveWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, NULL);
+            }
+        }
+        pdb->Release();
+    }
+}
+
 // @NOTE (Olivia): Cleanup
 void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
 {

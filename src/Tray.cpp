@@ -4437,19 +4437,16 @@ void CTray::_RegisterForGlass()
 
 void CTray::_OpenTaskbarThemeData()
 {
-    HTHEME hTheme;
-    WCHAR pszClassList[32];
-
     if (IsCompositionActive() && _fIsGlass)
     {
-        StringCchPrintfW(pszClassList, sizeof(pszClassList), L"%s::%s", L"TaskBarComposited", L"TaskBar");
-        hTheme = OpenThemeData(_hwnd, pszClassList);
+        WCHAR szClassList[32];
+        StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"TaskBarComposited", L"TaskBar");
+        _hTheme = OpenThemeData(_hwnd, szClassList);
     }
     else
     {
-        hTheme = OpenThemeData(_hwnd, L"TaskBar");
+        _hTheme = OpenThemeData(_hwnd, L"TaskBar");
     }
-    _hTheme = hTheme;
 }
 
 void CTray::_SetBandSiteTheme()
@@ -4465,6 +4462,35 @@ void CTray::_SetRebarTheme()
         if (!IsCompositionActive() || (pszClassList = L"TaskBarComposited", !_fIsGlass))
             pszClassList = L"TaskBar";
         SendMessageW(_hwndRebar, RB_SETWINDOWTHEME, 0, (LPARAM)pszClassList);
+    }
+}
+
+// @NOTE (Olivia): Cleanup/simplifiy
+BOOL CTray::_ShouldSubclassForSizingBar()
+{
+    if (!_hTheme)
+        return FALSE;
+
+    BOOL bRet = TRUE;
+
+    if (!_fCanSizeMove && (_uAutoHide & AH_ON) == 0)
+        return FALSE;
+
+    return bRet;
+}
+
+void CTray::_AccountAllBandsForTaskbarSizingBar()
+{
+    BOOL fShouldSubclass = CTray::_ShouldSubclassForSizingBar();
+
+    if (GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId())
+    {
+        if (_bandSite)
+            BandSite_AccountAllBandsForTaskbarSizingBar(_bandSite, fShouldSubclass);
+    }
+    else
+    {
+        PostMessageW(_hwnd, 0x5B6, fShouldSubclass, NULL);
     }
 }
 
@@ -4495,12 +4521,11 @@ void CTray::_OnThemeChanged()
     }
 
     CTray::_UpdateVertical(_uStuckPlace, TRUE);
-    SetWindowStyle(_hwnd, 0x840000u, this->_hTheme == 0);
-    SetWindowPos(_hwnd, 0, 0, 0, 0, 0, 0x37u);
-    InvalidateRect(_hwnd, 0, 1);
-    PostMessageW(_hwnd, 0x40Du, 0, 0);
-
-    CTray::_AccountAllBandsForTaskbarSizingBar(); // TODO
+    SetWindowStyle(_hwnd, WS_THICKFRAME | WS_BORDER, !_hTheme);
+    SetWindowPos(_hwnd, 0, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
+    InvalidateRect(_hwnd, NULL, TRUE);
+    PostMessageW(_hwnd, 0x40D, 0, 0);
+    CTray::_AccountAllBandsForTaskbarSizingBar();
 }
 
 // Allow the trays global hotkeys to be disabled for a while.
