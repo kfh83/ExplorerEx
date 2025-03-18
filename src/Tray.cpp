@@ -4421,7 +4421,7 @@ void CTray::EnableGlass(BOOL bEnable)
     {
         _fIsGlass = bEnable;
         _RegisterForGlass();
-        //_OnThemeChanged();
+        _OnThemeChanged();
     }
 }
 
@@ -4433,6 +4433,74 @@ void CTray::_RegisterForGlass()
     pBlurBehind.hRgnBlur = NULL;
     pBlurBehind.fTransitionOnMaximized = TRUE;
     DwmEnableBlurBehindWindow(_hwnd, &pBlurBehind);
+}
+
+void CTray::_OpenTaskbarThemeData()
+{
+    HTHEME hTheme;
+    WCHAR pszClassList[32];
+
+    if (IsCompositionActive() && _fIsGlass)
+    {
+        StringCchPrintfW(pszClassList, sizeof(pszClassList), L"%s::%s", L"TaskBarComposited", L"TaskBar");
+        hTheme = OpenThemeData(_hwnd, pszClassList);
+    }
+    else
+    {
+        hTheme = OpenThemeData(_hwnd, L"TaskBar");
+    }
+    _hTheme = hTheme;
+}
+
+void CTray::_SetBandSiteTheme()
+{
+    // TODO
+}
+
+void CTray::_SetRebarTheme()
+{
+    if (_hTheme)
+    {
+        LPCWSTR pszClassList;
+        if (!IsCompositionActive() || (pszClassList = L"TaskBarComposited", !_fIsGlass))
+            pszClassList = L"TaskBar";
+        SendMessageW(_hwndRebar, RB_SETWINDOWTHEME, 0, (LPARAM)pszClassList);
+    }
+}
+
+// @NOTE (Olivia): Cleanup
+void CTray::_OnThemeChanged()
+{
+    NONCLIENTMETRICSW ncm;
+
+    if (_hTheme)
+    {
+        CloseThemeData(_hTheme);
+        _hTheme = NULL;
+    }
+
+    CTray::_OpenTaskbarThemeData();
+    CTray::_SetBandSiteTheme();
+    CTray::_SetRebarTheme();
+
+    this->_nUnkField68C = 0;
+
+    if (!_hTheme)
+    {
+        ncm.cbSize = 504;
+        memset(&ncm.iBorderWidth, 0, 0x1F4u);
+
+        if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, 0, &ncm, 0))
+            this->_nUnkField68C = ncm.iPaddedBorderWidth;
+    }
+
+    CTray::_UpdateVertical(_uStuckPlace, TRUE);
+    SetWindowStyle(_hwnd, 0x840000u, this->_hTheme == 0);
+    SetWindowPos(_hwnd, 0, 0, 0, 0, 0, 0x37u);
+    InvalidateRect(_hwnd, 0, 1);
+    PostMessageW(_hwnd, 0x40Du, 0, 0);
+
+    CTray::_AccountAllBandsForTaskbarSizingBar(); // TODO
 }
 
 // Allow the trays global hotkeys to be disabled for a while.

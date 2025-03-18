@@ -342,7 +342,12 @@ protected:
     void _RegisterForGlass();
 
     // Half related to composition, needed regardless
-    //void _OnThemeChanged();
+    void _OpenTaskbarThemeData();
+    void _SetBandSiteTheme();
+    void _SetRebarTheme();
+    void _OnThemeChanged();
+
+    //void _AccountAllBandsForTaskbarSizingBar();
 
 
     LRESULT _CreateWindows();
@@ -657,6 +662,8 @@ protected:
     HKEY _hkHTTP;
     HANDLE _hHTTPEvent;
     HANDLE _hHTTPWait;
+
+    int _nUnkField68C;
 
     friend class CDeskTray;
     friend class CStartDropTarget;
