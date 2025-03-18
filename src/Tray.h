@@ -233,6 +233,8 @@ public:
     BOOL IsMouseOverStartButton();
     BOOL IsMouseOverClock();                       // ExplorerEx-Vista
     BOOL ShowClockFlyoutAsNeeded(LPARAM mousePos); // ExplorerEx-Vista
+    bool _bBool678; // ExplorerEx-Vista
+    bool _bBool679; // ExplorerEx-Vista
 
     DWORD CountOfRunningPrograms();
 

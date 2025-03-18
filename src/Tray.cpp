@@ -1573,7 +1573,8 @@ DWORD CTray::_SyncThreadProc()
         ShowWindow(_startButton._hwndStartBtn, SW_SHOW);
         _startButton.InitTheme();
         _startButton.UpdateStartButton(true);
-
+        // _StarterWatermarkUpdate();
+        _bBool679 = true;   // ExplorerEx-Vista
         // get the system background scheduler thread
         IShellTaskScheduler* pScheduler;
         if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC,
@@ -5702,7 +5703,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             TRACKMOUSEEVENT mouseEvent;
             if (IsMouseOverClock())
             {
-                if (/* this->GAP_ResponseMonitor[56] ||*/ _startButton.IsButtonPushed())
+                if (_bBool678 || _startButton.IsButtonPushed())
                 {
                     return DefWindowProcW(_hwnd, uMsg, wParam, lParam);
                 }
@@ -5715,7 +5716,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else
             {
-                if (!_hTheme /* || this->GAP_ResponseMonitor[56] */ || _startButton.IsButtonPushed() || !IsMouseOverStartButton())
+                if (!_hTheme || _bBool678 || _startButton.IsButtonPushed() || !IsMouseOverStartButton())
                 {
                     return DefWindowProcW(_hwnd, uMsg, wParam, lParam);
                 }
@@ -5725,7 +5726,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 mouseEvent.hwndTrack = _hwnd;
                 mouseEvent.dwHoverTime = NULL;
             }
-            /* this->GAP_ResponseMonitor[56] = 1*/
+            _bBool678 = true;
             TrackMouseEvent(&mouseEvent);
             return 0;
             //goto DoDefault;
@@ -5748,7 +5749,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     }
                 }
             }
-
+            _bBool678 = false;
             break;
         }
 
@@ -6028,8 +6029,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
         case WM_MOVE:
-            // if ( this->GAP_ResponseMonitor[57] )
-            if (1)
+            if (_bBool679)
             {
                 _startButton.UpdateStartButton(false);
             }
@@ -6037,8 +6037,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
         case WM_SIZE:
-            // if ( v39.lParam && this->GAP_ResponseMonitor[57] )
-            if (1)
+            if (lParam && _bBool679)
             {
                 _startButton.UpdateStartButton(false);
             }
