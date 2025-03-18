@@ -99,7 +99,7 @@ void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
     if (pbs->EnumBands(0, &dwBandID) < 0)
     {
     LABEL_5:
-        CTray::EnableGlass(TRUE);
+        c_tray.EnableGlass(TRUE);
     }
     else
     {
@@ -137,7 +137,7 @@ int WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
     if (!pfCanRenderComposited)
     {
         v1 = 1;
-        CTray::EnableGlass(FALSE);
+        c_tray.EnableGlass(FALSE);
     }
 
     return v1;

@@ -335,7 +335,10 @@ protected:
 
     // Vista composition related
     BOOL _fIsGlass;
+public:
     void EnableGlass(BOOL bEnable);
+
+protected:
     void _RegisterForGlass();
 
     // Half related to composition, needed regardless
