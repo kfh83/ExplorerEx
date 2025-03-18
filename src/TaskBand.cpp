@@ -378,6 +378,7 @@ HRESULT CTaskBand::QueryInterface(REFIID riid, LPVOID* ppvObj)
         QITABENTMULTI(CTaskBand, IDockingWindow, IDeskBand),
         QITABENTMULTI(CTaskBand, IOleWindow, IDeskBand),
         QITABENT(CTaskBand, IDeskBand),
+        QITABENT(CTaskBand, IDeskBand2),
         QITABENT(CTaskBand, IObjectWithSite),
         QITABENT(CTaskBand, IDropTarget),
         QITABENT(CTaskBand, IInputObject),
@@ -581,6 +582,22 @@ HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode,
     return S_OK;
 }
 
+// *** IDeskBand2 methods ***
+STDMETHODIMP CTaskBand::CanRenderComposited(BOOL* pfCanRenderComposited)
+{
+    *pfCanRenderComposited = TRUE;
+    return S_OK;
+}
+
+STDMETHODIMP CTaskBand::SetCompositionState(BOOL fCompositionEnabled)
+{
+    return S_OK;
+}
+
+STDMETHODIMP CTaskBand::GetCompositionState(BOOL* pfCompositionEnabled)
+{
+    return E_NOTIMPL;
+}
 
 void _RaiseDesktop(BOOL fRaise)
 {

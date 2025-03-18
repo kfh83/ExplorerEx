@@ -46,7 +46,7 @@ ANIMATIONITEMINFO, *PANIMATIONITEMINFO;
 
 class CTaskBandSMC;
 
-class CTaskBand : public IDeskBand
+class CTaskBand : public IDeskBand2
                 , public IObjectWithSite
                 , public IDropTarget
                 , public IInputObject
@@ -76,6 +76,12 @@ public:
 
     // *** IDeskBand methods ***
     STDMETHODIMP GetBandInfo(DWORD dwBandID, DWORD fViewMode, DESKBANDINFO* pdbi);
+
+    // *** IDeskBand2 methods ***
+    STDMETHODIMP CanRenderComposited(BOOL* pfCanRenderComposited);
+    STDMETHODIMP SetCompositionState(BOOL fCompositionEnabled);
+    STDMETHODIMP GetCompositionState(BOOL* pfCompositionEnabled);
+
 
     // *** IDropTarget methods ***
     STDMETHODIMP DragEnter(IDataObject *pdtobj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect);
