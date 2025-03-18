@@ -90,6 +90,60 @@ protected:
     WCHAR* _pwzTheme;
 };
 
+// @NOTE (Olivia): Cleanup
+void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
+{
+    UINT i = 0;
+
+    DWORD dwBandID;
+    if (pbs->EnumBands(0, &dwBandID) < 0)
+    {
+    LABEL_5:
+        CTray::EnableGlass(TRUE);
+    }
+    else
+    {
+        while (TRUE)
+        {
+            IDeskBand* pdb;
+            if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
+            {
+                BOOL fFixed = BandSite_FixUpCompositionForBand(pdb);
+                pdb->Release();
+                if (fFixed)
+                    break;
+            }
+            if (pbs->EnumBands(++i, &dwBandID) < 0)
+                goto LABEL_5;
+        }
+    }
+}
+
+// @NOTE (Olivia): Cleanup
+int WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
+{
+    int v1 = 0;
+    BOOL pfCanRenderComposited = FALSE;
+
+    IDeskBand2* pdb2;
+    if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdb2))))
+    {
+        pdb2->CanRenderComposited(&pfCanRenderComposited);
+
+        BOOL fCompositionEnabled = pfCanRenderComposited && (IsAppThemed() && IsCompositionActive());
+        pdb2->SetCompositionState(fCompositionEnabled);
+        pdb2->Release();
+    }
+    if (!pfCanRenderComposited)
+    {
+        v1 = 1;
+        CTray::EnableGlass(FALSE);
+    }
+
+    return v1;
+}
+
+
 CTrayBandSite* IUnknownToCTrayBandSite(IUnknown* punk)
 {
     CTrayBandSite* ptbs;
