@@ -4516,11 +4516,11 @@ void CTray::_OnThemeChanged()
         _hTheme = NULL;
     }
 
-    CTray::_OpenTaskbarThemeData();
-    CTray::_SetBandSiteTheme();
-    CTray::_SetRebarTheme();
+    _OpenTaskbarThemeData();
+    _SetBandSiteTheme();
+    _SetRebarTheme();
 
-    this->_nUnkField68C = 0;
+    _nUnkField68C = 0;
 
     if (!_hTheme)
     {
@@ -4528,15 +4528,15 @@ void CTray::_OnThemeChanged()
         memset(&ncm.iBorderWidth, 0, 0x1F4u);
 
         if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, 0, &ncm, 0))
-            this->_nUnkField68C = ncm.iPaddedBorderWidth;
+            _nUnkField68C = ncm.iPaddedBorderWidth;
     }
 
-    CTray::_UpdateVertical(_uStuckPlace, TRUE);
+    _UpdateVertical(_uStuckPlace, TRUE);
     SetWindowStyle(_hwnd, WS_THICKFRAME | WS_BORDER, !_hTheme);
     SetWindowPos(_hwnd, 0, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
     InvalidateRect(_hwnd, NULL, TRUE);
     PostMessageW(_hwnd, 0x40D, 0, 0);
-    CTray::_AccountAllBandsForTaskbarSizingBar();
+    _AccountAllBandsForTaskbarSizingBar();
 }
 
 // Allow the trays global hotkeys to be disabled for a while.
@@ -6502,37 +6502,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
 
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
+        // Revalidated
         case WM_THEMECHANGED:
         {
-            if (_hTheme)
-            {
-                CloseThemeData(_hTheme);
-                _hTheme = NULL;
-            }
-            if (wParam)
-            {
-                _hTheme = OpenThemeData(_hwnd, c_wzTaskbarTheme);
-                _fShowSizingBarAlways = (_uAutoHide & AH_ON) ? TRUE : FALSE;
-                if (_hTheme)
-                {
-                    GetThemeBool(_hTheme, 0, 0, TMT_ALWAYSSHOWSIZINGBAR, &_fShowSizingBarAlways);
-                }
-                _UpdateVertical(_uStuckPlace, TRUE);
-                // Force Refresh of frame
-                SetWindowPos(_hwnd, NULL, 0, 0, 0, 0, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
-            }
-
-            // Force the start button to recalc its size
-            _startButton.StartButtonReset();
-            InvalidateRect(_hwnd, NULL, TRUE);
-
-            // Force the Start Pane to rebuild with new theme
-            ::PostMessage(_hwnd, SBM_REBUILDMENU, 0, 0);
-
-            SetWindowStyle(_hwnd, WS_BORDER | WS_THICKFRAME, !_hTheme);
+            _OnThemeChanged();
+            break;
         }
-        break;
-
         case TM_WORKSTATIONLOCKED:
         {
             // Desktop locked status changed...
