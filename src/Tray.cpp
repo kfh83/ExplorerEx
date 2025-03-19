@@ -4451,7 +4451,20 @@ void CTray::_OpenTaskbarThemeData()
 
 void CTray::_SetBandSiteTheme()
 {
-    // TODO
+    LPCWSTR pszClassList;
+
+    BOOL fComposited = IsCompositionActive() && _fIsGlass;
+    if (STUCK_HORIZONTAL(_uStuckPlace))
+    {
+        pszClassList = fComposited ? L"TaskBarComposited" : L"TaskBar";
+    }
+    else
+    {
+        pszClassList = L"TaskBarVertComposited";
+        if (!fComposited)
+            pszClassList = L"TaskBarVert";
+    }
+    BandSite_SetWindowTheme(_bandSite, (LPWSTR)pszClassList);
 }
 
 void CTray::_SetRebarTheme()
