@@ -4460,9 +4460,7 @@ void CTray::_SetBandSiteTheme()
     }
     else
     {
-        pszClassList = L"TaskBarVertComposited";
-        if (!fComposited)
-            pszClassList = L"TaskBarVert";
+        pszClassList = fComposited ? L"TaskBarVertComposited" : L"TaskBarVert";
     }
     BandSite_SetWindowTheme(_bandSite, (LPWSTR)pszClassList);
 }
