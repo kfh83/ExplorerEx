@@ -90,29 +90,55 @@ protected:
     WCHAR* _pwzTheme;
 };
 
-// @NOTE (Olivia): Partially taken from ep_taskbar but i was unsure of some parts
-void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething)
+LRESULT CALLBACK TaskbarSizingBarSubclassProc(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam,
+    UINT_PTR uIdSubclass,
+    DWORD_PTR dwRefData)
 {
-    DWORD dwBandID;
-    UINT v3 = 0;
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, TaskbarSizingBarSubclassProc, 0);
+    }
+    else if (uMsg == WM_NCHITTEST)
+    {
+        RECT rc;
+        GetWindowRect(hWnd, &rc);
 
-    for (UINT i = pbs->EnumBands(0, &dwBandID); i >= 0; i = pbs->EnumBands(v3, &dwBandID))
-    {
-        BandSite_AccountBandForTaskbarSizingBar(pbs, dwBandID, bSomething);
-        ++v3;
-    }
-    HWND hwnd;
-    if (IUnknown_GetWindow(pbs, &hwnd) >= 0)
-    {
-        if (bSomething)
-            SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0, 0); // @TODO
+        UINT uStuckPlace = c_tray.getStuckPlace();
+        /*if (uStuckPlace)
+        {
+            if (uStuckPlace == 1)
+            {
+                rc.bottom -= dword_106D610;
+            }
+            else if (uStuckPlace == 2)
+            {
+                rc.left += dword_106D610;
+            }
+            else
+            {
+                rc.top += dword_106D610;
+            }
+        }
         else
-            RemoveWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0); // @TODO
+        {
+            rc.right -= dword_106D610;
+        }*/
+
+        POINT pt;
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+        if (!PtInRect(&rc, pt))
+            return HTTRANSPARENT;
     }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
-// @NOTE (Olivia): Partially taken from ep_taskbar by @amrsatrio
-void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOOL b)
+// @NOTE (Olivia): Partially taken from ep_taskbar
+void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOOL bSomething)
 {
     IDeskBand* pdb;
     if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
@@ -124,8 +150,8 @@ void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOO
                 hwnd = GetWindow(hwnd, GW_CHILD);
             if (hwnd)
             {
-                if (b)
-                    SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, 0, 0);
+                if (bSomething)
+                    SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, NULL, 0);
                 else
                     RemoveWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, NULL);
             }
@@ -134,59 +160,69 @@ void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOO
     }
 }
 
-// @NOTE (Olivia): Cleanup
-void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
+// @NOTE (Olivia): Partially taken from ep_taskbar but using a while loop instead of a for loop
+void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething)
 {
-    UINT i = 0;
-
+    UINT iBand = 0;
     DWORD dwBandID;
-    if (pbs->EnumBands(0, &dwBandID) < 0)
+    while (SUCCEEDED(pbs->EnumBands(iBand, &dwBandID)))
     {
-    LABEL_5:
-        c_tray.EnableGlass(TRUE);
+        BandSite_AccountBandForTaskbarSizingBar(pbs, dwBandID, bSomething);
+        ++iBand;
     }
-    else
+    
+    HWND hwnd;
+    if (SUCCEEDED(IUnknown_GetWindow(pbs, &hwnd)))
     {
-        while (TRUE)
-        {
-            IDeskBand* pdb;
-            if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
-            {
-                BOOL fFixed = BandSite_FixUpCompositionForBand(pdb);
-                pdb->Release();
-                if (fFixed)
-                    break;
-            }
-            if (pbs->EnumBands(++i, &dwBandID) < 0)
-                goto LABEL_5;
-        }
+        if (bSomething)
+            SetWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, NULL, 0);
+        else
+            RemoveWindowSubclass(hwnd, TaskbarSizingBarSubclassProc, NULL);
     }
 }
 
-// @NOTE (Olivia): Cleanup
-int WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
+BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
 {
-    int v1 = 0;
-    BOOL pfCanRenderComposited = FALSE;
-
     IDeskBand2* pdb2;
+    BOOL fCanRenderComposited = FALSE;
     if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdb2))))
     {
-        pdb2->CanRenderComposited(&pfCanRenderComposited);
-
-        BOOL fCompositionEnabled = pfCanRenderComposited && (IsAppThemed() && IsCompositionActive());
-        pdb2->SetCompositionState(fCompositionEnabled);
+        pdb2->CanRenderComposited(&fCanRenderComposited);
+        pdb2->SetCompositionState(fCanRenderComposited && (IsAppThemed() && IsCompositionActive()));
         pdb2->Release();
     }
-    if (!pfCanRenderComposited)
+    
+    BOOL bRet = FALSE;
+    if (!fCanRenderComposited)
     {
-        v1 = 1;
+        bRet = TRUE;
         c_tray.EnableGlass(FALSE);
     }
 
-    return v1;
+    return bRet;
 }
 
+// @NOTE (Olivia): Thanks to amr for this solution
+void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
+{
+    BOOL fFixed = FALSE;
+
+    DWORD dwBandID;
+    for (UINT iBand = 0; !fFixed && SUCCEEDED(pbs->EnumBands(iBand, &dwBandID)); iBand++)
+    {
+        IDeskBand* pdb;
+        if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
+        {
+            fFixed = BandSite_FixUpCompositionForBand(pdb);
+            pdb->Release();
+        }
+    }
+
+    if (!fFixed)
+    {
+        c_tray.EnableGlass(TRUE);
+    }
+}
 
 CTrayBandSite* IUnknownToCTrayBandSite(IUnknown* punk)
 {
