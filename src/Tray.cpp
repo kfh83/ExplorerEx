@@ -2542,7 +2542,6 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
     RECT rcDisplay;
     SIZE sNewWidths;
     RECT rcTemp;
-    BOOL fHiding;
 
     if (!lprc || !_fCanSizeMove)
     {
@@ -2572,7 +2571,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
         *lprc = _arStuckRects[uStuckPlace];
     }
 
-    fHiding = (_uAutoHide & AH_HIDING);
+    BOOL fHiding = (_uAutoHide & AH_HIDING);
     if (fHiding)
     {
         InvisibleUnhide(FALSE);
@@ -4413,6 +4412,12 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
     }
 
     return _ssomgr.EnableObject(&plipd->clsid, plipd->dwFlags);
+}
+
+// @NOTE (Olivia): Temp shim
+BOOL CTray::GlassEnabled()
+{
+    return _fIsGlass;
 }
 
 void CTray::EnableGlass(BOOL bEnable)
