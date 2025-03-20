@@ -364,7 +364,7 @@ HRESULT CTrayBandSite::AddBand(IUnknown* punk)
                     bi.dwState |= ISFB_STATE_BTNMINSIZE;
                     pisfBand->SetBandInfoSFB(&bi);
                 }
-                ((void(__stdcall*)(IShellFolderBand*))pisfBand->GetBandInfoSFB)(pisfBand); // @NOTE (Olivia): someone smarter than me please investigate this
+                pisfBand->Release();
             }
 
             if (_pwzTheme)

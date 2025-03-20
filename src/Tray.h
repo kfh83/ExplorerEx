@@ -665,7 +665,7 @@ protected:
     HANDLE _hHTTPEvent;
     HANDLE _hHTTPWait;
 
-    int _nUnkField68C;
+    int _nBorderPadding;
 
     friend class CDeskTray;
     friend class CStartDropTarget;

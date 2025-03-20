@@ -4515,33 +4515,28 @@ void CTray::_AccountAllBandsForTaskbarSizingBar()
 // @NOTE (Olivia): Cleanup
 void CTray::_OnThemeChanged()
 {
-    NONCLIENTMETRICSW ncm;
-
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     _OpenTaskbarThemeData();
     _SetBandSiteTheme();
     _SetRebarTheme();
 
-    _nUnkField68C = 0;
-
+    _nBorderPadding = 0;
     if (!_hTheme)
     {
-        ncm.cbSize = 504;
-        memset(&ncm.iBorderWidth, 0, 0x1F4u);
-
-        if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, 0, &ncm, 0))
-            _nUnkField68C = ncm.iPaddedBorderWidth;
+        NONCLIENTMETRICSW ncm = { sizeof (ncm) };
+        if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, 0, &ncm, FALSE))
+            _nBorderPadding = ncm.iPaddedBorderWidth;
     }
 
     _UpdateVertical(_uStuckPlace, TRUE);
     SetWindowStyle(_hwnd, WS_THICKFRAME | WS_BORDER, !_hTheme);
-    SetWindowPos(_hwnd, 0, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
-    InvalidateRect(_hwnd, NULL, TRUE);
+    SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
+    InvalidateRect(_hwnd, nullptr, TRUE);
     PostMessageW(_hwnd, 0x40D, 0, 0);
     _AccountAllBandsForTaskbarSizingBar();
 }
