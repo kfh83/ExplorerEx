@@ -334,7 +334,7 @@ HRESULT CTrayBandSite::AddBand(IUnknown* punk)
 {
     CLSID clsid;
     HRESULT hr = S_OK;
-    
+
     if (!_fDelayBootStuffHandled)
     {
         IUnknown_Exec(punk, &CGID_DeskBand, DBID_DELAYINIT, 0, nullptr, nullptr);
@@ -348,54 +348,58 @@ HRESULT CTrayBandSite::AddBand(IUnknown* punk)
             IsEqualGUID(clsid, CLSID_TaskBand) ? S_OK : E_FAIL;
         }
     }
-    hr = this->_pbsInner->AddBand(punk); // @NOTE (Olivia): This feels very out of place...
-    
+
     if (SUCCEEDED(hr))
     {
-        IShellFolderBand* pisfBand;
-        if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pisfBand))))
+        hr = _pbsInner->AddBand(punk);
+        if (SUCCEEDED(hr))
         {
-            BANDINFOSFB bi;
-            bi.dwMask = ISFB_MASK_STATE;
-            if (SUCCEEDED(pisfBand->GetBandInfoSFB(&bi)))
+            IShellFolderBand* pisfBand;
+            if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pisfBand))))
             {
-                bi.dwState |= ISFB_STATE_BTNMINSIZE;
-                pisfBand->SetBandInfoSFB(&bi);
+                BANDINFOSFB bi;
+                bi.dwMask = ISFB_MASK_STATE;
+                if (SUCCEEDED(pisfBand->GetBandInfoSFB(&bi)))
+                {
+                    bi.dwState |= ISFB_STATE_BTNMINSIZE;
+                    pisfBand->SetBandInfoSFB(&bi);
+                }
+                ((void(__stdcall*)(IShellFolderBand*))pisfBand->GetBandInfoSFB)(pisfBand); // @NOTE (Olivia): someone smarter than me please investigate this
             }
-            ((void(__stdcall*)(IShellFolderBand*))pisfBand->GetBandInfoSFB)(pisfBand); // @NOTE (Olivia): someone smarter than me please investigate this
-        }
-        
-        if (_pwzTheme)
-        {
-            VARIANTARG var;
-            var.vt = VT_BSTR;
-            var.bstrVal = _pwzTheme;
-            IUnknown_Exec(punk, &CGID_DeskBand, DBID_SETWINDOWTHEME, 0, &var, nullptr);
-        }
-        if (GetWindowLongW(_hwnd, GWL_EXSTYLE) & WS_EX_TRANSPARENT)
-        {
-            EnumChildWindows(_hwnd, SetTransparency, TRUE);
-        }
-        
-        IDeskBandInfo* pdbi;
-        if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdbi))))
-        {
-            int nWidth;
-            HWND hwnd;
-            if (SUCCEEDED(pdbi->GetDefaultBandWidth(ShortFromResult(hr), 0, &nWidth)) && SUCCEEDED(IUnknown_GetWindow(_pbsInner, &hwnd)))
+
+            if (_pwzTheme)
             {
-                int iIndex = SendMessageW(hwnd, RB_INSERTBAND, ShortFromResult(hr), 0);
-                SendMessageW(hwnd, RB_SETBANDWIDTH, iIndex, nWidth);
+                VARIANTARG var;
+                var.vt = VT_BSTR;
+                var.bstrVal = _pwzTheme;
+                IUnknown_Exec(punk, &CGID_DeskBand, DBID_SETWINDOWTHEME, 0, &var, nullptr);
             }
-            pdbi->Release();
+
+            if (GetWindowLongW(_hwnd, GWL_EXSTYLE) & WS_EX_TRANSPARENT)
+            {
+                EnumChildWindows(_hwnd, SetTransparency, TRUE);
+            }
+
+            IDeskBandInfo* pdbi;
+            if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdbi))))
+            {
+                int nWidth;
+                HWND hwnd;
+                if (SUCCEEDED(pdbi->GetDefaultBandWidth(ShortFromResult(hr), 0, &nWidth)) && SUCCEEDED(IUnknown_GetWindow(_pbsInner, &hwnd)))
+                {
+                    int iIndex = SendMessageW(hwnd, RB_INSERTBAND, ShortFromResult(hr), 0);
+                    SendMessageW(hwnd, RB_SETBANDWIDTH, iIndex, nWidth);
+                }
+                pdbi->Release();
+            }
+            if (IsSizeMoveEnabled())
+            {
+                BandSite_AccountBandForTaskbarSizingBar(this, ShortFromResult(hr), TRUE);
+            }
+            BandSite_FixUpCompositionForBand(punk);
         }
-        if (IsSizeMoveEnabled())
-        {
-            BandSite_AccountBandForTaskbarSizingBar(this, ShortFromResult(hr), TRUE);
-        }
-        BandSite_FixUpCompositionForBand(punk);
     }
-    
+
     return hr;
 }
 
