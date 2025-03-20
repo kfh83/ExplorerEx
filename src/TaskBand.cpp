@@ -523,10 +523,17 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
         IUnknown_GetWindow(punk, &hwndParent);
 
         HWND hwnd = CreateWindowEx(0, c_szTaskSwClass, NULL,
-                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
-                0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
+            WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+            0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
 
-        SetWindowTheme(hwnd, c_wzTaskBandTheme, NULL);
+        LPCWSTR pszClass = L"TaskBandComposited";
+
+        if (!_CanGlassifyTaskbar())
+            pszClass = c_wzTaskBandTheme;
+
+        wprintf(L"CTaskBand::SetSite using pszClass: %s\n", pszClass);
+
+        SetWindowTheme(hwnd, pszClass, NULL);
     }
 
     ATOMICRELEASE(_punkSite);
