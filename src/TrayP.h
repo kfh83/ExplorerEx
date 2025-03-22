@@ -78,6 +78,14 @@
 #define TM_STARTMENUDISMISSED       (WM_USER + 0x182)
 #define TM_SHOWTRAYBALLOON          (WM_USER + 0x190)
 
+// @NOTE(isabella): New in Vista.
+#define TM_ISCLOCKHIDDEN            (WM_USER + 0x1A3)
+#define TM_SHOWTASKMAN              (WM_USER + 0x1A9) // Window message mirror of IDM_SHOWTASKMAN (command)
+#define TM_EXITEXPLORER             (WM_USER + 0x1B4)
+#define TM_SIGNALDESKTOPSWITCH      (WM_USER + 0x1B5)
+#define TM_UPDATESIZINGBAR          (WM_USER + 0x1B6) // @NOTE(isabella): Rework name?
+#define TM_TOGGLEDESKTOP            (WM_USER + 0x1B7) // Window message mirror of IDM_TOGGLEDESKTOP (command)
+
 #define Tray_GetHMonitor(hwndTray, phMon) \
         (DWORD)SendMessage((hwndTray), TM_GETHMONITOR, 0, (LPARAM)(HMONITOR *)phMon)
 

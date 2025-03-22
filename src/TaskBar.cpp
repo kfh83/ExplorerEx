@@ -93,7 +93,7 @@ HRESULT CTaskBar::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     if (IS_INTRESOURCE(pici->lpVerb))
         idCmd = LOWORD(pici->lpVerb);
 
-    c_tray.ContextMenuInvoke(idCmd);
+    c_tray.ContextMenuInvoke(idCmd, FALSE);
 
     return S_OK;
 }

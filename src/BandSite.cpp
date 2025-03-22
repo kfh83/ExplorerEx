@@ -314,19 +314,23 @@ static BOOL CALLBACK SetTransparency(HWND hwnd, LPARAM lParam)
 
 BOOL IsSizeMoveRestricted()
 {
-    return SHRegGetBoolValueFromHKCUHKLM(
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-        L"LockTaskbar",
-        FALSE);
+    // Refused to compile for me, linker error:
+    //return SHRegGetBoolValueFromHKCUHKLM(
+    //    L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+    //    L"LockTaskbar",
+    //    FALSE);
+    return FALSE;
 }
 
 BOOL IsSizeMoveEnabled()
 {
-    return !IsSizeMoveRestricted()
-        && SHRegGetBoolValueFromHKCUHKLM(
-            L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-            L"TaskbarSizeMove",
-            TRUE);
+    // Refused to compile for me, linker error:
+    //return !IsSizeMoveRestricted()
+    //    && SHRegGetBoolValueFromHKCUHKLM(
+    //        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    //        L"TaskbarSizeMove",
+    //        TRUE);
+    return TRUE;
 }
 
 // *** IBandSite methods ***

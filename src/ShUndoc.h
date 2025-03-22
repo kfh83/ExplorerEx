@@ -469,6 +469,18 @@ typedef struct _tagSHELLREMINDER
 
 #define ATOMICRELEASET(p, type) { if(p) { type* punkT=p; p=NULL; punkT->Release();} }
 
+template <class T>
+void IUnknown_SafeReleaseAndNullPtr(T **ptr)
+{
+    T *pRes = *ptr;
+
+    if (*ptr)
+    {
+        *ptr = NULL;
+        pRes->Release();
+    }
+}
+
 #define ResultFromShort(i)  ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, (USHORT)(i)))
 
 #define ShortFromResult(r)  (short)SCODE_CODE(GetScode(r))
@@ -1362,9 +1374,6 @@ HRESULT DisplayNameOf(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR
 #define ToolBar_CommandToIndex(hwnd, idBtn)  \
     (BOOL)SNDMSG((hwnd), TB_COMMANDTOINDEX, (WPARAM)(idBtn), 0)
 
-
-BOOL SHRunControlPanelCustom(LPCTSTR lpcszCmdLine, HWND hwndMsgParent);
-
 //
 // Function loader
 //
@@ -1516,3 +1525,5 @@ inline BOOL WINAPI SetTaskmanWindow(IN HWND hWnd)
 
     return result;
 }
+
+HRESULT WINAPI DwmpStartOrStopFlip3D();

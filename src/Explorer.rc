@@ -296,8 +296,9 @@ BEGIN
     IDS_STARTBUTTONTIP          "Click here to begin"
 
     IDS_UNDOTEMPLATE            "&Undo %s"
-    IDS_CASCADE                 "Cascade"
-    IDS_TILE                    "Tile"
+    IDS_CASCADE                 "Cascade Windows"
+    IDS_HORIZTILE               "Show Windows Stacked"
+    IDS_VERTTILE                "Show Windows Side by Side"
     IDS_MINIMIZEALL             "Minimize All"
     IDS_SHOWDEMOTEDTIP          "Show hidden icons"
     IDS_HIDEDEMOTEDTIP          "Hide"
@@ -377,8 +378,6 @@ BEGIN
     IDS_OFFERTOUR_TITLE     "Take a tour of Windows XP"
     IDS_OFFERTOUR_TEXT      "To learn about the exciting new features in XP now, click here. To take the tour later, click All Programs on the Start menu, and then click Accessories."
 
-    IDS_CLEANBOOTMSG        "Windows is running in safe mode.\n\nThis special diagnostic mode of Windows enables you to fix a problem which may be caused by your network or hardware settings. Make sure these settings are correct in Control Panel, and then try starting Windows again.  While in safe mode, some of your devices may not be available."
-    IDS_CLEANBOOTMSGRESTORE "Windows is running in safe mode.\n\nThis special diagnostic mode of Windows enables you to fix a problem which may be caused by your network or hardware settings. Make sure these settings are correct in Control Panel, and then try starting Windows again.  While in safe mode, some of your devices may not be available.\n\nTo proceed to work in safe mode, click Yes. If you prefer to use System Restore to restore your computer to a previous state, click No."
     IDS_BOGUSLABELS         "|Go||"
 END
 

@@ -177,6 +177,8 @@ EXTERN_C void Tray_SetStartPaneActive(BOOL fActive);
 #define TPF_TASKBARPAGE     0x00000001
 #define TPF_STARTMENUPAGE   0x00000002
 #define TPF_INVOKECUSTOMIZE 0x00000004   // start with the "Customize..." sub-dialog open
+#define TPF_NOTIFAREAPAGE   0x00000008
+#define TPF_TOOLBARSPAGE    0x00000010
 
 EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 
@@ -211,7 +213,7 @@ public:
     void RealityCheck();
     DWORD getStuckPlace() { return _uStuckPlace; }
     void InvisibleUnhide(BOOL fShowWindow);
-    void ContextMenuInvoke(int idCmd);
+    void ContextMenuInvoke(int idCmd, BOOL fFromNotifArea);
     HMENU BuildContextMenu(BOOL fIncludeTime);
     void AsyncSaveSettings();
     BOOL Init();
@@ -233,7 +235,10 @@ public:
     BOOL IsMouseOverStartButton();
     BOOL IsMouseOverClock();                       // ExplorerEx-Vista
     BOOL ShowClockFlyoutAsNeeded(LPARAM mousePos); // ExplorerEx-Vista
-    bool _bBool678; // ExplorerEx-Vista
+    void _ActivateWindowSwitcher();
+    void _SetLockState(UINT newVal);
+    void _InvokeSearch();
+    bool _fMouseInTaskbar; // ExplorerEx-Vista
     bool _bBool679; // ExplorerEx-Vista
 
     DWORD CountOfRunningPrograms();
@@ -287,7 +292,6 @@ public:
     BOOL _fSelfSizing;
     BOOL _fBalloonUp; // true if balloon notification is up
     BOOL _fIgnoreDoneMoving;
-    BOOL _fShowSizingBarAlways;
     BOOL _fSkipErase;
 
     BOOL _fIsLogoff;
@@ -301,7 +305,8 @@ public:
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
-    RECT _arStuckRects[4];   // temporary for hit-testing
+    RECT _arStuckRects[4];
+    int _arStuckHeights[4];
 
     CTrayNotify _trayNotify;
 
@@ -316,7 +321,7 @@ protected:
     DWORD _SyncThreadProc();
     static DWORD WINAPI MainThreadProc(void* pv);
 
-    int _GetPart(BOOL fSizingBar, UINT uStuckPlace);
+    int _GetPart(UINT uStuckPlace);
     void _UpdateVertical(UINT uStuckPlace, BOOL fForce = FALSE);
     void _RaiseDesktop(BOOL fRaise, BOOL fRestoreWindows);
 
@@ -382,11 +387,11 @@ protected:
     void _AdjustRectForSizingBar(UINT uStuckPlace, LPRECT prc, int iIncrement);
     void _MakeStuckRect(LPRECT prcStick, LPCRECT prcBound, SIZE size, UINT uStick);
     void _ScreenSizeChange(HWND hwnd);
-    void _ContextMenu(DWORD dwPos, BOOL fSetTime);
+    void _ContextMenu(DWORD dwPos, BOOL fFromNotifArea);
     void _StuckTrayChange();
     void _ResetZorder();
     void _HandleSize();
-    BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace);
+    BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpdateSize);
     void _RegisterGlobalHotkeys();
     void _UnregisterGlobalHotkeys();
     void _HandleGlobalHotkey(WPARAM wParam);
@@ -413,7 +418,7 @@ protected:
 
     BOOL _CanMinimizeAll();
     BOOL _MinimizeAll(BOOL fPostRaiseDesktop);
-    void _Command(UINT idCmd);
+    void _Command(UINT idCmd, BOOL fFromNotifArea);
     LONG _SetAutoHideState(BOOL fAutoHide);
     void _ToolbarMenu();
     HFONT _CreateStartFont(HWND hwndTray);
@@ -421,7 +426,8 @@ protected:
     void _SaveTray(void);
     void _SaveTrayAndDesktop(void);
     void _SlideStep(HWND hwnd, const RECT* prcMonitor, const RECT* prcOld, const RECT* prcNew);
-    void _DoExitWindows(HWND hwnd);
+    void _DoExitExplorer();
+    void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, BOOL fFromNotifArea);
 
     void _ResizeStuckRects(RECT* arStuckRects);
 
@@ -486,7 +492,7 @@ protected:
     void _PropagateMessage(HWND hwnd, UINT uMessage, WPARAM wParam, LPARAM lParam);
 
     BOOL _IsAutoHide() { return _uAutoHide & AH_ON; }
-    void _RunDlg();
+    void _RunDlg(BOOL fCreateEvent);
 
     static void WINAPI SettingsUIPropSheetCallback(DWORD nStartPage);
     static DWORD WINAPI SettingsUIThreadProc(void* pv);
@@ -573,6 +579,9 @@ protected:
     BOOL _fFromStart;      // Track when context menu popping up from Start button
     BOOL _fTaskbarFading;
     BOOL _fNoToolbarsOnTaskbarPolicyEnabled;
+    BOOL _fTaskbarLockAllPolicyEnabled;
+    BOOL _fTaskbarNoRedockPolicyEnabled;
+    BOOL _fTaskbarNoResizePolicyEnabled;
 
     POINT _ptLastHittest;
 
@@ -594,7 +603,7 @@ protected:
     SIZE _sStuckWidths;      // width/height of tray
     UINT _uMoveStuckPlace;   // stuck status during a move operation
 
-    SIZE _sizeClockMargin;  // vista
+    int _cyClockMargin;  // vista
 
     // these two must  go together for save reasons
     RECT _rcOldTray;     // last place we stuck ourselves (for work area diffs)
@@ -665,7 +674,7 @@ protected:
     HANDLE _hHTTPEvent;
     HANDLE _hHTTPWait;
 
-    int _nBorderPadding;
+    int _iPaddedBorderWidth;
 
     friend class CDeskTray;
     friend class CStartDropTarget;

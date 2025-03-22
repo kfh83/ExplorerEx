@@ -41,7 +41,7 @@ UINT GetDDEExecMsg();
 
 BOOL _CheckAssociations(void);
 
-void _ShowFolder(HWND hwnd, UINT csidl, UINT uFlags);
+void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore);
 
 STDAPI_(IShellFolder*) BindToFolder(LPCITEMIDLIST pidl);
 
@@ -104,6 +104,8 @@ BOOL _IsDirectXExclusiveMode();
 
 HRESULT SHCacheTrackingFolder(LPCITEMIDLIST pidlRoot, int csidlTarget, IShellFolder2** ppsfCache);
 
+// @NOTE(isabella): Maybe move to TM_ macros in TrayP.h?
+// That does feel like a fitting location.
 #define WM_SHOWCLOCKFLYOUT (WM_USER + 0x66)     // @NOTE these are likely not what they're named in vista,
 #define WM_SHOWCLOCKTOOLTIP (WM_USER + 0x67)    // this is probably also not a good place to keep them
 

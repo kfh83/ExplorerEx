@@ -4,7 +4,7 @@
 #define IDM_FILERUN                 401
 #define IDM_LOGOFF                  402
 #define IDM_EJECTPC                 410
-#define IDM_SETTINGSASSIST          411
+#define IDM_WINDOWSWITCHER          411
 #define IDM_TRAYPROPERTIES          413
 #define IDM_UPDATEWIZARD            414
 #define IDM_UPDATE_SEP              415
@@ -26,6 +26,7 @@
 #define IDM_PROGRAMSINIT        513
 #define IDM_RECENTINIT          514
 #define IDM_MYDOCUMENTS         516
+#define IDM_LOCKWORKSTATION     517
 #define IDM_MENU_FIND           520
 #define TRAY_IDM_FINDFIRST      521  // this range
 #define TRAY_IDM_FINDLAST       550  // is reserved for find command

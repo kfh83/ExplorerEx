@@ -3352,7 +3352,7 @@ LRESULT CTrayNotify::_OnKeyDown(WPARAM wChar, LPARAM lFlags)
             //
             // run the default applet in timedate.cpl
             //
-            SHRunControlPanelCustom(TEXT("timedate.cpl"), _hwnd);
+            //SHRunControlPanelCustom(TEXT("timedate.cpl"), _hwnd);
             return 0;
         }
     }

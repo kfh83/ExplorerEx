@@ -303,8 +303,9 @@
 #define IDS_STARTBUTTONTIP      533
 #define IDS_UNDOTEMPLATE        534
 #define IDS_CASCADE             535
-#define IDS_TILE                536
+#define IDS_HORIZTILE           536
 #define IDS_MINIMIZEALL         537
+#define IDS_VERTTILE            538
 
 // The next items are used to build the clean boot message...
 #define IDS_CLEANBOOTMSG        538

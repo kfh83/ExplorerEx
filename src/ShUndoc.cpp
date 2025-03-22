@@ -2736,50 +2736,6 @@ BOOL ExecuteRegAppEnumProc(LPCTSTR szSubkey, LPCTSTR szCmdLine, RRA_FLAGS fFlags
     return bRet;
 }
 
-BOOL SHRunControlPanelCustom(LPCTSTR lpcszCmdLine, HWND hwndMsgParent)
-{
-    LPCTSTR pszCmdLine = NULL;
-
-	if (!IS_INTRESOURCE(lpcszCmdLine))
-	{
-		pszCmdLine = StrDup(lpcszCmdLine);
-	}
-	else
-	{
-		ULONG id = PtrToUlong((void*)lpcszCmdLine);
-		if (id == 9012) //hack cuz shit changed
-		{
-			pszCmdLine = L"SYSDM.CPL,System";
-		}
-		else
-		{
-			TCHAR szCmdLine[MAX_PATH];
-
-			if (LoadString(LoadLibraryW(L"shell32.dll"), id, szCmdLine, ARRAYSIZE(szCmdLine)))
-				pszCmdLine = StrDup(szCmdLine);
-		}
-	}
-
-	if (!pszCmdLine)
-		return FALSE;
-
-	if (wcscmp(pszCmdLine, L"nusrmgr.cpl ,initialTask=ChangePicture") == 0) //another hack to hack 7 cpl in
-	{
-		IOpenControlPanel* openCPL = 0;
-		if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, 0, 0x17u, IID_PPV_ARGS(&openCPL))))
-			openCPL->Open(L"Microsoft.UserAccounts", 0, 0);
-
-		if (openCPL)
-			openCPL->Release();
-		return TRUE;
-	}
-
-	WCHAR parameters[MAX_PATH] = L"shell32.dll,Control_RunDLL ";
-	wcscat_s(parameters, pszCmdLine);
-
-	return ((INT_PTR)ShellExecuteW(hwndMsgParent, L"open", L"rundll32.exe", parameters, NULL, SW_SHOWNORMAL) > 32);
-}
-
 bool SHUndocInit(void)
 {
 
@@ -3122,4 +3078,23 @@ HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* pp
 HRESULT SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath)
 {
     return SHGetUserPicturePath_t(pszUsername, dwFlags, pszPath, MAX_PATH);
+}
+
+// BUGBUG: On Windows 8+, the OS will return S_OK no matter what. This means that we
+// are told that Flip 3D succeeded in displaying, and thus we might not fallthrough
+// to handlers applicable for those operating systems. An operating system check should
+// be implemented here in order to trigger the right behaviour on these operating systems.
+HRESULT WINAPI DwmpStartOrStopFlip3D()
+{
+    HMODULE hDwmApi = LoadLibraryW(L"dwmapi.dll");
+    if (!hDwmApi)
+    {
+        return E_FAIL;
+    }
+
+    auto pfnDwmpStartOrStopFlip3D = (HRESULT(WINAPI *)())GetProcAddress(hDwmApi, (LPCSTR)105);
+    HRESULT hr = pfnDwmpStartOrStopFlip3D();
+
+    FreeLibrary(hDwmApi);
+    return hr;
 }

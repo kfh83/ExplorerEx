@@ -176,6 +176,7 @@ WORD _GetHotkeyFromFolderItem(IShellFolder *psf, LPCITEMIDLIST pidl)
 
 // Just like shells SHRestricted() only this put up a message if the restricion
 // is in effect.
+// EXEX-VISTA: Changed to use GUID instead of RESTRICTIONS in Vista.
 BOOL _Restricted(HWND hwnd, RESTRICTIONS rest)
 {
     if (SHRestricted(rest))
@@ -354,19 +355,19 @@ BOOL _CheckAssociations(void)
     return FALSE;
 }
 
-
-void _ShowFolder(HWND hwnd, UINT csidl, UINT uFlags)
+// EXEX-VISTA: Validated.
+void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore)
 {
     SHELLEXECUTEINFO shei = { 0 };
 
     shei.cbSize     = sizeof(shei);
-    shei.fMask      = SEE_MASK_IDLIST | SEE_MASK_INVOKEIDLIST;
+    shei.fMask      = SEE_MASK_INVOKEIDLIST;
     shei.nShow      = SW_SHOWNORMAL;
 
     if (_Restricted(hwnd, REST_NOSETFOLDERS))
         return;
 
-    if (uFlags & COF_EXPLORE)
+    if (fExplore)
         shei.lpVerb = TEXT("explore");
 
     shei.lpIDList = SHCloneSpecialIDList(NULL, csidl, FALSE);
