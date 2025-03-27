@@ -1,14 +1,9 @@
+#include "pch.h"
 #include "StartButton.h"
-
-#include <shlwapi.h>
-#include <windowsx.h>
-
 #include "SHFusion.h"
 #include "tray.h"
 #include "Util.h"
-#include "rcids.h"
-#include <DeskHost.h>
-#include <vssym32.h>
+#include "DeskHost.h"
 
 CStartButton::CStartButton(IStartButtonSite *pStartButtonSite)
     : _nSettingsChangeType(true)

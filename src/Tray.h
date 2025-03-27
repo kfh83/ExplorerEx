@@ -694,3 +694,8 @@ extern UINT g_uStartButtonAllowPopup;
 
 BOOL _IsSizeMoveEnabled();
 BOOL _IsSizeMoveRestricted();
+
+
+#endif  // __cplusplus
+
+#endif  // _TRAY_H

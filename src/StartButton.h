@@ -1,7 +1,5 @@
 #pragma once
-#include <Windows.h>
-#include <Uxtheme.h>
-#include <ShObjIdl_core.h>
+#include "pch.h"
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
