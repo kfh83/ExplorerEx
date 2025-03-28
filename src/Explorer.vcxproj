@@ -549,8 +549,6 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="wtl\atlwinx.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cpp.hint" />
-    <None Include="desktop2\StartPane.aps" />
     <None Include="Explorer.rcv" />
     <None Include="InterfacesP.inc" />
   </ItemGroup>
