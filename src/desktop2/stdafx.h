@@ -13,12 +13,7 @@
 
 #define _BROWSEUI_          // See HACKS OF DEATH in sfthost.cpp
 #include "pch.h"
-#include "ieguidp.h"
-#include "port32.h"
-#include "debug.h"
-#include "dpa.h"
 #include "desktop2.h"
-#include "regstr.h"
 #include "shfusion.h"
 
 EXTERN_C HWND v_hwndTray;
@@ -29,9 +24,6 @@ EXTERN_C HWND v_hwndStartPane;
 #define REGSTR_VAL_STARTFAVCHANGES  TEXT("FavoritesChanges")
 
 #define REGSTR_VAL_PROGLIST         TEXT("ProgramsCache")
-
-// IAccessible
-#include <oleacc.h>
 
 // When we want to get a tick count for the starting time of some interval
 // and ensure that it is not zero (because we use zero to mean "not started").

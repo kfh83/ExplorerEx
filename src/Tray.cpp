@@ -5227,7 +5227,7 @@ void CTray::_CheckForRogueProgramFile()
         && S_OK == SHGetFolderPath(NULL, CSIDL_PROGRAM_FILES, NULL, SHGFP_TYPE_CURRENT, szProgramFilesPath))
     {
         LPTSTR pszRoguePattern;
-        int cchRoguePattern;
+        size_t cchRoguePattern;
 
         pszRoguePattern = StrChr(szProgramFilesPath, TEXT(' '));
         cchRoguePattern = ARRAYSIZE(szProgramFilesPath) - (pszRoguePattern - szProgramFilesPath);
