@@ -1,0 +1,336 @@
+
+#pragma code_page(65001)
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+//#include "cabinet.h"
+#include <winres.h>
+#else
+#include <winres.h>
+#endif
+
+#include "rcids.h"
+#include "mfulist_ko-kr.h"
+
+// Define this here because its NT5-only and we compile for NT4 (its safe to
+// use this flag anyway, it will be ignored)
+
+/////////////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+LANGUAGE LANG_KOREAN, SUBLANG_KOREAN
+
+
+DLG_PROGRAMFILECONFLICT DIALOGEX DISCARDABLE  0, 0, 272, 81
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | (DS_SETFONT|DS_FIXEDSYS)
+CAPTION "파일 이름 경고"
+FONT 9, "굴림"
+BEGIN
+    DEFPUSHBUTTON   "무시(&I)",IDIGNORE,215,60,50,16
+    PUSHBUTTON      "이름 바꾸기(&R)",IDC_RENAME,147,60,62,16
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,7,51,258,1
+    CONTROL         "시작할 때 확인 안 함(&D)", 0x1202,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,62,139,10
+    ICON            IDI_WARNING,IDC_STATIC,7,7,21,20
+    LTEXT           "컴퓨터에 ""%s""(이)라는 이름의 파일 또는 폴더가 있어 일부 응용 프로그램이 올바르게 동작하지 않을 수 있습니다. ""%s""(으)로 이름을 바꾸면 이 문제를 해결할 수 있습니다. 지금 이름을 바꾸시겠습니까?",
+                    IDC_MSG,34,7,224,37
+END
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_TAAUTOHIDE         BITMAP DISCARDABLE PURE ".\\taautohide.bmp"
+IDB_TALOCKGROUP        BITMAP DISCARDABLE PURE ".\\talockgroup.bmp"
+IDB_TANOLOCKGROUP      BITMAP DISCARDABLE PURE ".\\tanolockgroup.bmp"
+IDB_TALOCKNOGROUP      BITMAP DISCARDABLE PURE ".\\talocknogroup.bmp"
+IDB_TANOLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\tanolocknogroup.bmp"
+IDB_TAQLLOCKGROUP      BITMAP DISCARDABLE PURE ".\\taqllockgroup.bmp"
+IDB_TAQLNOLOCKGROUP    BITMAP DISCARDABLE PURE ".\\taqlnolockgroup.bmp"
+IDB_TAQLLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\taqllocknogroup.bmp"
+IDB_TAQLNOLOCKNOGROUP  BITMAP DISCARDABLE PURE ".\\taqlnolocknogroup.bmp"
+
+IDB_NACLOCKCLEAN       BITMAP DISCARDABLE PURE "\\naclockclean.bmp"
+IDB_NANOCLOCKCLEAN     BITMAP DISCARDABLE PURE "\\nanoclockclean.bmp"
+IDB_NACLOCKNOCLEAN     BITMAP DISCARDABLE PURE "\\naclocknoclean.bmp"
+IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE "\\nanoclocknoclean.bmp"
+
+IDB_STARTPREVIEWNEW     BITMAP DISCARDABLE PURE "\\NewSM.bmp"
+IDB_STARTPREVIEWCLASSIC BITMAP DISCARDABLE PURE "\\ClassicSM.bmp"
+
+#ifndef APSTUDIO_INVOKED
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+#define FCIDM_BROWSERFIRST          0xa000
+#define FCIDM_BROWSERLAST           0xbf00
+
+ACCEL_TRAY ACCELERATORS DISCARDABLE
+BEGIN
+    "s",            IDC_KBSTART,        ALT
+    VK_TAB,         FCIDM_NEXTCTL,      VIRTKEY,NOINVERT
+    VK_TAB,         FCIDM_NEXTCTL,      VIRTKEY,NOINVERT,SHIFT
+    VK_TAB,         FCIDM_NEXTCTL,      VIRTKEY,NOINVERT,CONTROL
+    VK_TAB,         FCIDM_NEXTCTL,      VIRTKEY,NOINVERT,CONTROL,SHIFT
+    VK_F5,          FCIDM_REFRESH,      VIRTKEY,NOINVERT
+    VK_F6,          FCIDM_NEXTCTL,      VIRTKEY,NOINVERT
+    VK_RETURN,      IDM_TRAYPROPERTIES, VIRTKEY,NOINVERT,ALT
+    "Z",            IDM_UNDO,           VIRTKEY,NOINVERT,CONTROL
+    VK_F3,          FCIDM_FINDFILES,    VIRTKEY,NOINVERT
+    "m",            IDM_MINIMIZEALLHOTKEY,  VIRTKEY,NOINVERT,ALT
+END
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+MENU_TRAYCONTEXT MENU PRELOAD DISCARDABLE
+BEGIN
+        POPUP ""
+        BEGIN
+// WARNING -- CTray::BuildContextMenu assumes position of these menu items
+                MENUITEM "날짜/시간 조정(&A)",           IDM_SETTIME
+                MENUITEM "알림 사용자 지정(&C)...", IDM_NOTIFYCUST
+                MENUITEM SEPARATOR
+// END WARNING
+                MENUITEM "계단식 창 배열(&S)",            IDM_CASCADE
+                MENUITEM "가로 바둑판식 창 배열(&H)",  IDM_HORIZTILE
+                MENUITEM "세로 바둑판식 창 배열(&E)",    IDM_VERTTILE
+                MENUITEM "바탕 화면 보기(&S)",           IDM_TOGGLEDESKTOP   
+                MENUITEM "실행 취소(&U)",   IDM_UNDO
+                MENUITEM SEPARATOR
+                MENUITEM "작업 관리자(&K)",               IDM_SHOWTASKMAN
+                MENUITEM SEPARATOR
+                MENUITEM "작업 표시줄 잠금(&L)",           IDM_LOCKTASKBAR
+                MENUITEM "속성(&R)",                 IDM_TRAYPROPERTIES
+        END
+END
+
+
+MENU_GROUPCONTEXT MENUEX PRELOAD DISCARDABLE
+BEGIN
+        POPUP "", -1
+        BEGIN
+                MENUITEM "계단식 배열(&S)",           IDM_CASCADE
+                MENUITEM "가로 바둑판식 배열(&H)", IDM_HORIZTILE
+                MENUITEM "세로 바둑판식 배열(&E)"",   IDM_VERTTILE
+                MENUITEM "그룹 최소화(&M)",    IDM_MINIMIZE
+                MENUITEM "", -1,               MFT_SEPARATOR
+                MENUITEM "그룹 닫기(&C)",       IDM_CLOSE
+        END
+END
+
+// NB - ToolbarMenu() relies on the order of these menu items.
+// REVIEW HACK Note the spaces after (Empty), these are intentional.
+
+// WARNING:  if you change the order of this, or add new items,
+//           you'll need to change the table in StartMenu_CatMenu
+//           too.
+
+MENU_START MENUEX DISCARDABLE
+BEGIN
+    POPUP ""
+    BEGIN
+        MENUITEM "", -1, MFT_SEPARATOR
+        POPUP "프로그램(&P)",                      IDM_PROGRAMS
+        BEGIN
+            MENUITEM "(비어 있음)    ",                     IDM_PROGRAMSINIT,,MFS_GRAYED
+        END
+
+        POPUP "즐겨찾기(&A)",                      IDM_FAVORITES
+        BEGIN
+            MENUITEM "(비어 있음)    ",                     -1,,MFS_GRAYED
+        END
+
+        POPUP "문서(&D)",                     IDM_RECENT
+        BEGIN
+            MENUITEM "(비어 있음)    ",                     IDM_RECENTINIT,,MFS_GRAYED
+        END
+        POPUP "설정(&S)",                      IDM_SETTINGS
+        BEGIN
+            MENUITEM "제어판(&C)",                  IDM_CONTROLS
+            MENUITEM "", -1, MFT_SEPARATOR
+#ifdef WINNT
+            MENUITEM "Windows 보안(&W)...",        IDM_MU_SECURITY
+            MENUITEM "네트워크 연결(&N)", IDM_NETCONNECT
+#else
+            MENUITEM "Dial-up &Networking",             IDM_NETCONNECT
+#endif
+            // MENUITEM "&Start Menu",                  IDM_PROGRAMSFOLDER
+            MENUITEM "프린터 및 팩스(&P)",             IDM_PRINTERS
+            // MENUITEM "&Fonts",                       IDM_FONTS
+            // MENUITEM "", -1, MFT_SEPARATOR
+            MENUITEM "작업 표시줄 및 시작 메뉴(&T)",       IDM_TRAYPROPERTIES
+
+        END
+        POPUP "검색(&C)",                          IDM_MENU_FIND
+        BEGIN
+            MENUITEM "", -1, MFT_SEPARATOR
+        END
+
+        MENUITEM "도움말 및 지원(&H)",           IDM_HELPSEARCH
+        MENUITEM "실행(&R)...",                     IDM_FILERUN
+        MENUITEM "",                            IDM_SEP2,       MFT_SEPARATOR
+        MENUITEM "동기화(&Y)",                 IDM_CSC
+        MENUITEM "%s 로그오프(&L)...",              IDM_LOGOFF
+        MENUITEM "연결 끊기(&I)...",              IDM_MU_DISCONNECT
+        MENUITEM "컴퓨터 도킹 해제(&E)",            IDM_EJECTPC
+        MENUITEM "시스템 종료(&U)...",               IDM_EXITWIN
+    END
+END
+
+MENU_STARTPANECONTEXT MENUEX PRELOAD DISCARDABLE
+BEGIN
+        POPUP "", -1
+        BEGIN
+                MENUITEM "속성(&R)",        IDSYSPOPUP_STARTMENUPROP
+        END
+END
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+
+#ifdef WINNT
+
+// Neither of these two strings should exceed MAX_PATH in length
+
+STRINGTABLE DISCARDABLE
+BEGIN
+    IDS_OKTOKILLAPP1     "프로그램이 사용 중이거나 사용자의 종료 요청에 응답할 수 없습니다."
+    IDS_OKTOKILLAPP2     "프로그램을 강제로 종료하면 데이터를 잃게 될 수도 있습니다. 강제로 종료하겠습니까?"
+END
+
+#endif
+
+
+STRINGTABLE DISCARDABLE
+BEGIN
+    IDS_STARTBUTTONTIP          "시작하려면 여기를 클릭하십시오."
+
+    IDS_UNDOTEMPLATE            "%s 취소(&U)"
+    IDS_CASCADE                 "계단식 배열"
+    IDS_TILE                    "바둑판식 배열"
+    IDS_MINIMIZEALL             "모두 최소화"
+    IDS_SHOWDEMOTEDTIP          "숨겨진 아이콘 표시"
+    IDS_HIDEDEMOTEDTIP          "숨기기"
+    IDS_BANGICONINFOTITLE       "자주 사용하지 않는 알림 아이콘을 감춥니다..."
+    IDS_BANGICONINFOTIP1        "숨겨진 아이콘을 보려면 이 단추를 클릭하십시오."
+    IDS_TRAYNOTIFYTITLE         "알림 영역"
+    IDS_TASKBANDTITLE           "응용 프로그램 실행 중"
+    IDS_HIDEDESKTOP             "열린 창 보기(&S)"
+END
+
+
+STRINGTABLE DISCARDABLE
+BEGIN
+    IDS_CABINET             "Windows 탐색기"
+    IDS_STARTMENU           "시작 메뉴"
+    IDS_WINDOWS             "Windows"
+#ifdef WINNT
+    IDS_WINININORUN         "레지스트리에 지정한 '%1' 파일을 로드하거나 실행할 수 없습니다. 파일이 시스템에 있는지 확인하고 레지스트리에서 해당 파일에 대한 참조를 삭제하십시오."
+#else
+    IDS_WINININORUN         "Could not load or run '%1' specified in the WIN.INI file. Make sure the file exists on your computer or remove the reference to it in the WIN.INI file."
+#endif
+    IDS_TASKBAR             "작업 표시줄"
+    IDS_DESKTOP             "바탕 화면"
+    IDS_CANTFINDSPECIALDIR  "명령을 실행할 수 없습니다.\n'%1' 폴더가 삭제되었습니다."
+    IDS_NOTINITED           "내 컴퓨터나 Windows 탐색기가 아직 올바르게 초기화되지 않았습니다. 나중에 다시 실행하십시오."
+    IDS_OUTOFMEM            "메모리가 부족하여 이 작업을 완료할 수 없습니다."
+#ifdef FULL_DEBUG
+    IDS_START               "unicode debug"
+    IDS_STARTCLASSIC        "Unicode Debug"
+#else
+    IDS_START               "시작"
+    IDS_STARTCLASSIC        "시작"
+#endif
+
+    IDS_STARTMENUANDTASKBAR "작업 표시줄 및 시작 메뉴 속성"
+
+    IDS_STARTMENUBALLOON_TIP "[시작] 메뉴에서 모든 프로그램, 문서, 설정을 액세스할 수 있습니다. 시작하려면 [시작] 단추를 클릭하십시오."
+    IDS_STARTMENUBALLOON_TITLE "[시작] 단추를 클릭하십시오."
+
+    IDS_EXCEPTIONMSG        "내부 오류가 발생하여 사용 중인 창이 하나 닫혔습니다."
+    IDS_RESTRICTIONSTITLE   "제한 사항"
+    IDS_RESTRICTIONS        "이 작업은 시스템 제한 때문에 취소되었습니다. 시스템 관리자에게 문의하십시오."
+
+END
+
+STRINGTABLE DISCARDABLE
+BEGIN
+    IDS_DISPLAY_ERROR "새 환경 설정에 맞게 디스플레이 설정을 바꿀 수 없습니다. 시스템을 이전 상태로 복원하고 Windows를 종료한 다음 원하는 환경 설정으로 시스템을 다시 시작하십시오."
+    IDS_DISPLAY_WARN "계속하면 디스플레이 설정에 문제가 발생할 수 있습니다. 새로운 설정으로 안전하게 바꾸려면 시스템을 종료하고 원하는 설정으로 시스템을 다시 시작해야 합니다. 계속하시겠습니까?"
+    IDS_TASKDROP_ERROR "작업 표시줄의 단추 위에 항목을 놓을 수 없습니다.\n\n그러나 마우스 단추를 놓지 않은 채로 항목을 단추 위로 끌면 창이 열려서 창 안에 항목을 놓을 수 있게 됩니다."
+
+    IDS_ALREADYAUTOHIDEBAR "화면의 이 측면에 도구 모음이 이미 숨겨져 있습니다.\n한 측면당 하나의 자동 숨김 도구 모음을 지정할 수 있습니다."
+    IDS_COMMON      " (공통)"
+    IDS_BETAEXPIRED         "Internet Explorer 4.0 버전의 사용 기간이 만료되었습니다. http://www.microsoft.com/korea에서 Internet Explorer 4.0 최신 버전으로 업그레이드하십시오."
+    IDS_RUNDLGTITLE   "실행"
+
+    // This has to be in sync with IDM_LOGOFF
+    IDS_LOGOFFNOUSER        "로그오프(&L)..."
+    // This has to be in sync with IDM_EXITWIN
+    IDS_TURNOFFCOMPUTER     "컴퓨터 끄기(&U)..."
+#ifdef WINNT
+   IDS_OPENCOMMON    "열기 - All Users(&P)"
+   IDS_EXPLORECOMMON "탐색 - All Users(&X)"
+#endif
+    IDS_STARTMENUPROP   "속성(&R)"
+
+#ifdef WINNT
+    //IDS_HELP_CMD            "hh.exe>%systemroot%\\help\\windows.chm"
+	// on Whistler, we use Help and Support
+    IDS_HELP_CMD            "helpctr.exe>-FromStartHelp"
+#else
+    //  on millennium, we use the Help AC
+    IDS_HELP_CMD            "helpctr.exe"
+#endif
+    IDS_FIXSCREENRES_TITLE  "디스플레이 설정"
+    IDS_FIXSCREENRES_TEXT   "사용자 컴퓨터의 화면 해상도 및 색 농도 설정이 아주 낮은 수준으로 설정되어 있습니다. 이 설정을 늘리면 더 좋은 그림을 얻을 수 있습니다. 설정을 바꾸려면 이 풍선을 클릭하십시오."
+    IDS_OFFERTOUR_TITLE     "Windows XP를 둘러봅니다."
+    IDS_OFFERTOUR_TEXT      "XP의 새 기능을 둘러 보려면 여기를 클릭하십시오. 나중에 보려면 [시작] 메뉴에서 [모든 프로그램]을 클릭한 다음, [보조프로그램]을 클릭하십시오."
+
+    IDS_CLEANBOOTMSG        "Windows가 안전 모드에서 실행 중입니다.\n\n이 특별한 Windows 진단 모드로 네트워크나 하드웨어 설정으로 인해 발생한 문제를 해결할 수 있습니다. 이 설정이 맞는지 제어판에서 확인하고 Windows를 다시 시작하십시오. 안전 모드에서는 일부 장치를 사용하지 못할 수 있습니다."
+    IDS_CLEANBOOTMSGRESTORE "Windows가 안전 모드에서 실행 중입니다.\n\n이 특별한 Windows 진단 모드로 네트워크나 하드웨어 설정으로 인해 발생한 문제를 해결할 수 있습니다. 이 설정이 맞는지 제어판에서 확인하고 Windows를 다시 시작하십시오. 안전 모드에서는 일부 장치를 사용하지 못할 수 있습니다.\n\n[안전 모드]에서 작업을 계속하려면 [예]를 클릭하십시오. [시스템 복원]을 사용하여 컴퓨터를 이전 상태로 복원하려면 [아니오]를 클릭하십시오."
+    IDS_BOGUSLABELS         "|이동||"
+END
+
+//  MFU strings
+//
+//  We need to put all of the strings in here, even though only one or two
+//  of them will actually be used.  There is a single MUI package that
+//  is used for both Win32 and Win64, so you can't put #ifdef WIN64 in a
+//  resource file.
+//
+
+STRINGTABLE
+BEGIN
+
+    MFU_ENUMRC(PRO32ALL)
+    MFU_ENUMRC(PRO64ALL)
+    MFU_ENUMRC(SRV32ADM)
+    MFU_ENUMRC(SRV64ADM)
+
+END
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#include "explorer.rcv"
+#include "dlg.ko-kr.rc"
+
+#include "resource.h"
+#include "StartPane.ko-kr.rc"
+
+/////////////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
