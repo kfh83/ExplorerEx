@@ -5790,6 +5790,12 @@ BOOL CTray::_TryForwardNCToClient(UINT uMsg, LPARAM lParam)
             ASSERT(InRange(uMsg, WM_NCMOUSEFIRST, WM_NCMOUSELAST));
             uMsg += (WM_LBUTTONDOWN - WM_NCLBUTTONDOWN);
 
+            // never send double click message
+            if (uMsg == WM_LBUTTONDBLCLK)
+            {
+                return FALSE;
+            }
+		
             // forward it
             SendMessage(hwnd, uMsg, 0, lParam);
             return TRUE;
