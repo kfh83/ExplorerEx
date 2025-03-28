@@ -1,0 +1,82 @@
+﻿//This file is included from the webvw.rc so all paths to files in this file 
+// should be relative to webvw directory instead of this directory
+#include "resource.h"
+#include "windows.h"
+
+STRINGTABLE
+BEGIN
+    IDS_STARTPANE_INFOTIP_SEARCH    "פתיחת חלון בו באפשרותך לבחור אפשרויות חיפוש ולעבוד עם תוצאות חיפוש."
+    IDS_STARTPANE_INFOTIP_HELP      "פתיחת מיקום מרכזי הכולל נושאי עזרה, ערכות לימוד, כלי פתרון בעיות ושירותי תמיכה נוספים."
+    IDS_STARTPANE_INFOTIP_WINSECURITY ""
+    IDS_STARTPANE_INFOTIP_FILERUN   "פתיחת תוכנית, תיקיה, מסמך או אתר אינטרנט."
+    IDS_STARTPANE_INFOTIP_CLIENTINET "פתיחת דפדפן האינטרנט שלך."
+    IDS_STARTPANE_INFOTIP_CLIENTMAIL "פתיחת תוכנית הדואר האלקטרוני שלך כדי שתוכל לשלוח או לקרוא הודעה."
+
+    IDS_STARTPANE_TITLE_SEARCH    "&חיפוש"
+    IDS_STARTPANE_TITLE_HELP      "&עזרה ותמיכה"
+    IDS_STARTPANE_TITLE_WINSECURITY "&אבטחת Windows..."
+    IDS_STARTPANE_TITLE_FILERUN   "ה&פעלה..."
+    IDS_STARTPANE_TITLE_CLIENTINET "אינטרנט"
+    IDS_STARTPANE_TITLE_CLIENTMAIL "דואר אלקטרוני"
+
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SFTHOST_OFFERREMOVEITEM "הפריט שבחרת אינו זמין. ייתכן שהוא הועבר או הוסר, או ששמו השתנה. האם ברצונך להסיר אותו מהרשימה?"
+
+    IDS_SFTHOST_REMOVEFROMLIST  "&הסר מרשימה זו"
+    IDS_SFTHOST_SHOWONDESKTOP   "ה&צג על שולחן העבודה"
+
+    IDS_STARTPANE_MOREPROGRAMS  "&כל התוכניות"
+    IDS_STARTPANE_MOREPROGRAMS_TIP "הצגת רשימת תוכניות הקיימות במחשב."
+    IDS_STARTPANE_MOREPROGRAMS_BALLOONTITLE "תוכניות חדשות שהותקנו."
+    IDS_STARTPANE_SPECIALITEMSTIP "אם ברצונך להחזיר לתפריט התחלה את סמלי האינטרנט או הדואר האלקטרוני, לחץ באמצעות לחצן העכבר הימני על לחצן התחל, לחץ על מאפיינים, לחץ על התאמה אישית ובחר בתיבת הסימון המתאימה."
+
+    IDS_STARTPANE_CLIPPED_TITLE     "לא ניתן להציג פריטים מסוימים"
+    IDS_STARTPANE_CLIPPED_TEXT      "‏‏אין די מקום להצגת כל הפריטים שהוספת לתפריט התחלה. כדי להציגם, נא בחר סמלים קטנים יותר בתפריט, בחר מספר פריטים קטן יותר או הסר פריטים אחדים"
+
+    IDS_LOGOFF_TEXT_FRIENDLY    "|בטל עיגון מחשב|&ניתוק|כי&בוי המחשב|התנת&ק...||"
+    IDS_LOGOFF_TEXT_DOMAIN      "|בטל עיגון מחשב|&ניתוק|כיבוי|התנת&ק...||"
+
+    IDS_LOGOFF_TIP_EJECT       "Removes your laptop or notebook computer from a docking station."
+    IDS_LOGOFF_TIP_LOGOFF      "Provides options for closing your programs and logging off, or for leaving your programs running and switching to another user."
+    IDS_LOGOFF_TIP_SHUTDOWN    "Provides options for turning off or restarting your computer, or for activating Stand By or Hibernate modes."
+    IDS_LOGOFF_TIP_DISCONNECT  "Disconnects your session.  You can reconnect to the session when you log on again."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_CUSTOMTIP_MYDOCS    "Opens the My Documents folder, where you can store letters, reports, notes, and other kinds of documents."
+    IDS_CUSTOMTIP_RECENT    "Displays recently opened documents and folders."
+    IDS_CUSTOMTIP_MYMUSIC   "Opens the My Music folder, where you can store music and other audio files."
+    IDS_CUSTOMTIP_MYPICS    "Opens the My Pictures folder, where you can store digital photos, images, and graphics files."
+    IDS_CUSTOMTIP_MYNETPLACES "Gives access to, and information about, folders and files on other computers."
+    IDS_CUSTOMTIP_MYCOMP    "Gives access to, and information about, the disk drives, cameras, scanners, and other hardware connected to your computer."
+    IDS_CUSTOMTIP_CONNECTTO "Connects to other computers, networks, and the Internet."
+    IDS_CUSTOMTIP_CTRLPANEL "Provides options for you to customize the appearance and functionality of your computer, add or remove programs, and set up network connections and user accounts."
+
+    IDS_STARTPANE_CONNECTTO         "Connect &To"
+    IDS_STARTPANE_CONTROLPANEL      "&Control Panel"
+    IDS_STARTPANE_FAVORITES         "F&avorites"
+    IDS_STARTPANE_RECENT            "My Recent &Documents"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_STARTPANE_TOTALHEIGHT       "440"
+    IDS_STARTPANE_TOTALWIDTH        "380"
+    IDS_STARTPANE_USERHEIGHT        "40"
+    IDS_STARTPANE_MOREPROGHEIGHT    "30"
+    IDS_STARTPANE_LOGOFFHEIGHT      "40"
+END
+
+MENU_CONNECTTO MENUEX PRELOAD DISCARDABLE
+BEGIN
+                MENUITEM "", -1,               MFT_SEPARATOR
+                MENUITEM "&Show all connections", IDM_OPENCONFOLDER
+END
+
+
+IDB_LOGOFF_NORMAL BITMAP "resources\\LogoffButtons.bmp"
+IDB_LOGOFF_HOT    BITMAP "resources\\LogoffButtonsHot.bmp"
