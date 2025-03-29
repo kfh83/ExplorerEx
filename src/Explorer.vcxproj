@@ -184,7 +184,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
@@ -244,7 +244,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
@@ -304,7 +304,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
@@ -363,7 +363,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
@@ -426,7 +426,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
@@ -493,7 +493,7 @@ del "$(IntermediateOutputPath)temp.res"
 
 rc /D "_UNICODE" /D "UNICODE" /D "WINNT" /l 0x0412 /q "muiconfig.xml" /g 0x0409 /nologo /fo "$(IntermediateOutputPath)temp.res" /fm"$(IntermediateOutputPath)explorer.ko-KR.res" "localization\ko-KR\explorer.ko-KR.rc"
 if not exist "$(OutDir)ko-KR" md "$(OutDir)ko-KR"
-link /dll /MACHINE:X86 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
+link /dll /MACHINE:X64 /noentry /out:"$(OutDir)ko-KR\$(TargetFileName).mui" "$(IntermediateOutputPath)explorer.ko-KR.res"
 muirct -c "$(TargetPath)" -e "$(OutDir)ko-KR\$(TargetFileName).mui"
 del "$(IntermediateOutputPath)temp.res"
 </Command>
