@@ -120,7 +120,7 @@ BEGIN
         BEGIN
                 MENUITEM "계단식 배열(&S)",           IDM_CASCADE
                 MENUITEM "가로 바둑판식 배열(&H)", IDM_HORIZTILE
-                MENUITEM "세로 바둑판식 배열(&E)"",   IDM_VERTTILE
+                MENUITEM "세로 바둑판식 배열(&E)",   IDM_VERTTILE
                 MENUITEM "그룹 최소화(&M)",    IDM_MINIMIZE
                 MENUITEM "", -1,               MFT_SEPARATOR
                 MENUITEM "그룹 닫기(&C)",       IDM_CLOSE
