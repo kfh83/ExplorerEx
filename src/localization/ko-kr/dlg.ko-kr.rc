@@ -94,7 +94,7 @@ FONT 9, "굴림", 0, 0, 0x1
 BEGIN
 GROUPBOX        "시작 메뉴", IDC_GROUPBOX, 8, 7, 218, 114
 ICON            ICO_CLASSICSM, IDC_NO_HELP_1, 19, 17, 18, 20
-LTEXT           "시작 메뉴에 항목을 추가하거나 제거할 수 있습니다.,
+LTEXT           "시작 메뉴에 항목을 추가하거나 제거할 수 있습니다.",
 IDC_NO_HELP_2, 48, 17, 108, 39
 PUSHBUTTON      "추가(&D)...", IDC_ADDSHORTCUT, 162, 15, 53, 16
 PUSHBUTTON      "제거(&R)...", IDC_DELSHORTCUT, 162, 32, 53, 16
