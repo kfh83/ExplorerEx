@@ -7660,8 +7660,8 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
 
 void CTray::_RunDlg()
 {
-    HANDLE hEvent;
-    void* pvThreadParam;
+    // HANDLE hEvent;
+    // void* pvThreadParam;
 
     if (!_Restricted(_hwnd, REST_NORUN))
     {
@@ -7689,7 +7689,8 @@ void CTray::_RunDlg()
 
         // Create an event so we can wait for the run dlg to appear before
         // continue - this allows it to capture any type-ahead.
-        hEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("MSShellRunDlgReady"));
+        /*
+		hEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("MSShellRunDlgReady"));
         if (hEvent)
             pvThreadParam = IntToPtr(GetCurrentThreadId());
         else
@@ -7706,7 +7707,9 @@ void CTray::_RunDlg()
 
         if (hEvent)
             CloseHandle(hEvent);
-    }
+		*/
+		SHCreateThread(RunDlgThreadProc, 0, CTF_COINIT_STA | CTF_NOADDREFLIB, 0);
+	}
 }
 
 void CTray::_ExploreCommonStartMenu(BOOL bExplore)
