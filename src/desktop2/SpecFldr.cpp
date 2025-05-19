@@ -915,6 +915,75 @@ int SpecialFolderList::AddImageForItem(PaneItem *p, IShellFolder *psf, LPCITEMID
     return iIcon;
 }
 
+/*----------------------------------------------------------
+  Purpose: Removes '&'s from a string, returning the character after
+           the last '&'.  Double-ampersands are collapsed into a single
+           ampersand.  (This is important so "&Help && Support" works.)
+
+           If a string has multiple mnemonics ("&t&wo") USER is inconsistent.
+           DrawText uses the last one, but the dialog manager uses the first
+           one.  So we use whichever one is most convenient.
+
+           EXEX USE: For Japanese language use, suffix mnemonics are common.
+           They look like "コントロール パネル(&C)". XP intended to remove the
+           full suffix, however, it neglects to do so and only the ampersand
+           is removed. This behaviour was fixed to remove the full "(&C)"
+           sequence in later versions of Windows. Ordinarily, this wouldn't
+           be a problem, however the special folder display names in the start
+           menu rely on this function's faulty behaviour in XP to display
+           correctly. Otherwise, the full mnenomic sequence is dropped, but the
+           underline is still drawn in the correct position as if the mnenomic
+           were drawn. Overall, this is bad for accuracy to XP, so we'll just
+           use a copy of the XP function.
+*/
+STDAPI_(WCHAR) SHStripMneumonicXP(LPWSTR pszMenu)
+{
+    ASSERT(pszMenu);
+    WCHAR cMneumonic = pszMenu[0]; // Default is first char
+
+    // Early-out:  Many strings don't have ampersands at all
+    LPWSTR pszAmp = StrChrW(pszMenu, L'&');
+    if (pszAmp)
+    {
+        LPWSTR pszCopy = pszAmp - 1;
+
+        //  FAREAST some localized builds have an mnemonic that looks like
+        //    "Localized Text (&L)"  we should remove that, too
+        if (pszAmp > pszMenu && *pszCopy == L'(')
+        {
+            if (pszAmp[2] == L')')
+            {
+                cMneumonic = *pszAmp;
+                // move amp so that we arent past the potential terminator
+                pszAmp += 3;
+                pszAmp = pszCopy;
+            }
+        }
+        else
+        {
+            //  move it up so that we copy on top of amp
+            pszCopy++;
+        }
+
+        while (*pszAmp)
+        {
+            // Protect against string that ends in '&' - don't read past the end!
+            if (*pszAmp == L'&' && pszAmp[1])
+            {
+                pszAmp++;                   // Don't copy the ampersand itself
+                if (*pszAmp != L'&')        // && is not a mnemonic
+                {
+                    cMneumonic = *pszAmp;
+                }
+            }
+            *pszCopy++ = *pszAmp++;
+        }
+        *pszCopy = 0;
+    }
+
+    return cMneumonic;
+}
+
 LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCITEMIDLIST pidlItem, SHGDNF shgno)
 {
     LPTSTR psz = NULL;
@@ -938,7 +1007,7 @@ LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCI
         SHFree(pitem->_pszAccelerator);
         pitem->_pszAccelerator = NULL;
         SHStrDup(psz, &pitem->_pszAccelerator); // if it fails, then tough, no mnemonic
-        pitem->_chMnem = CharUpperCharA(SHStripMneumonic(psz));
+        pitem->_chMnem = CharUpperCharA(SHStripMneumonicXP(psz));
     }
 
     return psz;
