@@ -335,7 +335,7 @@ HRESULT SHGetIDListFromUnk(IUnknown* punk, LPITEMIDLIST* ppidl)
 
 DWORD SHProcessMessagesUntilEventEx(HWND hwnd, HANDLE hEvent, DWORD dwTimeout, DWORD dwWakeMask)
 {
-    DWORD dwEndTime = GetTickCount() + dwTimeout;
+    DWORD dwEndTime = GetTickCount64() + dwTimeout;
     LONG lWait = (LONG)dwTimeout;
     DWORD dwReturn;
 
@@ -373,7 +373,7 @@ DWORD SHProcessMessagesUntilEventEx(HWND hwnd, HANDLE hEvent, DWORD dwTimeout, D
         // calculate new timeout value
         if (dwTimeout != INFINITE)
         {
-            lWait = (LONG)dwEndTime - GetTickCount();
+            lWait = (LONG)dwEndTime - GetTickCount64();
         }
     }
 
