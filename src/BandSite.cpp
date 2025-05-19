@@ -68,6 +68,10 @@ protected:
     CTrayBandSite();
     virtual ~CTrayBandSite();
 
+#ifdef EXEX_DLL
+    HRESULT _BootImmersiveShell();
+#endif
+
     BOOL _CreateBandSiteMenu(IUnknown* punk);
     HRESULT _AddRequiredBands();
     void _BroadcastExec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut);
@@ -597,6 +601,15 @@ BOOL CTrayBandSite::HandleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     
     return FALSE;
 }
+
+#ifdef EXEX_DLL
+HRESULT CTrayBandSite::_BootImmersiveShell()
+{
+    _BroadcastExec(&_GUID_23650f94_13b8_4f39_b2c3_817e6564a756, DBID_FINISHINIT, 0, nullptr, nullptr);
+    //PostMessageW(m_trayUIHost->GetWindow(), 0x5C3, m_stuckPlace, (LPARAM)m_stuckMonitor);
+    return S_OK;
+}
+#endif
 
 void CTrayBandSite::_BroadcastExec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
 {

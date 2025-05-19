@@ -1,0 +1,313 @@
+#pragma once
+
+#include <Windows.h>
+
+//typedef struct tagNOTIFYITEM
+//{
+//    PWSTR pszExeName;
+//    PWSTR pszIconText;
+//    HICON hIcon;
+//    HWND hWnd;
+//    DWORD dwUserPref;
+//    UINT uID;
+//    GUID guidItem;
+//    DWORD dwFlags;
+//    int nDisplayIndex;
+//    UINT uCallbackMsg;
+//    UINT uVersion;
+//    BOOL fUseSystemTip;
+//    PWSTR pszAppId;
+//    BOOL fIsExplicitAppId;
+//} NOTIFYITEM;
+//
+//typedef enum tagNOTIFYITEMACTION
+//{
+//    NIA_DEFAULT,
+//    NIA_CLOSE,
+//} NOTIFYITEMACTION;
+
+//MIDL_INTERFACE("d782ccba-afb0-43f1-94db-fda3779eaccb")
+//INotificationCB : IUnknown
+//{
+//    virtual HRESULT STDMETHODCALLTYPE Notify(DWORD, NOTIFYITEM*) = 0;
+//};
+
+typedef enum __MIDL___MIDL_itf_shpriv_0000_0034_0001
+{
+    NIE_NULL = 0x0,
+    NIE_MouseMove = 0x1,
+    NIE_MouseDown = 0x2,
+    NIE_MouseUp = 0x3,
+    NIE_MouseClick = 0x4,
+    NIE_MouseDoubleClick = 0x5,
+    NIE_ContextMenu = 0x6,
+    NIE_KeyDown = 0x7,
+    NIE_KeyUp = 0x8,
+    NIE_Tooltip = 0x9,
+    NIE_Reorder = 0xA,
+} NotifyIconEvent;
+
+//DEFINE_GUID(CLSID_TrayNotify, 0x25DEAD04, 0x1EAC, 0x4911, 0x9E, 0x3A, 0xAD, 0x0A, 0x4A, 0xB5, 0x60, 0xFD);
+
+//MIDL_INTERFACE("d133ce13-3537-48ba-93a7-afcd5d2053b4")
+//ITrayNotify : IUnknown
+//{
+//    virtual HRESULT STDMETHODCALLTYPE RegisterCallback(INotificationCB*, DWORD*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE UnregisterCallback(DWORD) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetPreference(const NOTIFYITEM*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE EnableAutoTray(BOOL) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE DoAction(const NOTIFYITEM*, const NOTIFYITEMACTION) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE DoNotifyIconEvent(const NOTIFYITEM*, NotifyIconEvent, DWORD, POINT, DWORD) = 0;
+//};
+
+MIDL_INTERFACE("c6636ec2-eba1-4e6d-a995-8fa14b8b2891")
+IImmersiveApplicationWindow : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetBandId(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetNativeWindow(HWND*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetApplicationId(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetProcessId(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetThreadId(DWORD*) = 0;
+};
+
+enum IMMERSIVE_APPLICATION_GET_WINDOWS_FILTER
+{
+    IAGWF_ANY = 0,
+    IAGWF_STRONGLY_NAMED = 1,
+    IAGWF_PREFER_PENDING_PRESENTED = 2,
+    IAGWF_ONLY_PENDING_PRESENTED = 3,
+    IAGWF_PRESENTATION = 4,
+    IAGWF_FRAME = 5
+};
+
+enum IMMAPPPROPERTYSTOREFLAGS
+{
+    IAGPS_DEFAULT = 0x0
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(IMMAPPPROPERTYSTOREFLAGS);
+
+typedef struct tagIMMAPPTIMESTAMPS
+{
+    FILETIME ftCreation;
+    FILETIME ftClosed;
+    FILETIME ftActivation;
+    FILETIME ftInactive;
+    FILETIME ftVisible;
+    FILETIME ftHidden;
+} IMMAPPTIMESTAMPS;
+
+enum IMMERSIVE_APPLICATION_QUERY_SERVICE_OPTION
+{
+    IAQSO_DEFAULT = 0,
+    IAQSO_FIRST_PACKAGED = 1,
+    IAQSO_ANY_PACKAGED = 2
+};
+
+enum SPLASHSCREEN_ORIENTATION_PREFERENCE
+{
+    SSOP_NONE = 0,
+    SSOP_LANDSCAPE = 1,
+    SSOP_PORTRAIT = 2,
+    SSOP_LANDSCAPE_FLIPPED = 4,
+    SSOP_PORTRAIT_FLIPPED = 8
+};
+
+enum NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_OPTION
+{
+    NIAWO_ALL = 0,
+    NIAWO_SKIP_SYSTEM_WINDOWS = 1,
+    NIAWO_CURRENT_WINDOW_ONLY = 2,
+    NIAWO_CURRENT_WINDOW_ONLY_IFF_APP = 3
+};
+
+enum NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_DELIVERY_TYPE
+{
+    NIAWDT_POST = 0,
+    NIAWDT_SENDNOTIFY = 1
+};
+
+enum IMMAPP_SETTHUMBNAIL_PREVIEW_STATE
+{
+    IMMSPS_VISIBLE = 0,
+    IMMSPS_HIDDEN = 1
+};
+
+enum USER_INTERACTION_MODE
+{
+    UIM_MOUSE = 0,
+    UIM_TOUCH = 1
+};
+
+enum VIEW_PRESENTATION_MODE
+{
+    VPM_DESKTOP = 0,
+    VPM_HOLOGRAPHIC = 1
+};
+
+enum APPLICATION_VIEW_MODE
+{
+    AVM_DEFAULT = 0,
+    AVM_COMPACT_OVERLAY = 1,
+    AVM_SPANNING = 2
+};
+
+enum APPLICATION_VIEW_MODE_FLAGS
+{
+    AVMF_DEFAULT = 0x1,
+    AVMF_COMPACT_OVERLAY = 0x2,
+    AVMF_SPANNING = 0x4
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(APPLICATION_VIEW_MODE_FLAGS);
+
+enum WindowTransparencyMode
+{
+    WTM_TransparentWhenActive = 0,
+    WTM_AlwaysOpaque = 1,
+    WTM_AlwaysTransparent = 2
+};
+
+struct APPLICATION_VIEW_DATA
+{
+    /*APPLICATION_VIEW_STATE*/ int viewState;
+    /*APPLICATION_VIEW_ORIENTATION*/ int viewOrientation;
+    /*ADJACENT_DISPLAY_EDGES*/ int displayEdges;
+    BOOL fIsOnLockScreen;
+    BOOL fIsFullScreenMode;
+    USER_INTERACTION_MODE userInteractionMode;
+    VIEW_PRESENTATION_MODE presentationMode;
+    APPLICATION_VIEW_MODE viewMode;
+    APPLICATION_VIEW_MODE_FLAGS allowedViewModes;
+    WindowTransparencyMode windowTransparencyMode;
+    BOOL canOpenInNewTab;
+};
+
+struct IMMAPP_APPLICATION_VIEW_DATA
+{
+    APPLICATION_VIEW_DATA current;
+    APPLICATION_VIEW_DATA deferred;
+};
+
+typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0002
+{
+    MCF_FORCE = 0,
+    MCF_IF_NOT_VISIBLE = 1
+} MONITOR_CHANGE_FLAGS;
+
+typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0001
+{
+    GVS_NORMAL = 0,
+    GVS_USE_SPLASHSCREEN_VISUAL = 1,
+    GVS_USE_SPLASHSCREEN_VISUAL_ONCE = 2
+} GHOST_VISUAL_STYLE;
+
+typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0003
+{
+    IABF_NONE = 0x0,
+    IABF_INVALID_AUTOGLOM_DESTINATION = 0x1,
+    IABF_AVOID_VIEW_FOR_SWITCH = 0x2,
+    IABF_FORCE_TERMINATE_ON_CLOSE = 0x80000000
+} IMM_APP_BEHAVIOR_FLAGS;
+
+DEFINE_ENUM_FLAG_OPERATORS(IMM_APP_BEHAVIOR_FLAGS);
+
+typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0004
+{
+    GSF_LOCKSCREENACTIVATION = 0x1,
+    GSF_ACTIVATION = 0x2
+} GHOST_STATUS_FLAG;
+
+DEFINE_ENUM_FLAG_OPERATORS(GHOST_STATUS_FLAG);
+
+typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0005
+{
+    IAQ_WIN8_WINDOWING_BEHAVIOR = 0,
+    IAQ_REQUIRES_1366_PORTRAIT_MIN_HEIGHT = 1,
+    IAQ_SHOW_ACTIONS_MENU = 2,
+    IAQ_USE_WIN8X_COMPATIBILITY_SCALING = 3,
+    IAQ_FULLSCREEN_8X_LEGACY_APP = 4,
+    IAQ_WIN81_WINDOWING_BEHAVIOR = 5,
+    IAQ_DONT_CACHE_TITLE_BAR_SETTINGS = 6,
+    IAQ_USE_PREFERRED_STANDALONE_SIZE = 7
+} IMMERSIVE_APPLICATION_QUIRKS;
+
+interface IAsyncCallback;
+
+enum IMMERSIVE_MONITOR_FILTER_FLAGS
+{
+    IMMERSIVE_MONITOR_FILTER_FLAGS_NONE = 0x0,
+    IMMERSIVE_MONITOR_FILTER_FLAGS_DISABLE_TRAY = 0x1,
+};
+
+MIDL_INTERFACE("880b26f8-9197-43d0-8045-8702d0d72000")
+IImmersiveMonitor : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetIdentity(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConnectObject(IUnknown*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetHandle(HMONITOR*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsConnected(BOOL*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsPrimary(BOOL*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsImmersiveDisplayDevice(BOOL*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayRect(RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetOrientation(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetWorkArea(RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsEqual(IImmersiveMonitor*, BOOL*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsImmersiveCapable(BOOL*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetEffectiveDpi(UINT*, UINT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetFilterFlags(IMMERSIVE_MONITOR_FILTER_FLAGS*) = 0;
+};
+
+MIDL_INTERFACE("8b14e88b-5663-4caf-b196-c31479262831")
+IImmersiveApplication : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetWindows(IMMERSIVE_APPLICATION_GET_WINDOWS_FILTER, REFGUID, void**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetApplicationId(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetUniqueId(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE OpenPropertyStore(IMMAPPPROPERTYSTOREFLAGS, REFGUID, void**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsRunning(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsVisible(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsForeground(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetTimestamps(tagIMMAPPTIMESTAMPS*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsEqualByAppId(const WCHAR*, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsEqualByHwnd(HWND*, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsEqualByApp(IImmersiveApplication*, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsViewForSameApp(IImmersiveApplication*, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetPackageId(int, WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE BelongsToPackage(const WCHAR*, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE QueryService(IMMERSIVE_APPLICATION_QUERY_SERVICE_OPTION, DWORD, REFGUID, REFGUID, void**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsServiceAvailable(IMMERSIVE_APPLICATION_QUERY_SERVICE_OPTION, REFGUID, int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsApplicationWindowStronglyNamed(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ContainsStronglyNamedWindow(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsInteractive(int*) = 0;
+    virtual SPLASHSCREEN_ORIENTATION_PREFERENCE STDMETHODCALLTYPE GetManifestedOrientationPreference() = 0;
+    virtual HRESULT STDMETHODCALLTYPE NotifyApplicationWindows(UINT, WPARAM, LPARAM, NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_OPTION, NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_DELIVERY_TYPE) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDestinationInformation(IImmersiveApplicationWindow**, tagRECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetRect(tagRECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetThumbnailPreviewState(IMMAPP_SETTHUMBNAIL_PREVIEW_STATE) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetViewData(IMMAPP_APPLICATION_VIEW_DATA*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetMonitor(IImmersiveMonitor*, MONITOR_CHANGE_FLAGS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMonitor(IImmersiveMonitor**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetGhostVisualStyle(GHOST_VISUAL_STYLE) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetTitle(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE AddBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE RemoveBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IncrementGhostAnimationWaitCount(UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE AddGhostStatusFlag(GHOST_STATUS_FLAG) = 0;
+    virtual HRESULT STDMETHODCALLTYPE RemoveGhostStatusFlag(GHOST_STATUS_FLAG) = 0;
+    virtual HRESULT STDMETHODCALLTYPE InvokeCharms() = 0;
+    virtual HRESULT STDMETHODCALLTYPE OnMinSizePreferencesUpdated(HWND*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsSplashScreenPresented(int*) = 0;
+    virtual int STDMETHODCALLTYPE IsQuirkEnabled(IMMERSIVE_APPLICATION_QUIRKS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE TryInvokeBack(IAsyncCallback*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE RequestCloseAsync(REFGUID, void**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetCanHandleCloseRequest(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetPositionerMonitor(IImmersiveMonitor*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE IsTitleBarDrawnByApp(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetIsOccluded(int*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetIsOccluded(int) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetWindowingEnvironmentConfig(IUnknown*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetPersistingStateName(WCHAR**) = 0;
+};

@@ -1101,50 +1101,74 @@ LPTSTR _SkipCmdLineCrap(LPTSTR pszCmdLine)
 }
 
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
-STDAPI_(int) ModuleEntry()
+STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 {
     PERFSETMARK("ExplorerStartup");
 
-    _CRT_INIT(GetModuleHandle(0),DLL_PROCESS_ATTACH,NULL);
-    //DoInitialization();
+    if (fdwReason == DLL_PROCESS_ATTACH)
+    {
+        _CRT_INIT(hinstDLL, DLL_PROCESS_ATTACH, NULL);
+        //DoInitialization();
 
-	if (!SHUndocInit())
-		return -1;
-    
-    //LoadLibrary(L"shdocvw.dll");
-    //SHLoadInProc(CLSID_WinListShellProc);
-    //LoadLibrary(L"shell32.dll");
-    //LoadLibrary(L"explorerframe.dll");
+        if (!SHUndocInit())
+            return -1;
 
-    InitDesktopFuncs();
+        //LoadLibrary(L"shdocvw.dll");
+        //SHLoadInProc(CLSID_WinListShellProc);
+        //LoadLibrary(L"shell32.dll");
+        //LoadLibrary(L"explorerframe.dll");
+
+        InitDesktopFuncs();
 
 
 
-    // We don't want the "No disk in drive X:" requesters, so we set
-    // the critical error mask such that calls will just silently fail
+        // We don't want the "No disk in drive X:" requesters, so we set
+        // the critical error mask such that calls will just silently fail
 
-    SetErrorMode(SEM_FAILCRITICALERRORS);
+        SetErrorMode(SEM_FAILCRITICALERRORS);
 
-    LPTSTR pszCmdLine = GetCommandLine();
-    pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
+        LPTSTR pszCmdLine = GetCommandLine();
+        pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
 
-    STARTUPINFO si = {0};
-    si.cb = sizeof(si);
-    GetStartupInfo(&si);
+        STARTUPINFO si = { 0 };
+        si.cb = sizeof(si);
+        GetStartupInfo(&si);
 
-    int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
-    int iRet = ExplorerWinMain(GetModuleHandle(NULL), NULL, pszCmdLine, nCmdShow);
+        int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
+        int iRet = ExplorerWinMain(GetModuleHandle(NULL), NULL, pszCmdLine, nCmdShow);
 
-    _CRT_INIT(GetModuleHandle(0),DLL_PROCESS_DETACH,NULL);
-    //DoCleanup();
+#ifndef EXEX_DLL
+        _CRT_INIT(hinstDLL, DLL_PROCESS_DETACH, NULL);
+#endif
+        //DoCleanup();
 
-    // Since we now have a way for an extension to tell us when it is finished,
-    // we will terminate all processes when the main thread goes away.
+        // Since we now have a way for an extension to tell us when it is finished,
+        // we will terminate all processes when the main thread goes away.
 
-    if (g_fExitExplorer)    // desktop told us not to exit
-        ExitProcess(iRet);
+#ifndef EXEX_DLL
+        if (g_fExitExplorer)    // desktop told us not to exit
+            ExitProcess(iRet);
+#endif
 
-    return iRet;
+        return iRet;
+    }
+    else
+    {
+        /*switch (fdwReason)
+        {
+            case DLL_THREAD_ATTACH:
+            {
+                lpvData = (LPVOID)LocalAlloc(LPTR, 256);
+                if (lpvData != NULL)
+                    TlsSetValue(dwTlsIndex, lpvData);
+                break;
+            }
+        }*/
+
+        return _CRT_INIT(hinstDLL, fdwReason, lpReserved);
+    }
+
+    return 0;
 }
 
 HANDLE CreateDesktopAndTray()
@@ -1820,6 +1844,13 @@ public:
     }
 };
 
+#ifdef EXEX_DLL
+extern "C" __declspec(dllexport) HANDLE WINAPI EP_TrayUI_CreateInstance(void)
+{
+    return CreateDesktopAndTray();
+}
+#endif
+
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
 #ifndef RELEASE
@@ -1832,7 +1863,9 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
+#ifndef EXEX_DLL
     SHFusionInitializeFromModule(hInstance);
+#endif
 
     typedef void(__stdcall* ShellDDEInit_t)(bool bInit);
     ShellDDEInit_t ShellDDEInit;
@@ -1877,6 +1910,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
         HANDLE hMutex = NULL;
 
+#ifndef EXEX_DLL
         BOOL fExplorerIsShell = ShouldStartDesktopAndTray();
         if (fExplorerIsShell)
         {
@@ -1892,7 +1926,9 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
             fExplorerIsShell = ShouldStartDesktopAndTray();
         } 
+#endif
 
+#ifndef EXEX_DLL
         if (!fExplorerIsShell)
         {
             // We're not going to be the shell, relinquish the mutex
@@ -1956,10 +1992,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 // let users know we are in safe mode
                 DisplayCleanBootMsg();
             }
+#endif
 
             // Create the other special folders.
             CreateShellDirectories();
 
+#ifndef EXEX_DLL
             // Run install stubs for the current user, mostly to propagate
             // shortcuts to apps installed by another user.
             if (!g_fCleanBoot)
@@ -2005,6 +2043,8 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             // NOTE: Compaq shell changes the "shell=" line during RunOnce time and
             // that will make ShouldStartDesktopAndTray() return FALSE
 
+#endif
+#ifndef EXEX_DLL
             HANDLE hDesktop = NULL;
 
             if (!IsAnyShellWindowAlreadyPresent())
@@ -2048,6 +2088,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 WriteFaultCount(0);          // clear our count of faults, we are exiting normally
             }
 
+            // Needed to start up properly on Windows 7:
 			void(*WinList_Terminate)() = decltype(WinList_Terminate)(GetProcAddress(LoadLibrary(L"explorerframe.dll"), (LPCSTR)111));
 			if (WinList_Terminate)
                 WinList_Terminate();
@@ -2059,9 +2100,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
         }
 
         _Module.Term();
+#endif
     }
 
+#ifndef EXEX_DLL
     SHFusionUninitialize();
+#endif
 
     return TRUE;
 }

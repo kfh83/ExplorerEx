@@ -8,6 +8,172 @@
 #include "dpa.h"
 #include "commoncontrols.h"
 
+#ifdef EXEX_DLL
+#include "immersive/shpriv.h"
+DEFINE_GUID(_GUID_23650f94_13b8_4f39_b2c3_817e6564a756,
+    0x23650f94,
+    0x13b8, 0x4f39, 0xb2, 0xc3,
+    0x81, 0x7e, 0x65, 0x64, 0xa7, 0x56
+);
+
+//MIDL_INTERFACE("8b14e88b-5663-4caf-b196-c31479262831")
+//IImmersiveApplication : IUnknown
+//{
+//    virtual HRESULT STDMETHODCALLTYPE GetWindows(IMMERSIVE_APPLICATION_GET_WINDOWS_FILTER, REFGUID, void**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetApplicationId(WCHAR**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetUniqueId(WCHAR**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE OpenPropertyStore(IMMAPPPROPERTYSTOREFLAGS, REFGUID, void**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsRunning(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsVisible(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsForeground(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetTimestamps(tagIMMAPPTIMESTAMPS*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsEqualByAppId(const WCHAR*, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsEqualByHwnd(HWND*, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsEqualByApp(IImmersiveApplication*, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsViewForSameApp(IImmersiveApplication*, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetPackageId(int, WCHAR**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE BelongsToPackage(const WCHAR*, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE QueryService(IMMERSIVE_APPLICATION_QUERY_SERVICE_OPTION, DWORD, REFGUID, REFGUID, void**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsServiceAvailable(IMMERSIVE_APPLICATION_QUERY_SERVICE_OPTION, REFGUID, int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsApplicationWindowStronglyNamed(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE ContainsStronglyNamedWindow(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsInteractive(int*) = 0;
+//    virtual SPLASHSCREEN_ORIENTATION_PREFERENCE STDMETHODCALLTYPE GetManifestedOrientationPreference() = 0;
+//    virtual HRESULT STDMETHODCALLTYPE NotifyApplicationWindows(UINT, WPARAM, LPARAM, NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_OPTION, NOTIFY_IMMERSIVE_APPLICATION_WINDOWS_DELIVERY_TYPE) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetDestinationInformation(IImmersiveApplicationWindow**, tagRECT*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetRect(tagRECT*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetThumbnailPreviewState(IMMAPP_SETTHUMBNAIL_PREVIEW_STATE) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetViewData(IMMAPP_APPLICATION_VIEW_DATA*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetMonitor(IImmersiveMonitor*, MONITOR_CHANGE_FLAGS) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetMonitor(IImmersiveMonitor**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetGhostVisualStyle(GHOST_VISUAL_STYLE) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetTitle(WCHAR**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE AddBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE RemoveBehaviorFlags(IMM_APP_BEHAVIOR_FLAGS) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IncrementGhostAnimationWaitCount(UINT) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE AddGhostStatusFlag(GHOST_STATUS_FLAG) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE RemoveGhostStatusFlag(GHOST_STATUS_FLAG) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE InvokeCharms() = 0;
+//    virtual HRESULT STDMETHODCALLTYPE OnMinSizePreferencesUpdated(HWND*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsSplashScreenPresented(int*) = 0;
+//    virtual int STDMETHODCALLTYPE IsQuirkEnabled(IMMERSIVE_APPLICATION_QUIRKS) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE TryInvokeBack(IAsyncCallback*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE RequestCloseAsync(REFGUID, void**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetCanHandleCloseRequest(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetPositionerMonitor(IImmersiveMonitor*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE IsTitleBarDrawnByApp(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(WCHAR**) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetIsOccluded(int*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetIsOccluded(int) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE SetWindowingEnvironmentConfig(IUnknown*) = 0;
+//    virtual HRESULT STDMETHODCALLTYPE GetPersistingStateName(WCHAR**) = 0;
+//};
+
+
+DEFINE_GUID(_GUID_c71c41f1_ddad_42dc_a8fc_f5bfc61df957, 0xC71C41F1, 0xDDAD, 0x42DC, 0xA8, 0xFC, 0xF5, 0xBF, 0xC6, 0x1D, 0xF9, 0x57); // c71c41f1-ddad-42dc-a8fc-f5bfc61df957
+
+interface IImmersiveShellCreationBehavior;
+
+MIDL_INTERFACE("ffffffff-ffff-ffff-ffff-ffffffffffff")
+IImmersiveShellController : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Start() = 0;
+    virtual HRESULT STDMETHODCALLTYPE Stop() = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetCreationBehavior(IImmersiveShellCreationBehavior*) = 0;
+};
+
+MIDL_INTERFACE("1c56b3e4-e6ea-4ced-8a74-73b72c6bd435")
+IImmersiveShellBuilder : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE CreateImmersiveShellController(IImmersiveShellController**) = 0;
+};
+
+DEFINE_GUID(SID_ImmersiveShellHookService, 0x4624BD39, 0x5FC3, 0x44A8, 0xA8, 0x09, 0x16, 0x3A, 0x83, 0x6E, 0x90, 0x31); // 4624bd39-5fc3-44a8-a809-163a836e9031
+
+interface IImmersiveShellHookNotification;
+
+MIDL_INTERFACE("914d9b3a-5e53-4e14-bbba-46062acb35a4")
+IImmersiveShellHookService : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Register(const UINT_PTR* const, UINT, IImmersiveShellHookNotification*, DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Unregister(DWORD) = 0;
+    virtual HRESULT STDMETHODCALLTYPE PostShellHookMessage(WPARAM, LPARAM) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetTargetWindowForSerialization(HWND) = 0;
+    virtual HRESULT STDMETHODCALLTYPE PostShellHookMessageWithSerialization(WPARAM, LPARAM) = 0;
+    virtual HRESULT STDMETHODCALLTYPE UpdateWindowApplicationId(HWND, const WCHAR*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE HandleWindowReplacement(HWND, HWND) = 0;
+    virtual int STDMETHODCALLTYPE IsExecutionOnSerializedThread() = 0;
+};
+
+DEFINE_GUID(SID_AppCrusher, 0x3CF1532D, 0x66FB, 0x4F8C, 0x95, 0x92, 0xDC, 0x45, 0xC6, 0x3E, 0x65, 0x22); // 3cf1532d-66fb-4f8c-9592-dc45c63e6522
+
+enum APPCRUSHER_INPUT
+{
+    ACI_TOUCH = 0,
+    ACI_MOUSE = 1,
+    ACI_KEYBOARD = 2,
+    ACI_CONTEXTMENU = 3,
+    ACI_TASKBAR = 4,
+    ACI_TITLEBAR = 5,
+    ACI_CAPTIONCONTROLS = 6,
+    ACI_MULTITASKINGVIEW = 7,
+    ACI_API = 8,
+    ACI_HANGDETECTION = 9,
+    ACI_INVALID = 10,
+};
+
+enum APPCRUSHER_SOURCE
+{
+    ACS_BACKSTACK = 0,
+    ACS_VISIBLE = 1,
+    ACS_LIST = 2,
+    ACS_APPTIP = 3,
+    ACS_PLACEMODE = 4,
+    ACS_TASKBAR = 5,
+    ACS_TITLEBAR = 6,
+    ACS_CAPTIONCONTROLS = 7,
+    ACS_MULTITASKINGVIEW = 8,
+    ACS_API = 9,
+    ACS_HANGDETECTION = 10,
+    ACS_INVALID = 11,
+};
+
+enum APPCRUSHER_CLOSE_OPTIONS
+{
+    ACCO_NONE = 0x0,
+    ACCO_NO_CLOSE_ANIMATION = 0x1,
+    ACCO_NO_FOREGROUND_RIGHT_TRANSFER = 0x2,
+    ACCO_FORCE = 0x4,
+    ACCO_NO_CONFIRMAPPCLOSE_NOTIFY = 0x8,
+    ACCO_NO_FALLBACK_FOREGROUND = 0x10,
+    ACCO_SYSTEM_ACTION = 0x20,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(APPCRUSHER_CLOSE_OPTIONS);
+
+enum APPCRUSHER_MINIMIZE_FLAGS
+{
+    ACMF_NONE = 0x0,
+    ACMF_USE_DESKTOP_ANIMATIONS = 0x1,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(APPCRUSHER_MINIMIZE_FLAGS);
+
+MIDL_INTERFACE("103231ae-04cb-4e5e-b63d-e3ce47cd0f0a")
+IImmersiveAppCrusher : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE CloseAllApps() = 0;
+    virtual HRESULT STDMETHODCALLTYPE CloseApp(IImmersiveApplication*, APPCRUSHER_INPUT, APPCRUSHER_SOURCE, APPCRUSHER_CLOSE_OPTIONS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE CloseAppWithTelemetryCookie(IImmersiveApplication*, APPCRUSHER_INPUT, APPCRUSHER_SOURCE, APPCRUSHER_CLOSE_OPTIONS, DWORD) = 0;
+    virtual HRESULT STDMETHODCALLTYPE CloseApps(IObjectArray*, APPCRUSHER_INPUT, APPCRUSHER_SOURCE, APPCRUSHER_CLOSE_OPTIONS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE MinimizeApp(IImmersiveApplication*, APPCRUSHER_MINIMIZE_FLAGS) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Register(/*IImmersiveAppCrusherNotification*/void*, DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Unregister(DWORD) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetTaskCompletionFormatString(size_t, /*HSTRING*/void*) = 0;
+};
+#endif
+
 class CTray;
 class CGroupItemContextMenu;
 
@@ -314,6 +480,15 @@ protected:
     // Rarely-used stuff
     ULONG       _uShortcutInvokeNotify;
     UINT        _uCDHardError;
+
+#ifdef EXEX_DLL
+    // Immersive stuff:
+    CComPtr<IImmersiveShellController> m_immersiveShellController;
+    CComPtr<IImmersiveShellHookService> m_immersiveShellHookService;
+    //CComPtr<IImmersiveMonitorManager> m_immersiveMonitorManager;
+    //CComPtr<IClassicWindowManager> m_classicWindowManager;
+    CComPtr<IImmersiveAppCrusher> m_immersiveAppCrusher;
+#endif
 
         
     CTaskBand();
