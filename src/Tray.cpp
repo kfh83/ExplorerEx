@@ -7687,25 +7687,7 @@ void CTray::_RunDlg()
             }
         }
 
-        // Create an event so we can wait for the run dlg to appear before
-        // continue - this allows it to capture any type-ahead.
-        hEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("MSShellRunDlgReady"));
-        if (hEvent)
-            pvThreadParam = IntToPtr(GetCurrentThreadId());
-        else
-            pvThreadParam = NULL;
-
-        if (SHQueueUserWorkItem(RunDlgThreadProc, pvThreadParam, 0, 0, NULL, NULL, TPS_LONGEXECTIME | TPS_DEMANDTHREAD))
-        {
-            if (hEvent)
-            {
-                SHProcessMessagesUntilEvent(NULL, hEvent, 10 * 1000);
-                //DebugMsg(DM_TRACE, TEXT("c.t_rd: Done waiting."));
-            }
-        }
-
-        if (hEvent)
-            CloseHandle(hEvent);
+        SHQueueUserWorkItem(RunDlgThreadProc, NULL, 0, 0, NULL, NULL, TPS_LONGEXECTIME | TPS_DEMANDTHREAD);
     }
 }
 
