@@ -1135,7 +1135,7 @@ STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
         GetStartupInfo(&si);
 
         int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
-        int iRet = ExplorerWinMain(GetModuleHandle(NULL), NULL, pszCmdLine, nCmdShow);
+        int iRet = ExplorerWinMain(hinstDLL, NULL, pszCmdLine, nCmdShow);
 
 #ifndef EXEX_DLL
         _CRT_INIT(hinstDLL, DLL_PROCESS_DETACH, NULL);
@@ -1154,17 +1154,6 @@ STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
     }
     else
     {
-        /*switch (fdwReason)
-        {
-            case DLL_THREAD_ATTACH:
-            {
-                lpvData = (LPVOID)LocalAlloc(LPTR, 256);
-                if (lpvData != NULL)
-                    TlsSetValue(dwTlsIndex, lpvData);
-                break;
-            }
-        }*/
-
         return _CRT_INIT(hinstDLL, fdwReason, lpReserved);
     }
 
