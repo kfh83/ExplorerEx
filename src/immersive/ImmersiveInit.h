@@ -11,9 +11,9 @@
 //
 //+-------------------------------------------------------------------------
 
+#include "pch.h"
 #ifdef EXEX_DLL
 
-#include "pch.h"
 #include "cabinet.h"
 #include "CWndProc.h"
 #include "ImmersiveDefs.h"
