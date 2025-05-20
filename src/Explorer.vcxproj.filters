@@ -258,7 +258,16 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="immersive\shpriv.h">
+    <ClInclude Include="immersive\ImmersiveDefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\ImmersiveInit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\MinHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\Hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -269,6 +278,7 @@
     <None Include="interfacesp.inc">
       <Filter>Header Files</Filter>
     </None>
+    <None Include="immersive\README.md" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="explorer.rc">
@@ -576,6 +586,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="immersive\ImmersiveInit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

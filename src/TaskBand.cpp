@@ -402,11 +402,8 @@ HRESULT CTaskBand::Init(CTray* ptray)
     }
 
 #ifdef EXEX_DLL
-    CComPtr<IImmersiveShellBuilder> spImmersiveShellBuilder;
-    if (SUCCEEDED(CoCreateInstance(_GUID_c71c41f1_ddad_42dc_a8fc_f5bfc61df957, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&spImmersiveShellBuilder))))
-    {
-        spImmersiveShellBuilder->CreateImmersiveShellController(&m_immersiveShellController);
-    }
+    _spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
+    InitializeImmersiveShell();
 #endif
 
     return hr;
@@ -443,75 +440,6 @@ HRESULT CTaskBand::Load(IStream *ps)
 
 STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup,DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
 {
-#ifdef EXEX_DLL
-    if (IsEqualGUID(*pguidCmdGroup, _GUID_23650f94_13b8_4f39_b2c3_817e6564a756) && nCmdID == 5)
-    {
-        if (m_immersiveShellController.p)
-        {
-            if (SUCCEEDED(m_immersiveShellController->Start()))
-            {
-                //m_host->NotifyImmersiveShellStarted();
-
-                IServiceProvider* serviceProvider;
-                /*if (SUCCEEDED(m_host->GetImmersiveShellServiceProvider(&serviceProvider, true)))
-                {
-                    serviceProvider->QueryService(SID_ImmersiveShellHookService, IID_PPV_ARGS(&m_immersiveShellHookService));
-                    if (m_immersiveShellHookService)
-                        m_immersiveShellHookService->SetTargetWindowForSerialization(_hwnd);*/
-
-                    //serviceProvider->QueryService(IID_IClassicWindowManager, IID_PPV_ARGS(&m_classicWindowManager));
-                    //serviceProvider->QueryService(IID_IImmersiveApplicationNotificationService, IID_PPV_ARGS(&m_immersiveApplicationNotificationService));
-                    //serviceProvider->QueryService(SID_AppCrusher, IID_PPV_ARGS(&m_immersiveAppCrusher));
-                    //serviceProvider->QueryService(IID_IImmersiveApplicationManager, IID_PPV_ARGS(&m_immersiveApplicationManager));
-                    //serviceProvider->QueryService(SID_ImmersiveApplicationArrayService, IID_PPV_ARGS(&m_immersiveApplicationArrayService));
-                    //serviceProvider->QueryService(__uuidof(IApplicationDataPersistence), IID_PPV_ARGS(&m_applicationDataPersistence));
-                //    {
-                //        // @MOD: This interface has multiple versions within a major version
-                //        // serviceProvider->QueryService(SID_VirtualDesktopManager, IID_PPV_ARGS(&m_virtualDesktopManagerInternal));
-                //        ComPtr<IVirtualDesktopManagerInternal> sp;
-                //        if (SUCCEEDED(serviceProvider->QueryService(SID_VirtualDesktopManager, __uuidof(IVirtualDesktopManagerInternal_1607), &sp))
-                //            || SUCCEEDED(serviceProvider->QueryService(SID_VirtualDesktopManager, __uuidof(IVirtualDesktopManagerInternal_21H2), &sp))
-                //            || SUCCEEDED(serviceProvider->QueryService(SID_VirtualDesktopManager, __uuidof(IVirtualDesktopManagerInternal_23H2), &sp)))
-                //        {
-                //            m_virtualDesktopManagerInternal = sp;
-                //        }
-                //    }
-                //    serviceProvider->QueryService(SID_VirtualDesktopNotificationService, IID_PPV_ARGS(&m_virtualDesktopNotificationService));
-                //    serviceProvider->QueryService(SID_VirtualDesktopAnimationSyncNotificationService, IID_PPV_ARGS(&m_virtualDesktopAnimationSyncNotificationService));
-                //    serviceProvider->QueryService(__uuidof(IApplicationViewCollection), IID_PPV_ARGS(&m_applicationViewCollection));
-                //    serviceProvider->QueryService(__uuidof(IHolographicViewTransitionNotificationService), IID_PPV_ARGS(&m_holographicViewTransitionNotificationService));
-
-                //    if (Feature_W32PTP)
-                //    {
-                //        serviceProvider->QueryService(SID_PinManager, IID_PPV_ARGS(&m_pinManager));
-                //    }
-
-                //    if (SUCCEEDED(serviceProvider->QueryService(SID_ImmersiveSettingsCache, IID_PPV_ARGS(&m_immersiveSettingsCache))))
-                //    {
-                //        BOOL bShowStoreAppsOnTaskbar;
-                //        if (SUCCEEDED(m_immersiveSettingsCache->GetBOOL(SI_STORE_APPS_ON_TASKBAR, &bShowStoreAppsOnTaskbar)))
-                //        {
-                //            m_bShowStoreAppsOnTaskbar = bShowStoreAppsOnTaskbar != 0;
-                //        }
-
-                //        m_bIsTaskGroupsSettingEnabled = IsTaskGroupsSettingEnabled(m_immersiveSettingsCache.Get());
-                //    }
-
-                //    serviceProvider->Release();
-                //}
-
-                //m_host->GetProxyImmersiveShellRegistrationProvider(SID_MultitaskingViewVisibilityService, IID_PPV_ARGS(&m_multitaskingViewVisibilityService));
-            }
-            else
-            {
-                m_immersiveShellController.Release();
-            }
-        }
-
-        return S_OK;
-    }
-#endif
-
     HRESULT hr = OLECMDERR_E_NOTSUPPORTED;
     return hr;
 }

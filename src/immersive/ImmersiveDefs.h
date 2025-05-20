@@ -1,36 +1,129 @@
+//+-------------------------------------------------------------------------
+//
+//	ExplorerEx - Windows XP Explorer
+//	Copyright (C) Microsoft
+// 
+//	File:       ImmersiveDefs.h
+// 
+//	Description:	Definitions useful for initialising the Immersive shell.
+// 
+//	History:    May-19-25   kawapure  Created
+//
+//+-------------------------------------------------------------------------
 #pragma once
 
-#include <Windows.h>
+#include <windows.h>
+#include <initguid.h>
 
-//typedef struct tagNOTIFYITEM
-//{
-//    PWSTR pszExeName;
-//    PWSTR pszIconText;
-//    HICON hIcon;
-//    HWND hWnd;
-//    DWORD dwUserPref;
-//    UINT uID;
-//    GUID guidItem;
-//    DWORD dwFlags;
-//    int nDisplayIndex;
-//    UINT uCallbackMsg;
-//    UINT uVersion;
-//    BOOL fUseSystemTip;
-//    PWSTR pszAppId;
-//    BOOL fIsExplicitAppId;
-//} NOTIFYITEM;
-//
-//typedef enum tagNOTIFYITEMACTION
-//{
-//    NIA_DEFAULT,
-//    NIA_CLOSE,
-//} NOTIFYITEMACTION;
+// {C2F03A33-21F5-47FA-B4BB-156362A2F239}
+DEFINE_GUID(CLSID_ImmersiveShell, 0xC2F03A33, 0x21F5, 0x47FA, 0xB4, 0xBB, 0x15, 0x63, 0x62, 0xA2, 0xF2, 0x39);
 
-//MIDL_INTERFACE("d782ccba-afb0-43f1-94db-fda3779eaccb")
-//INotificationCB : IUnknown
-//{
-//    virtual HRESULT STDMETHODCALLTYPE Notify(DWORD, NOTIFYITEM*) = 0;
-//};
+// {4624BD39-5FC3-44A8-A809-163A836E9031}
+DEFINE_GUID(SID_ImmersiveShellHookService, 0x4624BD39, 0x5FC3, 0x44A8, 0xA8, 0x09, 0x16, 0x3A, 0x83, 0x6E, 0x90, 0x31);
+
+// {914D9B3A-5E53-4E14-BBBA-46062ACB35A4}
+DEFINE_GUID(IID_IImmersiveShellHookService, 0x914D9B3A, 0x5E53, 0x4E14, 0xBB, 0xBA, 0x46, 0x06, 0x2A, 0xCB, 0x35, 0xA4);
+
+// {C71C41F1-DDAD-42DC-A8FC-F5BFC61DF957}
+DEFINE_GUID(CLSID_ImmersiveShellBuilder, 0xc71c41f1, 0xddad, 0x42dc, 0xa8, 0xfc, 0xf5, 0xbf, 0xc6, 0x1d, 0xf9, 0x57);
+
+// {1C56B3E4-E6EA-4CED-8A74-73B72C6BD435}
+DEFINE_GUID(IID_ImmersiveShellBuilder, 0x1c56b3e4, 0xe6ea, 0x4ced, 0x8a, 0x74, 0x73, 0xb7, 0x2c, 0x6b, 0xd4, 0x35);
+
+// {139275E0-D644-4214-B45E-D9278C4A8501}
+DEFINE_GUID(IID_ImmersiveBehavior, 0x139275e0, 0xd644, 0x4214, 0xb4, 0x5e, 0xd9, 0x27, 0x8c, 0x4a, 0x85, 0x01);
+
+// {BCBB9860-C012-4AD7-A938-6E337AE6AB05}
+DEFINE_GUID(CLSID_NowPlayingSessionManager, 0xbcbb9860, 0xc012, 0x4ad7, 0xa9, 0x38, 0x6e, 0x33, 0x7a, 0xe6, 0xab, 0xa5);
+
+MIDL_INTERFACE("139275E0-D644-4214-B45E-D9278C4A8501")
+IImmersiveBehavior : public IUnknown
+{
+public:
+	STDMETHOD(OnImmersiveThreadStart)(void) PURE;
+	STDMETHOD(OnImmersiveThreadStop)(void) PURE;
+	STDMETHOD(GetMaximumComponentCount)(unsigned int *count) PURE;
+	STDMETHOD(CreateComponent)(unsigned int number, IUnknown **component) PURE;
+	STDMETHOD(ShouldCreateComponent)(unsigned int number, int *allowed) PURE;
+};
+
+/**
+ * Interface of the controller object that the OS uses to manage the
+ * Immersive shell.
+ */
+MIDL_INTERFACE("00000000-0000-0000-0000-000000000000")
+IImmersiveShellController : public IUnknown
+{
+public:
+	STDMETHOD(Start)(void) PURE;
+	STDMETHOD(Stop)(void) PURE;
+	STDMETHOD(SetCreationBehavior)(IImmersiveBehavior *) PURE;
+};
+
+/**
+ * Builder interface given by the OS to create an Immersive shell controller.
+ */
+MIDL_INTERFACE("1C56B3E4-E6EA-4CED-8A74-73B72C6BD435")
+IImmersiveShellBuilder : public IUnknown
+{
+public:
+	STDMETHOD(CreateImmersiveShellController)(IImmersiveShellController **ppControllerOut) PURE;
+};
+
+MIDL_INTERFACE("914D9B3A-5E53-4E14-BBBA-46062ACB35A4")
+IImmersiveShellHookService : IUnknown
+{
+    STDMETHOD(Register)(void** a1,
+        IImmersiveShellHookService * thiss,
+        const unsigned int* prgMessages,
+        unsigned int cMessages,
+        IUnknown * pNotification, //IImmersiveShellHookNotification
+        unsigned int* pdwCookie) PURE;//todo:args
+    STDMETHOD(Unregister)(UINT cookie) PURE;
+    STDMETHOD(PostShellHookMessage)(WPARAM wParam, LPARAM lParam) PURE;
+    STDMETHOD(SetTargetWindowForSerialization)(HWND hwnd) PURE;
+    STDMETHOD(PostShellHookMessageWithSerialization)(bool a1,
+        int a2,
+        IImmersiveShellHookService* thiss,
+        unsigned int msg,
+        int msgParam) PURE; //todo:args
+    STDMETHOD(UpdateWindowApplicationId)(HWND hwnd, LPCWSTR pszAppID) PURE;
+    STDMETHOD(HandleWindowReplacement)(HWND hwndOld, HWND hwndNew) PURE;
+    STDMETHOD_(BOOL, IsExecutionOnSerializedThread)() PURE;
+};
+
+interface IImmersiveWindowMessageService : IUnknown
+{
+    STDMETHOD(Register)(UINT msg, void* pNotification, UINT * pdwCookie);
+    STDMETHOD(Unregister)(UINT dwCookie);
+    STDMETHOD(SendMessageW)(UINT nsg, WPARAM wParam, LPARAM lParam);
+    STDMETHOD(PostMessageW)(UINT nsg, WPARAM wParam, LPARAM lParam);
+    STDMETHOD(RequestHotkeys)(); //todo: args
+    STDMETHOD(UnrequestHotkeys)(UINT dwCookie);
+    STDMETHOD(RequestWTSSessionNotification)(void* pNotification, unsigned int* pdwCookie);
+    STDMETHOD(UnrequestWTSSessionNotification)(UINT dwCookie);
+    STDMETHOD(RequestPowerSettingNotification)(const GUID* pPowerSettingGuid, void* pNotification, UINT* pdwCookie);
+    STDMETHOD(UnrequestPowerSettingNotification)(UINT pdwCookie);
+    STDMETHOD(RequestPointerDeviceNotification)(void* pNotification, int notificationType, UINT* pdwCookie);
+    STDMETHOD(UnrequestPointerDeviceNotification)(UINT dwCookie);
+    STDMETHOD(RegisterDwmIconicThumbnailWindow)();
+};
+
+enum IMMERSIVE_MONITOR_FILTER_FLAGS
+{
+    IMMERSIVE_MONITOR_FILTER_FLAGS_NONE = 0x0,
+    IMMERSIVE_MONITOR_FILTER_FLAGS_DISABLE_TRAY = 0x1,
+};
+
+MIDL_INTERFACE("c6636ec2-eba1-4e6d-a995-8fa14b8b2891")
+IImmersiveApplicationWindow : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetBandId(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetNativeWindow(HWND*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetApplicationId(WCHAR**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetProcessId(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetThreadId(DWORD*) = 0;
+};
 
 typedef enum __MIDL___MIDL_itf_shpriv_0000_0034_0001
 {
@@ -46,29 +139,6 @@ typedef enum __MIDL___MIDL_itf_shpriv_0000_0034_0001
     NIE_Tooltip = 0x9,
     NIE_Reorder = 0xA,
 } NotifyIconEvent;
-
-//DEFINE_GUID(CLSID_TrayNotify, 0x25DEAD04, 0x1EAC, 0x4911, 0x9E, 0x3A, 0xAD, 0x0A, 0x4A, 0xB5, 0x60, 0xFD);
-
-//MIDL_INTERFACE("d133ce13-3537-48ba-93a7-afcd5d2053b4")
-//ITrayNotify : IUnknown
-//{
-//    virtual HRESULT STDMETHODCALLTYPE RegisterCallback(INotificationCB*, DWORD*) = 0;
-//    virtual HRESULT STDMETHODCALLTYPE UnregisterCallback(DWORD) = 0;
-//    virtual HRESULT STDMETHODCALLTYPE SetPreference(const NOTIFYITEM*) = 0;
-//    virtual HRESULT STDMETHODCALLTYPE EnableAutoTray(BOOL) = 0;
-//    virtual HRESULT STDMETHODCALLTYPE DoAction(const NOTIFYITEM*, const NOTIFYITEMACTION) = 0;
-//    virtual HRESULT STDMETHODCALLTYPE DoNotifyIconEvent(const NOTIFYITEM*, NotifyIconEvent, DWORD, POINT, DWORD) = 0;
-//};
-
-MIDL_INTERFACE("c6636ec2-eba1-4e6d-a995-8fa14b8b2891")
-IImmersiveApplicationWindow : IUnknown
-{
-    virtual HRESULT STDMETHODCALLTYPE GetBandId(DWORD*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetNativeWindow(HWND*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetApplicationId(WCHAR**) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetProcessId(DWORD*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetThreadId(DWORD*) = 0;
-};
 
 enum IMMERSIVE_APPLICATION_GET_WINDOWS_FILTER
 {
@@ -233,12 +303,6 @@ typedef enum __MIDL___MIDL_itf_shpriv_core_0000_0325_0005
 } IMMERSIVE_APPLICATION_QUIRKS;
 
 interface IAsyncCallback;
-
-enum IMMERSIVE_MONITOR_FILTER_FLAGS
-{
-    IMMERSIVE_MONITOR_FILTER_FLAGS_NONE = 0x0,
-    IMMERSIVE_MONITOR_FILTER_FLAGS_DISABLE_TRAY = 0x1,
-};
 
 MIDL_INTERFACE("880b26f8-9197-43d0-8045-8702d0d72000")
 IImmersiveMonitor : IUnknown

@@ -554,7 +554,7 @@ del "$(IntermediateOutputPath)temp.res"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>ModuleEntry</EntryPointSymbol>
-      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shell32.lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>.\immersive\libMinHook.x64.lib;ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shell32.lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
       <FixedBaseAddress>false</FixedBaseAddress>
       <StackCommitSize>57344</StackCommitSize>
       <ManifestFile>WindowsShell.manifest</ManifestFile>
@@ -679,7 +679,10 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="desktop2\stdafx.h" />
     <ClInclude Include="desktop2\UserPane.h" />
     <ClInclude Include="desktopp.h" />
-    <ClInclude Include="immersive\shpriv.h" />
+    <ClInclude Include="immersive\Hooks.h" />
+    <ClInclude Include="immersive\ImmersiveDefs.h" />
+    <ClInclude Include="immersive\ImmersiveInit.h" />
+    <ClInclude Include="immersive\MinHook.h" />
     <ClInclude Include="PatternHelper.h" />
     <ClInclude Include="MinHook.h" />
     <ClInclude Include="NtPerf.h" />
@@ -750,6 +753,7 @@ del "$(IntermediateOutputPath)temp.res"
   </ItemGroup>
   <ItemGroup>
     <None Include="Explorer.rcv" />
+    <None Include="immersive\README.md" />
     <None Include="InterfacesP.inc" />
   </ItemGroup>
   <ItemGroup>
@@ -843,6 +847,7 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="DllLoad.cpp" />
     <ClCompile Include="HostUtil.cpp" />
     <ClCompile Include="IEGuidP.cpp" />
+    <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
     <ClCompile Include="Mixer.cpp" />

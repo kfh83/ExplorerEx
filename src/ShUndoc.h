@@ -1456,3 +1456,36 @@ private:
     IPinnedList25* m_pinnedList25 = 0;
     //int m_build = 0;
 };
+
+inline HWND WINAPI GetTaskmanWindow(void)
+{
+    HMODULE hmUser32 = LoadLibrary(TEXT("user32.dll"));
+    HWND result = NULL;
+
+    if (hmUser32)
+    {
+        auto pfn = (HWND (WINAPI *)(void))GetProcAddress(hmUser32, "GetTaskmanWindow");
+        if (pfn)
+            result = pfn();
+        FreeLibrary(hmUser32);
+    }
+
+
+    return result;
+}
+
+inline BOOL WINAPI SetTaskmanWindow(IN HWND hWnd)
+{
+    HMODULE hmUser32 = LoadLibrary(TEXT("user32.dll"));
+    BOOL result = FALSE;
+
+    if (hmUser32)
+    {
+        auto pfn = (BOOL (WINAPI *)(IN HWND hWnd))GetProcAddress(hmUser32, "SetTaskmanWindow");
+        if (pfn)
+            result = pfn(hWnd);
+        FreeLibrary(hmUser32);
+    }
+
+    return result;
+}

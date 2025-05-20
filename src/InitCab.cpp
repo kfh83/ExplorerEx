@@ -1842,7 +1842,7 @@ extern "C" __declspec(dllexport) HANDLE WINAPI EP_TrayUI_CreateInstance(void)
 
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
-#ifndef RELEASE
+#if !defined(RELEASE) || defined(EXEX_DLL)
 	AllocConsole();
 	FILE* pFile;
 	freopen_s(&pFile, "CONOUT$", "w", stdout);
