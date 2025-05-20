@@ -11,6 +11,8 @@
 //
 //+-------------------------------------------------------------------------
 
+#ifdef EXEX_DLL
+
 #include "pch.h"
 #include "ImmersiveInit.h"
 #include "Hooks.h"
@@ -319,3 +321,5 @@ HRESULT InitializeImmersiveShell()
 
 	return hr;
 }
+
+#endif

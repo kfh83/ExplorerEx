@@ -11,6 +11,8 @@
 //
 //+-------------------------------------------------------------------------
 
+#ifdef EXEX_DLL
+
 #include "pch.h"
 #include "cabinet.h"
 #include "CWndProc.h"
@@ -54,3 +56,5 @@ private:
 };
 
 HRESULT InitializeImmersiveShell();
+
+#endif

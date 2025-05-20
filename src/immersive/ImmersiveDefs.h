@@ -12,6 +12,8 @@
 //+-------------------------------------------------------------------------
 #pragma once
 
+#ifdef EXEX_DLL
+
 #include <windows.h>
 #include <initguid.h>
 
@@ -375,3 +377,5 @@ IImmersiveApplication : IUnknown
     virtual HRESULT STDMETHODCALLTYPE SetWindowingEnvironmentConfig(IUnknown*) = 0;
     virtual HRESULT STDMETHODCALLTYPE GetPersistingStateName(WCHAR**) = 0;
 };
+
+#endif

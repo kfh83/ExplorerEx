@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef EXEX_DLL
 #include "pch.h"
 #include "MinHook.h"
 
@@ -212,3 +213,5 @@ inline void HookEverythingForImmersive()
 	FixUpImmersiveShell(); // Immersive shell initialisation
 	_OnHShellTaskMan(); // Handling the immersive shell's impacts on the holographic shell and associated ShellHook messages
 }
+
+#endif
