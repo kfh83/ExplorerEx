@@ -1100,27 +1100,18 @@ LPTSTR _SkipCmdLineCrap(LPTSTR pszCmdLine)
     return pszCmdLine;
 }
 
+#ifdef EXEX_DLL
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
 STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 {
-    PERFSETMARK("ExplorerStartup");
-
     if (fdwReason == DLL_PROCESS_ATTACH)
     {
         _CRT_INIT(hinstDLL, DLL_PROCESS_ATTACH, NULL);
-        //DoInitialization();
 
         if (!SHUndocInit())
             return -1;
 
-        //LoadLibrary(L"shdocvw.dll");
-        //SHLoadInProc(CLSID_WinListShellProc);
-        //LoadLibrary(L"shell32.dll");
-        //LoadLibrary(L"explorerframe.dll");
-
         InitDesktopFuncs();
-
-
 
         // We don't want the "No disk in drive X:" requesters, so we set
         // the critical error mask such that calls will just silently fail
@@ -1137,19 +1128,6 @@ STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
         int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
         int iRet = ExplorerWinMain(hinstDLL, NULL, pszCmdLine, nCmdShow);
 
-#ifndef EXEX_DLL
-        _CRT_INIT(hinstDLL, DLL_PROCESS_DETACH, NULL);
-#endif
-        //DoCleanup();
-
-        // Since we now have a way for an extension to tell us when it is finished,
-        // we will terminate all processes when the main thread goes away.
-
-#ifndef EXEX_DLL
-        if (g_fExitExplorer)    // desktop told us not to exit
-            ExitProcess(iRet);
-#endif
-
         return iRet;
     }
     else
@@ -1159,6 +1137,54 @@ STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 
     return 0;
 }
+#else
+EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
+STDAPI_(int) ModuleEntry()
+{
+    PERFSETMARK("ExplorerStartup");
+
+    _CRT_INIT(GetModuleHandle(0), DLL_PROCESS_ATTACH, NULL);
+    //DoInitialization();
+
+    if (!SHUndocInit())
+        return -1;
+
+    //LoadLibrary(L"shdocvw.dll");
+    //SHLoadInProc(CLSID_WinListShellProc);
+    //LoadLibrary(L"shell32.dll");
+    //LoadLibrary(L"explorerframe.dll");
+
+    InitDesktopFuncs();
+
+
+
+    // We don't want the "No disk in drive X:" requesters, so we set
+    // the critical error mask such that calls will just silently fail
+
+    SetErrorMode(SEM_FAILCRITICALERRORS);
+
+    LPTSTR pszCmdLine = GetCommandLine();
+    pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
+
+    STARTUPINFO si = { 0 };
+    si.cb = sizeof(si);
+    GetStartupInfo(&si);
+
+    int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
+    int iRet = ExplorerWinMain(GetModuleHandle(NULL), NULL, pszCmdLine, nCmdShow);
+
+    _CRT_INIT(GetModuleHandle(0), DLL_PROCESS_DETACH, NULL);
+    //DoCleanup();
+
+    // Since we now have a way for an extension to tell us when it is finished,
+    // we will terminate all processes when the main thread goes away.
+
+    if (g_fExitExplorer)    // desktop told us not to exit
+        ExitProcess(iRet);
+
+    return iRet;
+}
+#endif
 
 HANDLE CreateDesktopAndTray()
 {
