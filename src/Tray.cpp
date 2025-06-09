@@ -24,6 +24,7 @@
 #include "vssym32.h"
 #include "startids.h"
 #include "debug.h"
+#include <immersive/ImmersiveInit.h>
 
 #define DM_FOCUS        0           // focus
 #define DM_SHUTDOWN     TF_TRAY     // shutdown
@@ -5587,7 +5588,10 @@ void CTray::_HandleDelayBootStuff()
         }
 
         TBOOL(WinStationRegisterConsoleNotification(SERVERNAME_CURRENT, _hwnd, NOTIFY_FOR_THIS_SESSION));
-
+#ifdef EXEX_DLL
+        //_spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
+        InitializeImmersiveShell();
+#endif
         //if (g_dwStopWatchMode)
         //{
         //    StopWatch_StopTimed(SWID_STARTUP, TEXT("_DelayedBootStuff"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());

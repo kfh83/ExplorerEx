@@ -403,7 +403,7 @@ HRESULT CTaskBand::Init(CTray* ptray)
 
 #ifdef EXEX_DLL
     _spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
-    InitializeImmersiveShell();
+    //InitializeImmersiveShell();
 #endif
 
     return hr;
