@@ -1186,6 +1186,9 @@ STDAPI_(int) ModuleEntry()
 }
 #endif
 
+#ifdef EXEX_DLL
+extern "C" __declspec(dllexport)
+#endif
 HANDLE CreateDesktopAndTray()
 {
     HANDLE hDesktop = NULL;
@@ -1859,16 +1862,9 @@ public:
     }
 };
 
-#ifdef EXEX_DLL
-extern "C" __declspec(dllexport) HANDLE WINAPI EP_TrayUI_CreateInstance(void)
-{
-    return CreateDesktopAndTray();
-}
-#endif
-
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
-#if !defined(RELEASE) || defined(EXEX_DLL)
+#ifndef RELEASE
 	AllocConsole();
 	FILE* pFile;
 	freopen_s(&pFile, "CONOUT$", "w", stdout);
