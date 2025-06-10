@@ -5,6 +5,7 @@
 #define DLG_TRAY_OPTIONS                6
 #define DLG_NOTIFY                      7
 #define DLG_STARTMENU_CONFIG            9
+#define DLG_EXTRA_OPTIONS               10
 #define ICO_STARTMENU                   107
 #define ICO_DOCMENU                     108
 #define DLG_START                       205
@@ -34,6 +35,7 @@
 #define IDC_LOCKTASKBAR                 1105
 #define IDC_STATIC_NOTIFY               1106
 #define IDC_QUICKLAUNCH                 1107
+#define IDC_WIN2K                       1108
 
 #define IDC_STARTMENUSETTINGS           1123
 #define IDC_RESORT                      1124

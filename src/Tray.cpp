@@ -555,6 +555,7 @@ void CTray::_GetSaveStateAndInitRects()
     //
     // set the tray flags
     //
+    _fWin2K = BOOLIFY(dwTrayFlags & TVSD_WIN2K);
     _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
     _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
@@ -1408,6 +1409,8 @@ void CTray::_RefreshSettings()
         {
             SetWindowPos(_hwnd, NULL, rc.left, rc.top, RECTWIDTH(rc), RECTHEIGHT(rc), SWP_NOZORDER);
         }
+
+        InvalidateRect(_hwnd, NULL, TRUE);
     }
 }
 
@@ -6180,11 +6183,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             DrawThemeBackground(_hTheme, hdc, _GetPart(FALSE, _uStuckPlace), 0, &rc, &rcClip);
         }
-        else
+        else if (_fCanSizeMove && _fWin2K)
         {
             FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
 
             // draw etched line around on either side of the bandsite
+            GetWindowRect(_hwndRebar, &rc);
             MapWindowPoints(HWND_DESKTOP, hwnd, (LPPOINT)&rc, 2);
             InflateRect(&rc, g_cxEdge, g_cyEdge);
             DrawEdge(hdc, &rc, EDGE_ETCHED, BF_TOPLEFT);
