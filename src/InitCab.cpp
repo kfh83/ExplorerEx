@@ -886,6 +886,7 @@ BOOL MyCreateFromDesktop(HINSTANCE hInst, LPCTSTR pszCmdLine, int nCmdShow)
 BOOL g_fDragFullWindows=FALSE;
 int g_cxEdge=0;
 int g_cyEdge=0;
+int g_cxPaddedBorder=0;
 int g_cySize=0;
 int g_cxTabSpace=0;
 int g_cyTabSpace=0;
@@ -918,6 +919,7 @@ void Cabinet_InitGlobalMetrics(WPARAM wParam, LPTSTR lpszSection)
     {
         g_cxEdge = GetSystemMetrics(SM_CXEDGE);
         g_cyEdge = GetSystemMetrics(SM_CYEDGE);
+        g_cxPaddedBorder = GetSystemMetrics(SM_CXPADDEDBORDER);
         g_cxTabSpace = (g_cxEdge * 3) / 2;
         g_cyTabSpace = (g_cyEdge * 3) / 2; // cause the graphic designers really really want 3.
         g_cySize = GetSystemMetrics(SM_CYSIZE);

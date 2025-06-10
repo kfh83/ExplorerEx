@@ -3172,8 +3172,8 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
             }
             else if (!_hTheme)
             {
-                InflateRect(&rcClient, -g_cxFrame, -g_cyFrame);
-                InflateRect(&rcOldClient, -g_cxFrame, -g_cyFrame);
+                InflateRect(&rcClient, -(g_cxFrame + g_cxPaddedBorder), -(g_cyFrame + g_cxPaddedBorder));
+                InflateRect(&rcOldClient, -(g_cxFrame + g_cxPaddedBorder), -(g_cyFrame + g_cxPaddedBorder));
             }
             // Make rcClient start at 0,0, Rebar only used the right and bottom values of this rect
             OffsetRect(&rcClient, -rcClient.left, -rcClient.top);
@@ -3218,8 +3218,8 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
             }
             else if (!_hTheme)
             {
-                InflateRect(&rcClient, g_cxFrame, g_cyFrame);
-                InflateRect(&rcOldClient, g_cxFrame, g_cyFrame);
+                InflateRect(&rcClient, g_cxFrame + g_cxPaddedBorder, g_cyFrame + g_cxPaddedBorder);
+                InflateRect(&rcOldClient, g_cxFrame + g_cxPaddedBorder, g_cyFrame + g_cxPaddedBorder);
             }
 
             // Prevent huge growth of taskbar, caused by bugs in the rebar sizing code
@@ -3560,22 +3560,22 @@ void CTray::_ComputeHiddenRect(LPRECT prc, UINT uStuck)
     switch (uStuck)
     {
     case STICK_LEFT:
-        prc->right = rcMon.left + (g_cxFrame / 2);
+        prc->right = rcMon.left + ((g_cxFrame + g_cxPaddedBorder) / 2);
         prc->left = prc->right - dwh;
         break;
 
     case STICK_RIGHT:
-        prc->left = rcMon.right - (g_cxFrame / 2);
+        prc->left = rcMon.right - ((g_cxFrame + g_cxPaddedBorder) / 2);
         prc->right = prc->left + dwh;
         break;
 
     case STICK_TOP:
-        prc->bottom = rcMon.top + (g_cyFrame / 2);
+        prc->bottom = rcMon.top + ((g_cyFrame + g_cxPaddedBorder) / 2);
         prc->top = prc->bottom - dwh;
         break;
 
     case STICK_BOTTOM:
-        prc->top = rcMon.bottom - (g_cyFrame / 2);
+        prc->top = rcMon.bottom - ((g_cyFrame + g_cxPaddedBorder) / 2);
         prc->bottom = prc->top + dwh;
         break;
     }
@@ -6433,8 +6433,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return(LRESULT)0L;
 
     case WM_GETMINMAXINFO:
-        ((MINMAXINFO*)lParam)->ptMinTrackSize.x = g_cxFrame;
-        ((MINMAXINFO*)lParam)->ptMinTrackSize.y = g_cyFrame;
+        ((MINMAXINFO*)lParam)->ptMinTrackSize.x = g_cxFrame + g_cxPaddedBorder;
+        ((MINMAXINFO*)lParam)->ptMinTrackSize.y = g_cyFrame + g_cxPaddedBorder;
         break;
 
     case WM_WININICHANGE:
@@ -7548,8 +7548,8 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
         // takes into account the frame and that right/bottom of RECT
         // is exclusive in GDI.
 
-        lDeltaX = _sStuckWidths.cx - g_cxFrame;
-        lDeltaY = _sStuckWidths.cy - g_cyFrame;
+        lDeltaX = _sStuckWidths.cx - g_cxFrame - g_cxPaddedBorder;
+        lDeltaY = _sStuckWidths.cy - g_cyFrame - g_cxPaddedBorder;
         if (rc.left < monitorInfo.rcMonitor.left)
         {
             --lDeltaX;

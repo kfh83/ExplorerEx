@@ -97,6 +97,7 @@ extern BOOL g_fFakeShutdown;
 extern int g_fDragFullWindows;
 extern int g_cxEdge;
 extern int g_cyEdge;
+extern int g_cxPaddedBorder;
 extern int g_cySize;
 extern int g_cyTabSpace;
 extern int g_cxTabSpace;
