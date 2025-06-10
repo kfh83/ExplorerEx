@@ -2501,11 +2501,81 @@ public:
 
 typedef ICONDATA* PICONDATA;
 
+DEFINE_GUID(GUID_AppUserModelIdProperty, 0x9F4C2855, 0x9F79, 0x4B39, 0xA8,0xD0, 0xE1,0xD4,0x2D,0xE1,0xD5,0xF3);
+
+HICON GetUWPIcon(HWND hWnd)
+{
+    HICON hiconResult = NULL;
+    HRESULT hr = S_OK;
+    IShellItemImageFactory *psiif = nullptr;
+    SIIGBF flags = SIIGBF_RESIZETOFIT | SIIGBF_ICONBACKGROUND;
+
+    IPropertyStore *pps = nullptr;
+    hr = SHGetPropertyStoreForWindow(
+        hWnd, IID_PPV_ARGS(&pps)
+    );
+    if (SUCCEEDED(hr))
+    {
+        PROPERTYKEY pKey;
+        pKey.fmtid = GUID_AppUserModelIdProperty;
+        pKey.pid = 5;
+        PROPVARIANT prop;
+        ZeroMemory(&prop, sizeof(PROPVARIANT));
+        pps->GetValue(pKey, &prop);
+        pps->Release();
+        if (prop.bstrVal)
+        {
+            SHCreateItemInKnownFolder(
+                FOLDERID_AppsFolder,
+                KF_FLAG_DONT_VERIFY,
+                prop.bstrVal,
+                IID_PPV_ARGS(&psiif)
+            );
+            if (psiif)
+            {
+                SIZE size;
+                size.cx = GetSystemMetrics(SM_CXSMICON);
+                size.cy = GetSystemMetrics(SM_CYSMICON);
+                HBITMAP hBitmap;
+                hr = psiif->GetImage(
+                    size,
+                    flags,
+                    &hBitmap
+                );
+                if (SUCCEEDED(hr))
+                {
+                    // Easiest way to get an HICON from an HBITMAP
+                    // I have turned the Internet upside down and was unable to find this
+                    // Only a convoluted example using GDI+
+                    // This is from the disassembly of StartIsBack/StartAllBack
+                    HIMAGELIST hImageList = ImageList_Create(size.cx, size.cy, ILC_COLOR32, 1, 0);
+                    if (ImageList_Add(hImageList, hBitmap, NULL) != -1)
+                    {
+                        hiconResult = ImageList_GetIcon(hImageList, 0, 0);
+                        ImageList_Destroy(hImageList);
+
+                        DeleteObject(hBitmap);
+                        psiif->Release();
+                    }
+                    DeleteObject(hBitmap);
+                }
+                psiif->Release();
+            }
+        }
+    }
+    return hiconResult;
+}
+
 void CALLBACK CTaskBand::IconAsyncProc(HWND hwnd, UINT uMsg, ULONG_PTR dwData, LRESULT lResult)
 {
     PICONDATA pid = (PICONDATA)dwData;
     if (pid)
     {
+        if (!lResult && IsShellFrameWindow && IsShellFrameWindow(hwnd))
+        {
+            lResult = (LRESULT)GetUWPIcon(hwnd);
+        }
+
         pid->ptb->_SetWindowIcon(hwnd, (HICON)lResult, pid->iPref);
         delete pid;
     }
