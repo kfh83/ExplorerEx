@@ -228,6 +228,8 @@ public:
         return _hwndNotify;
     }
 
+    void TellTaskBandWeWantToOpenThisShit();
+
     void CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage);
 
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)

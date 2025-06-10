@@ -16,6 +16,7 @@
 
 #include "ImmersiveInit.h"
 #include "Hooks.h"
+#include <Tray.h>
 
 // TODO: Should this be a global variable? Look into restructuring.
 IImmersiveShellHookService *g_pShellHookService = nullptr;
@@ -164,6 +165,12 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					{
 						wprintf(L"Received message %d. This message will not be forwarded.\n", (WORD)wParam);
 						fForward = false;
+					}
+					else if ((WORD)wParam == 7)
+					{
+						wprintf(L"Received message %d. This message will not be forwarded. WE opening the start menu with this shit\n", (WORD)wParam);
+						fForward = false;
+						c_tray.TellTaskBandWeWantToOpenThisShit();
 					}
 
 					if (fForward)
