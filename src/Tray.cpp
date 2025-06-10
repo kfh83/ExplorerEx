@@ -1841,10 +1841,11 @@ void CTray::_CreateTrayWindow()
 
 
     // Fix for DWM borders on classic theme
-    BOOL bCompositionEnabled;
-    DwmIsCompositionEnabled(&bCompositionEnabled);
-    DWMNCRENDERINGPOLICY ncrp = bCompositionEnabled ? DWMNCRP_ENABLED : DWMNCRP_DISABLED;
-    DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
+    if (!(GetThemeAppProperties() & STAP_ALLOW_NONCLIENT))
+    {
+        DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
+        DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
+    }
 }
 
 DWORD WINAPI CTray::SyncThreadProc(void* pv)

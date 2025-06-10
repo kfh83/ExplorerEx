@@ -577,7 +577,7 @@ public:
         }
         else if (_psfd->IsCSIDL())
         {
-            SHGetSpecialFolderLocation(NULL, _psfd->GetCSIDL(), &_pidl);
+            SHGetFolderLocation(NULL, _psfd->GetCSIDL(), NULL, NULL, &_pidl);
         }
         else
         {
@@ -615,7 +615,7 @@ public:
         if (_psfd->IsCSIDL())
         {
             LPITEMIDLIST pidlNew;
-            if (SHGetSpecialFolderLocation(NULL, _psfd->GetCSIDL(), &pidlNew) == S_OK)
+            if (SHGetFolderLocation(NULL, _psfd->GetCSIDL(), NULL, NULL, &pidlNew) == S_OK)
             {
                 UINT cbSizeNew = ILGetSize(pidlNew);
                 if (cbSizeNew != ILGetSize(_pidl) ||
@@ -649,7 +649,7 @@ BOOL MinKidsHelper(UINT csidl, BOOL bOnlyRASCON, DWORD dwMinKids)
 
     IShellFolder2 *psf;
     LPITEMIDLIST pidlBind = NULL;
-    if (SHGetSpecialFolderLocation(NULL, csidl, &pidlBind) == S_OK)
+    if (SHGetFolderLocation(NULL, csidl, NULL, NULL, &pidlBind) == S_OK)
     {
         if (SUCCEEDED(SHBindToObjectEx(NULL, pidlBind, NULL, IID_PPV_ARGS(&psf))))
         {
@@ -925,7 +925,7 @@ int SpecialFolderList::AddImageForItem(PaneItem *p, IShellFolder *psf, LPCITEMID
            one.  So we use whichever one is most convenient.
 
            EXEX USE: For Japanese language use, suffix mnemonics are common.
-           They look like "ÉRÉìÉgÉçÅ[Éã ÉpÉlÉã(&C)". XP intended to remove the
+           They look like "ÔøΩRÔøΩÔøΩÔøΩgÔøΩÔøΩÔøΩ[ÔøΩÔøΩ ÔøΩpÔøΩlÔøΩÔøΩ(&C)". XP intended to remove the
            full suffix, however, it neglects to do so and only the ampersand
            is removed. This behaviour was fixed to remove the full "(&C)"
            sequence in later versions of Windows. Ordinarily, this wouldn't
