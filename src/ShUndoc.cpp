@@ -2168,16 +2168,22 @@ if (!MODULE_VARNAME(NAME))                                       \
     return false;\
 }
 
+#define LOAD_FUNCTION_NO_FAIL(MODULE, FUNCTION) \
+*(FARPROC *)&FUNCTION = GetProcAddress(MODULE_VARNAME(MODULE), #FUNCTION);
+
 #define LOAD_FUNCTION(MODULE, FUNCTION)                                      \
-*(FARPROC *)&FUNCTION = GetProcAddress(MODULE_VARNAME(MODULE), #FUNCTION);   \
+LOAD_FUNCTION_NO_FAIL(MODULE, FUNCTION);                                     \
 if (!FUNCTION)                                                               \
 { \
     MessageBoxW(0, TEXT(#FUNCTION), TEXT(#FUNCTION), 0); \
 	return false; \
 }
 
-#define LOAD_ORDINAL(MODULE, FUNCNAME, ORDINAL)                                   \
+#define LOAD_ORDINAL_NO_FAIL(MODULE, FUNCNAME, ORDINAL)                           \
 *(FARPROC *)&FUNCNAME = GetProcAddress(MODULE_VARNAME(MODULE), (LPCSTR)ORDINAL);  \
+
+#define LOAD_ORDINAL(MODULE, FUNCNAME, ORDINAL)                                   \
+LOAD_ORDINAL_NO_FAIL(MODULE, FUNCNAME, ORDINAL);                                  \
 if (!FUNCNAME)                                                                    \
 { \
     MessageBoxW(0, TEXT(#FUNCNAME), TEXT(#FUNCNAME), 0); \
@@ -2848,13 +2854,10 @@ bool SHUndocInit(void)
 
     LOAD_MODULE(user32);
     LOAD_FUNCTION(user32, EndTask);
-    *(FARPROC*)&IsShellManagedWindow = GetProcAddress(hMod_user32, (LPCSTR)2574); if (!IsShellManagedWindow) {
-        //MessageBoxW(0, L"IsShellManagedWindow", L"IsShellManagedWindow", 0); return false;
-    };
-    *(FARPROC*)&IsShellFrameWindow = GetProcAddress(hMod_user32, (LPCSTR)2573); if (!IsShellFrameWindow) {
-        //MessageBoxW(0, L"IsShellFrameWindow", L"IsShellFrameWindow", 0); return false;
-    };
+    LOAD_ORDINAL_NO_FAIL(user32, IsShellFrameWindow, 2573);
+    LOAD_ORDINAL_NO_FAIL(user32, IsShellManagedWindow, 2574);
     LOAD_FUNCTION(user32, GhostWindowFromHungWindow);
+    LOAD_FUNCTION_NO_FAIL(user32, GetWindowBand);
 
     LOAD_MODULE(msi);
     LOAD_FUNCTION(msi, MsiDecomposeDescriptorW);

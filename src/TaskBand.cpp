@@ -3290,13 +3290,71 @@ void CTaskBand::_DeleteItem(HWND hwnd, int iIndex)
     }
 }
 
+struct BandData
+{
+    ZBID id;
+    bool bInclude;
+};
+
+static const BandData s_bandInclusionData[] =
+{
+    { ZBID_DEFAULT, false },
+    { ZBID_DESKTOP, true },
+    { ZBID_UIACCESS, true },
+    { ZBID_IMMERSIVE_IHM, false },
+    { ZBID_IMMERSIVE_NOTIFICATION, false },
+    { ZBID_IMMERSIVE_APPCHROME, false },
+    { ZBID_IMMERSIVE_MOGO, false },
+    { ZBID_IMMERSIVE_EDGY, false },
+    { ZBID_IMMERSIVE_INACTIVEMOBODY, false },
+    { ZBID_IMMERSIVE_INACTIVEDOCK, false },
+    { ZBID_IMMERSIVE_ACTIVEMOBODY, false },
+    { ZBID_IMMERSIVE_ACTIVEDOCK, false },
+    { ZBID_IMMERSIVE_BACKGROUND, false },
+    { ZBID_IMMERSIVE_SEARCH, false },
+    { ZBID_GENUINE_WINDOWS, false },
+    { ZBID_IMMERSIVE_RESTRICTED, false },
+    { ZBID_SYSTEM_TOOLS, true },
+    { ZBID_LOCK, false },
+    { ZBID_ABOVELOCK_UX, false }
+};
+
+bool IsValidDesktopZOrderBand(HWND hwnd, BOOL fCheckShellManagedWindow)
+{
+    bool fValid = false;
+
+    if (!GetWindowBand)
+        return true;
+
+    ZBID band;
+    if (GetWindowBand(hwnd, &band))
+    {
+        fValid = s_bandInclusionData[band].bInclude;
+        if (fValid && fCheckShellManagedWindow)
+            fValid = !IsShellManagedWindow(hwnd) || GetPropW(hwnd, L"Microsoft.Windows.ShellManagedWindowAsNormalWindow") != nullptr;
+    }
+
+    return fValid;
+}
+
+BOOL ShouldAddWindowToTrayHelper(HWND hwnd)
+{
+    DWORD dwExStyle = GetWindowLongW(hwnd, GWL_EXSTYLE);
+    return (!GetWindow(hwnd, GW_OWNER) || (dwExStyle & WS_EX_APPWINDOW) != 0) && (dwExStyle & WS_EX_TOOLWINDOW) == 0;
+}
+
+BOOL ShouldAddWindowToTray(HWND hwnd)
+{
+    return IsValidDesktopZOrderBand(hwnd, TRUE) && IsWindowVisible(hwnd) && ShouldAddWindowToTrayHelper(hwnd);
+}
+
 //---------------------------------------------------------------------------
 // Adds the given window to the task list.
 // Returns TRUE/FALSE depending on whether the window was actually added.
 // NB No check is made to see if it's already in the list.
 BOOL CTaskBand::_AddWindow(HWND hwnd)
 {
-    if (_IsWindowNormal(hwnd))
+    if (_IsWindowNormal(hwnd) && ShouldAddWindowToTray(hwnd))
     {
         return _InsertItem(hwnd);
     }
@@ -4288,34 +4346,8 @@ void CTaskBand::_SwitchToItem(int iItem, HWND hwnd, BOOL fIgnoreCtrlKey)
 BOOL WINAPI CTaskBand::BuildEnumProc(HWND hwnd, LPARAM lParam)
 {
     CTaskBand* ptasks = (CTaskBand*)lParam;
-    if (IsWindow(hwnd) && IsWindowVisible(hwnd) && !::GetWindow(hwnd, GW_OWNER) &&
-        (!(GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)))
-    {
-        BOOL bCloaked;
-        DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &bCloaked, sizeof(BOOL));
-        if (bCloaked)
-            return TRUE;
-
-        if (IsShellFrameWindow)
-        {
-			if (IsShellFrameWindow(hwnd) && !GhostWindowFromHungWindow(hwnd))
-			{
-				ptasks->_AddWindow(hwnd);
-				return TRUE;
-			}
-        }
-        else if (!GhostWindowFromHungWindow(hwnd))
-        {
-			ptasks->_AddWindow(hwnd);
-			return TRUE;
-        }
-        
-
-        if (IsShellManagedWindow && IsShellManagedWindow(hwnd) && GetPropW(hwnd, L"Microsoft.Windows.ShellManagedWindowAsNormalWindow") == NULL)
-            return TRUE;
-
+    if (!GhostWindowFromHungWindow(hwnd))
         ptasks->_AddWindow(hwnd);
-    }
     return TRUE;
 }
 
