@@ -280,22 +280,6 @@ static SpecialFolderDesc s_rgsfd[] = {
         NULL,                               // (no desktop visibility control)
     },
 
-    /* Network Connections */
-    {
-        MAKEINTRESOURCE(CSIDL_CONNECTIONS), // pszTarget
-        REST_NONETWORKCONNECTIONS,          // restriction
-        REGSTR_VAL_DV2_SHOWNETCONN,         // customize show
-        SFD_CASCADE | SFD_CANCASCADE | SFD_PREFIX | SFD_USEBGTHREAD, // cascade by default
-        CConnectToShellMenuCallback_CreateInstance, // do special Connect To filtering
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        IDS_STARTPANE_CONNECTTO,            // override filesys name
-        IDS_CUSTOMTIP_CONNECTTO,
-        &SpecialFolderDesc::ConnectToName,  // override filesys name with _idsCustomName
-        ShouldShowConnectTo,                // see if we should be shown
-        NULL,                               // (no desktop visibility control)
-    },
-
     /* Set Program Access and Defaults */
     {
         // Using the ::{guid} gets the icon right
@@ -310,6 +294,22 @@ static SpecialFolderDesc s_rgsfd[] = {
         NULL,                               // no custom tip
         NULL,                               // no custom name
         NULL,                               // (no custom display rule)
+        NULL,                               // (no desktop visibility control)
+    },
+
+    /* Network Connections */
+    {
+        MAKEINTRESOURCE(CSIDL_CONNECTIONS), // pszTarget
+        REST_NONETWORKCONNECTIONS,          // restriction
+        REGSTR_VAL_DV2_SHOWNETCONN,         // customize show
+        SFD_CASCADE | SFD_CANCASCADE | SFD_PREFIX | SFD_USEBGTHREAD, // cascade by default
+        CConnectToShellMenuCallback_CreateInstance, // do special Connect To filtering
+        NULL,                               // no drag/drop customization
+        0,                                  // no special flags for cascaded menu
+        IDS_STARTPANE_CONNECTTO,            // override filesys name
+        IDS_CUSTOMTIP_CONNECTTO,
+        &SpecialFolderDesc::ConnectToName,  // override filesys name with _idsCustomName
+        ShouldShowConnectTo,                // see if we should be shown
         NULL,                               // (no desktop visibility control)
     },
 
