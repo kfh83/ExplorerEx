@@ -1841,7 +1841,7 @@ void CTray::_CreateTrayWindow()
 
 
     // Fix for DWM borders on classic theme
-    if (!(GetThemeAppProperties() & STAP_ALLOW_NONCLIENT))
+    if (!IsAppThemed())
     {
         DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
         DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
