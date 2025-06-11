@@ -6373,6 +6373,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //
         PostMessage(hwnd, WM_SIZE, 0, 0L);
         g_fInSizeMove = FALSE;
+        AsyncSaveSettings();
         break;
 
     case WM_MOVING:
@@ -6438,7 +6439,11 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_WININICHANGE:
-        if (lParam && (0 == lstrcmpi((LPCTSTR)lParam, TEXT("SaveTaskbar"))))
+        if (lParam && (0 == lstrcmpi((LPCTSTR)lParam, TEXT("TraySettings"))))
+        {
+            AsyncSaveSettings();
+        }
+        else if (lParam && (0 == lstrcmpi((LPCTSTR)lParam, TEXT("SaveTaskbar"))))
         {
             _SaveTrayAndDesktop();
         }
@@ -7103,6 +7108,7 @@ void CTray::ContextMenuInvoke(int idCmd)
         if (idCmd < IDM_TRAYCONTEXTFIRST)
         {
             BandSite_HandleMenuCommand(_ptbs, idCmd);
+            AsyncSaveSettings();
         }
         else
         {
