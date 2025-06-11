@@ -2465,25 +2465,16 @@ BOOL _TryHydra(LPCTSTR pszCmd, RRA_FLAGS* pflags)
 //
 BOOL _ShellExecRegApp(LPCTSTR pszCmd, BOOL fNoUI, BOOL fWait)
 {
-    TCHAR szQuotedCmdLine[MAX_PATH + 2];
-    LPTSTR pszArgs;
+    PWSTR ppszCommandLine = nullptr;
+    PWSTR ppszParameters = nullptr;
     SHELLEXECUTEINFO ei = { 0 };
     BOOL fNoError = TRUE;
 
-    if (fNoError)
+    if (fNoError && SUCCEEDED(SHEvaluateSystemCommandTemplate(pszCmd, &ppszCommandLine, NULL, &ppszParameters)))
     {
-        pszArgs = PathGetArgs(szQuotedCmdLine);
-        if (*pszArgs)
-        {
-            // Strip args
-            *(pszArgs - 1) = 0;
-        }
-
-        PathUnquoteSpaces(szQuotedCmdLine);
-
         ei.cbSize = sizeof(SHELLEXECUTEINFO);
-        ei.lpFile = szQuotedCmdLine;
-        ei.lpParameters = pszArgs;
+        ei.lpFile = ppszCommandLine;
+        ei.lpParameters = ppszParameters;
         ei.nShow = SW_SHOWNORMAL;
         ei.fMask = SEE_MASK_NOCLOSEPROCESS;
 
@@ -2537,7 +2528,7 @@ BOOL ShellExecuteRegApp(LPCTSTR pszCmdLine, RRA_FLAGS fFlags)
     if (!bRet)
     {
         //  fallback if necessary.
-        //bRet = _ShellExecRegApp(pszCmdLine, fFlags & RRA_NOUI, fFlags & RRA_WAIT);
+        bRet = _ShellExecRegApp(pszCmdLine, fFlags & RRA_NOUI, fFlags & RRA_WAIT);
     }
 
     return bRet;
