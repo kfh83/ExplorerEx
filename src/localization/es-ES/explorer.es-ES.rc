@@ -282,7 +282,7 @@ BEGIN
     IDS_TURNOFFCOMPUTER     "&Apagar equipo..."
 #ifdef WINNT
    IDS_OPENCOMMON    "Abrir &todos los usuarios"
-   IDS_EXPLORECOMMON "xplo&rar todos los usuarios"
+   IDS_EXPLORECOMMON "Explo&rar todos los usuarios"
 #endif
     IDS_STARTMENUPROP   "&Propiedades"
 

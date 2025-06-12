@@ -278,6 +278,8 @@ HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
                 _PlaceItem(iItem, pti, TRAYEVENT_ONAPPLYUSERPREF);
                 _Size();
 
+
+                c_tray.AsyncSaveSettings();
                 return S_OK;
             }
         }
