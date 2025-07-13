@@ -1279,7 +1279,7 @@ LRESULT CTray::_CreateWindows()
         if (_ptbs)
         {
             IUnknown_GetWindow(_ptbs, &_hwndRebar);
-            SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, FALSE);
+            SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, _fWin2K);
 
             // No need to check the disk space thing for non-privileged users, this reduces activity in the TS case
             // and only admins can properly free disk space anyways.
@@ -2987,6 +2987,8 @@ void CTray::SizeWindows()
     {
         InvisibleUnhide(FALSE);
     }
+
+    SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, _fWin2K);
 
     // remember our current size
     _SnapshotStuckRectSize(_uStuckPlace);
