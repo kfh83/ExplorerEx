@@ -131,6 +131,7 @@
 #define ICO_MEDIAPLAYER             255
 #define ICO_WORDMAIL                256
 #define ICO_CLASSICSM               257
+#define ICO_START2K                 258
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // ADD NEW ICONS ABOVE THIS LINE 

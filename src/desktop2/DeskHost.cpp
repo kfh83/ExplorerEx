@@ -2604,12 +2604,6 @@ STDAPI DesktopV2_Create(
     return hr;
 }
 
-DWORD Mirror_MirrorDC(HDC hdc)
-{
-	return Mirror_SetLayout(hdc, LAYOUT_RTL);
-}
-
-#define SET_DC_RTL_MIRRORED(hdc)         Mirror_MirrorDC(hdc)
 HBITMAP CreateMirroredBitmap(HBITMAP hbmOrig)
 {
     HDC     hdc, hdcMem1, hdcMem2;

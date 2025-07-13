@@ -294,6 +294,7 @@ public:
 
     HBITMAP _hbmpStartBkg;
     HFONT   _hFontStart;
+    HBITMAP _hbmpStart;
 
     RECT _arStuckRects[4];   // temporary for hit-testing
 
@@ -319,6 +320,7 @@ protected:
     BOOL _IsPopupMenuVisible();
     BOOL _IsActive();
     void _AlignStartButton();
+    void _AlignStartButton_2K();
     void _GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify);
     void _GetStuckDisplayRect(UINT uStuckPlace, LPRECT prcDisplay);
     void _Hide();
@@ -410,6 +412,8 @@ protected:
     DWORD _PropertiesThreadProc(DWORD dwFlags);
 
     int _RecomputeWorkArea(HWND hwndCause, HMONITOR hmon, LPRECT prcWork);
+
+    HBITMAP _CreateStartBitmap();
 
     void _StartButtonReset();
     void _RefreshStartMenu();
@@ -652,6 +656,7 @@ protected:
     friend class CStartDropTarget;
     friend class CTrayDropTarget;
     friend class CDropTargetBase;
+    friend class CTaskBarPropertySheet;
 
     friend void Tray_OnStartMenuDismissed();
     friend void Tray_SetStartPaneActive(BOOL fActive);

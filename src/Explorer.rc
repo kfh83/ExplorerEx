@@ -64,6 +64,7 @@ ICO_INTERNETBROWSER     ICON "resources\\inetweb.ico"
 ICO_INTERNETMAIL        ICON "resources\\inetmail.ico"
 ICO_WORDMAIL            ICON "resources\\smwmail.ico"
 ICO_CLASSICSM           ICON "resources\\clasicSM.ico"
+ICO_START2K             ICON "resources\\start2k.ico"
 
 //////////////////////////////////////////////////////////////////////////////
 //

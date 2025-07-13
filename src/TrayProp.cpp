@@ -1945,9 +1945,16 @@ BOOL_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam
             BOOL fWin2K = ::IsDlgButtonChecked(hDlg, IDC_WIN2K);
             TRAYVIEWOPTS tvo;
             c_tray.GetTrayViewOpts(&tvo);
-            tvo.fWin2K = fWin2K;
-            c_tray.SetTrayViewOpts(&tvo);
-            ::InvalidateRect(v_hwndTray, NULL, TRUE);
+            if (tvo.fWin2K != fWin2K)
+            {
+                tvo.fWin2K = fWin2K;
+                c_tray.SetTrayViewOpts(&tvo);
+                // JUST FUCKING SAVE IT I HATE XP EXPLORER
+                c_tray._SaveTrayStuff();
+                c_tray._StartButtonReset();
+                c_tray.SizeWindows();
+                ::InvalidateRect(v_hwndTray, NULL, TRUE);
+            }
             return TRUE;
         }
 

@@ -613,17 +613,17 @@ DrawCaptionTempA(
     IN HICON,
     IN LPCSTR,
     IN UINT);
-WINUSERAPI
-BOOL
-WINAPI
-DrawCaptionTempW(
-    IN HWND,
-    IN HDC,
-    IN LPCRECT,
-    IN HFONT,
-    IN HICON,
-    IN LPCWSTR,
-    IN UINT);
+//WINUSERAPI
+//BOOL
+//WINAPI
+//DrawCaptionTempW(
+//    IN HWND,
+//    IN HDC,
+//    IN LPCRECT,
+//    IN HFONT,
+//    IN HICON,
+//    IN LPCWSTR,
+//    IN UINT);
 #ifdef UNICODE
 #define DrawCaptionTemp  DrawCaptionTempW
 #else

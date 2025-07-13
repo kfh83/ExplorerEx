@@ -594,6 +594,7 @@ void CTray::_SaveTrayStuff(void)
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
     if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
     if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
+    if (_fWin2K) tvsd.dwFlags |= TVSD_WIN2K;
 
     // Save in Stuck rects.
     Reg_SetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"), &tvsd, sizeof(tvsd));
@@ -607,6 +608,9 @@ void CTray::_SaveTrayStuff(void)
 // and make toolbar's buttons to be MENU style
 void CTray::_AlignStartButton()
 {
+    if (_fWin2K && !_hTheme)
+        return _AlignStartButton_2K();
+
     HWND hwndStart = _hwndStart;
     if (hwndStart)
     {
@@ -642,6 +646,38 @@ void CTray::_AlignStartButton()
 
         SetWindowPos(hwndStart, NULL, 0, 0, min(rcClient.right, _sizeStart.cx),
             cyStart, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+void CTray::_AlignStartButton_2K()
+{
+    HWND hwndStart = _hwndStart;
+    if (hwndStart)
+    {
+        RECT rcClient;
+        if (_sizeStart.cy == 0)
+        {
+            BITMAP bm;
+            HBITMAP hbm = (HBITMAP)SendMessage(hwndStart, BM_GETIMAGE, IMAGE_BITMAP, 0);
+            if (hbm)
+            {
+                GetObject(hbm, sizeof(bm), &bm);
+
+                _sizeStart.cx = bm.bmWidth + 2 * g_cxEdge;
+                _sizeStart.cy = bm.bmHeight + 2 * g_cyEdge;
+                if (_sizeStart.cy < g_cySize + 2 * g_cyEdge)
+                    _sizeStart.cy = g_cySize + 2 * g_cyEdge;
+            }
+            else
+            {
+                // BUGBUG: New user may have caused this to fail...
+                // Setup some size for it that wont be too bad...
+                _sizeStart.cx = g_cxMinimized;
+                _sizeStart.cy = g_cySize + 2 * g_cyEdge;
+            }
+        }
+        GetClientRect(_hwnd, &rcClient);
+        SetWindowPos(hwndStart, NULL, 0, 0, (rcClient.right < _sizeStart.cx) ? rcClient.right : _sizeStart.cx, _sizeStart.cy, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 }
 
@@ -1224,6 +1260,8 @@ void CTray::_CreateTrayTips()
 #define SHCNE_STAGINGAREANOTIFICATIONS (SHCNE_CREATE | SHCNE_MKDIR | SHCNE_UPDATEDIR | SHCNE_UPDATEITEM)
 LRESULT CTray::_CreateWindows()
 {
+    _GetSaveStateAndInitRects();
+
     if (_CreateStartButton() && _CreateClockWindow())
     {
         //
@@ -3830,68 +3868,214 @@ void CTray::_SetUnhideTimer(LONG x, LONG y)
     }
 }
 
+// Mirror a bitmap in a DC (mainly a text object in a DC)
+
+// [samera]
+void MirrorBitmapInDC(HDC hdc, HBITMAP hbmOrig)
+{
+    HDC     hdcMem;
+    HBITMAP hbm;
+    BITMAP  bm;
+
+    if (!GetObject(hbmOrig, sizeof(BITMAP), &bm))
+        return;
+
+    hdcMem = CreateCompatibleDC(hdc);
+    if (!hdcMem)
+        return;
+
+    hbm = CreateCompatibleBitmap(hdc, bm.bmWidth, bm.bmHeight);
+    if (!hbm)
+    {
+        DeleteDC(hdcMem);
+        return;
+    }
+
+    // Flip the bitmap
+    SelectObject(hdcMem, hbm);
+    SET_DC_RTL_MIRRORED(hdcMem);
+
+    BitBlt(hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, hdc, 0, 0, SRCCOPY);
+
+    SET_DC_LAYOUT(hdcMem, 0);
+
+    // BUGBUG : The offset by 1 in hdcMem is to solve the off-by-one problem. Removed.
+    // [samera]
+    BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+    DeleteDC(hdcMem);
+    DeleteObject(hbm);
+}
+
+#define CXGAP 4
+/* Creates the start button bitmap for the Win2K style. */
+HBITMAP CTray::_CreateStartBitmap()
+{
+    HBITMAP hbmpStart = NULL;
+    HBITMAP hbmpStartOld = NULL;
+    HICON hiconFlag = NULL;
+    int cx, cy, cySmIcon;
+    TCHAR szStart[256];
+    SIZE size;
+    HDC hdcStart;
+    HDC hdcScreen;
+    HFONT hfontStartOld = NULL;
+    RECT rcStart;
+    WORD wLang;
+
+    // DebugMsg(DM_TRACE, "c.csb: Creating start bitmap.");
+
+    hdcScreen = GetDC(NULL);
+    hdcStart = CreateCompatibleDC(hdcScreen);
+    if (hdcStart)
+    {
+
+        // Get an idea about how big we need everyhting to be.
+        LoadString(hinstCabinet, IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
+
+        hfontStartOld = (HFONT)SelectObject(hdcScreen, _hFontStart);
+        GetTextExtentPoint(hdcScreen, szStart, lstrlen(szStart), &size);
+        SelectObject(hdcScreen, hfontStartOld);
+
+        // Mimick the tray and ignore the font size for determining the height.
+#if 0
+        cy = max(g_cySize, size.cy);
+#else
+        cy = g_cySize;
+#endif
+        cySmIcon = GetSystemMetrics(SM_CYSMICON);
+        cx = (cy + size.cx) + CXGAP;
+        hbmpStart = CreateCompatibleBitmap(hdcScreen, cx, cy);
+        hbmpStartOld = (HBITMAP)SelectObject(hdcStart, hbmpStart);
+
+        hfontStartOld = (HFONT)SelectObject(hdcStart, _hFontStart);
+
+        // Let's mirror the DC, so that text won't get mirrored
+        // if the window ir mirrored
+        if (IS_WINDOW_RTL_MIRRORED(_hwnd))
+        {
+            // Mirror the DC, so that drawing goes from the visual right
+            // edge. [samera]
+            SET_DC_RTL_MIRRORED(hdcStart);
+        }
+
+        rcStart.left = -g_cxEdge; // subtract this off because drawcaptiontemp adds it on
+        rcStart.top = 0;
+        rcStart.right = cx;
+        rcStart.bottom = cy;
+        hiconFlag = (HICON)LoadImage(hinstCabinet, MAKEINTRESOURCE(ICO_START2K), IMAGE_ICON, cySmIcon, cySmIcon, 0);
+        // Get User to draw everything for us.
+        DrawCaptionTemp(_hwnd, hdcStart, &rcStart, _hFontStart, hiconFlag, szStart, DC_INBUTTON | DC_TEXT | DC_ICON | DC_NOSENDMSG);
+
+        // Now we have the image ready to maintained by USER, let's mirror
+        // it so that when it is bitblt'ed to the hwndTray DC it will be mirrored and the bitmap image is maintained. [samera]
+        if (IS_WINDOW_RTL_MIRRORED(_hwnd))
+        {
+            MirrorBitmapInDC(hdcStart, hbmpStart);
+        }
+
+        // Clean up Start stuff.
+        SelectObject(hdcStart, hbmpStartOld);
+        if (_hFontStart)
+        {
+            SelectObject(hdcStart, hfontStartOld);
+        }
+        DeleteDC(hdcStart);
+        DestroyIcon(hiconFlag);
+    }
+
+    ReleaseDC(NULL, hdcScreen);
+    return hbmpStart;
+}
+
 void CTray::_StartButtonReset()
 {
-    // Get an idea about how big we need everyhting to be.
-    TCHAR szStart[50];
-    LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
-    SetWindowText(_hwndStart, szStart);
-
-    if (_hFontStart)
+   if (_hFontStart)
         DeleteObject(_hFontStart);
+    if (_hbmpStart)
+        DeleteObject(_hbmpStart);
+    ZeroMemory(&_sizeStart, sizeof(_sizeStart));
 
     _hFontStart = _CreateStartFont(_hwndStart);
 
-    int idbStart = IDB_START16;
-
-    HDC hdc = GetDC(NULL);
-    if (hdc)
+    if (_fWin2K && !_hTheme)
     {
-        int bpp = GetDeviceCaps(hdc, BITSPIXEL) * GetDeviceCaps(hdc, PLANES);
-        if (bpp > 8)
-        {
-            idbStart = _hTheme ? IDB_START : IDB_STARTCLASSIC;
-        }
+        SetWindowText(_hwndStart, TEXT(""));
 
-        ReleaseDC(NULL, hdc);
+        // Undo XP button style
+        Button_SetImageList(_hwndStart, nullptr);
+
+        _hbmpStart = _CreateStartBitmap();
+        if (_hbmpStart)
+        {
+            SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hbmpStart);
+            DWORD dwStyle = GetWindowLong(_hwndStart, GWL_STYLE);
+            SetWindowLong(_hwndStart, GWL_STYLE, dwStyle | BS_BITMAP);
+        }
     }
-
-    HBITMAP hbmFlag = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(idbStart), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
-    if (hbmFlag)
+    else
     {
-        BITMAP bm;
-        if (GetObject(hbmFlag, sizeof(BITMAP), &bm))
+        // Get an idea about how big we need everyhting to be.
+        TCHAR szStart[50];
+        LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
+        SetWindowText(_hwndStart, szStart);
+
+        // Undo Win2K button style
+        SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, NULL);
+        DWORD dwStyle = GetWindowLong(_hwndStart, GWL_STYLE);
+        SetWindowLong(_hwndStart, GWL_STYLE, dwStyle & ~BS_BITMAP);
+
+        int idbStart = IDB_START16;
+
+        HDC hdc = GetDC(NULL);
+        if (hdc)
         {
-            BUTTON_IMAGELIST biml = { 0 };
-            if (_himlStartFlag)
-                ImageList_Destroy(_himlStartFlag);
-
-
-            DWORD dwFlags = ILC_COLOR32;
-            HBITMAP hbmFlagMask = NULL;
-            if (idbStart == IDB_START16)
+            int bpp = GetDeviceCaps(hdc, BITSPIXEL) * GetDeviceCaps(hdc, PLANES);
+            if (bpp > 8)
             {
-                dwFlags = ILC_COLOR8 | ILC_MASK;
-                hbmFlagMask = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK), IMAGE_BITMAP, 0, 0, LR_MONOCHROME);
+                idbStart = _hTheme ? IDB_START : IDB_STARTCLASSIC;
             }
 
-            if (IS_WINDOW_RTL_MIRRORED(_hwndStart))
-            {
-                dwFlags |= ILC_MIRROR;
-            }
-            biml.himl = _himlStartFlag = ImageList_Create(bm.bmWidth, bm.bmHeight, dwFlags, 1, 1);
-            ImageList_Add(_himlStartFlag, hbmFlag, hbmFlagMask);
-
-            if (hbmFlagMask)
-            {
-                DeleteObject(hbmFlagMask);
-            }
-
-            biml.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
-
-            Button_SetImageList(_hwndStart, &biml);
+            ReleaseDC(NULL, hdc);
         }
-        DeleteObject(hbmFlag);
+
+        HBITMAP hbmFlag = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(idbStart), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
+        if (hbmFlag)
+        {
+            BITMAP bm;
+            if (GetObject(hbmFlag, sizeof(BITMAP), &bm))
+            {
+                BUTTON_IMAGELIST biml = { 0 };
+                if (_himlStartFlag)
+                    ImageList_Destroy(_himlStartFlag);
+
+
+                DWORD dwFlags = ILC_COLOR32;
+                HBITMAP hbmFlagMask = NULL;
+                if (idbStart == IDB_START16)
+                {
+                    dwFlags = ILC_COLOR8 | ILC_MASK;
+                    hbmFlagMask = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK), IMAGE_BITMAP, 0, 0, LR_MONOCHROME);
+                }
+
+                if (IS_WINDOW_RTL_MIRRORED(_hwndStart))
+                {
+                    dwFlags |= ILC_MIRROR;
+                }
+                biml.himl = _himlStartFlag = ImageList_Create(bm.bmWidth, bm.bmHeight, dwFlags, 1, 1);
+                ImageList_Add(_himlStartFlag, hbmFlag, hbmFlagMask);
+
+                if (hbmFlagMask)
+                {
+                    DeleteObject(hbmFlagMask);
+                }
+
+                biml.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
+
+                Button_SetImageList(_hwndStart, &biml);
+            }
+            DeleteObject(hbmFlag);
+        }
     }
 
     if (_hFontStart)

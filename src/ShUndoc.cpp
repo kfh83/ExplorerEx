@@ -768,6 +768,11 @@ DWORD Mirror_SetLayout(HDC hdc, DWORD dwLayout)
     return dwRet;
 }
 
+DWORD Mirror_MirrorDC(HDC hdc)
+{
+    return Mirror_SetLayout(hdc, LAYOUT_RTL);
+}
+
 BOOL IsBiDiLocalizedSystemEx(LANGID* pLangID)
 {
     int           iLCID = 0L;
@@ -2849,6 +2854,7 @@ bool SHUndocInit(void)
     LOAD_ORDINAL_NO_FAIL(user32, IsShellManagedWindow, 2574);
     LOAD_FUNCTION(user32, GhostWindowFromHungWindow);
     LOAD_FUNCTION_NO_FAIL(user32, GetWindowBand);
+    LOAD_FUNCTION(user32, DrawCaptionTempW);
 
     LOAD_MODULE(msi);
     LOAD_FUNCTION(msi, MsiDecomposeDescriptorW);

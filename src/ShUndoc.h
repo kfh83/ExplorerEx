@@ -544,6 +544,8 @@ typedef struct _tagSHELLREMINDER
 
 
 #define IS_WINDOW_RTL_MIRRORED(hwnd)     (g_bMirroredOS && Mirror_IsWindowMirroredRTL(hwnd))
+#define SET_DC_RTL_MIRRORED(hdc)        Mirror_MirrorDC(hdc)
+#define SET_DC_LAYOUT(hdc,dwl)          Mirror_SetLayout(hdc,dwl)
 
 #ifdef UNICODE
 typedef NMVIEWFOLDERW NMVIEWFOLDER;
@@ -1102,6 +1104,7 @@ TCHAR  SHFindMnemonic(LPCTSTR psz);
 
 inline BOOL(STDMETHODCALLTYPE* RegisterShellHook)(HWND hwnd, BOOL fInstall);
 DWORD Mirror_SetLayout(HDC hdc, DWORD dwLayout);
+DWORD Mirror_MirrorDC(HDC hdc);
 HRESULT VariantChangeTypeForRead(VARIANT* pvar, VARTYPE vtDesired);
 BOOL GetExplorerUserSetting(HKEY hkeyRoot, LPCTSTR pszSubKey, LPCTSTR pszValue);
 HRESULT SHBindToObjectEx(IShellFolder* psf, LPCITEMIDLIST pidl, LPBC pbc, REFIID riid, void** ppvOut);
@@ -1446,6 +1449,16 @@ DEFINE_GUID(CLSID_StartMenuFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0
 HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 HRESULT CStartMenuFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+
+
+inline BOOL (WINAPI *DrawCaptionTempW)(
+    IN HWND,
+    IN HDC,
+    IN LPCRECT,
+    IN HFONT,
+    IN HICON,
+    IN LPCWSTR,
+    IN UINT);
 
 //DEFINE_GUID(CLSID_UserAssist, 0xDD313E04, 0xFEFF, 0x11D1, 0x8E, 0xCD, 0x00, 0x00, 0xF8, 0x7A, 0x47, 0x0C);
 
