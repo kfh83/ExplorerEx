@@ -108,7 +108,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "작업 관리자(&K)",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "작업 표시줄 잠금(&L)",           IDM_LOCKTASKBAR
                 MENUITEM "속성(&R)",                 IDM_TRAYPROPERTIES
         END
 END

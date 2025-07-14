@@ -32,7 +32,6 @@
 #define IDC_TRAYOPTSHOWCLOCK            1103
 #define IDC_GROUPITEMS                  1104
 #define IDC_ENABLEMOVERESIZE            1105
-#define IDC_LOCKTASKBAR                 1105
 #define IDC_STATIC_NOTIFY               1106
 #define IDC_QUICKLAUNCH                 1107
 

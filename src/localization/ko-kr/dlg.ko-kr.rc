@@ -61,8 +61,6 @@ FONT 9, "굴림"
 BEGIN
 CONTROL         "", IDC_TASKBARAPPEARANCE, "Static", SS_BITMAP | SS_SUNKEN |
 WS_CLIPSIBLINGS, 13, 18, 223, 28
-CONTROL         "작업 표시줄 잠금(&L)", IDC_LOCKTASKBAR, "Button",
-BS_AUTOCHECKBOX | WS_TABSTOP, 13, 45, 200, 10
 CONTROL         "작업 표시줄 자동 숨기기(&U)", IDC_TRAYOPTAUTOHIDE, "Button",
 BS_AUTOCHECKBOX | WS_TABSTOP, 13, 58, 200, 10
 CONTROL         "작업 표시줄을 항상 위로 유지(&T)", IDC_TRAYOPTONTOP, "Button",

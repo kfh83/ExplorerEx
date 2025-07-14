@@ -166,7 +166,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "Tas&k Manager",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "&Lock the Taskbar",           IDM_LOCKTASKBAR
                 MENUITEM "P&roperties",                 IDM_TRAYPROPERTIES
         END
 END

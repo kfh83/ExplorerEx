@@ -70,8 +70,6 @@ FONT 8, "MS Shell Dlg"
 BEGIN
 CONTROL         "", IDC_TASKBARAPPEARANCE, "Static", SS_BITMAP | SS_SUNKEN |
 WS_CLIPSIBLINGS, 13, 18, 223, 28
-CONTROL         "&Lock the taskbar", IDC_LOCKTASKBAR, "Button",
-BS_AUTOCHECKBOX | WS_TABSTOP, 13, 45, 200, 10
 CONTROL         "A&uto-hide the taskbar", IDC_TRAYOPTAUTOHIDE, "Button",
 BS_AUTOCHECKBOX | WS_TABSTOP, 13, 58, 200, 10
 CONTROL         "Keep the &taskbar on top of other windows", IDC_TRAYOPTONTOP, "Button",

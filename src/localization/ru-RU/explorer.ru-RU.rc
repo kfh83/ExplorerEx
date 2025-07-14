@@ -108,7 +108,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "Д&испетчер задач",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "&Закрепить панель задач",           IDM_LOCKTASKBAR
                 MENUITEM "Сво&йства",                 IDM_TRAYPROPERTIES
         END
 END

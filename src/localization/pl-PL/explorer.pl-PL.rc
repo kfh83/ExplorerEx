@@ -107,7 +107,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "Menedżer &zadań",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "Za&blokuj pasek zadań",           IDM_LOCKTASKBAR
                 MENUITEM "Właśc&iwości",                 IDM_TRAYPROPERTIES
         END
 END

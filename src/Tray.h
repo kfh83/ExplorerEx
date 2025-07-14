@@ -615,7 +615,6 @@ protected:
     HWND _hwndFocusBeforeRaise;
     BOOL _fMinimizedAllBeforeRaise;
 
-    BOOL _fCanSizeMove; // can be turned off by user setting
     RECT _rcSizeMoveIgnore;
 
     // event to tell the services on NT5 that we are done with boot

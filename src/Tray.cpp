@@ -159,7 +159,7 @@ const DWORD GlobalKeylist[] =
     MAKELONG(TEXT('B'),MOD_WIN),
 };
 
-CTray::CTray() : _fCanSizeMove(TRUE), _fIsLogoff(FALSE), _fIsDesktopConnected(TRUE)
+CTray::CTray() : _fIsLogoff(FALSE), _fIsDesktopConnected(TRUE)
 {
 }
 
@@ -995,7 +995,7 @@ void CTray::_MakeStuckRect(LPRECT prcStick, LPCRECT prcBound, SIZE size, UINT uS
 {
     CopyRect(prcStick, prcBound);
 
-    if (_hTheme && (_fCanSizeMove || _fShowSizingBarAlways))
+    if (_hTheme)
     {
         _AdjustRectForSizingBar(uStick, prcStick, 1);
     }
@@ -1308,7 +1308,7 @@ void CTray::_UpdateBandSiteStyle()
         bsi.dwMask = BSIM_STYLE;
         _ptbs->GetBandSiteInfo(&bsi);
 
-        BOOL fCanMoveBands = _fCanSizeMove && !SHRestricted(REST_NOMOVINGBAND);
+        BOOL fCanMoveBands = !SHRestricted(REST_NOMOVINGBAND);
 
         DWORD dwStyleNew;
         if (fCanMoveBands)
@@ -1332,35 +1332,12 @@ void CTray::_UpdateBandSiteStyle()
     }
 }
 
-BOOL _IsSizeMoveRestricted()
-{
-    return SHRegGetBoolUSValue(REGSTR_POLICIES_EXPLORER, TEXT("LockTaskbar"), FALSE, FALSE);
-}
-
-BOOL _IsSizeMoveEnabled()
-{
-    BOOL fCanSizeMove;
-
-    if (_IsSizeMoveRestricted())
-    {
-        fCanSizeMove = FALSE;
-    }
-    else
-    {
-        fCanSizeMove = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarSizeMove"), FALSE, TRUE);
-    }
-
-    return fCanSizeMove;
-}
-
 void CTray::_RefreshSettings()
 {
-    BOOL fOldCanSizeMove = _fCanSizeMove;
-    _fCanSizeMove = _IsSizeMoveEnabled();
     BOOL fOldShowSizingBarAlways = _fShowSizingBarAlways;
     _fShowSizingBarAlways = (_uAutoHide & AH_ON) ? TRUE : FALSE;
 
-    if ((fOldCanSizeMove != _fCanSizeMove) || (_fShowSizingBarAlways != fOldShowSizingBarAlways))
+    if ((_fShowSizingBarAlways != fOldShowSizingBarAlways))
     {
         BOOL fHiding = (_uAutoHide & AH_HIDING);
         if (fHiding)
@@ -1370,18 +1347,7 @@ void CTray::_RefreshSettings()
 
         RECT rc;
         GetWindowRect(_hwnd, &rc);
-
-        if (_hTheme && !_fShowSizingBarAlways)
-        {
-            if (_fCanSizeMove)
-            {
-                _AdjustRectForSizingBar(_uStuckPlace, &rc, 1);
-            }
-            else
-            {
-                _AdjustRectForSizingBar(_uStuckPlace, &rc, -1);
-            }
-        }
+            _AdjustRectForSizingBar(_uStuckPlace, &rc, 1);
 
         _ClipWindow(FALSE);
         _fSelfSizing = TRUE;
@@ -1395,11 +1361,6 @@ void CTray::_RefreshSettings()
         if (fHiding)
         {
             InvisibleUnhide(TRUE);
-        }
-
-        if (!_fCanSizeMove)
-        {
-            SetWindowPos(_hwnd, NULL, rc.left, rc.top, RECTWIDTH(rc), RECTHEIGHT(rc), SWP_NOZORDER);
         }
 
         InvalidateRect(_hwnd, NULL, TRUE);
@@ -3135,7 +3096,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
     sNewWidths.cx = min(RECTWIDTH(*lprc), RECTWIDTH(rcDisplay) / 2);
     sNewWidths.cy = min(RECTHEIGHT(*lprc), RECTHEIGHT(rcDisplay) / 2);
 
-    if (_hTheme && (_fCanSizeMove || _fShowSizingBarAlways))
+    if (_hTheme)
     {
         sNewWidths.cy = max(_sizeSizingBar.cy, sNewWidths.cy);
     }
@@ -3161,7 +3122,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
             RECT rcOldClient = _arStuckRects[uStuckPlace];
 
             // Go from a Window Rect to Client Rect
-            if (_hTheme && (_fCanSizeMove || _fShowSizingBarAlways))
+            if (_hTheme)
             {
                 _AdjustRectForSizingBar(uStuckPlace, &rcClient, -1);
                 _AdjustRectForSizingBar(uStuckPlace, &rcOldClient, -1);
@@ -3185,7 +3146,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
             // Make rcView start at 0,0, Rebar only used the right and bottom values of this rect
             OffsetRect(&rcView, -rcView.left, -rcView.top);
             OffsetRect(&rcOldView, -rcOldView.left, -rcOldView.top);
-            if (!_fCanSizeMove || (RECTHEIGHT(rcView) && RECTWIDTH(rcView)))
+            if (RECTHEIGHT(rcView) && RECTWIDTH(rcView))
             {
                 // This following function will cause a WINDOWPOSCHAGING which will call DoneMoving
                 // DoneMoving will then go a screw up all of the window sizing
@@ -3207,7 +3168,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace)
             }
 
             //DebugMsg(DM_TRAYDOCK, TEXT("TRAYDOCK.t_hs ending client rect is {%d, %d, %d, %d}"), rcClient.left, rcClient.top, rcClient.right, rcClient.bottom);
-            if (_hTheme && (_fCanSizeMove || _fShowSizingBarAlways))
+            if (_hTheme)
             {
                 _AdjustRectForSizingBar(uStuckPlace, &rcClient, 1);
                 _AdjustRectForSizingBar(uStuckPlace, &rcOldClient, 1);
@@ -6024,24 +5985,21 @@ LRESULT CTray::_NCPaint(HRGN hrgn)
 {
     ASSERT(_hTheme);
 
-    if (_fCanSizeMove || _fShowSizingBarAlways)
+    if ((INT_PTR)hrgn == 1)
+        hrgn = NULL;
+
+    HDC hdc = GetDCEx(_hwnd, hrgn, DCX_USESTYLE | DCX_WINDOW | DCX_LOCKWINDOWUPDATE |
+        ((hrgn != NULL) ? DCX_INTERSECTRGN | DCX_NODELETERGN : 0));
+
+    if (hdc)
     {
-        if ((INT_PTR)hrgn == 1)
-            hrgn = NULL;
+        RECT rc;
+        GetWindowRect(_hwnd, &rc);
+        OffsetRect(&rc, -rc.left, -rc.top);
 
-        HDC hdc = GetDCEx(_hwnd, hrgn, DCX_USESTYLE | DCX_WINDOW | DCX_LOCKWINDOWUPDATE |
-            ((hrgn != NULL) ? DCX_INTERSECTRGN | DCX_NODELETERGN : 0));
-
-        if (hdc)
-        {
-            RECT rc;
-            GetWindowRect(_hwnd, &rc);
-            OffsetRect(&rc, -rc.left, -rc.top);
-
-            _AdjustRectForSizingBar(_uStuckPlace, &rc, 0);
-            DrawThemeBackground(_hTheme, hdc, _GetPart(TRUE, _uStuckPlace), 0, &rc, 0);
-            ReleaseDC(_hwnd, hdc);
-        }
+        _AdjustRectForSizingBar(_uStuckPlace, &rc, 0);
+        DrawThemeBackground(_hTheme, hdc, _GetPart(TRUE, _uStuckPlace), 0, &rc, 0);
+        ReleaseDC(_hwnd, hdc);
     }
 
     return 0;
@@ -6140,7 +6098,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_NCCALCSIZE:
         if (_hTheme)
         {
-            if ((_fCanSizeMove || _fShowSizingBarAlways) && lParam)
+            if (lParam)
             {
                 _AdjustRectForSizingBar(_uStuckPlace, (LPRECT)lParam, -1);
             }
@@ -6249,7 +6207,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             DrawThemeBackground(_hTheme, hdc, _GetPart(FALSE, _uStuckPlace), 0, &rc, &rcClip);
         }
-        else if (_fCanSizeMove)
+        else
         {
             FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
 
@@ -6374,13 +6332,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         _SetUnhideTimer(pt.x, pt.y);
 
-        // If the user can't size or move the taskbar, then just say
-        // they hit something useless
-        if (!_fCanSizeMove)
-        {
-            return HTBORDER;
-        }
-        else if (PtInRect(&r1, pt))
+        if (PtInRect(&r1, pt))
         {
             // allow dragging if mouse is in client area of _hwnd
             return HTCAPTION;
@@ -6564,8 +6516,6 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 EnableMenuItem(hmenu, SC_RESTORE, MFS_GRAYED | MF_BYCOMMAND);
                 EnableMenuItem(hmenu, SC_MAXIMIZE, MFS_GRAYED | MF_BYCOMMAND);
                 EnableMenuItem(hmenu, SC_MINIMIZE, MFS_GRAYED | MF_BYCOMMAND);
-                EnableMenuItem(hmenu, SC_MOVE, (_fCanSizeMove ? MFS_ENABLED : MFS_GRAYED) | MF_BYCOMMAND);
-                EnableMenuItem(hmenu, SC_SIZE, (_fCanSizeMove ? MFS_ENABLED : MFS_GRAYED) | MF_BYCOMMAND);
 
                 idCmd = _TrackMenu(hmenu);
                 if (idCmd)
@@ -7116,15 +7066,6 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
             DeleteMenu(hmContext, i, MF_BYPOSITION);
         }
     }
-
-    CheckMenuItem(hmContext, IDM_LOCKTASKBAR,
-        MF_BYCOMMAND | (_fCanSizeMove ? MF_UNCHECKED : MF_CHECKED));
-
-    // Don't let users accidentally check lock the taskbar when the taskbar is zero height
-    RECT rc;
-    GetClientRect(_hwnd, &rc);
-    EnableMenuItem(hmContext, IDM_LOCKTASKBAR,
-        MF_BYCOMMAND | ((_IsSizeMoveRestricted() || (RECTHEIGHT(rc) == 0)) ? MFS_DISABLED : MFS_ENABLED));
 
     if (!_fUndoEnabled || !_pPositions)
     {
@@ -8239,16 +8180,6 @@ void CTray::_Command(UINT idCmd)
     case IDM_NOTIFYCUST:
         DoProperties(TPF_TASKBARPAGE | TPF_INVOKECUSTOMIZE);
         break;
-
-    case IDM_LOCKTASKBAR:
-    {
-        BOOL fCanSizeMove = !_fCanSizeMove;   // toggle
-        SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarSizeMove"),
-            REG_DWORD, &fCanSizeMove, sizeof(DWORD), SHREGSET_FORCE_HKCU);
-        _RefreshSettings();
-        _UpdateBandSiteStyle();
-    }
-    break;
 
     case IDM_SHOWTASKMAN:
         RunSystemMonitor();

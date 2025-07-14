@@ -108,7 +108,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "Admi&nistrador de tareas",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "Bloquear la barra de &tareas",           IDM_LOCKTASKBAR
                 MENUITEM "&Propiedades",                 IDM_TRAYPROPERTIES
         END
 END

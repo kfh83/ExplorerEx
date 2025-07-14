@@ -41,7 +41,6 @@ const static DWORD aTaskOptionsHelpIDs[] = {  // Context Help IDs
     IDC_TRAYOPTAUTOHIDE,  IDH_TRAY_TASKBAR_AUTOHIDE,
     IDC_TRAYOPTSHOWCLOCK, IDH_TRAY_SHOW_CLOCK,
     IDC_TRAYOPTONTOP,     IDH_TRAY_TASKBAR_ONTOP,
-    IDC_LOCKTASKBAR,      IDH_TRAY_ENABLEMOVERESIZE,
     IDC_GROUPITEMS,       IDH_TRAY_GROUPING,
     IDC_NOTIFYMAN,        IDH_TRAY_HIDE_ICONS,
     IDC_CUSTOMIZE,        IDH_TRAY_CUSTOMIZE_ICONS,
@@ -1652,10 +1651,6 @@ void _TaskbarOptions_OnInitDialog(HWND hDlg)
         CheckDlgButton(hDlg, IDC_NOTIFYMAN, tvo.fAutoTrayEnabledByUser);
     }
 
-    CheckDlgButton(hDlg, IDC_LOCKTASKBAR, !_IsSizeMoveEnabled());
-    BOOL fEnable = !_IsSizeMoveRestricted();
-    EnableWindow(GetDlgItem(hDlg, IDC_LOCKTASKBAR), fEnable);
-
     if (SHRestricted(REST_NOTASKGROUPING))
     {
         // If there is a restriction of any kine, hide the window
@@ -1947,11 +1942,6 @@ void CTaskBarPropertySheet ::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
 
     c_tray.SizeWindows();
 
-    // Update registry for locked taskbar
-    DWORD dwEnableSizeMove = !::IsDlgButtonChecked(hDlg, IDC_LOCKTASKBAR);
-    SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarSizeMove"),
-        REG_DWORD, &dwEnableSizeMove, sizeof(DWORD), SHREGSET_FORCE_HKCU);
-
     //Update registry for grouping behavior
     DWORD dwGlom = ::IsDlgButtonChecked(hDlg, IDC_GROUPITEMS);
     SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"),
@@ -2017,7 +2007,6 @@ void _TaskbarOptionsUpdateDisplay(HWND hDlg)
 {
     static const CONTROLBITMAP c_caTaskbar[] =
     {
-        { IDC_LOCKTASKBAR, 1 },
         { IDC_GROUPITEMS,  2 },
         { IDC_QUICKLAUNCH, 4 },
     };

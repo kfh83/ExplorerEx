@@ -485,7 +485,6 @@
 #define IDM_NOTIFYCUST              421
 #define IDM_UNGROUP                 422
 
-#define IDM_LOCKTASKBAR             424
 
 #define IDM_SEP2                    450
 #define IDM_SIZEUP              427

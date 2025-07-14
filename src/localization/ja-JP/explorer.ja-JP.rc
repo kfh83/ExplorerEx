@@ -108,7 +108,6 @@ BEGIN
                 MENUITEM SEPARATOR
                 MENUITEM "タスク マネージャ(&K)",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
-                MENUITEM "タスク バーを固定する(&L)",           IDM_LOCKTASKBAR
                 MENUITEM "プロパティ(&R)",                 IDM_TRAYPROPERTIES
         END
 END
