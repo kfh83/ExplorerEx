@@ -18,7 +18,7 @@ protected:
     LRESULT         _HandleDestroy();
 
     // Paint helpers
-    LRESULT         _DoPaint(BOOL fPaint);
+    LRESULT         _DoPaint(HWND hwnd, BOOL fPaint);
     void            _EnsureFontsInitialized(BOOL fForce);
     void            _GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText);
     void            _DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText);
@@ -38,7 +38,7 @@ protected:
     void            _GetMaxTimeSize(HDC hdc, LPSIZE pszTime);
     void            _GetMaxDateSize(HDC hdc, LPSIZE pszTime);
     void            _GetMaxDaySize(HDC hdc, LPSIZE pszTime);
-    LRESULT        _CalcMinSize(int cxMax, int cyMax);
+    LRESULT        _CalcMinSize(HWND hWnd);
 
     // Tooltip text handler
     LRESULT         _OnNeedText(LPTOOLTIPTEXT lpttt);
@@ -248,199 +248,107 @@ void CClockCtl::_DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
     }
 }
 
-LRESULT CClockCtl::_DoPaint(BOOL fPaint)
+LRESULT CClockCtl::_DoPaint(HWND hwnd, BOOL fPaint)
 {
     PAINTSTRUCT ps;
-    RECT rcClient, rcClip = {0};
-    DWORD dtNextTick = 0;
+    RECT rcClient, rcClip = { 0 };
+    DWORD dtNextTick;
     BOOL fDoTimer;
     HDC hdc;
-    HBITMAP hMemBm = { 0 }; HBITMAP hOldBm = {0};
 
-    //
+
     // If we are asked to paint and the clock is not running then start it.
     // Otherwise wait until we get a clock tick to recompute the time etc.
-    //
+
     fDoTimer = !fPaint || !_fClockRunning;
 
-    //
+
     // Get a DC to paint with.
-    //
+
     if (fPaint)
+        hdc = BeginPaint(hwnd, &ps);
+    else
+        hdc = GetDC(hwnd);
+
+    _EnsureFontsInitialized(FALSE);
+
+
+    // Update the time if we need to.
+
+    if (fDoTimer || !*_szCurTime)
     {
-        BeginPaint(_hwnd, &ps);
+        dtNextTick = _RecalcCurTime();
+
+        ASSERT(dtNextTick);
+    }
+
+
+    // Paint the clock face if we are not clipped or if we got a real
+    // paint message for the window.  We want to avoid turning off the
+    // timer on paint messages (regardless of clip region) because this
+    // implies the window is visible in some way. If we guessed wrong, we
+    // will turn off the timer next timer tick anyway so no big deal.
+
+    if (GetClipBox(hdc, &rcClip) != NULLREGION || fPaint)
+    {
+        HFONT hfontOld = 0;
+        SIZE size;
+        int x, y;
+
+
+        // Draw the text centered in the window.
+
+        GetClientRect(hwnd, &rcClient);
+
+        if (_hfontCapNormal)
+            hfontOld = (HFONT)SelectObject(hdc, _hfontCapNormal);
+
+        SetBkColor(hdc, GetSysColor(COLOR_3DFACE));
+        SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
+
+        GetTextExtentPoint(hdc, _szCurTime, _cchCurTime, &size);
+
+        x = max((rcClient.right - size.cx) / 2, 0);
+        y = max((rcClient.bottom - size.cy) / 2, 0);
+        ExtTextOut(hdc, x, y, ETO_OPAQUE,
+            &rcClient, _szCurTime, _cchCurTime, NULL);
+
+        //  figure out if the time is clipped
+        _fClockClipped = (size.cx > rcClient.right || size.cy > rcClient.bottom);
+
+        if (_hfontCapNormal)
+            SelectObject(hdc, hfontOld);
     }
     else
     {
-        ps.hdc = GetDC(_hwnd);
-        GetClipBox(ps.hdc, &ps.rcPaint);
+
+        // We are obscured so make sure we turn off the clock.
+
+        dtNextTick = 0;
+        fDoTimer = TRUE;
     }
 
-    // Create memory surface and map rendering context if double buffering
-    // Only make large enough for clipping region
-    hdc = CreateCompatibleDC(ps.hdc);
-    if (hdc)
-    {
-        hMemBm = CreateCompatibleBitmap(ps.hdc, RECTWIDTH(ps.rcPaint), RECTHEIGHT(ps.rcPaint));
-        if (hMemBm)
-        {
-            hOldBm = (HBITMAP) SelectObject(hdc, hMemBm);
 
-            // Offset painting to paint in region
-            OffsetWindowOrgEx(hdc, ps.rcPaint.left, ps.rcPaint.top, NULL);
-        }
-        else
-        {
-            DeleteDC(hdc);
-            hdc = NULL;
-        }
-    }
+    // Release our paint DC.
 
-    if (hdc)
-    {
-        SHSendPrintRect(GetParent(_hwnd), _hwnd, hdc, &ps.rcPaint);
+    if (fPaint)
+        EndPaint(hwnd, &ps);
+    else
+        ReleaseDC(hwnd, hdc);
 
-        _EnsureFontsInitialized(FALSE);
 
-        //
-        // Update the time if we need to.
-        //
-        if (fDoTimer || !*_szCurTime)
-        {
-            dtNextTick = _RecalcCurTime();
-
-            ASSERT(dtNextTick);
-        }
-
-        //
-        // Paint the clock face if we are not clipped or if we got a real
-        // paint message for the window.  We want to avoid turning off the
-        // timer on paint messages (regardless of clip region) because this
-        // implies the window is visible in some way. If we guessed wrong, we
-        // will turn off the timer next timer tick anyway so no big deal.
-        //
-        if (GetClipBox(hdc, &rcClip) != NULLREGION || fPaint)
-        {
-            //
-            // Draw the text centered in the window.
-            //
-            GetClientRect(_hwnd, &rcClient);
-
-            HFONT hfontOld = { 0 };
-
-            if (_hfontCapNormal)
-                hfontOld = (HFONT)SelectObject(hdc, _hfontCapNormal);
-
-            SetBkColor(hdc, GetSysColor(COLOR_3DFACE));
-            SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
-
-            BOOL fShowDate = FALSE;
-            BOOL fShowDay = FALSE;
-            RECT rcTime = {0};
-            RECT rcDate = {0};
-            RECT rcDay = {0};
-
-            _GetTextExtent(hdc, _szCurTime, _cchCurTime, &rcTime);
-            _GetTextExtent(hdc, _szCurDate, _cchCurDate, &rcDate);
-            _GetTextExtent(hdc, _szCurDay,  _cchCurDay,  &rcDay);
-
-            int cySpace = RECTHEIGHT(rcTime) / 2;
-
-            int cy = RECTHEIGHT(rcTime) + cySpace;
-            if ((cy + RECTHEIGHT(rcDay) < rcClient.bottom) && (RECTWIDTH(rcDay) < rcClient.right))
-            {
-                fShowDay = TRUE;
-                cy += RECTHEIGHT(rcDay) + cySpace;
-                if ((cy + RECTHEIGHT(rcDate) < rcClient.bottom) && (RECTWIDTH(rcDate) < rcClient.right))
-                {
-                    fShowDate = TRUE;
-                    cy += RECTHEIGHT(rcDate) + cySpace;
-                }
-            }
-            cy -= cySpace;
-
-            int yOffset = max((rcClient.bottom - cy) / 2, 0);
-            RECT rcDraw = rcTime;
-            OffsetRect(&rcDraw, max((rcClient.right - RECTWIDTH(rcTime)) / 2, 0), yOffset);
-            _DrawText(hdc, _szCurTime, _cchCurTime, &rcDraw);
-            yOffset += RECTHEIGHT(rcTime) + cySpace;
-
-            if (fShowDay)
-            {
-                rcDraw = rcDay;
-                OffsetRect(&rcDraw, max((rcClient.right - RECTWIDTH(rcDay)) / 2, 0), yOffset);
-                _DrawText(hdc, _szCurDay, _cchCurDay, &rcDraw);
-                yOffset += RECTHEIGHT(rcDay) + cySpace;
-                if (fShowDate)
-                {
-                    rcDraw = rcDate;
-                    OffsetRect(&rcDraw, max((rcClient.right - RECTWIDTH(rcDate)) / 2, 0), yOffset);
-                    _DrawText(hdc, _szCurDate, _cchCurDate, &rcDraw);
-                }
-            }
-
-            //  figure out if the time is clipped
-            _fClockClipped = (RECTWIDTH(rcTime) > rcClient.right || RECTHEIGHT(rcTime) > rcClient.bottom);
-
-            if (_hfontCapNormal)
-                SelectObject(hdc, hfontOld);
-
-            if (_fHasFocus)
-            {
-                LRESULT lRes = SendMessage(_hwnd, WM_QUERYUISTATE, 0, 0);
-                if (!(LOWORD(lRes) & UISF_HIDEFOCUS))
-                {
-                    RECT rcFocus = rcClient;
-                    InflateRect(&rcFocus, -2, 0);
-                    DrawFocusRect(hdc, &rcFocus);
-                }
-            }
-        }
-        else
-        {
-            //
-            // We are obscured so make sure we turn off the clock.
-            //
-            dtNextTick = 0;
-            fDoTimer = TRUE;
-        }
-
-        BitBlt(ps.hdc, ps.rcPaint.left, ps.rcPaint.top, RECTWIDTH(ps.rcPaint), RECTHEIGHT(ps.rcPaint), hdc, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
-
-        SelectObject(hdc, hOldBm);
-
-        DeleteObject(hMemBm);
-        DeleteDC(hdc);
-
-        //
-        // Release our paint DC.
-        //
-        if (fPaint)
-            EndPaint(_hwnd, &ps);
-        else
-            ReleaseDC(_hwnd, ps.hdc);
-    }
-
-    //
     // Reset/Kill the timer.
-    //
+
     if (fDoTimer)
     {
         _EnableTimer(dtNextTick);
 
-        //
-        // If we just killed the timer because we were clipped when it arrived,
+
+        // If we just killed the timer becuase we were clipped when it arrived,
         // make sure that we are really clipped by invalidating ourselves once.
-        //
-        if (hdc)
-        {
-            if (!dtNextTick && !fPaint)
-                InvalidateRect(_hwnd, NULL, FALSE);
-            else
-            {
-                InvalidateRect(_hwnd, NULL, TRUE);
-            }
-        }
+
+        if (!dtNextTick && !fPaint)
+            InvalidateRect(hwnd, NULL, FALSE);
     }
 
     return 0;
@@ -552,86 +460,77 @@ void CClockCtl::_GetMaxDaySize(HDC hdc, LPSIZE pszTime)
     }
 }
 
-LRESULT CClockCtl::_CalcMinSize(int cxMax, int cyMax)
+#define szSlop TEXT("00")
+
+LRESULT CClockCtl::_CalcMinSize(HWND hWnd)
 {
     RECT rc;
     HDC  hdc;
     HFONT hfontOld = 0;
+    SYSTEMTIME st = { 0 };  // Initialize to 0...
+    SIZE sizeAM;
+    SIZE sizePM;
+    TCHAR szTime[40];
+    int cch;
 
-    if (!(GetWindowLong(_hwnd, GWL_STYLE) & WS_VISIBLE))
+    if (!(GetWindowLong(hWnd, GWL_STYLE) & WS_VISIBLE))
         return 0L;
 
-    if (_szTimeFmt[0] == TEXT('\0'))
+    if (_szCurTime[0] == TEXT('\0'))
     {
         if (GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_STIMEFORMAT, _szTimeFmt,
             ARRAYSIZE(_szTimeFmt)) == 0)
         {
+            wprintf(L"c.ccms: GetLocalInfo Failed %d.", GetLastError());
         }
 
         *_szCurTime = 0; // Force the text to be recomputed.
     }
 
-    if (_szDateFmt[0] == TEXT('\0'))
-    {
-        if (GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SSHORTDATE, _szDateFmt,
-            ARRAYSIZE(_szDateFmt)) == 0)
-        {
-        }
-
-        *_szCurDate = 0; // Force the text to be recomputed.
-    }
-
-    hdc = GetDC(_hwnd);
+    hdc = GetDC(hWnd);
     if (!hdc)
         return(0L);
-
 
     _EnsureFontsInitialized(FALSE);
 
     if (_hfontCapNormal)
-        hfontOld = (HFONT)SelectObject(hdc, _hfontCapNormal);
+        SelectObject(hdc, hfontOld);
 
-    SIZE size = {0};
-    SIZE sizeTemp = {0};
-    _GetMaxTimeSize(hdc, &sizeTemp);
-    int cySpace = sizeTemp.cy / 2;
-    size.cy += sizeTemp.cy;
-    size.cx = max(sizeTemp.cx, size.cx);
+    // We need to get the AM and the PM sizes...
+    // We append Two 0s and end to add slop into size
 
-    _GetMaxDaySize(hdc, &sizeTemp);
-    if ((size.cy + sizeTemp.cy + cySpace < cyMax) && (sizeTemp.cx < cxMax))
-    {
-        size.cy += sizeTemp.cy + cySpace;
-        size.cx = max(sizeTemp.cx, size.cx);
+    st.wHour = 11;
+    cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+        _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(szSlop));
+    lstrcat(szTime, szSlop);
+    GetTextExtentPoint(hdc, szTime, cch + 2, &sizeAM);
 
-        _GetMaxDateSize(hdc, &sizeTemp);
-        if ((size.cy + sizeTemp.cy + cySpace < cyMax) && (sizeTemp.cx < cxMax))
-        {
-            size.cy += sizeTemp.cy + cySpace;
-            size.cx = max(sizeTemp.cx, size.cx);
-        }
-    }
+    st.wHour = 23;
+    cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+        _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(szSlop));
+    lstrcat(szTime, szSlop);
+    GetTextExtentPoint(hdc, szTime, cch + 2, &sizePM);
 
     if (_hfontCapNormal)
         SelectObject(hdc, hfontOld);
 
-    ReleaseDC(_hwnd, hdc);
+    ReleaseDC(hWnd, hdc);
 
     // Now lets set up our rectangle...
     // The width is 6 digits (a digit slop on both ends + size of
     // : or sep and max AM or PM string...)
-    SetRect(&rc, 0, 0, size.cx,
-            size.cy + 4 * g_cyBorder);
+    SetRect(&rc, 0, 0, max(sizeAM.cx, sizePM.cx),
+        max(sizeAM.cy, sizePM.cy) + 4 * g_cyBorder);
 
-    AdjustWindowRectEx(&rc, GetWindowLong(_hwnd, GWL_STYLE), FALSE,
-            GetWindowLong(_hwnd, GWL_EXSTYLE));
+    AdjustWindowRectEx(&rc, GetWindowLong(hWnd, GWL_STYLE), FALSE,
+        GetWindowLong(hWnd, GWL_EXSTYLE));
 
     // make sure we're at least the size of other buttons:
-    if (rc.bottom - rc.top <  g_cySize + g_cyEdge)
+    if (rc.bottom - rc.top < g_cySize + g_cyEdge)
         rc.bottom = rc.top + g_cySize + g_cyEdge;
 
     return MAKELRESULT((rc.right - rc.left),
-            (rc.bottom - rc.top));
+        (rc.bottom - rc.top));
 }
 
 LRESULT CClockCtl::_HandleIniChange(WPARAM wParam, LPTSTR pszSection)
@@ -734,7 +633,7 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
     case WM_CALCMINSIZE:
-        return _CalcMinSize((int)wParam, (int)lParam);
+        return _CalcMinSize(hwnd);
 
     case WM_NCCREATE:
         return _HandleCreate();
@@ -747,7 +646,7 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_TIMER:
     case WM_PAINT:
-        return _DoPaint((uMsg == WM_PAINT));
+        return _DoPaint(hwnd, (uMsg == WM_PAINT));
 
     case WM_WININICHANGE:
         return _HandleIniChange(wParam, (LPTSTR)lParam);
