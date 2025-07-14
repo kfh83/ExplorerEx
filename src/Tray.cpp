@@ -555,7 +555,6 @@ void CTray::_GetSaveStateAndInitRects()
     //
     // set the tray flags
     //
-    _fWin2K = BOOLIFY(dwTrayFlags & TVSD_WIN2K);
     _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
     _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
@@ -594,7 +593,6 @@ void CTray::_SaveTrayStuff(void)
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
     if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
     if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
-    if (_fWin2K) tvsd.dwFlags |= TVSD_WIN2K;
 
     // Save in Stuck rects.
     Reg_SetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"), &tvsd, sizeof(tvsd));
@@ -607,49 +605,6 @@ void CTray::_SaveTrayStuff(void)
 // align toolbar so that buttons are flush with client area
 // and make toolbar's buttons to be MENU style
 void CTray::_AlignStartButton()
-{
-    if (_fWin2K && !_hTheme)
-        return _AlignStartButton_2K();
-
-    HWND hwndStart = _hwndStart;
-    if (hwndStart)
-    {
-        TCHAR szStart[50];
-        LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
-        SetWindowText(_hwndStart, szStart);
-
-        RECT rcClient;
-        if (!_sizeStart.cx)
-        {
-            Button_GetIdealSize(hwndStart, &_sizeStart);
-        }
-        GetClientRect(_hwnd, &rcClient);
-
-        if (rcClient.right < _sizeStart.cx)
-        {
-            SetWindowText(_hwndStart, L"");
-        }
-
-        int cyStart = _sizeStart.cy;
-
-        if (_hwndTasks)
-        {
-            if (_hTheme)
-            {
-                cyStart = max(cyStart, SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0));
-            }
-            else
-            {
-                cyStart = SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
-            }
-        }
-
-        SetWindowPos(hwndStart, NULL, 0, 0, min(rcClient.right, _sizeStart.cx),
-            cyStart, SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-}
-
-void CTray::_AlignStartButton_2K()
 {
     HWND hwndStart = _hwndStart;
     if (hwndStart)
@@ -1279,7 +1234,6 @@ LRESULT CTray::_CreateWindows()
         if (_ptbs)
         {
             IUnknown_GetWindow(_ptbs, &_hwndRebar);
-            SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, _fWin2K);
 
             // No need to check the disk space thing for non-privileged users, this reduces activity in the TS case
             // and only admins can properly free disk space anyways.
@@ -2988,7 +2942,6 @@ void CTray::SizeWindows()
         InvisibleUnhide(FALSE);
     }
 
-    SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, _fWin2K);
 
     // remember our current size
     _SnapshotStuckRectSize(_uStuckPlace);
@@ -3999,85 +3952,12 @@ void CTray::_StartButtonReset()
     ZeroMemory(&_sizeStart, sizeof(_sizeStart));
 
     _hFontStart = _CreateStartFont(_hwndStart);
-
-    if (_fWin2K && !_hTheme)
+    _hbmpStart = _CreateStartBitmap();
+    if (_hbmpStart)
     {
-        SetWindowText(_hwndStart, TEXT(""));
-
-        // Undo XP button style
-        Button_SetImageList(_hwndStart, nullptr);
-
-        _hbmpStart = _CreateStartBitmap();
-        if (_hbmpStart)
-        {
-            SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hbmpStart);
-            DWORD dwStyle = GetWindowLong(_hwndStart, GWL_STYLE);
-            SetWindowLong(_hwndStart, GWL_STYLE, dwStyle | BS_BITMAP);
-        }
-    }
-    else
-    {
-        // Get an idea about how big we need everyhting to be.
-        TCHAR szStart[50];
-        LoadString(hinstCabinet, _hTheme ? IDS_START : IDS_STARTCLASSIC, szStart, ARRAYSIZE(szStart));
-        SetWindowText(_hwndStart, szStart);
-
-        // Undo Win2K button style
-        SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, NULL);
+        SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hbmpStart);
         DWORD dwStyle = GetWindowLong(_hwndStart, GWL_STYLE);
-        SetWindowLong(_hwndStart, GWL_STYLE, dwStyle & ~BS_BITMAP);
-
-        int idbStart = IDB_START16;
-
-        HDC hdc = GetDC(NULL);
-        if (hdc)
-        {
-            int bpp = GetDeviceCaps(hdc, BITSPIXEL) * GetDeviceCaps(hdc, PLANES);
-            if (bpp > 8)
-            {
-                idbStart = _hTheme ? IDB_START : IDB_STARTCLASSIC;
-            }
-
-            ReleaseDC(NULL, hdc);
-        }
-
-        HBITMAP hbmFlag = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(idbStart), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
-        if (hbmFlag)
-        {
-            BITMAP bm;
-            if (GetObject(hbmFlag, sizeof(BITMAP), &bm))
-            {
-                BUTTON_IMAGELIST biml = { 0 };
-                if (_himlStartFlag)
-                    ImageList_Destroy(_himlStartFlag);
-
-
-                DWORD dwFlags = ILC_COLOR32;
-                HBITMAP hbmFlagMask = NULL;
-                if (idbStart == IDB_START16)
-                {
-                    dwFlags = ILC_COLOR8 | ILC_MASK;
-                    hbmFlagMask = (HBITMAP)LoadImage(hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK), IMAGE_BITMAP, 0, 0, LR_MONOCHROME);
-                }
-
-                if (IS_WINDOW_RTL_MIRRORED(_hwndStart))
-                {
-                    dwFlags |= ILC_MIRROR;
-                }
-                biml.himl = _himlStartFlag = ImageList_Create(bm.bmWidth, bm.bmHeight, dwFlags, 1, 1);
-                ImageList_Add(_himlStartFlag, hbmFlag, hbmFlagMask);
-
-                if (hbmFlagMask)
-                {
-                    DeleteObject(hbmFlagMask);
-                }
-
-                biml.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
-
-                Button_SetImageList(_hwndStart, &biml);
-            }
-            DeleteObject(hbmFlag);
-        }
+        SetWindowLong(_hwndStart, GWL_STYLE, dwStyle | BS_BITMAP);
     }
 
     if (_hFontStart)
@@ -6369,7 +6249,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             DrawThemeBackground(_hTheme, hdc, _GetPart(FALSE, _uStuckPlace), 0, &rc, &rcClip);
         }
-        else if (_fCanSizeMove && _fWin2K)
+        else if (_fCanSizeMove)
         {
             FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
 

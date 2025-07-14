@@ -808,14 +808,6 @@ public:
         if (hpage)
             AddPage(hpage);
 
-        //extra page
-        psp.pszTemplate = MAKEINTRESOURCE(DLG_EXTRA_OPTIONS);
-        psp.pfnDlgProc = s_ExtraDlgProc;
-        psp.lParam = (LPARAM) this;
-        hpage = CreatePropertySheetPage(&psp);
-        if (hpage)
-            AddPage(hpage);
-
         _pDlgNotify = new CComObject<CNotificationsDlg>;
         if (_pDlgNotify)
         {
@@ -1893,76 +1885,6 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
         break;
     }
 
-    return FALSE;
-}
-
-BOOL_PTR CTaskBarPropertySheet::s_ExtraDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    CTaskBarPropertySheet* self = NULL;
-
-    if (uMsg == WM_INITDIALOG)
-    {
-        ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CTaskBarPropertySheet*) ((PROPSHEETPAGE*)lParam)->lParam;
-    }
-    else
-    {
-        PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
-        if (psp)
-            self = (CTaskBarPropertySheet*)psp->lParam;
-    }
-
-    BOOL_PTR fValue = FALSE;
-    if (self)
-    {
-        self->ExtraDlgProc(hDlg, uMsg, wParam, lParam);
-    }
-
-    return fValue;
-}
-
-BOOL_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uMsg)
-    {
-    case WM_INITDIALOG:
-    {
-        TRAYVIEWOPTS tvo;
-        c_tray.GetTrayViewOpts(&tvo);
-        ::CheckDlgButton(hDlg, IDC_WIN2K, tvo.fWin2K);
-        return TRUE;
-    }
-    case WM_COMMAND:
-    {
-        SendPSMChanged(hDlg);
-        return TRUE;
-    }
-    case WM_NOTIFY:
-        switch (((NMHDR *)lParam)->code)
-        {
-        case PSN_APPLY:
-        {
-            BOOL fWin2K = ::IsDlgButtonChecked(hDlg, IDC_WIN2K);
-            TRAYVIEWOPTS tvo;
-            c_tray.GetTrayViewOpts(&tvo);
-            if (tvo.fWin2K != fWin2K)
-            {
-                tvo.fWin2K = fWin2K;
-                c_tray.SetTrayViewOpts(&tvo);
-                // JUST FUCKING SAVE IT I HATE XP EXPLORER
-                c_tray._SaveTrayStuff();
-                c_tray._StartButtonReset();
-                c_tray.SizeWindows();
-                ::InvalidateRect(v_hwndTray, NULL, TRUE);
-            }
-            return TRUE;
-        }
-
-        case PSN_KILLACTIVE:
-        case PSN_SETACTIVE:
-            return TRUE;
-        }
-    }
     return FALSE;
 }
 

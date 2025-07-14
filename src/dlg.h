@@ -35,7 +35,6 @@
 #define IDC_LOCKTASKBAR                 1105
 #define IDC_STATIC_NOTIFY               1106
 #define IDC_QUICKLAUNCH                 1107
-#define IDC_WIN2K                       1108
 
 #define IDC_STARTMENUSETTINGS           1123
 #define IDC_RESORT                      1124
