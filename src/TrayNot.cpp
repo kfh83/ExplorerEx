@@ -183,12 +183,47 @@ LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT 
     return (TRUE);
 }
 
-LRESULT CTrayNotify::_SendNotify(PTNPRIVICON ptnpi, UINT uMsg)
+WPARAM CTrayNotify::_CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex)
 {
-    if (ptnpi->uCallbackMessage && ptnpi->hWnd)
+    if (inputType == TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE)
     {
-        return SendNotifyMessage(ptnpi->hWnd, ptnpi->uCallbackMessage, ptnpi->uID, uMsg);
+        POINT ptCursor;
+        if (GetCursorPos(&ptCursor))
+            return MAKEWPARAM(ptCursor.x, ptCursor.y);
+        return 0;
     }
+    if (inputType == TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD)
+    {
+        RECT rcItem;
+        if (SendMessageW(hwnd, TB_GETITEMRECT, itemIndex, (LPARAM)&rcItem))
+        {
+            MapWindowPoints(hwnd, nullptr, (LPPOINT)&rcItem, 2);
+            return MAKEWPARAM((rcItem.left + rcItem.right) / 2, (rcItem.top + rcItem.bottom) / 2);
+        }
+        return 0;
+    }
+    return inputType;
+}
+
+LRESULT CTrayNotify::_SendNotify(PTNPRIVICON ptnpi, UINT uMsg, DWORD dwAnchorPoint /* = 0 */, HWND const hwnd /* = NULL */, int itemIndex /* = 0 */)
+{
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+
+    WPARAM wParam;
+    LPARAM lParam;
+    if (ptnpi->uVersion >= NOTIFYICON_VERSION_4) // Version 4, used since Vista:
+    {
+        wParam = _CalculateAnchorPointWPARAMIfNecessary(dwAnchorPoint, hwnd, itemIndex);
+        lParam = MAKELPARAM(uMsg, ptnpi->uID);
+    }
+    else // NOTIFYICON version 3 and prior:
+    {
+        wParam = ptnpi->uID;
+        lParam = uMsg;
+    }
+
+    if (ptnpi->uCallbackMessage && ptnpi->hWnd)
+        return SendNotifyMessage(ptnpi->hWnd, ptnpi->uCallbackMessage, wParam, lParam);
     return 0;
 }
 
@@ -765,9 +800,14 @@ BOOL CTrayNotify::_SetVersionNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon)
         ptnpi->uVersion = 0;
         return TRUE;
     }
-    else if (pnid->uVersion == NOTIFYICON_VERSION)
+    else if (pnid->uVersion == NOTIFYICON_VERSION) // Version 3, used by XP.
     {
         ptnpi->uVersion = NOTIFYICON_VERSION;
+        return TRUE;
+    }
+    else if (pnid->uVersion == NOTIFYICON_VERSION_4) // Version 4, used since Vista.
+    {
+        ptnpi->uVersion = NOTIFYICON_VERSION_4;
         return TRUE;
     }
     else
@@ -930,36 +970,46 @@ LRESULT CTrayNotify::_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
         {
             HWND hwnd;
             INT_PTR i = SendMessage(_hwndToolbar, TB_GETHOTITEM, 0, 0);
-            PTNPRIVICON ptnpi = _GetDataByIndex(i);
-            if (lParam == (LPARAM)-1)
-                _fKey = TRUE;
-
-            if (_fKey)
+            if (i != -1)
             {
-                _SetCursorPos(i);
-            }
+                PTNPRIVICON ptnpi = _GetDataByIndex(i);
+                if (lParam == (LPARAM)-1)
+                    _fKey = TRUE;
 
-            hwnd = (HWND)SendMessage(_hwndToolbar, TB_GETTOOLTIPS, 0, 0);
-            if (hwnd)
-                SendMessage(hwnd, TTM_POP, 0, 0);
-
-            if (ptnpi)
-            {
-                SHAllowSetForegroundWindow(ptnpi->hWnd);
-                if (ptnpi->uVersion >= KEYBOARD_VERSION)
+                if (_fKey)
                 {
-                    _SendNotify(ptnpi, WM_CONTEXTMENU);
+                    _SetCursorPos(i);
                 }
-                else
+
+                hwnd = (HWND)SendMessage(_hwndToolbar, TB_GETTOOLTIPS, 0, 0);
+                if (hwnd)
+                    SendMessage(hwnd, TTM_POP, 0, 0);
+
+                if (ptnpi)
                 {
-                    if (_fKey)
+                    // Determine the anchor point command for V4:
+                    DWORD dwAnchorPointCmd = ptnpi->uVersion >= NOTIFYICON_VERSION_4
+                        ? (lParam != TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE
+                            ? (DWORD)lParam
+                            : TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD)
+                        : 0;
+
+                    SHAllowSetForegroundWindow(ptnpi->hWnd);
+                    if (ptnpi->uVersion >= KEYBOARD_VERSION)
                     {
-                        _SendNotify(ptnpi, WM_RBUTTONDOWN);
-                        _SendNotify(ptnpi, WM_RBUTTONUP);
+                        _SendNotify(ptnpi, WM_CONTEXTMENU, dwAnchorPointCmd, hwnd, i);
+                    }
+                    else
+                    {
+                        if (_fKey)
+                        {
+                            _SendNotify(ptnpi, WM_RBUTTONDOWN);
+                            _SendNotify(ptnpi, WM_RBUTTONUP);
+                        }
                     }
                 }
+                return 0;
             }
-            return 0;
         }
     }
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);

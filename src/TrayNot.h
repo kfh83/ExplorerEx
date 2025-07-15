@@ -102,6 +102,13 @@ extern BOOL ToolBar_IsVisible(HWND hwndToolBar, int iIndex);
 
 #define _IsOverClock(lParam) IsPosInHwnd(lParam, _hwndClock)
 
+// The anchor point is a new thing introduced in Vista. It is used for NOTIFYICON version 4.
+// This is the internal form of the anchor point WPARAM documented on MSDN for version 4.
+// It is the exact same type, but with a couple sentinel values used for internal Explorer
+// logic.
+#define TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE    ((DWORD)(-1))
+#define TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD ((DWORD)(-2))
+
 
 class CTrayNotify : public CImpWndProc
 {
@@ -121,7 +128,10 @@ public:
     HWND TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst);
     LRESULT TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
 protected:
-    LRESULT _SendNotify(PTNPRIVICON ptnpi, UINT uMsg);
+    // Used for notifications:
+    WPARAM _CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex);
+
+    LRESULT _SendNotify(PTNPRIVICON ptnpi, UINT uMsg, DWORD dwAnchorPoint = 0, HWND const hwnd = NULL, int itemIndex = 0);
     void _SetImage(INT_PTR iIndex, int iImage);
     void _SetText(INT_PTR iIndex, LPTSTR pszText);
     int _GetImage(INT_PTR iIndex);
