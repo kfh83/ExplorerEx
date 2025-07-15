@@ -66,7 +66,8 @@ class CTrayItem
         UINT        uCallbackMessage;
         DWORD       dwState;
         UINT        uVersion;
-        HICON       hIcon;       // *** may be stale, not guaranteed to be a valid hicon ***
+        HICON       hIcon;        // *** may be stale, not guaranteed to be a valid hicon ***
+        HICON       hBalloonIcon; // *** may be stale, not guaranteed to be a valid hicon ***
 
         ULONG       uIconDemoteTimerID;
         DWORD       dwUserPref;  // user preference (hidden? visible? automatic?)

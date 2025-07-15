@@ -44,8 +44,9 @@ typedef struct
 //  (so they won't change size as they travel between 32-bit and
 //  64-bit processes).
 //
-#define GetHIcon(pnid)  ((HICON)ULongToPtr(pnid->dwIcon))
-#define GetHWnd(pnid)   ((HWND)ULongToPtr(pnid->dwWnd))
+#define GetHIcon(pnid)        ((HICON)ULongToPtr(pnid->dwIcon))
+#define GetHBalloonIcon(pnid) ((HICON)ULongToPtr(pnid->dwBalloonIcon))
+#define GetHWnd(pnid)         ((HWND)ULongToPtr(pnid->dwWnd))
 
 //  Everybody has a copy of this function, so we will too!
 STDAPI_(void) ExplorerPlaySound(LPCTSTR pszSound);
@@ -186,7 +187,7 @@ protected:
     void _ActivateTips(BOOL bActivate);
     void _InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick);
     void _PositionInfoTip();
-    DWORD _ShowBalloonTip(LPTSTR szTitle, DWORD dwInfoFlags, UINT uTimeout, DWORD dwLastSoundTime);
+    DWORD _ShowBalloonTip(LPTSTR szTitle, HICON hIcon, UINT uTimeout, DWORD dwLastSoundTime);
     void _SetInfoTip(HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, 
             DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync);
     void _ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
