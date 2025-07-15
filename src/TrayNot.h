@@ -162,7 +162,7 @@ protected:
     LRESULT _Notify(LPNMHDR pNmhdr);
     void _SysChange(UINT uMsg, WPARAM wParam, LPARAM lParam);
     void _Command(UINT id, UINT uCmd);
-    LRESULT CALLBACK v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
     static LRESULT CALLBACK s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     BOOL TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh);
 

@@ -126,7 +126,7 @@ HWND CTrayNotify::TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst)
     {
         wc.lpszClassName = c_szTrayNotify;
         wc.style = CS_DBLCLKS;
-        wc.lpfnWndProc = (WNDPROC)s_ToolbarWndProc;
+        wc.lpfnWndProc = s_WndProc;
         wc.hInstance = hInst;
         //wc.hIcon = NULL;
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -141,6 +141,8 @@ HWND CTrayNotify::TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst)
             return(NULL);
         }
 
+        auto err = GetLastError();
+
         if (!ClockCtl_Class(hInst))
         {
             return(NULL);
@@ -149,7 +151,7 @@ HWND CTrayNotify::TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst)
 
     return(CreateWindowEx(dwExStyle, c_szTrayNotify,
             NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, 0, 0,
-            hwndParent, (HMENU)uID, hInst, NULL));
+            hwndParent, IntToPtr_(HMENU, uID), hInst, (void*)this));
 }
 
 LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL* pbRefresh)
@@ -979,12 +981,14 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     HWND hwndClock = ClockCtl_Create(hWnd, IDC_CLOCK, hinstCabinet);
     if (!hwndClock)
     {
-        LocalFree(this);
+        delete this;
+        SetWindowLongPtr(hWnd,0,NULL);
+        //LocalFree(this);
         return (-1);
     }
 
 
-    SetWindowLongPtr(hWnd, 0, (LONG_PTR)this);
+    //SetWindowLongPtr(hWnd, 0, (LONG_PTR)this);
 
     _iVisCount = -1;
     _hwndNotify = hWnd;
