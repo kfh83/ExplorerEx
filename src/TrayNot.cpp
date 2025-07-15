@@ -335,18 +335,9 @@ BOOL CTrayNotify::_CheckAndResizeImages()
     ImageList_GetIconSize(himlOld, &cxSmIconOld, &cySmIconOld);
     if (cxSmIconNew != cxSmIconOld || cySmIconNew != cySmIconOld)
     {
-        UINT flags = ILC_MASK;
-        // Nope, we're gonna need a new imagelist.
-        if (IS_WINDOW_RTL_MIRRORED(_hwndToolbar))
-        {
-            flags |= ILC_MIRROR;
-        }
-        HIMAGELIST himlNew = ImageList_Create(cxSmIconNew, cySmIconNew, flags, 0, 1);
+        HIMAGELIST himlNew = ImageList_Create(cxSmIconNew, cySmIconNew, SHGetImageListFlags(_hwndToolbar), 0, 1);
         if (himlNew)
         {
-            COLORREF clBkNew = GetSysColor(COLOR_3DFACE);
-            ImageList_SetBkColor(himlNew, clBkNew);
-
             // Copy the images over to the new image list.
             int cItems = ImageList_GetImageCount(himlOld);
             for (int i = 0; i < cItems; i++)
@@ -1009,12 +1000,8 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     SendMessage(_hwndToolbar, CCM_SETVERSION, COMCTL32_VERSION, 0);
     SendMessage(_hwndToolbar, TB_SETEXTENDEDSTYLE,
                 TBSTYLE_EX_INVERTIBLEIMAGELIST, TBSTYLE_EX_INVERTIBLEIMAGELIST);
-    if (IS_WINDOW_RTL_MIRRORED(_hwndToolbar))
-    {
-        flags |= ILC_MIRROR;
-    }
     _himlIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-                                  flags, 0, 1);
+        SHGetImageListFlags(_hwndToolbar), 0, 1);
     if (!_himlIcons)
     {
         return (-1);
@@ -1022,8 +1009,6 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
 
 
     SendMessage(_hwndToolbar, TB_SETIMAGELIST, 0, (LPARAM)_himlIcons);
-
-    ImageList_SetBkColor(_himlIcons, GetSysColor(COLOR_3DFACE));
 
     // if this fails, not that big a deal... we'll still show, but won't handle clicks
     SetWindowSubclass(_hwndToolbar, s_ToolbarWndProc, 0, (DWORD_PTR)this);
