@@ -499,7 +499,18 @@ void CTrayNotify::_ShowInfoTip(INT_PTR nIcon, BOOL bShow, BOOL bAsync)
                 PostMessage(_hwndNotify, TNM_ASYNCINFOTIP, (WPARAM)nIcon, 0);
             else
             {
-                SendMessage(_hwndInfoTip, TTM_SETTITLE, _pinfo->dwFlags & INFO_ICON, (LPARAM)_pinfo->szTitle);
+                HICON hIcon = NULL;
+                if (_pinfo->dwFlags & NIIF_USER)
+                {
+                    if (ptnpi->hBalloonIcon)
+                        hIcon = ptnpi->hBalloonIcon;
+                    else
+                        hIcon = ptnpi->hIcon;
+                }
+                SendMessage(_hwndInfoTip,
+                            TTM_SETTITLE,
+                            hIcon ? (WPARAM)hIcon : _pinfo->dwFlags & INFO_ICON,
+                            (LPARAM)_pinfo->szTitle);
                 _PositionInfoTip();
                 ti.lpszText = _pinfo->szInfo;
                 // if tray is in auto hide mode unhide it
@@ -763,6 +774,14 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbR
         if (!bHideButton && pbRefresh && pnid->uFlags == NIF_TIP)
         {
             *pbRefresh = FALSE;
+        }
+
+        if (pnid->dwInfoFlags & NIIF_USER)
+        {
+            if (ptnpi->hBalloonIcon)
+                DestroyIcon(ptnpi->hBalloonIcon);
+            if (pnid->dwBalloonIcon)
+                ptnpi->hBalloonIcon = GetHBalloonIcon(pnid);
         }
     }
 

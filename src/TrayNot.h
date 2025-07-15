@@ -58,8 +58,9 @@
 //  (so they won't change size as they travel between 32-bit and
 //  64-bit processes).
 
-#define GetHIcon(pnid)  ((HICON)ULongToPtr(pnid->dwIcon))
-#define GetHWnd(pnid)   ((HWND)ULongToPtr(pnid->dwWnd))
+#define GetHIcon(pnid)        ((HICON)ULongToPtr(pnid->dwIcon))
+#define GetHBalloonIcon(pnid) ((HICON)ULongToPtr(pnid->dwBalloonIcon))
+#define GetHWnd(pnid)         ((HWND)ULongToPtr(pnid->dwWnd))
 
 #define ROWSCOLS(_nTot, _nROrC) ((_nTot+_nROrC-1)/_nROrC)
 
@@ -83,6 +84,7 @@ typedef struct _TNPRIVICON
     DWORD dwState;
     UINT uVersion;
     HICON hIcon;
+    HICON hBalloonIcon;
 } TNPRIVICON, *PTNPRIVICON;
 
 #if XXX_RENIM
