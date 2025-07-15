@@ -4376,19 +4376,10 @@ void CTray::_OnWinIniChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     // Reset the programs menu.
     // REVIEW IANEL - We should only need to listen to the SPI_SETNONCLIENT stuff
     // but deskcpl doesn't send one.
-    if (wParam == SPI_SETNONCLIENTMETRICS || (!wParam && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0))))
+    if ((wParam == SPI_SETNONCLIENTMETRICS || (!wParam && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0))))
+    || (wParam == SPI_SETFONTSMOOTHING || wParam == SPI_SETFONTSMOOTHINGTYPE || wParam == SPI_SETFONTSMOOTHINGORIENTATION
+        || wParam == SPI_SETFONTSMOOTHINGCONTRAST))
     {
-#ifdef DEBUG
-        if (wParam == SPI_SETNONCLIENTMETRICS)
-        {
-            //TraceMsg(TF_TRAY, "c.t_owic: Non-client metrics (probably) changed.");
-        }
-        else
-        {
-            //TraceMsg(TF_TRAY, "c.t_owic: Window metrics changed.");
-        }
-#endif
-
         _OnNewSystemSizes();
     }
 
