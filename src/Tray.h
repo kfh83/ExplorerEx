@@ -237,9 +237,9 @@ public:
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
         ptvo->fHideClock = _fHideClock;
-        ptvo->fNoTrayItemsDisplayPolicyEnabled = _trayNotify.GetIsNoTrayItemsDisplayPolicyEnabled();
-        ptvo->fNoAutoTrayPolicyEnabled = _trayNotify.GetIsNoAutoTrayPolicyEnabled();
-        ptvo->fAutoTrayEnabledByUser = _trayNotify.GetIsAutoTrayEnabledByUser();
+        ptvo->fNoTrayItemsDisplayPolicyEnabled = FALSE;
+        ptvo->fNoAutoTrayPolicyEnabled = FALSE;
+        ptvo->fAutoTrayEnabledByUser = FALSE;
         ptvo->uAutoHide = _uAutoHide;     // AH_HIDING , AH_ON
         ptvo->fShowQuickLaunch = (-1 != SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)-1));
     }

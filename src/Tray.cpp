@@ -7039,24 +7039,11 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
 
     if (fIncludeTime)
     {
-        if (_trayNotify.GetIsNoTrayItemsDisplayPolicyEnabled())
-        {
-            // We know the position of IDM_NOTIFYCUST from the menu resource...
-            DeleteMenu(hmContext, 1, MF_BYPOSITION);
-        }
-        else
-        {
-            UINT uEnable = MF_BYCOMMAND;
-            if (_trayNotify.GetIsNoAutoTrayPolicyEnabled() || !_trayNotify.GetIsAutoTrayEnabledByUser())
-            {
-                uEnable |= MFS_DISABLED;
-            }
-            else
-            {
-                uEnable |= MFS_ENABLED;
-            }
-            EnableMenuItem(hmContext, IDM_NOTIFYCUST, uEnable);
-        }
+
+        UINT uEnable = MF_BYCOMMAND | MFS_ENABLED;
+        
+        EnableMenuItem(hmContext, IDM_NOTIFYCUST, uEnable);
+        
     }
     else
     {
