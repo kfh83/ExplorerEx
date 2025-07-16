@@ -1082,6 +1082,13 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     // if this fails, not that big a deal... we'll still show, but won't handle clicks
     SetWindowSubclass(_hwndToolbar, s_ToolbarWndProc, 0, (DWORD_PTR)this);
 
+    HWND hwndToolbarInfoTip = (HWND)SendMessage(_hwndToolbar, TB_GETTOOLTIPS, 0, 0);
+    if (hwndToolbarInfoTip)
+    {
+        SHSetWindowBits(hwndToolbarInfoTip, GWL_STYLE, TTS_ALWAYSTIP, TTS_ALWAYSTIP);
+        SetWindowZorder(hwndToolbarInfoTip, HWND_TOPMOST);
+    }
+
 #if XXX_RENIM
     RestoreNIDList(ptnd);
 #endif
