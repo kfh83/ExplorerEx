@@ -6067,7 +6067,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             switch (((PCOPYDATASTRUCT)lParam)->dwData) {
             case TCDM_NOTIFY:
             {
-                BOOL bRefresh = FALSE;
+                BOOL bRefresh = TRUE;
 
                 lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)wParam, (PCOPYDATASTRUCT)lParam, &bRefresh);
                 if (bRefresh)
