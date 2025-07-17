@@ -711,6 +711,8 @@ LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
                     // Show the button down.
                     lRet = CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
+                    SendMessage(hwnd, BM_SETSTATE, TRUE, 0);
+                    UpdateWindow(hwnd);
                     // Notify the parent.
                     SendMessage(GetParent(hwnd), WM_COMMAND, (WPARAM)LOWORD(GetDlgCtrlID(hwnd)), (LPARAM)hwnd);
                     _tmOpen = GetTickCount();
