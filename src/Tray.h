@@ -42,6 +42,7 @@ WINDOWPOSITIONS, * LPWINDOWPOSITIONS;
 
 typedef struct tagTRAYVIEWOPTS
 {
+    BOOL fWin98;
     BOOL fAlwaysOnTop;
     BOOL fSMSmallIcons;
     BOOL fHideClock;
@@ -59,6 +60,7 @@ TRAYVIEWOPTS;
 #define TVSD_TOPMOST            0x0002
 #define TVSD_SMSMALLICONS       0x0004
 #define TVSD_HIDECLOCK          0x0008
+#define TVSD_WIN98              0x0010
 
 // old Win95 TVSD struct
 typedef struct _TVSD95
@@ -234,6 +236,7 @@ public:
 
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
     {
+        ptvo->fWin98 = _fWin98;
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
         ptvo->fHideClock = _fHideClock;
@@ -247,6 +250,7 @@ public:
     {
         _UpdateAlwaysOnTop(ptvo->fAlwaysOnTop);
         SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)ptvo->fShowQuickLaunch);
+        _fWin98 = ptvo->fWin98;
         _fSMSmallIcons = ptvo->fSMSmallIcons;
         _fHideClock = ptvo->fHideClock;
         _uAutoHide = ptvo->uAutoHide;     // AH_HIDING , AH_ON
@@ -268,6 +272,7 @@ public:
     //
 
     // from TRAYSTUFF
+    BOOL _fWin98;
     BOOL _bMainMenuInit;
     BOOL _fFlashing;    // currently flashing (HSHELL_FLASH)
     BOOL _fStuckRudeApp;

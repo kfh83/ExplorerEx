@@ -807,6 +807,14 @@ public:
         if (hpage)
             AddPage(hpage);
 
+        //extra page
+        psp.pszTemplate = MAKEINTRESOURCE(DLG_EXTRA_OPTIONS);
+        psp.pfnDlgProc = s_ExtraDlgProc;
+        psp.lParam = (LPARAM)this;
+        hpage = CreatePropertySheetPage(&psp);
+        if (hpage)
+            AddPage(hpage);
+
         _pDlgNotify = new CComObject<CNotificationsDlg>;
         if (_pDlgNotify)
         {
@@ -1878,6 +1886,77 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
     case WM_CONTEXTMENU:
         ::SHWinHelp((HWND) wParam, NULL, HELP_CONTEXTMENU, (ULONG_PTR)(void *)aStartTabHelpIDs);
         break;
+    }
+
+    return FALSE;
+}
+
+BOOL_PTR CTaskBarPropertySheet::s_ExtraDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    CTaskBarPropertySheet *self = NULL;
+
+    if (uMsg == WM_INITDIALOG)
+    {
+        ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
+        self = (CTaskBarPropertySheet *)((PROPSHEETPAGE *)lParam)->lParam;
+    }
+    else
+    {
+        PROPSHEETPAGE *psp = (PROPSHEETPAGE *)::GetWindowLongPtr(hDlg, DWLP_USER);
+        if (psp)
+            self = (CTaskBarPropertySheet *)psp->lParam;
+    }
+
+    BOOL_PTR fValue = FALSE;
+    if (self)
+    {
+        self->ExtraDlgProc(hDlg, uMsg, wParam, lParam);
+    }
+
+    return fValue;
+}
+
+BOOL_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_INITDIALOG:
+        {
+            TRAYVIEWOPTS tvo;
+            c_tray.GetTrayViewOpts(&tvo);
+            ::CheckDlgButton(hDlg, IDC_EXTRAOPTWIN98, tvo.fWin98 ? BST_CHECKED : BST_UNCHECKED);
+            break;
+        }
+        case WM_COMMAND:
+        {
+            SendPSMChanged(hDlg);
+            break;
+        }
+        case WM_NOTIFY:
+            switch (((NMHDR *)lParam)->code)
+            {
+                case PSN_APPLY:
+                {
+                    BOOL fWin98 = (BST_CHECKED == ::IsDlgButtonChecked(hDlg, IDC_EXTRAOPTWIN98));
+                    TRAYVIEWOPTS tvo;
+                    c_tray.GetTrayViewOpts(&tvo);
+                    if (tvo.fWin98 != fWin98)
+                    {
+                        tvo.fWin98 = fWin98;
+                        c_tray.SetTrayViewOpts(&tvo);
+                        c_tray.SizeWindows();
+                        ::InvalidateRect(v_hwndTray, nullptr, TRUE);
+                        // please man just fucking save the option
+                        c_tray._SaveTray();
+                    }
+                    return TRUE;
+                }
+
+                case PSN_KILLACTIVE:
+                case PSN_SETACTIVE:
+                    return TRUE;
+            }
+            break;
     }
 
     return FALSE;

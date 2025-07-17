@@ -555,6 +555,7 @@ void CTray::_GetSaveStateAndInitRects()
     //
     // set the tray flags
     //
+    _fWin98 = BOOLIFY(dwTrayFlags & TVSD_WIN98);
     _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
     _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
@@ -593,6 +594,7 @@ void CTray::_SaveTrayStuff(void)
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
     if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
     if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
+    if (_fWin98)            tvsd.dwFlags |= TVSD_WIN98;
 
     // Save in Stuck rects.
     Reg_SetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"), &tvsd, sizeof(tvsd));
@@ -885,7 +887,9 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
         prcNotify->right = prcClient->right;
 
         prcView->left = _sizeStart.cx + g_cxFrame + 1;
-        prcView->right = prcNotify->left;
+        prcView->right = prcNotify->left - 2;
+        if (_fWin98)
+            prcView->right -= 2;
     }
     else
     {
@@ -896,7 +900,9 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
         prcNotify->right = LOWORD(dwNotifySize);
 
         prcView->top = _sizeStart.cy + g_cyTabSpace;
-        prcView->bottom = prcNotify->top;
+        prcView->bottom = prcNotify->top - 2;
+        if (_fWin98)
+            prcView->bottom -= 2;
     }
 }
 
@@ -6169,7 +6175,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             GetWindowRect(_hwndRebar, &rc);
             MapWindowPoints(HWND_DESKTOP, hwnd, (LPPOINT)&rc, 2);
             InflateRect(&rc, g_cxEdge, g_cyEdge);
-            DrawEdge(hdc, &rc, EDGE_ETCHED, BF_TOPLEFT);
+            UINT grfFlags = BF_TOPLEFT;
+            if (_fWin98)
+                grfFlags |= BF_BOTTOMRIGHT;
+            DrawEdge(hdc, &rc, EDGE_ETCHED, grfFlags);
         }
 
         if (wParam == 0)
