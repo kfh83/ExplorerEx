@@ -1125,52 +1125,13 @@ UINT _GetStartIDB()
 {
     UINT id;
 
-    if (IsOS(OS_TABLETPC))
-    {
-        id = IDB_TABLETPCSTARTBKG;
-    }
-    else if (IsOS(OS_EMBEDDED))
-    {
-        if (IsOS(OS_ANYSERVER))
-            id = IDB_EMBEDDEDSERVER;
-        else
-            id = IDB_EMBEDDED;
-    }
-    else if (IsOS(OS_DATACENTER))
-    {
-        id = IDB_DCSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_ADVSERVER))
-    {
-        id = IDB_ADVSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_SERVER))
+    if (IsOS(OS_SERVER))
     {
         id = IDB_SERVERSTARTBKG;
     }
-    else if (IsOS(OS_PERSONAL))
-    {
-        id = IDB_PERSONALSTARTBKG;
-    }
-    else if (IsOS(OS_WEBSERVER))
-    {
-        id = IDB_BLADESTARTBKG;
-    }
-    else if (IsOS(OS_SMALLBUSINESSSERVER))
-    {
-        id = IDB_SMALLBUSINESSSTARTBKG;
-    }
-    else if (IsOS(OS_APPLIANCE))
-    {
-        id = IDB_APPLIANCESTARTBKG;
-    }
     else
     {
-#ifdef _WIN64
-        id = IDB_PROFESSIONAL64STARTBKG;
-#else
         id = IDB_PROFESSIONALSTARTBKG;
-#endif
     }
 
     return id;
