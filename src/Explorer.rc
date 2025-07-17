@@ -161,8 +161,9 @@ BEGIN
                 MENUITEM "Ca&scade Windows",            IDM_CASCADE
                 MENUITEM "Tile Windows &Horizontally",  IDM_HORIZTILE
                 MENUITEM "Tile Windows V&ertically",    IDM_VERTTILE
-                MENUITEM "&Show the Desktop",           IDM_TOGGLEDESKTOP   
+                MENUITEM SEPARATOR  
                 MENUITEM "&Undo",   IDM_UNDO
+                MENUITEM "&Minimize All Windows",       IDM_MINIMIZEALL
                 MENUITEM SEPARATOR
                 MENUITEM "Tas&k Manager",               IDM_SHOWTASKMAN
                 MENUITEM SEPARATOR
