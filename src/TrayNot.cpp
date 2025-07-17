@@ -162,7 +162,6 @@ LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT 
     }
 
     CTrayNotify* ptnd = (CTrayNotify*)GetWindowLongPtr(hwndNotify, 0);
-    wprintf(TEXT("Find the goobber that prematurely removed the PRIVDATA pointer.\n"));
     if (ptnd)
     {
         if (pcds->cbData < sizeof(TRAYNOTIFYDATA))
@@ -1145,6 +1144,7 @@ LRESULT CTrayNotify::_Paint()
 
 int CTrayNotify::_MatchIconsHorz(int nMatchHorz, INT_PTR nIcons, POINT* ppt)
 {
+    wprintf(TEXT("We got %lld icons horz\n"), nIcons);
     if (!nIcons)
     {
         ppt->x = ppt->y = 0;
@@ -1171,6 +1171,7 @@ int CTrayNotify::_MatchIconsHorz(int nMatchHorz, INT_PTR nIcons, POINT* ppt)
 
 int CTrayNotify::_MatchIconsVert(int nMatchVert, INT_PTR nIcons, POINT* ppt)
 {
+    wprintf(TEXT("We got %lld icons vert\n"), nIcons);
     if (!nIcons)
     {
         ppt->x = ppt->y = 0;
