@@ -1,4 +1,4 @@
-#ifndef _TRAYNOT_H
+﻿#ifndef _TRAYNOT_H
 #define _TRAYNOT_H
 
 #include "cwndproc.h"
@@ -7,13 +7,13 @@
 #include "trayitem.h"
 #include "trayreg.h"
 
-#define TNM_GETCLOCK                (WM_USER + 1)
-#define TNM_HIDECLOCK               (WM_USER + 2)
-#define TNM_TRAYHIDE                (WM_USER + 3)
-#define TNM_TRAYPOSCHANGED          (WM_USER + 4)
-#define TNM_ASYNCINFOTIP            (WM_USER + 5)
-#define TNM_ASYNCINFOTIPPOS         (WM_USER + 6)
-#define TNM_RUDEAPP                 (WM_USER + 7)
+#define TNM_GETCLOCK (WM_USER + 1)
+#define TNM_HIDECLOCK (WM_USER + 2)
+#define TNM_TRAYHIDE (WM_USER + 3)
+#define TNM_TRAYPOSCHANGED (WM_USER + 4)
+#define TNM_ASYNCINFOTIP   (WM_USER + 5)
+#define TNM_ASYNCINFOTIPPOS (WM_USER + 6)
+#define TNM_RUDEAPP         (WM_USER + 7)
 #define TNM_SAVESTATE               (WM_USER + 8)
 #define TNM_NOTIFY                  (WM_USER + 9)
 #define TNM_STARTUPAPPSLAUNCHED     (WM_USER + 10)
@@ -29,23 +29,70 @@
 
 #define UID_CHEVRONBUTTON           (-1)
 
-typedef struct
-{
-    HWND      hWnd;
-    UINT      uID;
-    TCHAR     szTitle[64];
-    TCHAR     szInfo[256];
-    UINT      uTimeout;
-    DWORD     dwInfoFlags;
-} TNINFOITEM;
 
-//
+#define XXX_RENIM   0   // cache/reload ShellNotifyIcon's (see #if)
+
+
+// Tray Notify Icon area implementation notes / details:
+
+// - The icons are held in a toolbar with PTNPRIVICON on each button's lParam
+
+
+#define INFO_TIMER       48
+#define KEYBOARD_VERSION 3
+
+#define NISP_SHAREDICONSOURCE 0x10000000 // says this is the source of a shared icon
+
+#define INFO_INFO       0x00000001
+#define INFO_WARNING    0x00000002
+#define INFO_ERROR      0x00000003
+#define INFO_ICON       0x00000003
+#define ICON_HEIGHT      16
+#define ICON_WIDTH       16
+#define MAX_TIP_WIDTH    300
+
+#define MIN_INFO_TIME   10000  // 10 secs is minimum time a balloon can be up
+#define MAX_INFO_TIME   60000  // 1 min is the max time it can be up
+
 //  For Win64 compat, the icon and hwnd are handed around as DWORDs
 //  (so they won't change size as they travel between 32-bit and
 //  64-bit processes).
-//
-#define GetHIcon(pnid)  ((HICON)ULongToPtr(pnid->dwIcon))
-#define GetHWnd(pnid)   ((HWND)ULongToPtr(pnid->dwWnd))
+
+#define GetHIcon(pnid)        ((HICON)ULongToPtr(pnid->dwIcon))
+#define GetHBalloonIcon(pnid) ((HICON)ULongToPtr(pnid->dwBalloonIcon))
+#define GetHWnd(pnid)         ((HWND)ULongToPtr(pnid->dwWnd))
+
+#define ROWSCOLS(_nTot, _nROrC) ((_nTot+_nROrC-1)/_nROrC)
+
+#define PADDING 1
+
+typedef struct _TNINFOITEM
+{
+    INT_PTR nIcon;
+    TCHAR szTitle[64];
+    TCHAR szInfo[256];
+    UINT uTimeout;
+    DWORD dwFlags;
+    BOOL bMinShown; // was this balloon shown for a min time?
+} TNINFOITEM;
+
+typedef struct _TNPRIVICON
+{
+    HWND hWnd;
+    UINT uID;
+    UINT uCallbackMessage;
+    DWORD dwState;
+    UINT uVersion;
+    HICON hIcon;
+    HICON hBalloonIcon;
+} TNPRIVICON, *PTNPRIVICON;
+
+#if XXX_RENIM
+typedef enum {
+    COP_ADD, COP_DEL,
+} CACHEOP;
+void CacheNID(CACHEOP op, INT_PTR nIcon, PNOTIFYICONDATA32 pNidMod);
+#endif
 
 //  Everybody has a copy of this function, so we will too!
 STDAPI_(void) ExplorerPlaySound(LPCTSTR pszSound);
@@ -55,42 +102,7 @@ extern BOOL IsPosInHwnd(LPARAM lParam, HWND hwnd);
 // defined in taskband.cpp
 extern BOOL ToolBar_IsVisible(HWND hwndToolBar, int iIndex);
 
-typedef enum TRAYEVENT {
-        TRAYEVENT_ONICONHIDE,
-        TRAYEVENT_ONICONUNHIDE,
-        TRAYEVENT_ONICONMODIFY,
-        TRAYEVENT_ONITEMCLICK,
-        TRAYEVENT_ONINFOTIP,
-        TRAYEVENT_ONNEWITEMINSERT,
-        TRAYEVENT_ONAPPLYUSERPREF,
-        TRAYEVENT_ONDISABLEAUTOTRAY,
-        TRAYEVENT_ONICONDEMOTETIMER,
-} TRAYEVENT;
-
-typedef enum TRAYITEMPOS {
-        TIPOS_DEMOTED,
-        TIPOS_PROMOTED,
-        TIPOS_ALWAYS_DEMOTED,
-        TIPOS_ALWAYS_PROMOTED,
-        TIPOS_HIDDEN,
-        TIPOS_STATUSQUO,
-} TRAYITEMPOS;
-
-typedef enum LASTINFOTIPSTATUS {
-        LITS_BALLOONNONE,
-        LITS_BALLOONDESTROYED,
-        LITS_BALLOONXCLICKED
-} LASTINFOTIPSTATUS;
-
-typedef enum BALLOONEVENT {
-        BALLOONEVENT_USERLEFTCLICK,
-        BALLOONEVENT_USERRIGHTCLICK,
-        BALLOONEVENT_USERXCLICK,
-        BALLOONEVENT_TIMEOUT,
-        BALLOONEVENT_NONE,
-        BALLOONEVENT_APPDEMOTE,
-        BALLOONEVENT_BALLOONHIDE
-} BALLOONEVENT;
+#define _IsOverClock(lParam) IsPosInHwnd(lParam, _hwndClock)
 
 // The anchor point is a new thing introduced in Vista. It is used for NOTIFYICON version 4.
 // This is the internal form of the anchor point WPARAM documented on MSDN for version 4.
@@ -100,11 +112,6 @@ typedef enum BALLOONEVENT {
 #define TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD ((DWORD)(-2))
 
 
-class CTrayNotify;  // forward declaration...
-
-//
-// CTrayNotify class members
-//
 class CTrayNotify : public CImpWndProc
 {
 public:
@@ -119,264 +126,106 @@ public:
     STDMETHODIMP SetPreference(NOTIFYITEM pNotifyItem);
     STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB);
     STDMETHODIMP EnableAutoTray(BOOL bTraySetting);
-
-    // *** Properties Sheet methods ***
-    BOOL GetIsNoTrayItemsDisplayPolicyEnabled() const
-    {
-        return _fNoTrayItemsDisplayPolicyEnabled;
-    }
     
-    BOOL GetIsNoAutoTrayPolicyEnabled() const
-    {
-        return m_TrayItemRegistry.IsNoAutoTrayPolicyEnabled();
-    }
-
-    BOOL GetIsAutoTrayEnabledByUser() const
-    {
-        return m_TrayItemRegistry.IsAutoTrayEnabledByUser();
-    }
-
-    // *** Other ***
     HWND TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst);
-    LRESULT TrayNotify(HWND hwndTray, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
-
+    LRESULT TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
 protected:
-    static BOOL GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG trayCallbackArg, 
-        TRAYCBRET * pOutData);
-
-    void _TickleForTooltip(CNotificationItem *pni);
-    void _UpdateChevronSize();
-    void _UpdateChevronState(BOOL fBangMenuOpen, BOOL fTrayOrientationChanged, BOOL fUpdateDemotedItems);
-    void _UpdateVertical(BOOL fVertical);
-    void _OpenTheme();
-
-    void _OnSizeChanged(BOOL fForceRepaint);
-
     // Used for notifications:
     WPARAM _CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex);
 
-    // Tray Animation functions
-    DWORD _GetStepTime(int iStep, int cSteps);
-    void _ToggleDemotedMenu();
-    void _BlankButtons(int iPos, int iNumberOfButtons, BOOL fAddButtons);
-    void _AnimateButtons(int iIndex, DWORD dwSleep, int iNumberItems, BOOL fGrow);
-    BOOL _SetRedraw(BOOL fRedraw);
-
-    // Tray Icon Activation functions
-    void _HideAllDemotedItems(BOOL bHide);
-    BOOL _UpdateTrayItems(BOOL bUpdateDemotedItems);
-    BOOL _PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEvent);
-    TRAYITEMPOS _TrayItemPos(CTrayItem * pti, TRAYEVENT tTrayEvent, BOOL *bDemoteStatusChange);
-    void _SetOrKillIconDemoteTimer(CTrayItem * pti, TRAYITEMPOS tiPos);
-
-    // WndProc callback functions
-    LRESULT v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    // Callback for the chevron button
-    static LRESULT CALLBACK ChevronSubClassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
-        LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-    // Callback for the toolbar
-    static LRESULT CALLBACK s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
-        LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-
-    // Icon Image-related functions
+    LRESULT _SendNotify(PTNPRIVICON ptnpi, UINT uMsg, DWORD dwAnchorPoint = 0, HWND const hwnd = NULL, int itemIndex = 0);
+    void _SetImage(INT_PTR iIndex, int iImage);
+    void _SetText(INT_PTR iIndex, LPTSTR pszText);
+    int _GetImage(INT_PTR iIndex);
+    PTNPRIVICON _GetData(INT_PTR i, BOOL byIndex);
+    INT_PTR _GetCount();
+    INT_PTR _GetVisibleCount();
+    int _FindImageIndex(HICON hIcon, BOOL fSetAsSharedSource);
     void _RemoveImage(UINT uIMLIndex);
+    INT_PTR _FindNotify(PNOTIFYICONDATA32 pnid);
     BOOL _CheckAndResizeImages();
-
-   // InfoTip/Balloon tip functions
     void _ActivateTips(BOOL bActivate);
-    void _InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick);
+    void _InfoTipMouseClick(int x, int y);
     void _PositionInfoTip();
-    DWORD _ShowBalloonTip(LPTSTR szTitle, DWORD dwInfoFlags, UINT uTimeout, DWORD dwLastSoundTime);
-    void _SetInfoTip(HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, 
-            DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync);
-    void _ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
-    void _ShowChevronInfoTip();
-    void _EmptyInfoTipQueue();
-    void _HideBalloonTip();
-    DWORD _GetBalloonWaitInterval(BALLOONEVENT be);
-    void _DisableCurrentInfoTip(CTrayItem * ptiTemp, UINT uReason, BOOL bBalloonShowing);
-    void _RemoveInfoTipFromQueue(HWND hWnd, UINT uID, BOOL bRemoveFirstOnly = FALSE);
-    BOOL _CanShowBalloon();
-    BOOL _CanActivateTips()
-    {
-        return (!_fInfoTipShowing && !_fItemClicked);
-    }
-    BOOL _IsChevronInfoTip(HWND hwnd, UINT uID)
-    {
-    	return (hwnd == _hwndNotify && uID == UID_CHEVRONBUTTON);
-    }
-    
-    void _OnWorkStationLocked(BOOL bLocked);
-    void _OnRudeApp(BOOL bRudeApp);
-    
-    // Toolbar Notification helper functions - respond to different user messages
-    BOOL _InsertNotify(PNOTIFYICONDATA32 pnid);
-    BOOL _DeleteNotify(INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon);
-    BOOL _ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbRefresh, BOOL bFirstTime);
+    void _ShowInfoTip(INT_PTR nIcon, BOOL bShow, BOOL bAsync);
+    void _SetInfoTip(INT_PTR nIcon, PNOTIFYICONDATA32 pnid, BOOL bAsync);
+    BOOL _ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbRefresh);
     BOOL _SetVersionNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon);
-    LRESULT _SendNotify(CTrayItem *pti, UINT uMsg, DWORD dwAnchorPoint, HWND const hwnd, int itemIndex);
-    void _SetToolbarHotItem(HWND hWndToolbar, UINT nToolbarIcon);
-    INT_PTR _GetToolbarFirstVisibleItem(HWND hWndToolbar, BOOL bFromLast);
-
-    void _NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem);
-
+    void _FreeNotify(PTNPRIVICON ptnpi, int iImage);
+    BOOL_PTR _DeleteNotify(INT_PTR nIcon);
+    BOOL _InsertNotify(PNOTIFYICONDATA32 pnid);
     void _SetCursorPos(INT_PTR i);
-
-    // Tray registry setting-related functions
-    void _ToggleTrayItems(BOOL bEnable);
-
+    LRESULT CALLBACK _ToolbarWndProc(
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    
     // Initialization/Destroy functions
     LRESULT _Create(HWND hWnd);
     LRESULT _Destroy();
 
-    // Tray repainting helpers
-    LRESULT _Paint(HDC hdc);
-    LRESULT _HandleCustomDraw(LPNMCUSTOMDRAW pcd);
-    void _SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL fSizeWindows);
+    LRESULT _Paint();
+    int _MatchIconsHorz(int nMatchHorz, INT_PTR nIcons, POINT *ppt);
+    int _MatchIconsVert(int nMatchVert, INT_PTR nIcons, POINT *ppt);
+    UINT _CalcRects(int nMaxHorz, int nMaxVert, LPRECT prClock, LPRECT prNotifies);
     LRESULT _CalcMinSize(int nMaxHorz, int nMaxVert);
     LRESULT _Size();
-
-    // Timer/Timer message handling functions
-    void _OnInfoTipTimer();
-    LRESULT _OnTimer(UINT_PTR uTimerID);
-    void _OnIconDemoteTimer(WPARAM wParam, LPARAM lParam);
-    
-    // Various Message handles
-    LRESULT _OnMouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _Timer(UINT uTimerID);
+    LRESULT _MouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL fClickDown);
     LRESULT _OnCDNotify(LPNMTBCUSTOMDRAW pnm);
     LRESULT _Notify(LPNMHDR pNmhdr);
-    void _OnSysChange(UINT uMsg, WPARAM wParam, LPARAM lParam);
-    void _OnCommand(UINT id, UINT uCmd);
-    BOOL _TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh);
+    void _SysChange(UINT uMsg, WPARAM wParam, LPARAM lParam);
+    void _Command(UINT id, UINT uCmd);
+    LRESULT v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+    static LRESULT CALLBACK s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    BOOL TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh);
 
-    // User Event Timer functions
-    HRESULT _SetItemTimer(CTrayItem *pti);
-    HRESULT _KillItemTimer(CTrayItem *pti);
-    IUserEventTimer * _CreateTimer(int nTimerFlag);
-    HRESULT _SetTimer(int nTimerFlag, UINT uCallbackMessage, UINT uTimerInterval, ULONG * puTimerID);
-    HRESULT _KillTimer(int nTimerFlag, ULONG uTimerID);
-    BOOL _ShouldDestroyTimer(int nTimerFlag);
-    UINT _GetAccumulatedTime(CTrayItem * pti);
-    void _NullifyTimer(int nTimerFlag);
-    LRESULT _OnKeyDown(WPARAM wChar, LPARAM lFlags);
-    void _SetUsedTime();
-
-#ifdef DEBUG
-    void _TestNotify();
-#endif
+    static int CALLBACK DeleteDPAPtrCB(void *pItem, void *pData);
 
     static const WCHAR c_szTrayNotify[];
-    static const WCHAR c_wzTrayNotifyTheme[];
-    static const WCHAR c_wzTrayNotifyHorizTheme[];
-    static const WCHAR c_wzTrayNotifyVertTheme[];
-    static const WCHAR c_wzTrayNotifyHorizOpenTheme[];
-    static const WCHAR c_wzTrayNotifyVertOpenTheme[];
-
+    
 private:
-    // Helper/Utility functions
-    BOOL _IsScreenSaverRunning();
-    UINT _GetQueueCount();
-
     LONG        m_cRef;
-
-    HWND            _hwndNotify;
-    HWND            _hwndChevron;
-    HWND            _hwndToolbar;
-    HWND            _hwndClock;
-    HWND            _hwndPager;
-    HWND            _hwndInfoTip;
-    HWND            _hwndChevronToolTip;
-    HWND            _hwndToolbarInfoTip;
-
-    TCHAR           _szExplorerExeName[MAX_PATH];
-    TCHAR *         _pszCurrentThreadDesktopName;
     
-    HIMAGELIST      _himlIcons;
-
-    CTrayItemManager    m_TrayItemManager;
-    CTrayItemRegistry   m_TrayItemRegistry;
-
-    BOOL            _fKey;
-    BOOL            _fReturn;
-
-    BOOL            _fBangMenuOpen;
+    BOOL _IsScreenSaverRunning();
     
-    BOOL            _fHaveDemoted;
-
-    BOOL            _fAnimating;
-    BOOL            _fAnimateMenuOpen;
-    BOOL            _fRedraw;
-    BOOL            _fRepaint;
-    BOOL            _fChevronSelected;
-    BOOL            _fNoTrayItemsDisplayPolicyEnabled;
-    BOOL            _fHasFocus;
-    
-    RECT            _rcAnimateTotal;
-    RECT            _rcAnimateCurrent;
-    //
-    // Timer for icon info tips..
-    //
-    ULONG           _uInfoTipTimer;
-    
-    TNINFOITEM      *_pinfo;    // current balloon being shown
-    CDPA<TNINFOITEM> _dpaInfo;
-
-    BOOL            _fInfoTipShowing;
-    BOOL            _fItemClicked;
-    BOOL            _fEnableUserTrackedInfoTips;
-
-    HTHEME          _hTheme;
-    int             _nMaxHorz;
-    int             _nMaxVert;
-
-    // command id of the icon which last received a single down-click
-    int             _idMouseActiveIcon;
-
-    INotificationCB     * _pNotifyCB;
-    
-    IUserEventTimer     * m_pIconDemoteTimer;
-    IUserEventTimer     * m_pInfoTipTimer;
-
-    BOOL                _fVertical;
-    SIZE                _szChevron;
-    BOOL                _bStartupIcon;
-
-    BOOL                _bWorkStationLocked;
-    BOOL                _bRudeAppLaunched;      // Includes screensaver...
-    BOOL				_bWaitAfterRudeAppHide;
-
-    LASTINFOTIPSTATUS   _litsLastInfoTip;
-
-    BOOL                _bWaitingBetweenBalloons;
-    BOOL                _bStartMenuAllowsTrayBalloon;
-    BALLOONEVENT        _beLastBalloonEvent;
+    HWND _hwndNotify;
+    HWND _hwndToolbar;
+    HWND _hwndClock;
+    HIMAGELIST _himlIcons;
+    int _nCols;
+    INT_PTR _iVisCount;
+    BOOL _fKey : 1;
+    BOOL _fReturn : 1;
+    HWND _hwndInfoTip;
+    UINT_PTR _uInfoTipTimer;
+    TNINFOITEM* _pinfo; //current balloon being shown
+    HDPA _hdpaInfo; // array of balloons waiting in queque
 };
 #pragma optimize( "", off )
 //
 // Stub for CTrayNotify, so as to not break the COM rules of refcounting a static object
 //
 class CTrayNotifyStub :
-	public CComObjectRootEx<CComSingleThreadModel>,
-	public CComCoClass<CTrayNotifyStub, &CLSID_TrayNotify>,
-	public ITrayNotify
+    public CComObjectRootEx<CComSingleThreadModel>,
+    public CComCoClass<CTrayNotifyStub, &CLSID_TrayNotify>,
+    public ITrayNotify
 {
 public:
-	CTrayNotifyStub() {};
-	virtual ~CTrayNotifyStub() {};
+    CTrayNotifyStub() {};
+    virtual ~CTrayNotifyStub() {};
 
-	//DECLARE_NOT_AGGREGATABLE(CTrayNotifyStub)
+    //DECLARE_NOT_AGGREGATABLE(CTrayNotifyStub)
 
-	BEGIN_COM_MAP(CTrayNotifyStub)
-		COM_INTERFACE_ENTRY(ITrayNotify)
-	END_COM_MAP()
+    BEGIN_COM_MAP(CTrayNotifyStub)
+        COM_INTERFACE_ENTRY(ITrayNotify)
+    END_COM_MAP()
 
-	// *** ITrayNotify method ***
-	virtual STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB, ULONG*) override;
-	virtual STDMETHODIMP UnregisterCallback(ULONG*) override;
-	virtual STDMETHODIMP SetPreference(NOTIFYITEM pNotifyItem) override;
-	virtual STDMETHODIMP EnableAutoTray(BOOL bTraySetting) override;
-	virtual STDMETHODIMP DoAction(BOOL bTraySetting) override;
-	virtual STDMETHODIMP SetWindowingEnvironmentConfig(IUnknown* unk) override;
+    // *** ITrayNotify method ***
+    virtual STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB, ULONG*) override;
+    virtual STDMETHODIMP UnregisterCallback(ULONG*) override;
+    virtual STDMETHODIMP SetPreference(NOTIFYITEM pNotifyItem) override;
+    virtual STDMETHODIMP EnableAutoTray(BOOL bTraySetting) override;
+    virtual STDMETHODIMP DoAction(BOOL bTraySetting) override;
+    virtual STDMETHODIMP SetWindowingEnvironmentConfig(IUnknown* unk) override;
 };
 #pragma optimize( "", on )
-#endif  // _TRAYNOT_H
+#endif

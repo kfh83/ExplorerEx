@@ -355,28 +355,10 @@
     <Image Include="resources\overflow.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\sbsbkg.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\smwmail.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\srvadv2.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\srvapp.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvbkg.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvdc2.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvemb.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvweb.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\start.bmp">
@@ -394,19 +376,7 @@
     <Image Include="resources\startclassic.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\startem.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmuper.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmupr64.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\stmupro.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmutab.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\taautohide.bmp">

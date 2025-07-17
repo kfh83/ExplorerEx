@@ -711,6 +711,8 @@ LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
                     // Show the button down.
                     lRet = CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
+                    SendMessage(hwnd, BM_SETSTATE, TRUE, 0);
+                    UpdateWindow(hwnd);
                     // Notify the parent.
                     SendMessage(GetParent(hwnd), WM_COMMAND, (WPARAM)LOWORD(GetDlgCtrlID(hwnd)), (LPARAM)hwnd);
                     _tmOpen = GetTickCount();
@@ -1123,52 +1125,13 @@ UINT _GetStartIDB()
 {
     UINT id;
 
-    if (IsOS(OS_TABLETPC))
-    {
-        id = IDB_TABLETPCSTARTBKG;
-    }
-    else if (IsOS(OS_EMBEDDED))
-    {
-        if (IsOS(OS_ANYSERVER))
-            id = IDB_EMBEDDEDSERVER;
-        else
-            id = IDB_EMBEDDED;
-    }
-    else if (IsOS(OS_DATACENTER))
-    {
-        id = IDB_DCSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_ADVSERVER))
-    {
-        id = IDB_ADVSERVERSTARTBKG;
-    }
-    else if (IsOS(OS_SERVER))
+    if (IsOS(OS_SERVER))
     {
         id = IDB_SERVERSTARTBKG;
     }
-    else if (IsOS(OS_PERSONAL))
-    {
-        id = IDB_PERSONALSTARTBKG;
-    }
-    else if (IsOS(OS_WEBSERVER))
-    {
-        id = IDB_BLADESTARTBKG;
-    }
-    else if (IsOS(OS_SMALLBUSINESSSERVER))
-    {
-        id = IDB_SMALLBUSINESSSTARTBKG;
-    }
-    else if (IsOS(OS_APPLIANCE))
-    {
-        id = IDB_APPLIANCESTARTBKG;
-    }
     else
     {
-#ifdef _WIN64
-        id = IDB_PROFESSIONAL64STARTBKG;
-#else
         id = IDB_PROFESSIONALSTARTBKG;
-#endif
     }
 
     return id;
@@ -4376,19 +4339,10 @@ void CTray::_OnWinIniChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     // Reset the programs menu.
     // REVIEW IANEL - We should only need to listen to the SPI_SETNONCLIENT stuff
     // but deskcpl doesn't send one.
-    if (wParam == SPI_SETNONCLIENTMETRICS || (!wParam && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0))))
+    if ((wParam == SPI_SETNONCLIENTMETRICS || (!wParam && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0))))
+    || (wParam == SPI_SETFONTSMOOTHING || wParam == SPI_SETFONTSMOOTHINGTYPE || wParam == SPI_SETFONTSMOOTHINGORIENTATION
+        || wParam == SPI_SETFONTSMOOTHINGCONTRAST))
     {
-#ifdef DEBUG
-        if (wParam == SPI_SETNONCLIENTMETRICS)
-        {
-            //TraceMsg(TF_TRAY, "c.t_owic: Non-client metrics (probably) changed.");
-        }
-        else
-        {
-            //TraceMsg(TF_TRAY, "c.t_owic: Window metrics changed.");
-        }
-#endif
-
         _OnNewSystemSizes();
     }
 
@@ -6076,7 +6030,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             switch (((PCOPYDATASTRUCT)lParam)->dwData) {
             case TCDM_NOTIFY:
             {
-                BOOL bRefresh = FALSE;
+                BOOL bRefresh = TRUE;
 
                 lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)wParam, (PCOPYDATASTRUCT)lParam, &bRefresh);
                 if (bRefresh)
@@ -7039,24 +6993,11 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
 
     if (fIncludeTime)
     {
-        if (_trayNotify.GetIsNoTrayItemsDisplayPolicyEnabled())
-        {
-            // We know the position of IDM_NOTIFYCUST from the menu resource...
-            DeleteMenu(hmContext, 1, MF_BYPOSITION);
-        }
-        else
-        {
-            UINT uEnable = MF_BYCOMMAND;
-            if (_trayNotify.GetIsNoAutoTrayPolicyEnabled() || !_trayNotify.GetIsAutoTrayEnabledByUser())
-            {
-                uEnable |= MFS_DISABLED;
-            }
-            else
-            {
-                uEnable |= MFS_ENABLED;
-            }
-            EnableMenuItem(hmContext, IDM_NOTIFYCUST, uEnable);
-        }
+
+        UINT uEnable = MF_BYCOMMAND | MFS_ENABLED;
+        
+        EnableMenuItem(hmContext, IDM_NOTIFYCUST, uEnable);
+        
     }
     else
     {
