@@ -62,6 +62,7 @@ private:
 
     WORD            _wLastHour;       // wHour from local time of last clock tick
     WORD            _wLastMinute;     // wMinute from local time of last clock tick
+    WORD            _wLastSecond;     // wSecond from local time of last clock tick
     
     HTHEME          _hTheme;
     HFONT           _hfontCapNormal;
@@ -69,6 +70,7 @@ private:
     BOOL             _fClockRunning;
     BOOL             _fClockClipped;
     BOOL             _fHasFocus;
+    BOOL             _fShowSeconds;
 
     friend BOOL ClockCtl_Class(HINSTANCE hinst);
 };
@@ -96,6 +98,7 @@ void CClockCtl::_UpdateLastHour()
     GetLocalTime(&st);
     _wLastHour = st.wHour;
     _wLastMinute = st.wMinute;
+    _wLastSecond = st.wSecond;
 }
 
 void CClockCtl::_EnableTimer(DWORD dtNextTick)
@@ -119,6 +122,8 @@ LRESULT CClockCtl::_HandleCreate()
     _EnsureFontsInitialized(FALSE);
 
     _hTheme = OpenThemeData(_hwnd, L"Clock");
+
+    _fShowSeconds = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowSecondsInSystemClock"), FALSE, FALSE);
 
     _UpdateLastHour();
     return 1;
@@ -156,15 +161,16 @@ DWORD CClockCtl::_RecalcCurTime()
     //
     // Don't recalc the text if the time hasn't changed yet.
     //
-    if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) || !*_szCurTime)
+    if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) || (!_fShowSeconds || st.wSecond != _wLastSecond) || !*_szCurTime)
     {
         _wLastMinute = st.wMinute;
         _wLastHour = st.wHour;
+        _wLastSecond = st.wSecond;
 
         //
         // Text for the current time.
         //
-        _cchCurTime = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS,
+        _cchCurTime = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS,
             &st, _szTimeFmt, _szCurTime, ARRAYSIZE(_szCurTime));
 
         BOOL fRTL = IS_WINDOW_RTL_MIRRORED(_hwnd);
@@ -195,6 +201,8 @@ DWORD CClockCtl::_RecalcCurTime()
     //
     // Return number of milliseconds till we need to be called again.
     //
+    if (_fShowSeconds)
+        return 1000UL - st.wMilliseconds;
     return 1000UL * (60 - st.wSecond);
 }
 
@@ -478,7 +486,7 @@ void CClockCtl::_GetMaxTimeSize(HDC hdc, LPSIZE pszTime)
 
     // first AM
     st.wHour=11;
-    int cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+    int cch = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS, &st,
             _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(c_szSlop));
     if (cch)
         cch--; // don't count the NULL
@@ -488,7 +496,7 @@ void CClockCtl::_GetMaxTimeSize(HDC hdc, LPSIZE pszTime)
 
     // then PM
     st.wHour=23;
-    cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+    cch = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS, &st,
             _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(c_szSlop));
     if (cch)
         cch--; // don't count the NULL
