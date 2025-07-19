@@ -52,8 +52,10 @@ private:
     int   _cchCurTime = 0;
     WORD  _wLastHour;                // wHour from local time of last clock tick
     WORD  _wLastMinute;              // wMinute from local time of last clock tick
+    WORD  _wLastSecond;              // wSecond from local time of last clock tick
     BOOL  _fClockRunning = FALSE;
     BOOL  _fClockClipped = FALSE;
+    BOOL  _fShowSeconds = FALSE;
 
     HFONT _hfontCapNormal;
 

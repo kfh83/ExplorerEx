@@ -18,6 +18,7 @@ void CClockCtl::_UpdateLastHour()
     GetLocalTime(&st);
     _wLastHour = st.wHour;
     _wLastMinute = st.wMinute;
+    _wLastSecond = st.wSecond;
 }
 
 void CClockCtl::_EnableTimer(HWND hwnd, DWORD dtNextTick)
@@ -37,6 +38,9 @@ void CClockCtl::_EnableTimer(HWND hwnd, DWORD dtNextTick)
 LRESULT CClockCtl::_HandleCreate(HWND hwnd)
 {
     _UpdateLastHour();
+
+    _fShowSeconds = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowSecondsInSystemClock"), FALSE, FALSE);
+
     return 1;
 }
 
@@ -55,12 +59,14 @@ DWORD CClockCtl::_RecalcCurTime(HWND hwnd)
     
     // Don't recalc the text if the time hasn't changed yet.
     if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) ||
+        (!_fShowSeconds || st.wSecond != _wLastSecond) ||
         !*_szCurTime)
     {
         _wLastMinute = st.wMinute;
+        _wLastSecond = st.wSecond;
         
         // Text for the current time.
-        _cchCurTime = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS,
+        _cchCurTime = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS,
                                     &st, _szTimeFmt, _szCurTime, ARRAYSIZE(_szCurTime));
         // Don't count the NULL terminator.
         if (_cchCurTime > 0)
@@ -84,6 +90,8 @@ DWORD CClockCtl::_RecalcCurTime(HWND hwnd)
         }
     }
     // Return number of milliseconds till we need to be called again.
+    if (_fShowSeconds)
+        return 1000UL - st.wMilliseconds;
     return 1000UL * (60 - st.wSecond);
 }
 
@@ -270,13 +278,13 @@ LRESULT CClockCtl::_CalcMinSize(HWND hWnd)
     // We need to get the AM and the PM sizes...
     // We append Two 0s and end to add slop into size
     st.wHour = 11;
-    int cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+    int cch = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS, &st,
                             _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(szSlop));
     lstrcat(szTime, szSlop);
     GetTextExtentPoint(hdc, szTime, cch + 2, &sizeAM);
 
     st.wHour = 23;
-    cch = GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st,
+    cch = GetTimeFormat(LOCALE_USER_DEFAULT, _fShowSeconds ? 0 : TIME_NOSECONDS, &st,
                         _szTimeFmt, szTime, ARRAYSIZE(szTime) - ARRAYSIZE(szSlop));
     lstrcat(szTime, szSlop);
     GetTextExtentPoint(hdc, szTime, cch + 2, &sizePM);
