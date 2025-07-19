@@ -59,7 +59,7 @@ DWORD CClockCtl::_RecalcCurTime(HWND hwnd)
     
     // Don't recalc the text if the time hasn't changed yet.
     if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) ||
-        (!_fShowSeconds || st.wSecond != _wLastSecond) ||
+        (_fShowSeconds && st.wSecond != _wLastSecond) ||
         !*_szCurTime)
     {
         _wLastMinute = st.wMinute;
