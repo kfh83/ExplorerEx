@@ -161,7 +161,7 @@ DWORD CClockCtl::_RecalcCurTime()
     //
     // Don't recalc the text if the time hasn't changed yet.
     //
-    if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) || (!_fShowSeconds || st.wSecond != _wLastSecond) || !*_szCurTime)
+    if ((st.wMinute != _wLastMinute) || (st.wHour != _wLastHour) || (_fShowSeconds && st.wSecond != _wLastSecond) || !*_szCurTime)
     {
         _wLastMinute = st.wMinute;
         _wLastHour = st.wHour;
