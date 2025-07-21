@@ -249,7 +249,7 @@ static SpecialFolderDesc s_rgsfd[] = {
 
     /* Control Panel */
     {
-        MAKEINTRESOURCE(CSIDL_CONTROLS),    // pszTarget
+        TEXT("shell:::{26ee0668-a00a-44d7-9371-beb064c98683}"),    // pszTarget
         REST_NOCONTROLPANEL,                // restriction
         REGSTR_VAL_DV2_SHOWCPL,
         SFD_SHOW | SFD_CANCASCADE | SFD_PREFIX, // show by default
