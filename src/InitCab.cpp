@@ -253,9 +253,9 @@ void EnumFolder(LPITEMIDLIST pidlFolder, DWORD grfFlags, PFNENUMFOLDERCALLBACK p
 
 const UINT c_rgStartupFolders[] = {
     CSIDL_COMMON_STARTUP,
-    CSIDL_COMMON_ALTSTARTUP,    // non-localized "Common StartUp" group if exists.
+    //CSIDL_COMMON_ALTSTARTUP,    // non-localized "Common StartUp" group if exists.
     CSIDL_STARTUP,
-    CSIDL_ALTSTARTUP            // non-localized "StartUp" group if exists.
+    //CSIDL_ALTSTARTUP            // non-localized "StartUp" group if exists.
 };
 
 void _ExecuteStartupPrograms()
