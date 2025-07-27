@@ -7185,6 +7185,7 @@ void CTray::_ContextMenu(DWORD dwPos, BOOL fIncludeTime)
 #define RFD_NODEFFILE		0x00000002
 #define RFD_USEFULLPATHDIR	0x00000004
 #define RFD_NOSHOWOPEN          0x00000008
+#define RFD_CONSENTHOTKEY   0x00000100
 
 void _RunFileDlg(HWND hwnd, UINT idIcon, LPCITEMIDLIST pidlWorkingDir, UINT idTitle, UINT idPrompt, DWORD dwFlags)
 {
@@ -7195,7 +7196,7 @@ void _RunFileDlg(HWND hwnd, UINT idIcon, LPCITEMIDLIST pidlWorkingDir, UINT idTi
     TCHAR szPrompt[256];
     TCHAR szWorkingDir[MAX_PATH];
 
-    dwFlags |= RFD_USEFULLPATHDIR;
+    dwFlags |= RFD_USEFULLPATHDIR | RFD_CONSENTHOTKEY;
     szWorkingDir[0] = 0;
 
     hIcon = idIcon ? LoadIcon(hinstCabinet, MAKEINTRESOURCE(idIcon)) : NULL;
