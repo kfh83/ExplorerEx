@@ -1360,7 +1360,8 @@ LRESULT CTrayNotify::_Size()
     _nCols = _CalcRects(rTotal.right,
                         rTotal.bottom, &rClock, &rNotifies);
 
-
+    rNotifies.top++;
+    
     SetWindowPos(_hwndClock, NULL, rClock.left, rClock.top,
                  rClock.right - rClock.left, rClock.bottom - rClock.top, SWP_NOZORDER);
 
