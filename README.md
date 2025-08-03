@@ -12,4 +12,4 @@ _Setup by [Chudling](https://github.com/deporitazz)_
 _Setup by [tflusher](https://github.com/comdlg32)_
 
 <img width="1024" height="768" alt="travy-patty" src="https://github.com/user-attachments/assets/d22be634-569f-4759-a67f-94cef60afffc" />
-_Setup by [Travis](https://github.com/travy-patty)
+_Setup by [Travis](https://github.com/travy-patty)_
