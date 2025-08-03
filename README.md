@@ -4,7 +4,7 @@ ExplorerEx is an adaptation of Windows Explorer from Windows Server 2003's sourc
 The 2000 branch aims to replicate the looks and feel of the Windows 2000 explorer using the Server2k3 codebase.
 
 # Previews
-**NOTE:** The screenshots below use other third-party customization software to attain the look.
+**NOTE:** The screenshots below use other third-party customization software in combination with ExplorerEx-2k.
 
 <img width="1024" height="768" alt="deporitazz" src="https://github.com/user-attachments/assets/7d02f00b-2bad-42a3-9931-06af0b0278ff" />
 
