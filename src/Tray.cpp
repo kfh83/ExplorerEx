@@ -765,15 +765,6 @@ LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
             }
 
             switch (uMsg) {
-            case WM_LBUTTONDOWN:
-                // The button was clicked on, then we don't need no stink'n focus rect.
-                SendMessage(GetParent(hwnd), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET,
-                    UISF_HIDEFOCUS), 0);
-
-                goto ProcessCapture;
-                break;
-
-
             case WM_KEYDOWN:
                 // The user pressed enter or return or some other bogus key combination when
                 // the start button had keyboard focus, so show the rect....
