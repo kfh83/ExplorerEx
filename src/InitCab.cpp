@@ -1206,6 +1206,10 @@ HANDLE CreateDesktopAndTray()
         {
             // cache the handle to the desktop...
             hDesktop = SHCreateDesktop(c_tray.GetDeskTray());
+#ifdef EXEX_DLL
+            if (hDesktop)
+                PostMessage(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
+#endif
         }
     }
 
@@ -1985,7 +1989,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
             // Make sure we are the first one to call the FileIconInit...
             FileIconInit(TRUE); // Tell the shell we want to play with a full deck
-
+#endif
             g_fLogonCycle = IsFirstInstanceAfterLogon();
             g_fCleanShutdown = ReadCleanShutdown();
 
@@ -2005,7 +2009,6 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 // let users know we are in safe mode
                 DisplayCleanBootMsg();
             }
-#endif
 
             // Create the other special folders.
             CreateShellDirectories();
