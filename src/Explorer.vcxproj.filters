@@ -156,9 +156,6 @@
     <ClInclude Include="patternhelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MinHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="wtl\atlapp.h">
       <Filter>Header Files\ATL</Filter>
     </ClInclude>
@@ -262,12 +259,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="immersive\ImmersiveInit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\MinHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\Hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
