@@ -4208,6 +4208,13 @@ LRESULT CTray::_HandleDestroy()
         _hShellReadyEvent = NULL;
     }
 
+    if (_hShellDesktopSwitch)
+    {
+        ResetEvent(_hShellDesktopSwitch);
+        CloseHandle(_hShellDesktopSwitch);
+        _hShellDesktopSwitch = NULL;
+    }
+
     if (_fHandledDelayBootStuff)
     {
         TBOOL(WinStationUnRegisterConsoleNotification(SERVERNAME_CURRENT, v_hwndTray));
@@ -6805,6 +6812,15 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case TM_SHOWTRAYBALLOON:
         PostMessage(_hwndNotify, TNM_SHOWTRAYBALLOON, wParam, 0);
         break;
+    case TM_FIREDESKTOPSWITCH:
+    {
+        _hShellDesktopSwitch = CreateEvent(0, TRUE, TRUE, TEXT("ShellDesktopSwitchEvent"));
+        if (_hShellDesktopSwitch)
+        {
+            SetEvent(_hShellDesktopSwitch);
+        }
+        break;
+    }
 
     case TM_STARTMENUDISMISSED:
         //  107561 - call CoFreeUnusedLibraries() peridically to free up dlls - ZekeL - 4-MAY-2001

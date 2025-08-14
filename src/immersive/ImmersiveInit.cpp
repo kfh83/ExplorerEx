@@ -275,6 +275,13 @@ HRESULT InitializeImmersiveShell()
 
 	wprintf(L"Initialising the Immersive shell...\n");
 
+	HANDLE hShellStartup = OpenEvent(EVENT_MODIFY_STATE, FALSE, L"Local\\ShellStartupEvent");
+	if (hShellStartup)
+	{
+		SetEvent(hShellStartup);
+		CloseHandle(hShellStartup);
+	}
+
 	hr = CoCreateInstance(CLSID_ImmersiveShellBuilder, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pShellBuilder));
 
 	if (FAILED(hr))
