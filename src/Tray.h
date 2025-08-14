@@ -626,6 +626,8 @@ protected:
     // and they can do their stuff
     HANDLE _hShellReadyEvent;
 
+    HANDLE _hShellDesktopSwitch;
+
     // BOGUS: nuke this (multiple monitors...)
     HWND _aHwndAutoHide[ABE_MAX];
 
