@@ -307,7 +307,7 @@ public:
     CStartButton _startButton;
 
     IBandSite* _ptbs;
-    IBandSite* _bandSite;
+    IBandSite* _bandSite; // Who added this??
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
@@ -346,7 +346,8 @@ protected:
     HRESULT _LoadInProc(PCOPYDATASTRUCT pcds);
 
     // Vista composition related
-    BOOL _fIsGlass;
+    BOOL _fGlassEnabled;
+
 public:
     void EnableGlass(BOOL bEnable);
 

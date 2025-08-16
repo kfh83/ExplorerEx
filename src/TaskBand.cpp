@@ -56,6 +56,8 @@
 
 const TCHAR c_szTaskSwClass[] = TEXT("MSTaskSwWClass");
 const TCHAR c_wzTaskBandTheme[] = TEXT("TaskBand");
+const TCHAR c_wzTaskBandCompositedTheme[] = TEXT("TaskBandComposited");
+const TCHAR c_wzTaskBandCompositedThemeVert[] = TEXT("TaskBandCompositedVert");
 const TCHAR c_wzTaskBandThemeVert[] = TEXT("TaskBandVert");
 const TCHAR c_wzTaskBandGroupMenuTheme[] = TEXT("TaskBandGroupMenu");
 
@@ -434,10 +436,19 @@ HRESULT CTaskBand::Load(IStream *ps)
 
 // *** IOleCommandTarget ***
 
-STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup,DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
+STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
 {
-    HRESULT hr = OLECMDERR_E_NOTSUPPORTED;
-    return hr;
+    if (!pguidCmdGroup || !IsEqualGUID(CGID_DeskBand, *pguidCmdGroup))
+        return OLECMDERR_E_NOTSUPPORTED;
+
+    if (nCmdID == DBID_SETWINDOWTHEME && pvarargIn && pvarargIn->vt == VT_BSTR && _tb)
+    {
+        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+        SetWindowTheme(_hwnd, pszTheme, 0);
+        _SetToolbarTheme();
+        _BandInfoChanged();
+    }
+    return S_OK;
 }
 
 STDMETHODIMP CTaskBand::QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT *pcmdtext)
@@ -521,14 +532,9 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
             0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
 
-        LPCWSTR pszClass = L"TaskBandComposited";
-
-        if (!_CanGlassifyTaskbar())
-            pszClass = c_wzTaskBandTheme;
-
-        wprintf(L"CTaskBand::SetSite using pszClass: %s\n", pszClass);
-
-        SetWindowTheme(hwnd, pszClass, NULL);
+        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+        wprintf(L"CTaskBand::SetSite using pszTheme: %s\n", pszTheme);
+        SetWindowTheme(hwnd, pszTheme, NULL);
     }
 
     ATOMICRELEASE(_punkSite);
@@ -577,7 +583,7 @@ HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode,
 
     if (_tb && (_dwViewMode != dwOldViewMode))
     {
-        SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
+        _SetToolbarTheme();
         _CheckSize();
     }
 
@@ -2488,6 +2494,23 @@ void CTaskBand::_UpdateFlashingFlag()
                 ptiGroup->dwFlags |= TIF_RENDERFLASHED;
             }
         }
+    }
+}
+
+void CTaskBand::_SetToolbarTheme()
+{
+    if (_hTheme)
+    {
+        LPCWSTR pszTheme;
+        if (_IsHorizontal())
+        {
+            pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+        }
+        else
+        {
+            pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedThemeVert : c_wzTaskBandThemeVert;
+        }
+        SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
     }
 }
 

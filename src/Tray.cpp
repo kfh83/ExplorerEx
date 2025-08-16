@@ -1314,6 +1314,9 @@ void CTray::_InitBandsite()
     _UpdateBandSiteStyle();
 
     BandSite_Load();
+
+    BandSite_FixUpComposition(_ptbs);
+
     // now that the mode is set, we need to force an update because we
     // explicitly avoided the update during BandSite_Load
     _UpdateVertical(_uStuckPlace, TRUE);
@@ -1325,6 +1328,7 @@ void CTray::_InitBandsite()
 
     // Now that bandsite is ready, set the correct size
     VerifySize(FALSE, TRUE);
+    _AccountAllBandsForTaskbarSizingBar();
 }
 
 void CTray::_KickStartAutohide()
@@ -4383,17 +4387,16 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
     return _ssomgr.EnableObject(&plipd->clsid, plipd->dwFlags);
 }
 
-// @NOTE (Olivia): Temp shim
 BOOL CTray::GlassEnabled()
 {
-    return _fIsGlass;
+    return _fGlassEnabled;
 }
 
 void CTray::EnableGlass(BOOL bEnable)
 {
-    if (_fIsGlass != bEnable)
+    if (_fGlassEnabled != bEnable)
     {
-        _fIsGlass = bEnable;
+        _fGlassEnabled = bEnable;
         _RegisterForGlass();
         _OnThemeChanged();
     }
@@ -4403,52 +4406,56 @@ void CTray::_RegisterForGlass()
 {
     DWM_BLURBEHIND pBlurBehind;
     pBlurBehind.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION | DWM_BB_TRANSITIONONMAXIMIZED;
-    pBlurBehind.fEnable = _fIsGlass && IsCompositionActive();
+    pBlurBehind.fEnable = _fGlassEnabled && IsCompositionActive();
     pBlurBehind.hRgnBlur = NULL;
     pBlurBehind.fTransitionOnMaximized = TRUE;
     DwmEnableBlurBehindWindow(_hwnd, &pBlurBehind);
 }
 
+const WCHAR c_szTaskbarTheme[] = L"TaskBar";
+const WCHAR c_szTaskbarCompositedTheme[] = L"TaskBarComposited";
+const WCHAR c_szTaskbarThemeVert[] = L"TaskBarVert";
+const WCHAR c_szTaskbarCompositedThemeVert[] = L"TaskBarVertComposited";
+
 void CTray::_OpenTaskbarThemeData()
 {
-    if (IsCompositionActive() && _fIsGlass)
+    if (IsCompositionActive() && _fGlassEnabled)
     {
         WCHAR szClassList[32];
-        StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"TaskBarComposited", L"TaskBar");
+        StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", c_szTaskbarCompositedTheme, c_szTaskbarTheme);
         _hTheme = OpenThemeData(_hwnd, szClassList);
-        wprintf(L"szClassList: %s", szClassList); // @NOTE(Olivia): Should be TaskbarComposited::Taskbar but its broken lel
+        wprintf(L"szClassList: %s", szClassList);
     }
     else
     {
-        _hTheme = OpenThemeData(_hwnd, L"TaskBar");
+        _hTheme = OpenThemeData(_hwnd, c_szTaskbarTheme);
         wprintf(L"szClassList: TaskBar\n");
     }
 }
 
 void CTray::_SetBandSiteTheme()
 {
-    LPCWSTR pszClassList;
+    LPCWSTR pszTheme;
 
-    BOOL fComposited = IsCompositionActive() && _fIsGlass;
+    BOOL fComposited = IsCompositionActive() && _fGlassEnabled;
+
     if (STUCK_HORIZONTAL(_uStuckPlace))
     {
-        pszClassList = fComposited ? L"TaskBarComposited" : L"TaskBar";
+        pszTheme = fComposited ? c_szTaskbarCompositedTheme : c_szTaskbarTheme;
     }
     else
     {
-        pszClassList = fComposited ? L"TaskBarVertComposited" : L"TaskBarVert";
+        pszTheme = fComposited ? c_szTaskbarCompositedThemeVert : c_szTaskbarThemeVert;
     }
-    BandSite_SetWindowTheme(_bandSite, (LPWSTR)pszClassList);
+    BandSite_SetWindowTheme(_ptbs, (LPWSTR)pszTheme);
 }
 
 void CTray::_SetRebarTheme()
 {
     if (_hTheme)
     {
-        LPCWSTR pszClassList;
-        if (!IsCompositionActive() || (pszClassList = L"TaskBarComposited", !_fIsGlass))
-            pszClassList = L"TaskBar";
-        SendMessageW(_hwndRebar, RB_SETWINDOWTHEME, 0, (LPARAM)pszClassList);
+        LPCWSTR pszTheme = (IsCompositionActive() && (_fGlassEnabled)) ? c_szTaskbarCompositedTheme : c_szTaskbarTheme;
+        SendMessageW(_hwndRebar, RB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
     }
 }
 
@@ -4472,12 +4479,12 @@ void CTray::_AccountAllBandsForTaskbarSizingBar()
 
     if (GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId())
     {
-        if (_bandSite)
-            BandSite_AccountAllBandsForTaskbarSizingBar(_bandSite, fShouldSubclass);
+        if (_ptbs)
+            BandSite_AccountAllBandsForTaskbarSizingBar(_ptbs, fShouldSubclass);
     }
     else
     {
-        PostMessageW(_hwnd, 0x5B6, fShouldSubclass, NULL);
+        PostMessage(_hwnd, 0x5B6, fShouldSubclass, NULL);
     }
 }
 

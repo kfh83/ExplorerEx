@@ -203,14 +203,14 @@ BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
 }
 
 // @NOTE (Olivia): Thanks to amr for this solution
-void WINAPI BandSite_FixUpComposition(IBandSite* pbs)
+void WINAPI BandSite_FixUpComposition(IBandSite *pbs)
 {
     BOOL fFixed = FALSE;
 
     DWORD dwBandID;
     for (UINT iBand = 0; !fFixed && SUCCEEDED(pbs->EnumBands(iBand, &dwBandID)); iBand++)
     {
-        IDeskBand* pdb;
+        IDeskBand *pdb;
         if (SUCCEEDED(pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pdb))))
         {
             fFixed = BandSite_FixUpCompositionForBand(pdb);

@@ -143,6 +143,7 @@ protected:
     void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
     void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int cThumbnails);
 
+    void _SetToolbarTheme();
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
     void _CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows,
