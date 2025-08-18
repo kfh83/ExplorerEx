@@ -617,8 +617,9 @@ BOOL SHForceWindowZorder(HWND hwnd, HWND hwndInsertAfter)
 
     if (fRet && hwndInsertAfter == HWND_TOPMOST)
     {
-        if (!(GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST))
+        if (!(GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST))
         {
+            wprintf(L"SHForceWindowZorder: SetWindowPos(%x, HWND_TOPMOST) failed", hwnd);
             //
             // user didn't actually move the hwnd to topmost
             //
@@ -641,6 +642,10 @@ BOOL SHForceWindowZorder(HWND hwnd, HWND hwndInsertAfter)
 
             // Retry the set.  (This should make all owned windows topmost as well.)
             SetWindowZorder(hwnd, HWND_TOPMOST);
+            if (!(GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST))
+            {
+				wprintf(L"SHForceWindowZorder: window %x is still not topmost", hwnd);
+            }
         }
     }
 

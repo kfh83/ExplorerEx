@@ -25,7 +25,7 @@ IStartButton : IUnknown
     STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
 };
 
-struct __declspec(novtable) IStartButtonSite
+DECLARE_INTERFACE(IStartButtonSite)
 {
     STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
     STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
@@ -96,7 +96,7 @@ public:
     INT _nSomeSize;
     int _uDown;                   // start btn pressed?
     int _fAllowUp;                // can we un-press it?
-    HWND _hwndStartBtn;
+    HWND _hwndStart;
     HWND _hwndStartBalloon;
     SIZE _size;
     HTHEME _hTheme;
