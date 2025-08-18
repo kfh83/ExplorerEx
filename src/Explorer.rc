@@ -293,7 +293,7 @@ END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    IDS_STARTBUTTONTIP          "Click here to begin"
+    IDS_STARTBUTTONTIP          "Start"
 
     IDS_UNDOTEMPLATE            "&Undo %s"
     IDS_CASCADE                 "Cascade Windows"

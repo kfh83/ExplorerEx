@@ -141,52 +141,57 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
     return S_OK;
 }
 
-HRESULT CStartButton::CreateStartButtonBalloon(UINT a2, UINT uID)
+HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
 {
     if (!_hwndStartBalloon)
     {
-        _hwndStartBalloon = SHFusionCreateWindow(TOOLTIPS_CLASS, NULL, 
-            WS_POPUP | TTS_BALLOON | TTS_NOPREFIX | TTS_ALWAYSTIP, 
-            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-            _hwndStart, NULL, GetModuleHandle(NULL), NULL);
+        _hwndStartBalloon = SHFusionCreateWindow(
+            TOOLTIPS_CLASS, NULL,
+            WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP | TTS_BALLOON,
+            CW_USEDEFAULT, CW_USEDEFAULT,
+            CW_USEDEFAULT, CW_USEDEFAULT,
+            _hwndStart, NULL, g_hinstCabinet,
+            NULL);
 
         if (_hwndStartBalloon)
         {
-            SendMessage(_hwndStartBalloon, 0x2007u, 6, 0);
-            SendMessage(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, 300);
-            SendMessage(_hwndStartBalloon, 0x200Bu, 0, (LPARAM)L"TaskBar");
-            SetPropW(_hwndStartBalloon, L"StartMenuBalloonTip", (HANDLE)3);
+            SendMessage(_hwndStartBalloon, CCM_SETVERSION, COMCTL32_VERSION, 0);
+            SendMessage(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, (LPARAM)300);
+
+            SendMessage(_hwndStartBalloon, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
+
+            SetProp(_hwndStartBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_STARTBUTTON);
         }
     }
-    WCHAR Buffer[260];
-    if (LoadString(GetModuleHandle(NULL), uID, Buffer, 260))
+
+    if (_hwndStartBalloon)
     {
-        TOOLINFO toolInfo = { sizeof(toolInfo) };
-        toolInfo.uFlags = TTF_TRANSPARENT | TTF_TRACK | TTF_IDISHWND; // 0x0100|0x0020|0x0001 -> 0x121 -> 289
-        toolInfo.hwnd = _hwndStart;
-        toolInfo.uId = (UINT_PTR)_hwndStart;  //TTF_IDISHWND
-        
-        SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)&toolInfo);
-        SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, 0, 0);
-
-        toolInfo.lpszText = Buffer;
-        SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&toolInfo);
-
-        if (LoadString(GetModuleHandle(NULL), a2, Buffer, 260))
+        WCHAR szTip[MAX_PATH];
+        if (LoadString(g_hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip)))
         {
-            SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)&Buffer);
+            TOOLINFO ti = { 0 };
+            ti.cbSize = sizeof(ti);
+            ti.hwnd = _hwndStart;
+            ti.uId = (UINT_PTR)ti.hwnd;
+            ti.uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT;
+
+            SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
+            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)0);
+
+            ti.lpszText = szTip;
+            SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&ti);
+
+            if (LoadString(g_hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip)))
+            {
+                SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)szTip);
+            }
+
+            RECT rc;
+            GetWindowRect(_hwndStart, &rc);
+            SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELPARAM((rc.left + rc.right) / 2, rc.top));
+            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)TRUE, (LPARAM)&ti);
+            SetTimer(_hwndStart, 1, 10000, 0);
         }
-
-        RECT Rect;
-        GetWindowRect(_hwndStart, &Rect);
-        WORD xCoordinate = (WORD)((Rect.left + Rect.right) / 2);
-        WORD yCoordinate = LOWORD(Rect.top);
-
-        SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELONG(xCoordinate, yCoordinate));
-        SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, TRUE, (LPARAM)&toolInfo);
-
-        // show tooltip for 10 seconds
-        SetTimer(_hwndStart, 1u, 10000, 0);
     }
     return S_OK;
 }
@@ -891,8 +896,7 @@ void CStartButton::RepositionBalloon()
         GetWindowRect(_hwndStart, &rc);
         WORD xCoordinate = (WORD)((rc.left + rc.right) / 2);
         WORD yCoordinate = LOWORD(rc.top);
-        SendMessageW(
-            _hwndStartBalloon, 0x412u, 0, MAKELONG(xCoordinate, yCoordinate));
+        SendMessageW(_hwndStartBalloon, 0x412u, 0, MAKELONG(xCoordinate, yCoordinate));
     }
 }
 

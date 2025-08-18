@@ -357,6 +357,7 @@ protected:
     void _AccountAllBandsForTaskbarSizingBar();
     BOOL _ShouldSubclassForSizingBar();
 
+    void _DrawBackupStartButton(const HDC hdc);
 
     LRESULT _CreateWindows();
     LRESULT _InitStartButtonEtc();
