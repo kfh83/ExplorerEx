@@ -4425,7 +4425,8 @@ LRESULT CTaskBand::_HandleCreate()
         SendMessage(_tb, TB_ADDSTRING, (WPARAM)g_hinstCabinet, (LPARAM)IDS_BOGUSLABELS);
 
         _OpenTheme();
-        SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
+		_SetToolbarTheme();
+        //SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
         
         SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
 

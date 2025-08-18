@@ -5,6 +5,7 @@
 #define _bandsite_h
 
 void BandSite_HandleDelayBootStuff(IUnknown *punk);
+void BandSite_HandleDelayInitStuff(IUnknown *punk);
 BOOL BandSite_HandleMessage(IUnknown *punk, HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *plres);
 void BandSite_SetMode(IUnknown *punk, DWORD dwMode);
 void BandSite_Update(IUnknown *punk);

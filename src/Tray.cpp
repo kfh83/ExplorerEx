@@ -730,18 +730,19 @@ void CTray::_CreateTrayTips()
         // taskbar windows are themed under Taskbar subapp name
         SendMessage(_hwndTrayTips, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
 
-        SetWindowZorder(_hwndTrayTips, HWND_TOPMOST);
+        //SetWindowZorder(_hwndTrayTips, HWND_TOPMOST);
 
         TOOLINFO ti;
 
         ti.cbSize = sizeof(ti);
-        ti.uFlags = TTF_IDISHWND | TTF_EXCLUDETOOLAREA;
+        ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS | TTF_EXCLUDETOOLAREA;
         ti.hwnd = _hwnd;
         ti.uId = (UINT_PTR)_stb._hwndStart;
         ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_STARTBUTTONTIP);
         ti.hinst = g_hinstCabinet;
         SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
 
+        // EXEX - VISTA TODO(Olivia) : Remove this because vista uses a custom clock tooltip.
         HWND hwndClock = _GetClockWindow();
         if (hwndClock)
         {
@@ -778,7 +779,9 @@ LRESULT CTray::_CreateWindows()
         if (_ptbs)
         {
             IUnknown_GetWindow(_ptbs, &_hwndRebar);
+            _SetRebarTheme();
             SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, FALSE);
+            SetWindowStyle(_hwndRebar, 0x10, 1);
 
             // No need to check the disk space thing for non-privileged users, this reduces activity in the TS case
             // and only admins can properly free disk space anyways.
@@ -948,7 +951,7 @@ LRESULT CTray::_OnCreate(HWND hwnd)
     SetWindowStyle(_hwnd, WS_BORDER | WS_THICKFRAME, !_hTheme);
 
     // Force Refresh of frame
-    SetWindowPos(_hwnd, NULL, 0, 0, 0, 0, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE);
+    SetWindowPos(_hwnd, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
     if (_HotkeyCreate())
     {
@@ -1287,7 +1290,8 @@ void CTray::_UpdateVertical(UINT uStuckPlace, BOOL fForce)
             // DoneMoving will then go a screw up all of the window sizing
             _fIgnoreDoneMoving = TRUE;
             BandSite_SetMode(_ptbs, STUCK_HORIZONTAL(uStuckPlace) ? 0 : DBIF_VIEWMODE_VERTICAL);
-            BandSite_SetWindowTheme(_ptbs, (LPWSTR)(STUCK_HORIZONTAL(uStuckPlace) ? c_wzTaskbarTheme : c_wzTaskbarVertTheme));
+            _SetBandSiteTheme();
+            //BandSite_SetWindowTheme(_ptbs, (LPWSTR)(STUCK_HORIZONTAL(uStuckPlace) ? c_wzTaskbarTheme : c_wzTaskbarVertTheme));
             _fIgnoreDoneMoving = FALSE;
         }
 
@@ -1487,6 +1491,8 @@ DWORD CTray::_SyncThreadProc()
         _InitStartButtonEtc();
 
         // @MOD - Skipped telemetry SHTracePerf(&ShellTraceId_Explorer_InitStartButton_Stop)
+
+        BandSite_HandleDelayInitStuff(_ptbs);
 
         // it looks really strange for the tray to pop up and rehide at logon
         // if we are autohide don't activate the tray when we show it
@@ -4460,6 +4466,25 @@ void CTray::_SetRebarTheme()
     }
 }
 
+void CTray::_DrawBackupStartButton(const HDC hdc)
+{
+    if (_hTheme)
+    {
+        if (_stb._hTheme)
+        {
+            RECT rc;
+            GetWindowRect(_stb._hwndStart, &rc);
+            MapWindowPoints(0, _hwnd, (LPPOINT)&rc, 2u);
+            InflateRect(&rc, RECTWIDTH(rc) / -20, RECTHEIGHT(rc) / -20);
+            DrawThemeBackground(_stb._hTheme, hdc, 1, 1, &rc, 0);
+        }
+    }
+    else
+    {
+        SendMessage(_stb._hwndStart, 0x318u, (WPARAM)hdc, 4);
+    }
+}
+
 // @NOTE (Olivia): Cleanup/simplifiy
 BOOL CTray::_ShouldSubclassForSizingBar()
 {
@@ -5878,7 +5903,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (!(_uAutoHide & AH_ON))
             {
                 // EXEX-VISTA TODO: Uncomment when implemented _DrawBackupStartButton.
-                // _DrawBackupStartButton(hdc);
+                _DrawBackupStartButton(hdc);
             }
 
             if (wParam == 0)
@@ -5995,7 +6020,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         return SendMessage(_GetClockWindow(), WM_NOTIFY, wParam, lParam);
 
                     case TTN_SHOW:
-                        SetWindowZorder(_hwndTrayTips, HWND_TOP);
+                        //SetWindowZorder(_hwndTrayTips, HWND_TOP);
                         break;
 
                 }

@@ -74,6 +74,7 @@ protected:
     HRESULT _SetWindowTheme(LPWSTR pwzTheme);
     friend IBandSite* BandSite_CreateView();
     friend void BandSite_HandleDelayBootStuff(IUnknown* punk);
+	friend void BandSite_HandleDelayInitStuff(IUnknown *punk);
     friend void BandSite_Load();
     friend HRESULT BandSite_SetWindowTheme(IBandSite* pbs, LPWSTR pwzTheme);
     
@@ -181,9 +182,9 @@ void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething
     }
 }
 
-BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
+BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown *punk)
 {
-    IDeskBand2* pdb2;
+    IDeskBand2 *pdb2;
     BOOL fCanRenderComposited = FALSE;
     if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdb2))))
     {
@@ -191,7 +192,7 @@ BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
         pdb2->SetCompositionState(fCanRenderComposited && (IsAppThemed() && IsCompositionActive()));
         pdb2->Release();
     }
-    
+
     BOOL bRet = FALSE;
     if (!fCanRenderComposited)
     {
@@ -783,6 +784,20 @@ void BandSite_HandleDelayBootStuff(IUnknown* punk)
         CTrayBandSite* pbs = IUnknownToCTrayBandSite(punk);
         pbs->_fDelayBootStuffHandled = TRUE;
         pbs->_BroadcastExec(&CGID_DeskBand, DBID_FINISHINIT, 0, NULL, NULL);
+    }
+}
+
+void BandSite_HandleDelayInitStuff(IUnknown *punk)
+{
+    if (punk)
+    {
+        CTrayBandSite *pbs = IUnknownToCTrayBandSite(punk);
+        if (pbs)
+        {
+            pbs->_fDelayBootStuffHandled = 1;
+            pbs->_BroadcastExec(&CGID_DeskBand, DBID_FINISHINIT, 0, NULL, NULL);
+            pbs->Release();
+        }
     }
 }
 
