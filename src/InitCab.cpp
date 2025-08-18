@@ -2009,7 +2009,6 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 // let users know we are in safe mode
                 DisplayCleanBootMsg();
             }
-#endif
 
             // Create the other special folders.
             CreateShellDirectories();
