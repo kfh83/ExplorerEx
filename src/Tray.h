@@ -248,6 +248,8 @@ public:
         return _hwndNotify;
     }
 
+    void TellTaskBandWeWantToOpenThisShit();
+
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
     {
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
@@ -696,8 +698,3 @@ extern UINT g_uStartButtonAllowPopup;
 
 BOOL _IsSizeMoveEnabled();
 BOOL _IsSizeMoveRestricted();
-
-
-#endif  // __cplusplus
-
-#endif  // _TRAY_H

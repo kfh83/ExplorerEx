@@ -201,6 +201,12 @@ EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
     return ss.fStartPanelOn;
 }
 
+void CTray::TellTaskBandWeWantToOpenThisShit()
+{
+    static UINT WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
+    SendMessage(_hwndTasks, WM_ShellHook, 7, 0);
+}
+
 BOOL CTray::_CreateClockWindow()
 {
     _hwndNotify = _trayNotify.TrayNotifyCreate(_hwnd, IDC_CLOCK, g_hinstCabinet);

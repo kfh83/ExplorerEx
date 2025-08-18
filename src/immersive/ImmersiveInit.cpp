@@ -32,7 +32,7 @@ HRESULT CTaskmanWindow::RegisterWindowClass()
 	wc.style = 8; // TODO: Document.
 	wc.hIcon = NULL;
 	wc.hIconSm = NULL;
-	wc.hInstance = hinstCabinet;
+	wc.hInstance = g_hinstCabinet;
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.hbrBackground = (HBRUSH)2; // TODO: Document.
 	wc.lpfnWndProc = s_WndProc;
@@ -73,7 +73,7 @@ CTaskmanWindow::CTaskmanWindow()
 		0, 0, 0, 0,
 		NULL,
 		NULL,
-		hinstCabinet,
+		g_hinstCabinet,
 		this
 	);
 
