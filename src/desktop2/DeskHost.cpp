@@ -1229,7 +1229,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG* pmsg)
         DesktopHost_Dismiss(_hwnd);
         // For accessibility purposes, dismissing the
         // Start Menu should place focus on the Start Button.
-        SetFocus(c_tray._startButton._hwndStartBtn);
+        SetFocus(c_tray._stb._hwndStart);
         return TRUE;
     }
 
@@ -1310,7 +1310,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG* pmsg)
             DesktopHost_Dismiss(_hwnd);
             // For accessibility purposes, hitting ESC to dismiss the
             // Start Menu should place focus on the Start Button.
-            SetFocus(c_tray._startButton._hwndStartBtn);
+            SetFocus(c_tray._stb._hwndStart);
             return TRUE;
 
         case VK_RETURN:

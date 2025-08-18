@@ -210,7 +210,7 @@ public:
     STDMETHODIMP_(VOID) OnStartMenuDismissed() override;
     STDMETHODIMP_(int) GetStartButtonMinHeight() override;
     STDMETHODIMP_(UINT) GetStartMenuStuckPlace() override;
-    STDMETHODIMP_(VOID) SetUnhideTimer(LONG a2, LONG a3) override;
+    STDMETHODIMP_(VOID) SetUnhideTimer(LONG x, LONG y) override;
     STDMETHODIMP_(VOID) OnStartButtonClosing() override;
     //~ End IStartButtonSite Interface
 
@@ -304,7 +304,7 @@ public:
 
     HWND _hwndLastActive;
 
-    CStartButton _startButton;
+    CStartButton _stb;
 
     IBandSite* _ptbs;
     IBandSite* _bandSite; // Who added this??
@@ -396,7 +396,7 @@ protected:
     void _ScreenSizeChange(HWND hwnd);
     void _ContextMenu(DWORD dwPos, BOOL fFromNotifArea);
     void _StuckTrayChange();
-    void _ResetZorder();
+    void _ResetZorder(int a2);
     void _HandleSize();
     BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpdateSize);
     void _RegisterGlobalHotkeys();
