@@ -18,6 +18,29 @@
 #include "winter.h"
 #include "ieguidp.h"
 
+enum ZBID
+{
+    ZBID_DEFAULT = 0,
+    ZBID_DESKTOP = 1,
+    ZBID_UIACCESS = 2,
+    ZBID_IMMERSIVE_IHM = 3,
+    ZBID_IMMERSIVE_NOTIFICATION = 4,
+    ZBID_IMMERSIVE_APPCHROME = 5,
+    ZBID_IMMERSIVE_MOGO = 6,
+    ZBID_IMMERSIVE_EDGY = 7,
+    ZBID_IMMERSIVE_INACTIVEMOBODY = 8,
+    ZBID_IMMERSIVE_INACTIVEDOCK = 9,
+    ZBID_IMMERSIVE_ACTIVEMOBODY = 10,
+    ZBID_IMMERSIVE_ACTIVEDOCK = 11,
+    ZBID_IMMERSIVE_BACKGROUND = 12,
+    ZBID_IMMERSIVE_SEARCH = 13,
+    ZBID_GENUINE_WINDOWS = 14,
+    ZBID_IMMERSIVE_RESTRICTED = 15,
+    ZBID_SYSTEM_TOOLS = 16,
+    ZBID_LOCK = 17,
+    ZBID_ABOVELOCK_UX = 18,
+};
+
 // path.cpp (private stuff) ---------------------
 
 #define PQD_NOSTRIPDOTS 0x00000001
@@ -284,6 +307,9 @@ typedef struct _NOTIFYICONDATA32W {
 #endif
 #if (_WIN32_IE >= 0x600)
     GUID guidItem;
+#endif
+#if NTDDI_VERSION >= 0x06000000
+    DWORD dwBalloonIcon;
 #endif
 } NOTIFYICONDATA32W, * PNOTIFYICONDATA32W;
 
@@ -1077,6 +1103,7 @@ inline HRESULT(WINAPI* SHMapIDListToSystemImageListIndex)(
 inline BOOL(WINAPI *IsShellManagedWindow)(HWND hwnd);
 inline BOOL(WINAPI *IsShellFrameWindow)(HWND hwnd);
 inline HWND(WINAPI *GhostWindowFromHungWindow)(HWND hwnd);
+inline BOOL(WINAPI *GetWindowBand)(HWND hwnd, ZBID *band);
 void  SHAdjustLOGFONT(IN OUT LOGFONT* plf);
 BOOL  SHIsSameObject(IUnknown* punk1, IUnknown* punk2);
 BOOL  SHAreIconsEqual(HICON hIcon1, HICON hIcon2);
@@ -1465,5 +1492,38 @@ private:
     IPinnedList25* m_pinnedList25 = 0;
     //int m_build = 0;
 };
+
+inline HWND WINAPI GetTaskmanWindow(void)
+{
+    HMODULE hmUser32 = LoadLibrary(TEXT("user32.dll"));
+    HWND result = NULL;
+
+    if (hmUser32)
+    {
+        auto pfn = (HWND (WINAPI *)(void))GetProcAddress(hmUser32, "GetTaskmanWindow");
+        if (pfn)
+            result = pfn();
+        FreeLibrary(hmUser32);
+    }
+
+
+    return result;
+}
+
+inline BOOL WINAPI SetTaskmanWindow(IN HWND hWnd)
+{
+    HMODULE hmUser32 = LoadLibrary(TEXT("user32.dll"));
+    BOOL result = FALSE;
+
+    if (hmUser32)
+    {
+        auto pfn = (BOOL (WINAPI *)(IN HWND hWnd))GetProcAddress(hmUser32, "SetTaskmanWindow");
+        if (pfn)
+            result = pfn(hWnd);
+        FreeLibrary(hmUser32);
+    }
+
+    return result;
+}
 
 HRESULT WINAPI DwmpStartOrStopFlip3D();

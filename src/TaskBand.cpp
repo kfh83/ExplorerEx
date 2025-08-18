@@ -404,6 +404,11 @@ HRESULT CTaskBand::Init(CTray* ptray)
          hr = S_OK;
     }
 
+#ifdef EXEX_DLL
+    _spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
+    //InitializeImmersiveShell();
+#endif
+
     return hr;
 }
 
@@ -2548,11 +2553,81 @@ public:
 
 typedef ICONDATA* PICONDATA;
 
+DEFINE_GUID(GUID_AppUserModelIdProperty, 0x9F4C2855, 0x9F79, 0x4B39, 0xA8,0xD0, 0xE1,0xD4,0x2D,0xE1,0xD5,0xF3);
+
+HICON GetUWPIcon(HWND hWnd)
+{
+    HICON hiconResult = NULL;
+    HRESULT hr = S_OK;
+    IShellItemImageFactory *psiif = nullptr;
+    SIIGBF flags = SIIGBF_RESIZETOFIT | SIIGBF_ICONBACKGROUND;
+
+    IPropertyStore *pps = nullptr;
+    hr = SHGetPropertyStoreForWindow(
+        hWnd, IID_PPV_ARGS(&pps)
+    );
+    if (SUCCEEDED(hr))
+    {
+        PROPERTYKEY pKey;
+        pKey.fmtid = GUID_AppUserModelIdProperty;
+        pKey.pid = 5;
+        PROPVARIANT prop;
+        ZeroMemory(&prop, sizeof(PROPVARIANT));
+        pps->GetValue(pKey, &prop);
+        pps->Release();
+        if (prop.bstrVal)
+        {
+            SHCreateItemInKnownFolder(
+                FOLDERID_AppsFolder,
+                KF_FLAG_DONT_VERIFY,
+                prop.bstrVal,
+                IID_PPV_ARGS(&psiif)
+            );
+            if (psiif)
+            {
+                SIZE size;
+                size.cx = GetSystemMetrics(SM_CXSMICON);
+                size.cy = GetSystemMetrics(SM_CYSMICON);
+                HBITMAP hBitmap;
+                hr = psiif->GetImage(
+                    size,
+                    flags,
+                    &hBitmap
+                );
+                if (SUCCEEDED(hr))
+                {
+                    // Easiest way to get an HICON from an HBITMAP
+                    // I have turned the Internet upside down and was unable to find this
+                    // Only a convoluted example using GDI+
+                    // This is from the disassembly of StartIsBack/StartAllBack
+                    HIMAGELIST hImageList = ImageList_Create(size.cx, size.cy, ILC_COLOR32, 1, 0);
+                    if (ImageList_Add(hImageList, hBitmap, NULL) != -1)
+                    {
+                        hiconResult = ImageList_GetIcon(hImageList, 0, 0);
+                        ImageList_Destroy(hImageList);
+
+                        DeleteObject(hBitmap);
+                        psiif->Release();
+                    }
+                    DeleteObject(hBitmap);
+                }
+                psiif->Release();
+            }
+        }
+    }
+    return hiconResult;
+}
+
 void CALLBACK CTaskBand::IconAsyncProc(HWND hwnd, UINT uMsg, ULONG_PTR dwData, LRESULT lResult)
 {
     PICONDATA pid = (PICONDATA)dwData;
     if (pid)
     {
+        if (!lResult && IsShellFrameWindow && IsShellFrameWindow(hwnd))
+        {
+            lResult = (LRESULT)GetUWPIcon(hwnd);
+        }
+
         pid->ptb->_SetWindowIcon(hwnd, (HICON)lResult, pid->iPref);
         delete pid;
     }
@@ -3337,13 +3412,71 @@ void CTaskBand::_DeleteItem(HWND hwnd, int iIndex)
     }
 }
 
+struct BandData
+{
+    ZBID id;
+    bool bInclude;
+};
+
+static const BandData s_bandInclusionData[] =
+{
+    { ZBID_DEFAULT, false },
+    { ZBID_DESKTOP, true },
+    { ZBID_UIACCESS, true },
+    { ZBID_IMMERSIVE_IHM, false },
+    { ZBID_IMMERSIVE_NOTIFICATION, false },
+    { ZBID_IMMERSIVE_APPCHROME, false },
+    { ZBID_IMMERSIVE_MOGO, false },
+    { ZBID_IMMERSIVE_EDGY, false },
+    { ZBID_IMMERSIVE_INACTIVEMOBODY, false },
+    { ZBID_IMMERSIVE_INACTIVEDOCK, false },
+    { ZBID_IMMERSIVE_ACTIVEMOBODY, false },
+    { ZBID_IMMERSIVE_ACTIVEDOCK, false },
+    { ZBID_IMMERSIVE_BACKGROUND, false },
+    { ZBID_IMMERSIVE_SEARCH, false },
+    { ZBID_GENUINE_WINDOWS, false },
+    { ZBID_IMMERSIVE_RESTRICTED, false },
+    { ZBID_SYSTEM_TOOLS, true },
+    { ZBID_LOCK, false },
+    { ZBID_ABOVELOCK_UX, false }
+};
+
+bool IsValidDesktopZOrderBand(HWND hwnd, BOOL fCheckShellManagedWindow)
+{
+    bool fValid = false;
+
+    if (!GetWindowBand)
+        return true;
+
+    ZBID band;
+    if (GetWindowBand(hwnd, &band))
+    {
+        fValid = s_bandInclusionData[band].bInclude;
+        if (fValid && fCheckShellManagedWindow)
+            fValid = !IsShellManagedWindow(hwnd) || GetPropW(hwnd, L"Microsoft.Windows.ShellManagedWindowAsNormalWindow") != nullptr;
+    }
+
+    return fValid;
+}
+
+BOOL ShouldAddWindowToTrayHelper(HWND hwnd)
+{
+    DWORD dwExStyle = GetWindowLongW(hwnd, GWL_EXSTYLE);
+    return (!GetWindow(hwnd, GW_OWNER) || (dwExStyle & WS_EX_APPWINDOW) != 0) && (dwExStyle & WS_EX_TOOLWINDOW) == 0;
+}
+
+BOOL ShouldAddWindowToTray(HWND hwnd)
+{
+    return IsValidDesktopZOrderBand(hwnd, TRUE) && IsWindowVisible(hwnd) && ShouldAddWindowToTrayHelper(hwnd);
+}
+
 //---------------------------------------------------------------------------
 // Adds the given window to the task list.
 // Returns TRUE/FALSE depending on whether the window was actually added.
 // NB No check is made to see if it's already in the list.
 BOOL CTaskBand::_AddWindow(HWND hwnd)
 {
-    if (_IsWindowNormal(hwnd))
+    if (_IsWindowNormal(hwnd) && ShouldAddWindowToTray(hwnd))
     {
         return _InsertItem(hwnd);
     }
@@ -4335,34 +4468,8 @@ void CTaskBand::_SwitchToItem(int iItem, HWND hwnd, BOOL fIgnoreCtrlKey)
 BOOL WINAPI CTaskBand::BuildEnumProc(HWND hwnd, LPARAM lParam)
 {
     CTaskBand* ptasks = (CTaskBand*)lParam;
-    if (IsWindow(hwnd) && IsWindowVisible(hwnd) && !::GetWindow(hwnd, GW_OWNER) &&
-        (!(GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)))
-    {
-        BOOL bCloaked;
-        DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &bCloaked, sizeof(BOOL));
-        if (bCloaked)
-            return TRUE;
-
-        if (IsShellFrameWindow)
-        {
-			if (IsShellFrameWindow(hwnd) && !GhostWindowFromHungWindow(hwnd))
-			{
-				ptasks->_AddWindow(hwnd);
-				return TRUE;
-			}
-        }
-        else if (!GhostWindowFromHungWindow(hwnd))
-        {
-			ptasks->_AddWindow(hwnd);
-			return TRUE;
-        }
-        
-
-        if (IsShellManagedWindow && IsShellManagedWindow(hwnd) && GetPropW(hwnd, L"Microsoft.Windows.ShellManagedWindowAsNormalWindow") == NULL)
-            return TRUE;
-
+    if (!GhostWindowFromHungWindow(hwnd))
         ptasks->_AddWindow(hwnd);
-    }
     return TRUE;
 }
 

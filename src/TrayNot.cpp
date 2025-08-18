@@ -278,6 +278,8 @@ HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
                 _PlaceItem(iItem, pti, TRAYEVENT_ONAPPLYUSERPREF);
                 _Size();
 
+
+                c_tray.AsyncSaveSettings();
                 return S_OK;
             }
         }
@@ -518,14 +520,23 @@ STDAPI_(void) ExplorerPlaySound(LPCTSTR pszSound)
     }
 }
 
-DWORD CTrayNotify::_ShowBalloonTip(LPTSTR szTitle, DWORD dwInfoFlags, UINT uTimeout, DWORD dwLastSoundTime)
+DWORD CTrayNotify::_ShowBalloonTip(LPTSTR szTitle, HICON hIcon, UINT uTimeout, DWORD dwLastSoundTime)
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
 
     DWORD dwCurrentSoundTime = dwLastSoundTime;
     
-    SendMessage(_hwndInfoTip, TTM_SETTITLE, dwInfoFlags & NIIF_ICON_MASK, (LPARAM)szTitle);
-    if (!(dwInfoFlags & NIIF_NOSOUND))
+    WPARAM wParam;
+    if (hIcon)
+    {
+        wParam = (WPARAM)hIcon;
+    }
+    else
+    {
+        wParam = _pinfo->dwInfoFlags & NIIF_ICON_MASK;
+    }
+    SendMessage(_hwndInfoTip, TTM_SETTITLE, wParam, (LPARAM)szTitle);
+    if (!(_pinfo->dwInfoFlags & NIIF_NOSOUND))
     {
         // make sure at least 5 seconds pass between sounds, avoid annoying balloons
         if ((GetTickCount() - dwLastSoundTime) >= 5000)
@@ -673,7 +684,15 @@ void CTrayNotify::_ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UIN
                     dwLastSoundTime = pti->dwLastSoundTime;
                 }
 
-                dwLastSoundTime = _ShowBalloonTip(_pinfo->szTitle, _pinfo->dwInfoFlags, _pinfo->uTimeout, dwLastSoundTime);
+                HICON hIcon = NULL;
+                if (_pinfo->dwInfoFlags & NIIF_USER)
+                {
+                    if (pti->hBalloonIcon)
+                        hIcon = pti->hBalloonIcon;
+                    else
+                        hIcon = pti->hIcon;
+                }
+                dwLastSoundTime = _ShowBalloonTip(_pinfo->szTitle, hIcon, _pinfo->uTimeout, dwLastSoundTime);
 
                 if ((nIcon != -1) && pti)
                 {
@@ -988,6 +1007,14 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         {
             _SetInfoTip(pti->hWnd, pti->uID, pnid->szInfo, pnid->szInfoTitle, pnid->dwInfoFlags, 
                     pnid->uTimeout, (bFirstTime || fResize));
+        }
+
+        if (pnid->dwInfoFlags & NIIF_USER)
+        {
+            if (pti->hBalloonIcon)
+                DestroyIcon(pti->hBalloonIcon);
+            if (pnid->dwBalloonIcon)
+                pti->hBalloonIcon = CopyIcon(GetHBalloonIcon(pnid));
         }
     }
 

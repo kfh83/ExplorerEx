@@ -249,7 +249,7 @@ static SpecialFolderDesc s_rgsfd[] = {
 
     /* Control Panel */
     {
-        MAKEINTRESOURCE(CSIDL_CONTROLS),    // pszTarget
+        TEXT("shell:::{26ee0668-a00a-44d7-9371-beb064c98683}"),    // pszTarget
         REST_NOCONTROLPANEL,                // restriction
         REGSTR_VAL_DV2_SHOWCPL,
         SFD_SHOW | SFD_CANCASCADE | SFD_PREFIX, // show by default
@@ -280,22 +280,6 @@ static SpecialFolderDesc s_rgsfd[] = {
         NULL,                               // (no desktop visibility control)
     },
 
-    /* Network Connections */
-    {
-        MAKEINTRESOURCE(CSIDL_CONNECTIONS), // pszTarget
-        REST_NONETWORKCONNECTIONS,          // restriction
-        REGSTR_VAL_DV2_SHOWNETCONN,         // customize show
-        SFD_CASCADE | SFD_CANCASCADE | SFD_PREFIX | SFD_USEBGTHREAD, // cascade by default
-        CConnectToShellMenuCallback_CreateInstance, // do special Connect To filtering
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        IDS_STARTPANE_CONNECTTO,            // override filesys name
-        IDS_CUSTOMTIP_CONNECTTO,
-        &SpecialFolderDesc::ConnectToName,  // override filesys name with _idsCustomName
-        ShouldShowConnectTo,                // see if we should be shown
-        NULL,                               // (no desktop visibility control)
-    },
-
     /* Set Program Access and Defaults */
     {
         // Using the ::{guid} gets the icon right
@@ -310,6 +294,22 @@ static SpecialFolderDesc s_rgsfd[] = {
         NULL,                               // no custom tip
         NULL,                               // no custom name
         NULL,                               // (no custom display rule)
+        NULL,                               // (no desktop visibility control)
+    },
+
+    /* Network Connections */
+    {
+        MAKEINTRESOURCE(CSIDL_CONNECTIONS), // pszTarget
+        REST_NONETWORKCONNECTIONS,          // restriction
+        REGSTR_VAL_DV2_SHOWNETCONN,         // customize show
+        SFD_CASCADE | SFD_CANCASCADE | SFD_PREFIX | SFD_USEBGTHREAD, // cascade by default
+        CConnectToShellMenuCallback_CreateInstance, // do special Connect To filtering
+        NULL,                               // no drag/drop customization
+        0,                                  // no special flags for cascaded menu
+        IDS_STARTPANE_CONNECTTO,            // override filesys name
+        IDS_CUSTOMTIP_CONNECTTO,
+        &SpecialFolderDesc::ConnectToName,  // override filesys name with _idsCustomName
+        ShouldShowConnectTo,                // see if we should be shown
         NULL,                               // (no desktop visibility control)
     },
 
@@ -577,7 +577,7 @@ public:
         }
         else if (_psfd->IsCSIDL())
         {
-            SHGetSpecialFolderLocation(NULL, _psfd->GetCSIDL(), &_pidl);
+            SHGetFolderLocation(NULL, _psfd->GetCSIDL(), NULL, NULL, &_pidl);
         }
         else
         {
@@ -615,7 +615,7 @@ public:
         if (_psfd->IsCSIDL())
         {
             LPITEMIDLIST pidlNew;
-            if (SHGetSpecialFolderLocation(NULL, _psfd->GetCSIDL(), &pidlNew) == S_OK)
+            if (SHGetFolderLocation(NULL, _psfd->GetCSIDL(), NULL, NULL, &pidlNew) == S_OK)
             {
                 UINT cbSizeNew = ILGetSize(pidlNew);
                 if (cbSizeNew != ILGetSize(_pidl) ||
@@ -649,7 +649,7 @@ BOOL MinKidsHelper(UINT csidl, BOOL bOnlyRASCON, DWORD dwMinKids)
 
     IShellFolder2 *psf;
     LPITEMIDLIST pidlBind = NULL;
-    if (SHGetSpecialFolderLocation(NULL, csidl, &pidlBind) == S_OK)
+    if (SHGetFolderLocation(NULL, csidl, NULL, NULL, &pidlBind) == S_OK)
     {
         if (SUCCEEDED(SHBindToObjectEx(NULL, pidlBind, NULL, IID_PPV_ARGS(&psf))))
         {
@@ -915,6 +915,75 @@ int SpecialFolderList::AddImageForItem(PaneItem *p, IShellFolder *psf, LPCITEMID
     return iIcon;
 }
 
+/*----------------------------------------------------------
+  Purpose: Removes '&'s from a string, returning the character after
+           the last '&'.  Double-ampersands are collapsed into a single
+           ampersand.  (This is important so "&Help && Support" works.)
+
+           If a string has multiple mnemonics ("&t&wo") USER is inconsistent.
+           DrawText uses the last one, but the dialog manager uses the first
+           one.  So we use whichever one is most convenient.
+
+           EXEX USE: For Japanese language use, suffix mnemonics are common.
+           They look like "�R���g���[�� �p�l��(&C)". XP intended to remove the
+           full suffix, however, it neglects to do so and only the ampersand
+           is removed. This behaviour was fixed to remove the full "(&C)"
+           sequence in later versions of Windows. Ordinarily, this wouldn't
+           be a problem, however the special folder display names in the start
+           menu rely on this function's faulty behaviour in XP to display
+           correctly. Otherwise, the full mnenomic sequence is dropped, but the
+           underline is still drawn in the correct position as if the mnenomic
+           were drawn. Overall, this is bad for accuracy to XP, so we'll just
+           use a copy of the XP function.
+*/
+STDAPI_(WCHAR) SHStripMneumonicXP(LPWSTR pszMenu)
+{
+    ASSERT(pszMenu);
+    WCHAR cMneumonic = pszMenu[0]; // Default is first char
+
+    // Early-out:  Many strings don't have ampersands at all
+    LPWSTR pszAmp = StrChrW(pszMenu, L'&');
+    if (pszAmp)
+    {
+        LPWSTR pszCopy = pszAmp - 1;
+
+        //  FAREAST some localized builds have an mnemonic that looks like
+        //    "Localized Text (&L)"  we should remove that, too
+        if (pszAmp > pszMenu && *pszCopy == L'(')
+        {
+            if (pszAmp[2] == L')')
+            {
+                cMneumonic = *pszAmp;
+                // move amp so that we arent past the potential terminator
+                pszAmp += 3;
+                pszAmp = pszCopy;
+            }
+        }
+        else
+        {
+            //  move it up so that we copy on top of amp
+            pszCopy++;
+        }
+
+        while (*pszAmp)
+        {
+            // Protect against string that ends in '&' - don't read past the end!
+            if (*pszAmp == L'&' && pszAmp[1])
+            {
+                pszAmp++;                   // Don't copy the ampersand itself
+                if (*pszAmp != L'&')        // && is not a mnemonic
+                {
+                    cMneumonic = *pszAmp;
+                }
+            }
+            *pszCopy++ = *pszAmp++;
+        }
+        *pszCopy = 0;
+    }
+
+    return cMneumonic;
+}
+
 LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCITEMIDLIST pidlItem, SHGDNF shgno)
 {
     LPTSTR psz = NULL;
@@ -938,7 +1007,7 @@ LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCI
         SHFree(pitem->_pszAccelerator);
         pitem->_pszAccelerator = NULL;
         SHStrDup(psz, &pitem->_pszAccelerator); // if it fails, then tough, no mnemonic
-        pitem->_chMnem = CharUpperCharA(SHStripMneumonic(psz));
+        pitem->_chMnem = CharUpperCharA(SHStripMneumonicXP(psz));
     }
 
     return psz;

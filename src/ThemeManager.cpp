@@ -46,7 +46,7 @@ void ThemeManagerInitialize()
 	LoaderLoadTheme = (decltype(LoaderLoadTheme))GetProcAddress(hUxTheme, (LPCSTR)92);
 	OpenThemeDataFromFile = (decltype(OpenThemeDataFromFile))GetProcAddress(hUxTheme, (LPCSTR)16);
 
-	wprintf(L"GetThemeDefaults %x LoaderLoadTheme %x OpenThemeDataFromFile %x\n", GetThemeDefaults, LoaderLoadTheme, OpenThemeDataFromFile);
+	wprintf(L"GetThemeDefaults %p LoaderLoadTheme %p OpenThemeDataFromFile %p\n", GetThemeDefaults, LoaderLoadTheme, OpenThemeDataFromFile);
 
 	// get directory of explorer.exe (NOT the working directory)
 	WCHAR szExeDir[MAX_PATH];

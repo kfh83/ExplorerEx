@@ -24,6 +24,7 @@
 #include "vssym32.h"
 #include "startids.h"
 #include "debug.h"
+#include <immersive/ImmersiveInit.h>
 
 #import "C:\Windows\System32\HelpPaneProxy.dll" named_guids no_namespace exclude("GUID") exclude("IUnknown")
 
@@ -198,6 +199,12 @@ EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
     SHELLSTATE  ss = { 0 };
     SHGetSetSettings(&ss, SSF_STARTPANELON, FALSE);
     return ss.fStartPanelOn;
+}
+
+void CTray::TellTaskBandWeWantToOpenThisShit()
+{
+    static UINT WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
+    SendMessage(_hwndTasks, WM_ShellHook, 7, 0);
 }
 
 BOOL CTray::_CreateClockWindow()
@@ -1399,11 +1406,12 @@ void CTray::_CreateTrayWindow()
         0, 0, 0, 0, NULL, NULL, g_hinstCabinet, (void*)this);
 
 
-    // @MOD Fix for DWM borders on classic theme
-    BOOL bCompositionEnabled;
-    DwmIsCompositionEnabled(&bCompositionEnabled);
-    DWMNCRENDERINGPOLICY ncrp = bCompositionEnabled ? DWMNCRP_ENABLED : DWMNCRP_DISABLED;
-    DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
+    // Fix for DWM borders on classic theme
+    if (!IsAppThemed())
+    {
+        DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
+        DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
+    }
 }
 
 DWORD WINAPI CTray::SyncThreadProc(void* pv)
@@ -2617,8 +2625,8 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
             // Go from a Window rcClockWnd to Client rcClockWnd
             if (!_hTheme)
             {
-                InflateRect(&rcClient, -g_cxFrame, -g_cyFrame);
-                InflateRect(&rcOldClient, -g_cxFrame, -g_cyFrame);
+                InflateRect(&rcClient, -(g_cxFrame + g_cxPaddedBorder), -(g_cyFrame + g_cxPaddedBorder));
+                InflateRect(&rcOldClient, -(g_cxFrame + g_cxPaddedBorder), -(g_cyFrame + g_cxPaddedBorder));
             }
             // Make rcClient start at 0,0, Rebar only used the right and bottom values of this rect
             OffsetRect(&rcClient, -rcClient.left, -rcClient.top);
@@ -2680,8 +2688,8 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
             //DebugMsg(DM_TRAYDOCK, TEXT("TRAYDOCK.t_hs ending client rect is {%d, %d, %d, %d}"), rcClient.left, rcClient.top, rcClient.right, rcClient.bottom);
             if (!_hTheme)
             {
-                InflateRect(&rcClient, g_cxFrame, g_cyFrame);
-                InflateRect(&rcOldClient, g_cxFrame, g_cyFrame);
+                InflateRect(&rcClient, g_cxFrame + g_cxPaddedBorder, g_cyFrame + g_cxPaddedBorder);
+                InflateRect(&rcOldClient, g_cxFrame + g_cxPaddedBorder, g_cyFrame + g_cxPaddedBorder);
             }
 
             // Prevent huge growth of taskbar, caused by bugs in the rebar sizing code
@@ -3723,7 +3731,7 @@ void CTray::_OnWinIniChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     // but deskcpl doesn't send one.
     if (wParam == SPI_SETNONCLIENTMETRICS || (!wParam && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0))))
     {
-        #ifdef DEBUG
+#ifdef DEBUG
         if (wParam == SPI_SETNONCLIENTMETRICS)
         {
             //TraceMsg(TF_TRAY, "c.t_owic: Non-client metrics (probably) changed.");
@@ -3732,9 +3740,9 @@ void CTray::_OnWinIniChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         {
             //TraceMsg(TF_TRAY, "c.t_owic: Window metrics changed.");
         }
+#endif
 
-        #endif
-        _OnNewSystemSizes();
+		_OnNewSystemSizes();
     }
 
     // Handle old extensions.
@@ -4759,7 +4767,7 @@ void CTray::_CheckForRogueProgramFile()
         && S_OK == SHGetFolderPath(NULL, CSIDL_PROGRAM_FILES, NULL, SHGFP_TYPE_CURRENT, szProgramFilesPath))
     {
         LPTSTR pszRoguePattern;
-        int cchRoguePattern;
+        size_t cchRoguePattern;
 
         pszRoguePattern = StrChr(szProgramFilesPath, TEXT(' '));
         cchRoguePattern = ARRAYSIZE(szProgramFilesPath) - (pszRoguePattern - szProgramFilesPath);
@@ -5124,7 +5132,10 @@ void CTray::_HandleDelayBootStuff()
         }
 
         TBOOL(WinStationRegisterConsoleNotification(SERVERNAME_CURRENT, _hwnd, NOTIFY_FOR_THIS_SESSION));
-
+#ifdef EXEX_DLL
+        //_spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
+        InitializeImmersiveShell();
+#endif
         //if (g_dwStopWatchMode)
         //{
         //    StopWatch_StopTimed(SWID_STARTUP, TEXT("_DelayedBootStuff"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());
@@ -5327,6 +5338,12 @@ BOOL CTray::_TryForwardNCToClient(UINT uMsg, LPARAM lParam)
             ASSERT(InRange(uMsg, WM_NCMOUSEFIRST, WM_NCMOUSELAST));
             uMsg += (WM_LBUTTONDOWN - WM_NCLBUTTONDOWN);
 
+            // never send double click message
+            if (uMsg == WM_LBUTTONDBLCLK)
+            {
+                return FALSE;
+            }
+		
             // forward it
             SendMessage(hwnd, uMsg, 0, lParam);
             return TRUE;
@@ -6940,6 +6957,7 @@ void CTray::ContextMenuInvoke(int idCmd, BOOL fFromNotifArea)
         if (idCmd < IDM_TRAYCONTEXTFIRST)
         {
             BandSite_HandleMenuCommand(_ptbs, idCmd);
+            AsyncSaveSettings();
         }
         else
         {
@@ -7388,8 +7406,8 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
         // takes into account the frame and that right/bottom of RECT
         // is exclusive in GDI.
 
-        lDeltaX = _sStuckWidths.cx - g_cxFrame;
-        lDeltaY = _sStuckWidths.cy - g_cyFrame;
+        lDeltaX = _sStuckWidths.cx - g_cxFrame - g_cxPaddedBorder;
+        lDeltaY = _sStuckWidths.cy - g_cyFrame - g_cxPaddedBorder;
         if (rc.left < monitorInfo.rcMonitor.left)
         {
             --lDeltaX;

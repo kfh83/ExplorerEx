@@ -253,9 +253,9 @@ void EnumFolder(LPITEMIDLIST pidlFolder, DWORD grfFlags, PFNENUMFOLDERCALLBACK p
 
 const UINT c_rgStartupFolders[] = {
     CSIDL_COMMON_STARTUP,
-    CSIDL_COMMON_ALTSTARTUP,    // non-localized "Common StartUp" group if exists.
+    //CSIDL_COMMON_ALTSTARTUP,    // non-localized "Common StartUp" group if exists.
     CSIDL_STARTUP,
-    CSIDL_ALTSTARTUP            // non-localized "StartUp" group if exists.
+    //CSIDL_ALTSTARTUP            // non-localized "StartUp" group if exists.
 };
 
 void _ExecuteStartupPrograms()
@@ -886,6 +886,7 @@ BOOL MyCreateFromDesktop(HINSTANCE hInst, LPCTSTR pszCmdLine, int nCmdShow)
 BOOL g_fDragFullWindows=FALSE;
 int g_cxEdge=0;
 int g_cyEdge=0;
+int g_cxPaddedBorder=0;
 int g_cySize=0;
 int g_cxTabSpace=0;
 int g_cyTabSpace=0;
@@ -918,6 +919,7 @@ void Cabinet_InitGlobalMetrics(WPARAM wParam, LPTSTR lpszSection)
     {
         g_cxEdge = GetSystemMetrics(SM_CXEDGE);
         g_cyEdge = GetSystemMetrics(SM_CYEDGE);
+        g_cxPaddedBorder = GetSystemMetrics(SM_CXPADDEDBORDER);
         g_cxTabSpace = (g_cxEdge * 3) / 2;
         g_cyTabSpace = (g_cyEdge * 3) / 2; // cause the graphic designers really really want 3.
         g_cySize = GetSystemMetrics(SM_CYSIZE);
@@ -1100,17 +1102,55 @@ LPTSTR _SkipCmdLineCrap(LPTSTR pszCmdLine)
     return pszCmdLine;
 }
 
+#ifdef EXEX_DLL
+EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
+STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+{
+    if (fdwReason == DLL_PROCESS_ATTACH)
+    {
+        _CRT_INIT(hinstDLL, DLL_PROCESS_ATTACH, NULL);
+
+        if (!SHUndocInit())
+            return -1;
+
+        InitDesktopFuncs();
+
+        // We don't want the "No disk in drive X:" requesters, so we set
+        // the critical error mask such that calls will just silently fail
+
+        SetErrorMode(SEM_FAILCRITICALERRORS);
+
+        LPTSTR pszCmdLine = GetCommandLine();
+        pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
+
+        STARTUPINFO si = { 0 };
+        si.cb = sizeof(si);
+        GetStartupInfo(&si);
+
+        int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
+        int iRet = ExplorerWinMain(hinstDLL, NULL, pszCmdLine, nCmdShow);
+
+        return iRet;
+    }
+    else
+    {
+        return _CRT_INIT(hinstDLL, fdwReason, lpReserved);
+    }
+
+    return 0;
+}
+#else
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
 STDAPI_(int) ModuleEntry()
 {
     PERFSETMARK("ExplorerStartup");
 
-    _CRT_INIT(GetModuleHandle(0),DLL_PROCESS_ATTACH,NULL);
+    _CRT_INIT(GetModuleHandle(0), DLL_PROCESS_ATTACH, NULL);
     //DoInitialization();
 
-	if (!SHUndocInit())
-		return -1;
-    
+    if (!SHUndocInit())
+        return -1;
+
     //LoadLibrary(L"shdocvw.dll");
     //SHLoadInProc(CLSID_WinListShellProc);
     //LoadLibrary(L"shell32.dll");
@@ -1128,14 +1168,14 @@ STDAPI_(int) ModuleEntry()
     LPTSTR pszCmdLine = GetCommandLine();
     pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
 
-    STARTUPINFO si = {0};
+    STARTUPINFO si = { 0 };
     si.cb = sizeof(si);
     GetStartupInfo(&si);
 
     int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
     int iRet = ExplorerWinMain(GetModuleHandle(NULL), NULL, pszCmdLine, nCmdShow);
 
-    _CRT_INIT(GetModuleHandle(0),DLL_PROCESS_DETACH,NULL);
+    _CRT_INIT(GetModuleHandle(0), DLL_PROCESS_DETACH, NULL);
     //DoCleanup();
 
     // Since we now have a way for an extension to tell us when it is finished,
@@ -1146,7 +1186,11 @@ STDAPI_(int) ModuleEntry()
 
     return iRet;
 }
+#endif
 
+#ifdef EXEX_DLL
+extern "C" __declspec(dllexport)
+#endif
 HANDLE CreateDesktopAndTray()
 {
     HANDLE hDesktop = NULL;
@@ -1832,7 +1876,9 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
+#ifndef EXEX_DLL
     SHFusionInitializeFromModule(hInstance);
+#endif
 
     typedef void(__stdcall* ShellDDEInit_t)(bool bInit);
     ShellDDEInit_t ShellDDEInit;
@@ -1877,6 +1923,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
         HANDLE hMutex = NULL;
 
+#ifndef EXEX_DLL
         BOOL fExplorerIsShell = ShouldStartDesktopAndTray();
         if (fExplorerIsShell)
         {
@@ -1892,7 +1939,9 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 
             fExplorerIsShell = ShouldStartDesktopAndTray();
         } 
+#endif
 
+#ifndef EXEX_DLL
         if (!fExplorerIsShell)
         {
             // We're not going to be the shell, relinquish the mutex
@@ -1956,10 +2005,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 // let users know we are in safe mode
                 DisplayCleanBootMsg();
             }
+#endif
 
             // Create the other special folders.
             CreateShellDirectories();
 
+#ifndef EXEX_DLL
             // Run install stubs for the current user, mostly to propagate
             // shortcuts to apps installed by another user.
             if (!g_fCleanBoot)
@@ -2005,6 +2056,8 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             // NOTE: Compaq shell changes the "shell=" line during RunOnce time and
             // that will make ShouldStartDesktopAndTray() return FALSE
 
+#endif
+#ifndef EXEX_DLL
             HANDLE hDesktop = NULL;
 
             if (!IsAnyShellWindowAlreadyPresent())
@@ -2048,6 +2101,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 WriteFaultCount(0);          // clear our count of faults, we are exiting normally
             }
 
+            // Needed to start up properly on Windows 7:
 			void(*WinList_Terminate)() = decltype(WinList_Terminate)(GetProcAddress(LoadLibrary(L"explorerframe.dll"), (LPCSTR)111));
 			if (WinList_Terminate)
                 WinList_Terminate();
@@ -2059,9 +2113,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
         }
 
         _Module.Term();
+#endif
     }
 
+#ifndef EXEX_DLL
     SHFusionUninitialize();
+#endif
 
     return TRUE;
 }

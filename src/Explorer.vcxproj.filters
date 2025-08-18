@@ -259,16 +259,27 @@
     <ClInclude Include="StartButton.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="immersive\ImmersiveDefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\ImmersiveInit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\MinHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\Hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="explorer.rcv">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="cpp.hint" />
     <None Include="interfacesp.inc">
       <Filter>Header Files</Filter>
     </None>
-    <None Include="desktop2\startpane.aps" />
+    <None Include="immersive\README.md" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="explorer.rc">
@@ -730,6 +741,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
     <ClCompile Include="StartButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="immersive\ImmersiveInit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

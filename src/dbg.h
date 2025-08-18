@@ -69,7 +69,7 @@ namespace dbg
 	inline
 		std::string basename(const std::string& file)
 	{
-		unsigned int i = file.find_last_of("\\/");
+		size_t i = file.find_last_of("\\/");
 		if (i == std::string::npos)
 		{
 			return file;

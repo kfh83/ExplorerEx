@@ -9,6 +9,10 @@
 #include "dpa.h"
 #include "commoncontrols.h"
 
+#ifdef EXEX_DLL
+#include "immersive/ImmersiveInit.h"
+#endif
+
 class CTray;
 class CGroupItemContextMenu;
 
@@ -336,6 +340,11 @@ protected:
     // Rarely-used stuff
     ULONG       _uShortcutInvokeNotify;
     UINT        _uCDHardError;
+
+#ifdef EXEX_DLL
+    // Immersive stuff:
+    CComPtr<CTaskmanWindow> _spTaskmanWnd;
+#endif
 
     // Vista unique
 

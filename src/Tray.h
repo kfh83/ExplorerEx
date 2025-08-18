@@ -1,11 +1,5 @@
 #pragma once
 
-#ifndef _TRAY_H
-#define _TRAY_H
-
-#ifdef __cplusplus
-
-#include "pch.h"
 #include "trayp.h"
 #include "cwndproc.h"
 
@@ -253,6 +247,8 @@ public:
     {
         return _hwndNotify;
     }
+
+    void TellTaskBandWeWantToOpenThisShit();
 
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
     {
@@ -702,8 +698,3 @@ extern UINT g_uStartButtonAllowPopup;
 
 BOOL _IsSizeMoveEnabled();
 BOOL _IsSizeMoveRestricted();
-
-
-#endif  // __cplusplus
-
-#endif  // _TRAY_H

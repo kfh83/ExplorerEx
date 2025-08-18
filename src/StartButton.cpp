@@ -1062,14 +1062,14 @@ HFONT CStartButton::_CreateStartFont()  // taken from xp
     return hfontStart;
 }
 
-void CStartButton::_ExploreCommonStartMenu(BOOL a2)
+void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
 {
     LPITEMIDLIST ppidl;
     if (SUCCEEDED(SHGetFolderLocation(nullptr, CSIDL_COMMON_STARTMENU, nullptr, KF_FLAG_DEFAULT, &ppidl)))
     {
         SHELLEXECUTEINFOW execInfo = { sizeof(execInfo) };
         execInfo.fMask = SEE_MASK_IDLIST | SEE_MASK_ASYNCOK;
-        execInfo.lpVerb = a2 ? L"explore" : L"open";
+        execInfo.lpVerb = bExplore ? L"explore" : L"open";
         execInfo.nShow = SW_NORMAL;
         execInfo.lpIDList = ppidl;
         ShellExecuteExW(&execInfo);

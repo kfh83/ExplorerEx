@@ -5,5 +5,7 @@ x64/
 Release/
 Debug/
 ReleaseDebug/
+ReleaseDLL/
+src/immersive/libMinHook.x64.lib
 *.user
 *.vcproj.user

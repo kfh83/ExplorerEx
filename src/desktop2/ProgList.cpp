@@ -1040,9 +1040,12 @@ ByUsage::ByUsage(ByUsageUI *pByUsageUI, ByUsageDUI *pByUsageDUI)
     _pidlEmail   = ILCreateFromPath(TEXT("shell:::{2559a1f5-21d7-11d4-bdaf-00c04f60b9f0}"));
 }
 
+static ByUsageUI *g_pByUsageUI = nullptr;
+
 SFTBarHost *ByUsage_CreateInstance()
 {
-    return new ByUsageUI();
+    g_pByUsageUI = new ByUsageUI();
+    return g_pByUsageUI;
 }
 
 ByUsage::~ByUsage()
@@ -2316,26 +2319,25 @@ void ByUsage::AfterEnumItems()
 
 int ByUsage::UEMNotifyCB(void* param, const GUID* pguidGrp, const WCHAR*, int eCmd)
 {
-    ByUsage *pbu = reinterpret_cast<ByUsage *>(param);
     // Refresh our list whenever a new app is started.
     // or when the session changes (because that changes all the usage counts)
-    printf("UEMNotifyCB: %d\n", eCmd);
+    printf("UEMNotifyCB: %d %x\n", eCmd, param);
     switch (eCmd)
     {
-    // yes
-    case 0:
-    case 3:
-
-        if (pbu && pbu->_pByUsageUI && !IsBadReadPtr(pbu->_pByUsageUI, sizeof(ByUsageUI)))
+        case UAE_LAUNCH:
+        case UAE_TIME:
         {
-            pbu->_pByUsageUI->Invalidate();
-            pbu->_pByUsageUI->StartRefreshTimer();
+            // @MOD: Use a global pointer for the ByUsage UI instead of using UserAssist event param.
+            // The former seems to be point to an invalid object sometimes.
+            if (g_pByUsageUI)
+            {
+                g_pByUsageUI->Invalidate();
+                g_pByUsageUI->StartRefreshTimer();
+            }
+            break;
         }
-        break;
-    default:
-        // Do nothing
-        ;
     }
+
     return 0;
 }
 
