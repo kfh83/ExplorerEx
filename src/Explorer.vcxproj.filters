@@ -156,9 +156,6 @@
     <ClInclude Include="patternhelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MinHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="wtl\atlapp.h">
       <Filter>Header Files\ATL</Filter>
     </ClInclude>
@@ -269,6 +266,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="immersive\Hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\ImmersiveDefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="immersive\ImmersiveInit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -741,6 +744,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
     <ClCompile Include="StartButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="immersive\ImmersiveInit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="immersive\ImmersiveInit.cpp">

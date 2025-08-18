@@ -77,6 +77,7 @@
 #define TM_WORKSTATIONLOCKED        (WM_USER + 0x181)
 #define TM_STARTMENUDISMISSED       (WM_USER + 0x182)
 #define TM_SHOWTRAYBALLOON          (WM_USER + 0x190)
+#define TM_FIREDESKTOPSWITCH        (WM_USER + 0x1BD)
 
 // @NOTE(isabella): New in Vista.
 #define TM_ISCLOCKHIDDEN            (WM_USER + 0x1A3)

@@ -15,7 +15,6 @@
 #ifdef EXEX_DLL
 
 #include "ImmersiveInit.h"
-#include "Hooks.h"
 #include <Tray.h>
 
 // TODO: Should this be a global variable? Look into restructuring.
@@ -54,9 +53,6 @@ bool g_fTaskmanRegistered = false;
 CTaskmanWindow::CTaskmanWindow()
 {
 	printf("Initialising CTaskmanWindow...\n");
-
-	HookEverythingForImmersive();
-	MH_EnableHook(MH_ALL_HOOKS);
 
 	if (!g_fTaskmanRegistered)
 	{
@@ -278,6 +274,13 @@ HRESULT InitializeImmersiveShell()
 	HRESULT hr = S_OK;
 
 	wprintf(L"Initialising the Immersive shell...\n");
+
+	HANDLE hShellStartup = OpenEvent(EVENT_MODIFY_STATE, FALSE, L"Local\\ShellStartupEvent");
+	if (hShellStartup)
+	{
+		SetEvent(hShellStartup);
+		CloseHandle(hShellStartup);
+	}
 
 	hr = CoCreateInstance(CLSID_ImmersiveShellBuilder, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pShellBuilder));
 
