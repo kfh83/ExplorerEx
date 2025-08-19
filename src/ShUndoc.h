@@ -252,6 +252,15 @@ typedef struct tagNOTIFYITEM
     DWORD       dwUserPref;
     UINT        uID;
     GUID        guidItem;
+
+    // New fields (from ep_taskbar):
+    DWORD       dwFlags;
+    int         nDisplayIndex;
+    UINT        uCallbackMsg;
+    UINT        uVersion;
+    BOOL        fUseSystemTip;
+    PWSTR       pszAppId;
+    BOOL        fIsExplicitAppId;
 } NOTIFYITEM, * LPNOTIFYITEM;
 #pragma pack(pop)
 
