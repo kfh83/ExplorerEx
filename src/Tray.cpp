@@ -7178,7 +7178,7 @@ void CTray::SaveWindowPositions(UINT idRes)
         _pPositions->idRes = idRes;
 
         // CheckWindowPositions tested for these...
-        ASSERT(idRes == IDS_MINIMIZEALL || idRes == IDS_CASCADE || idRes == IDS_HORIZTILE || idRes == IDS_VERTTILE);
+        ASSERT(idRes == IDS_MINIMIZEALL || idRes == IDS_CASCADE || idRes == IDS_SHOW_STACKED || idRes == IDS_SHOW_SIDE_BY_SIDE);
         EnumWindows(SavePosEnumProc, (LPARAM)this);
     }
     LEAVECRITICAL;
@@ -8105,10 +8105,10 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                         idRes = IDS_CASCADE; 
                         break;
                     case IDM_HORIZTILE:
-                        idRes = IDS_HORIZTILE;
+                        idRes = IDS_SHOW_STACKED;
                         break;
                     case IDM_VERTTILE:
-                        idRes = IDS_VERTTILE;
+                        idRes = IDS_SHOW_SIDE_BY_SIDE;
                         break;
                 }
 

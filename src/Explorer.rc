@@ -297,8 +297,8 @@ BEGIN
 
     IDS_UNDOTEMPLATE            "&Undo %s"
     IDS_CASCADE                 "Cascade Windows"
-    IDS_HORIZTILE               "Show Windows Stacked"
-    IDS_VERTTILE                "Show Windows Side by Side"
+    IDS_SHOW_STACKED            "Show Windows Stacked"
+    IDS_SHOW_SIDE_BY_SIDE       "Show Windows Side by Side"
     IDS_MINIMIZEALL             "Minimize All"
     IDS_SHOWDEMOTEDTIP          "Show hidden icons"
     IDS_HIDEDEMOTEDTIP          "Hide"

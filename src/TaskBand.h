@@ -142,10 +142,10 @@ protected:
     void _HideThumbnail();
     void _HideThumbnailWindows();
     void _InitializeThumbnailMetrics();
-    void _RegisterThumbnail(HWND hwnd, DWM_THUMBNAIL_PROPERTIES** phThumbnailId);
+    void _RegisterThumbnail(HWND hwnd, HTHUMBNAIL *phThumbnailId);
     void _ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu);
     void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
-    void _UpdateThumbnailTitle(HWND hwnd, WPARAM wParam, int cThumbnails);
+    void _UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumbnails);
 
     void _SetToolbarTheme();
     void _RealityCheck();
@@ -298,10 +298,21 @@ protected:
 
     BOOL _IsHorizontal() { return !(_dwViewMode & DBIF_VIEWMODE_VERTICAL); }
 
+	// Vista thumbnail related
+#define MAX_THUMBSTACK 4
+    HWND _hwndThumbStack[MAX_THUMBSTACK];
+    int  _cThumbnails;
+    SIZE _sizeThumbnailImage;
+    SIZE _sizeThumbnailMargin;
+    SIZE _sizeThumbnailGroupOffset;
+    SIZE _sizeThumbnailTooltipMargin;
+    SIZE _sizeThumbnailTooltip;
+
     BOOL _fGlom;
     int _iGroupSize;
     CToolBarCtrl _tb;
     UINT WM_ShellHook;
+    UINT WM_FrostWindow; // Vista - New
     int _iSysMenuCount;
     int _iIndexActiveAtLDown;
     HWND    _hwndSysMenu;
@@ -319,8 +330,15 @@ protected:
     HFONT _hfontCapNormal;
     HFONT _hfontCapBold;
     HTHEME _hTheme;
+    HTHEME _hThemeGlomMenu;             // Vista - New
     int _iOldPriority;
     int _iNewPriority;
+
+    int field_C8;                       // Vista - New
+    int field_CC;                       // Vista - New
+    int field_D0;                       // Vista - New
+
+    ULONG _cRef;
 
     // Drag & drop stuff
     int _iDropItem;
@@ -346,54 +364,8 @@ protected:
     CComPtr<CTaskmanWindow> _spTaskmanWnd;
 #endif
 
-    // Vista unique
-
-    HWND _thumbnailWnd[4];                ///< 30 confident
-    INT _noOfThumbnails;                  ///< 3C confident
-    SIZE _sizeThumbnailImage;
-    SIZE _sizeThumbnailMargin;
-    SIZE _sizeThumbnailGroupOffset;
-    SIZE _sizeThumbnailTooltipMargin;
-    SIZE _sizeThumbnailTooltip;
-    HWND hwnd_70_toolbar;                 ///< 70 confident
-    UINT WM_FrostedWindow;                ///< 75 confident, made the name up
-
-    IUnknown *IUnknown_9C;                ///< some interface, to find
-    HTHEME _hThemeComposited;             ///< may or may not be this but its used the same as the above
-
-    DWORD *dword_ptr_CC;
-    BOOL _isDrag;                         ///< D0 confident (shifted from C8 by 8)
-    ULONG _cRef;
-    LRESULT lresult_d8;                   ///< D8 confident (shifted from D0 by 8)
-    DWORD dword_DC_tickCount;             ///< DC confident (shifted from D4 by 8)
-    DWORD dword_E0_someDelay;             ///< E0 confident (shifted from D8 by 8)
-    void *something;
-    DWORD dword_F4;                       ///< F4 confident (shifted from EC by 8)
-
-    IDropTarget *_dadDropTarget;          ///< 110 confident (shifted from 108 by 8)
-    DWORD _dwInitialThumbDelayTime;        ///< 114 confident
-    DWORD _dwInitialTooltipDelayTime;
-    DWORD _dwAutoPopTooltipDelayTime;
-    HWND _hwSomeHwnd;                     ///< 120 confident
-    BOOL _canShowThumbnail;               ///< 124 confident
-    DWORD *dword_ptr_128;
-    
-    // Set in CTaskBand::_HandleThumbnail
-    HWND unkStruct_hwnd;
-    int unkStruct_int;
-    char unkStruct_isGlommed;                  ///< 134 confident
-    DWORD unkStruct_dword;
-
-    DWORD dword_13C_tickCount;            ///< 13C confident
-    HWND _hWndCurrentThumbnailTarget;                        ///< 140 confident
-    char dword_144_1;
-    char dword_144_2;
-    char dword_144_3;
-    char dword_144_4;
-
-    WCHAR WindowName; // @NOTE IZZY PLEASE PUT THIS IN ITS RIGHT PLACE
-
-        
+    DWORD dword108;                       // Vista - New
+     
     CTaskBand();
     ~CTaskBand();
     HRESULT Init(CTray* ptray);
@@ -403,6 +375,43 @@ protected:
     DWORD _dwBandID;
 
     IUnknown *  _punkSite;
+
+	// Vista - New
+    DWORD _dwInitialThumbDelayTime;
+    DWORD _dwInitialTooltipDelayTime;
+    DWORD _dwAutoPopTooltipDelayTime;
+    HWND field_120;
+    BOOL _fShowThumbnail;
+    int field_128;
+
+    struct THUMBNAILDATA // Assumed
+    {
+        HWND hwnd;
+        int iSomething;
+        bool fSomething;
+		BYTE gap135[3];
+        DWORD dwSomething;
+    };
+    THUMBNAILDATA _thumbData;
+
+    // Set in CTaskBand::_HandleThumbnail
+    // HWND _hwndSomething;
+    // int _iSomething;
+    // char _fSomething;
+    // BYTE gap135[3];
+    // DWORD _dwSomething;
+
+    DWORD _dwTick;
+    HWND field_140;
+    int field_144;
+
+	// Vista - New -- Looks like SQM telemetry
+    char field_145;
+    char field_146;
+    char field_147;
+    int field_148;
+    HDSA field_14C;
+    int field_150;
 
     friend HRESULT CTaskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
     friend class CTaskBandSMC;
