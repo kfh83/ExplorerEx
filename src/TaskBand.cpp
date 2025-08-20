@@ -2501,6 +2501,7 @@ public:
 
 typedef ICONDATA* PICONDATA;
 
+#if EXEX_DLL
 DEFINE_GUID(GUID_AppUserModelIdProperty, 0x9F4C2855, 0x9F79, 0x4B39, 0xA8,0xD0, 0xE1,0xD4,0x2D,0xE1,0xD5,0xF3);
 
 HICON GetUWPIcon(HWND hWnd)
@@ -2549,35 +2550,61 @@ HICON GetUWPIcon(HWND hWnd)
                     // Only a convoluted example using GDI+
                     // This is from the disassembly of StartIsBack/StartAllBack
                     HIMAGELIST hImageList = ImageList_Create(size.cx, size.cy, ILC_COLOR32, 1, 0);
-                    if (ImageList_Add(hImageList, hBitmap, NULL) != -1)
+                    if (hImageList)
                     {
-                        hiconResult = ImageList_GetIcon(hImageList, 0, 0);
-                        ImageList_Destroy(hImageList);
+                        if (ImageList_Add(hImageList, hBitmap, NULL) != -1)
+                        {
+                            hiconResult = ImageList_GetIcon(hImageList, 0, 0);
+                        }
 
-                        DeleteObject(hBitmap);
-                        psiif->Release();
+                        ImageList_Destroy(hImageList);
                     }
-                    DeleteObject(hBitmap);
                 }
+
+                if (hBitmap)
+                    DeleteObject(hBitmap);
+
                 psiif->Release();
             }
         }
     }
     return hiconResult;
 }
+#endif
 
 void CALLBACK CTaskBand::IconAsyncProc(HWND hwnd, UINT uMsg, ULONG_PTR dwData, LRESULT lResult)
 {
     PICONDATA pid = (PICONDATA)dwData;
     if (pid)
     {
+#if EXEX_DLL
+        // When we call this function ordinarily, the icon is owned by the system. For this
+        // hack to get UWP icon, we have an icon we manage ourselves, so we need to clean it
+        // up ourselves.
+        //
+        // _SetWindowIcon will make its own copy of the icon, so we'll free after we're done
+        // sending the icon over to that.
+        bool fIsUwpIcon = false;
+
         if (!lResult && IsShellFrameWindow && IsShellFrameWindow(hwnd))
         {
             lResult = (LRESULT)GetUWPIcon(hwnd);
+            if (lResult)
+            {
+                fIsUwpIcon = true;
+            }
         }
+#endif
 
         pid->ptb->_SetWindowIcon(hwnd, (HICON)lResult, pid->iPref);
         delete pid;
+
+#if EXEX_DLL
+        if (fIsUwpIcon)
+        {
+            DestroyIcon((HICON)lResult);
+        }
+#endif
     }
 }
 
