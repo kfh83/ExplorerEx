@@ -1033,7 +1033,6 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         }
     }
 
-    // XXX(isabella): This is leaking due to GetTrayItem getting the HICON for the tray item.
     if (!bFirstTime)
         _NotifyCallback(NIM_MODIFY, nIcon, -1);
 
