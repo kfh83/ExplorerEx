@@ -21,6 +21,78 @@ typedef enum ICONSTATEFLAG
     TIF_ITEMSAMEICONMODIFY,
 } ICONSTATEFLAG;
 
+#if 0
+// Stolen from ep_taskbar.
+class CTrayItemIdentity
+{
+public:
+    CTrayItemIdentity() = default;
+
+    CTrayItemIdentity(const CTrayItemIdentity& other) // TODO Pass-by-reference type assumed
+    {
+        _guidItem = other._guidItem;
+        _hWnd = other._hWnd;
+        _uID = other._uID;
+        _uVersion = other._uVersion;
+        _uCallbackMsg = other._uCallbackMsg;
+        StringCchCopyW(_szExeName, MAX_PATH, other._szExeName);
+    }
+
+    CTrayItemIdentity(const NOTIFYITEM& notifyItem)
+    {
+        _guidItem = notifyItem.guidItem;
+        _hWnd = notifyItem.hWnd;
+        _uID = notifyItem.uID;
+        _uVersion = notifyItem.uVersion;
+        _uCallbackMsg = notifyItem.uCallbackMsg;
+        StringCchCopyW(_szExeName, MAX_PATH, notifyItem.pszExeName);
+    }
+
+    CTrayItemIdentity(const CTrayItem* trayItem)
+    {
+        _guidItem = trayItem->m_guidItem;
+        _hWnd = trayItem->m_hWnd;
+        _uID = trayItem->m_uID;
+        _uVersion = trayItem->m_uVersion;
+        _uCallbackMsg = trayItem->m_uCallbackMsg;
+        StringCchCopyW(_szExeName, MAX_PATH, trayItem->m_szExeName);
+    }
+
+    bool operator==(const CTrayItemIdentity& other) const
+    {
+        if (!IsEqualGUID(GUID_NULL, _guidItem)
+            && IsEqualGUID(_guidItem, other._guidItem))
+        {
+            return true;
+        }
+        return _hWnd == other._hWnd && _uID == other._uID;
+    }
+
+    bool operator!=(const CTrayItemIdentity& other) const
+    {
+        if (!IsEqualGUID(_guidItem, other._guidItem)
+            && !IsEqualGUID(_guidItem, GUID_NULL)
+            && !IsEqualGUID(other._guidItem, GUID_NULL))
+        {
+            return true;
+        }
+        return _hWnd != other._hWnd && _uID != other._uID;
+    }
+
+    HRESULT GetApplicationIdentity(WCHAR *szAppIdOut, size_t cch, bool *pfOutIsExplicitAppId);
+    HRESULT GetExeName(WCHAR *pszExeName, size_t cch) const;
+    GUID GetGuid() const;
+
+private:
+    GUID _guidItem = GUID_NULL;
+    HWND _hWnd = nullptr;
+    WCHAR _szExeName[MAX_PATH];
+    UINT _uID = 0;
+    UINT _uVersion = 3;
+    UINT _uCallbackMsg = 0; // TODO Check values set by constructors
+};
+#endif
+
 class CTrayItem
 {
     public:
@@ -77,8 +149,9 @@ class CTrayItem
         UINT        uNumSeconds;
         GUID        guidItem;
 
+        DWORD _GetStateFlag(ICONSTATEFLAG sf); // XXX(isabella): Made public so CTrayItemManager can access.
+
     private:
-        DWORD _GetStateFlag(ICONSTATEFLAG sf);
         void _SetIconState(ICONSTATEFLAG sf, BOOL bSet);
         BOOL _CheckIconState(ICONSTATEFLAG sf);
 };

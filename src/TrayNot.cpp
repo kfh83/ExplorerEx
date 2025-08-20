@@ -58,6 +58,27 @@ const WCHAR CTrayNotify::c_wzTrayNotifyVertTheme[]          = L"TrayNotifyVert";
 const WCHAR CTrayNotify::c_wzTrayNotifyHorizOpenTheme[]     = L"TrayNotifyHorizOpen";
 const WCHAR CTrayNotify::c_wzTrayNotifyVertOpenTheme[]      = L"TrayNotifyVertOpen";
 
+// Stolen from ep_taskbar:
+MIDL_INTERFACE("0000001b-0000-0000-c000-000000000046")
+IStdIdentity : IUnknown
+{
+};
+
+extern "C" inline const IID IID_IStdIdentity = __uuidof(IStdIdentity);
+
+// Ported from ep_taskbar to not use WRL smart pointers.
+static bool IsCurrentComApartment(IUnknown *punk)
+{
+    IStdIdentity *pIdentity = nullptr;
+    if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pIdentity))))
+    {
+        pIdentity->Release();
+        return true;
+    }
+
+    return false;
+}
+
 //
 // Global functions...
 //
@@ -208,15 +229,9 @@ HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB)
                 {
                     if (bStat)
                     {
-						//try
-						//{
-                            pNotifyCB->Notify(NIM_ADD, &ni);
-                        //}
-                        //catch (...)
-                        //{
-                        //}
+                        pNotifyCB->Notify(NIM_ADD, &ni);
                         
-                        //_TickleForTooltip(&ni);
+                        _TickleForTooltip(&ni);
                     }
                 }
                 else
@@ -1018,6 +1033,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         }
     }
 
+    // XXX(isabella): This is leaking due to GetTrayItem getting the HICON for the tray item.
     if (!bFirstTime)
         _NotifyCallback(NIM_MODIFY, nIcon, -1);
 
@@ -3538,33 +3554,28 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
     case TNM_NOTIFY:
         {
-        return (LRESULT)_pNotifyCB;
-		//ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-		//CNotificationItem* pni = (CNotificationItem*)lParam;
-		//if (pni)
-		//{
-		//    if (_pNotifyCB)
-		//    {
-		//        INotificationCB* cb = 0;
-		//        if (SUCCEEDED(_pNotifyCB->QueryInterface(&cb)))
-		//        {
-		//            try {
-		//			    _pNotifyCB->Notify((UINT)wParam,pni);
-		//
-		//            }
-		//            catch (...)
-		//            {
-		//
-		//            }
-		//			if (wParam == NIM_ADD)
-		//			{
-		//				//_TickleForTooltip(pni);
-		//			}
-		//        }
-		//        
-		//    }
-		//    delete pni;
-		//}
+		ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+		CNotificationItem* pni = (CNotificationItem*)lParam;
+		if (pni)
+		{
+		    if (_pNotifyCB && IsCurrentComApartment(_pNotifyCB))
+		    {
+		        INotificationCB* cb = 0;
+		        if (SUCCEEDED(_pNotifyCB->QueryInterface(&cb)))
+		        {
+                    cb->Notify((UINT)wParam, pni);
+
+					if (wParam == NIM_ADD)
+					{
+						_TickleForTooltip(pni);
+					}
+
+                    cb->Release();
+		        }
+		        
+		    }
+		    delete pni;
+		}
         }
         break;
 

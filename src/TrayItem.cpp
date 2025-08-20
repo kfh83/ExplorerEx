@@ -3,6 +3,16 @@
 #include "trayitem.h"
 #include "shundoc.h"
 
+#if 0 // TODO: I don't want to do the app resolver shit right now, plus doesn't seem crucial.
+HRESULT CTrayItemIdentity::GetApplicationIdentity(WCHAR *szAppIdOut, size_t cch, bool *pfOutIsExplicitAppId)
+{
+    if (pfOutIsExplicitAppId)
+        *pfOutIsExplicitAppId = false;
+
+    CComPtr<IApplicationResolver2> spResolver = ;
+}
+#endif
+
 //
 // CTrayItem members...
 //
@@ -310,6 +320,35 @@ BOOL CTrayItemManager::GetTrayItem(INT_PTR nIndex, CNotificationItem * pni, BOOL
             pni->SetExeName(pti->szExeName);
             pni->SetIconText(szText);
             memcpy(&(pni->guidItem), &(pti->guidItem), sizeof(pti->guidItem));
+
+            pni->dwFlags = 0;
+#if 0 // We don't have a IsSystemIcon() implementation yet. TODO: Add for parity with Windows 10.
+            if (pti->IsSystemIcon())
+            {
+                pni->dwFlags |= 1;
+            }
+#endif
+            if ((pti->dwState & pti->_GetStateFlag(TIF_ITEMCLICKED)) != 0)
+            {
+                pni->dwFlags |= 2;
+            }
+
+            pni->nDisplayIndex = nIndex;
+            pni->uCallbackMsg = pti->uCallbackMessage;
+            pni->uVersion = pti->uVersion;
+            pni->fUseSystemTip = false; // TODO: Add to CTrayItem for parity with Windows 10.
+            
+            WCHAR szAppIdentity[MAX_PATH];
+            bool fIsExplicitAppId;
+#if 0 // TODO: Parity with Windows 10.
+            if (SUCCEEDED(pti->GetApplicationIdentity()))
+            {
+
+            }
+#else
+            pni->pszAppId = nullptr;
+            pni->fIsExplicitAppId = false;
+#endif
 
             *pbStat = TRUE;
             return TRUE;

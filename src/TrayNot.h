@@ -333,6 +333,8 @@ private:
     // command id of the icon which last received a single down-click
     int             _idMouseActiveIcon;
 
+    // TODO(isabella): Windows 10 supports multiple callbacks. Perhaps this is worth supporting in
+    // ExplorerEx too.
     INotificationCB     * _pNotifyCB;
     
     IUserEventTimer     * m_pIconDemoteTimer;
