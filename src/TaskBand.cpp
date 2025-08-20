@@ -269,6 +269,7 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
             _hwndSelected = NULL;
             CToolTipCtrl ttc = _ptb->_tb.GetToolTips();
             ttc.Activate(TRUE);
+            _ptb->field_128 = 0;
             _ptb->_iIndexPopup = -1;
         }
         break;
@@ -354,7 +355,7 @@ HRESULT CTaskBand::GetWindow(HWND * lphwnd)
         
 }
 
-CTaskBand::CTaskBand() : _dwBandID((DWORD)-1), _iDropItem(-2), _iIndexActiveAtLDown(-1), _cRef(1), _iOldPriority(INVALID_PRIORITY)
+CTaskBand::CTaskBand() : _dwBandID((DWORD)-1), _iDropItem(-2), _iIndexActiveAtLDown(-1), _cRef(1), _iOldPriority(INVALID_PRIORITY), _cThumbnails(3)
 {
 }
 
@@ -446,7 +447,7 @@ STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmd
     if (!pguidCmdGroup || !IsEqualGUID(CGID_DeskBand, *pguidCmdGroup))
         return OLECMDERR_E_NOTSUPPORTED;
 
-    if (nCmdID == DBID_SETWINDOWTHEME && pvarargIn && pvarargIn->vt == VT_BSTR && _tb)
+    if (nCmdID == DBID_SETWINDOWTHEME && pvarargIn && V_VT(pvarargIn) == VT_BSTR && _tb)
     {
         LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
         SetWindowTheme(_hwnd, pszTheme, 0);
@@ -575,7 +576,7 @@ HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode,
         TBMETRICS tbm;
         _GetToolbarMetrics(&tbm);
 
-        pdbi->ptMinSize.x = lButHeight * 3;
+        pdbi->ptMinSize.x = lButHeight * (_hTheme ? 3.6 : 5.0);
         pdbi->ptMinSize.y = lButHeight;
         pdbi->ptIntegral.y = lButHeight + tbm.cyButtonSpacing;
     }
@@ -715,8 +716,8 @@ HRESULT CTaskBand::OnWinEvent(HWND hwnd, UINT dwMsg, WPARAM wParam, LPARAM lPara
     
     switch (dwMsg) 
     {
-    case WM_WININICHANGE:
-        _HandleWinIniChange(wParam, lParam, FALSE);
+    case WM_SETTINGCHANGE:
+        _HandleSettingChange(wParam, lParam, FALSE);
         break;
 
     case WM_NOTIFY:
@@ -729,6 +730,44 @@ HRESULT CTaskBand::OnWinEvent(HWND hwnd, UINT dwMsg, WPARAM wParam, LPARAM lPara
                 break;
             }
         }
+        break;
+
+    case WM_DWMCOMPOSITIONCHANGED:
+        {
+            _HideThumbnailWindows();
+            if (IsCompositionActive())
+            {
+                LRESULT v7 = SendMessage(_tb, 0x418u, 0, 0);
+                while (--v7 >= 0)
+                {
+                    PTASKITEM pti = _GetItem(v7);
+                    if (pti && IsWindow(pti->hwnd))
+                    {
+                    _RegisterThumbnail(pti->hwnd, &pti->hThumbnail);
+                    }
+                }
+            }
+
+            CToolTipCtrl ttc = _tb.GetToolTips();
+            if (_hTheme && CTaskBand::_CanShowThumbnail())
+            {
+                ttc.SetDelayTime(TTDT_INITIAL, (_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime));
+                ttc.SetDelayTime(TTDT_AUTOPOP, _dwAutoPopTooltipDelayTime);
+            }
+            else
+            {
+                SendMessage((HWND)this, 0x41C, 0, 0);
+                SendMessage((HWND)this, 0x403, 0, 0xFFFF);
+            }
+        }
+        break;
+
+    case WM_DWMCOLORIZATIONCOLORCHANGED:
+        _UpdateThumbnailBackgroundBrush(wParam, FALSE);
+        break;
+
+    case 0x575u:
+        _RefreshSettings();
         break;
     }
 
@@ -2052,6 +2091,7 @@ BOOL TaskShortcut::_HandleShortcutInvoke(LPSHShortcutInvokeAsIDList psidl)
 TASKITEM::TASKITEM(TASKITEM* pti)
 {
     hwnd = pti->hwnd;
+	field_4 = pti->field_4;
     dwFlags = pti->dwFlags;
     ptsh = NULL;
     dwTimeLastClicked = pti->dwTimeLastClicked;
@@ -2066,6 +2106,7 @@ TASKITEM::TASKITEM(TASKITEM* pti)
             StringCchCopy(pszExeName, cchExeName, pti->pszExeName);
         }
     }
+    hThumbnail = pti->hThumbnail;
 }
 
 TASKITEM::~TASKITEM()
@@ -3291,6 +3332,11 @@ int CTaskBand::_InsertItem(HWND hwndTask, PTASKITEM pti, BOOL fForceGetIcon)
             goto Failure;
         pti->hwnd = hwndTask;
         pti->dwTimeFirstOpened = pti->dwTimeLastClicked = GetTickCount();
+
+        if (_hTheme && IsCompositionActive() && IsWindow(pti->hwnd))
+        {
+            _RegisterThumbnail(pti->hwnd, &pti->hThumbnail);
+        }
     }
 
     _AttachTaskShortcut(pti, szExeName);
@@ -3840,6 +3886,7 @@ void CALLBACK CTaskBand::FakeSystemMenuCB(HWND hwnd, UINT uMsg, ULONG_PTR dwData
         {
             CToolTipCtrl ttc = ptasks->_tb.GetToolTips();
             ttc.Activate(TRUE);
+            ptasks->field_128 = 0;
         }
     }
 }
@@ -3947,6 +3994,7 @@ void CTaskBand::_FakeSystemMenu(HWND hwndTask, DWORD dwPos)
     {
         CToolTipCtrl ttc = _tb.GetToolTips();
         ttc.Activate(FALSE);
+        field_128 = 1;
     }
 
     // HACKHACK: sleep to give time to switch to them.  (user needs this... )
@@ -4352,6 +4400,10 @@ LRESULT CTaskBand::_HandleNotify(LPNMHDR lpnm)
         else
         {
             LPNMTBHOTITEM pnmhot = (LPNMTBHOTITEM)lpnm;
+
+            if (!field_D0)
+                _HandleThumbnail(_tb, pnmhot, 0);
+
             if (pnmhot->dwFlags & HICF_ARROWKEYS)
             {
                 // If this change came from a mouse then the hot item is already in view
@@ -4515,6 +4567,32 @@ LRESULT CALLBACK s_FilterCaptureSubclassProc(
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
 
+LRESULT CALLBACK CTaskBand::s_TaskbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    switch (uMsg)
+    {
+    case WM_NOTIFY:
+        {
+		    NMTBHOTITEM *phot = (NMTBHOTITEM *)lParam;
+            if (phot->hdr.code == -521)
+            {
+                CTaskBand *pTasks = (CTaskBand *)dwRefData;
+                if (pTasks->_ShowTooltip(phot->hdr.hwndFrom))
+                {
+                    return 1;
+                }
+            }
+        }
+        break;
+    case WM_NCDESTROY:
+        {
+            RemoveWindowSubclass(hwnd, (SUBCLASSPROC)CTaskBand::s_TaskbarSubclassProc, uIdSubclass);
+        }
+        break;
+    }
+
+	return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+}
 
 //---------------------------------------------------------------------------
 LRESULT CTaskBand::_HandleCreate()
@@ -4535,7 +4613,8 @@ LRESULT CTaskBand::_HandleCreate()
 		_SetToolbarTheme();
         //SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
         
-        SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
+        SetWindowSubclass(_tb, (SUBCLASSPROC)CTaskBand::s_TaskbarSubclassProc, 0, (DWORD_PTR)this);
+        //SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
 
         _tb.SetButtonStructSize();
 
@@ -4564,8 +4643,11 @@ LRESULT CTaskBand::_HandleCreate()
         WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
         RegisterShellHook(_hwnd, 3); // 3 = magic flag
 
+        // create the dwm thumbnail preview windows
+        _CreateThumbnailWindows();
+
         // force getting of font, calc of metrics
-        _HandleWinIniChange(0, 0, TRUE);
+        _HandleSettingChange(0, 0, TRUE);
 
         // populate the toolbar
         EnumWindows(BuildEnumProc, (LPARAM)this);
@@ -4614,38 +4696,34 @@ void CTaskBand::_FreePopupMenu()
 BOOL CTaskBand::_CanShowThumbnail()
 {
     return field_CC && IsCompositionActive();
-}
+}   
 
 void CTaskBand::_CreateThumbnailWindows()
 {
     WNDCLASS wndclass;
-    wndclass.lpfnWndProc = DefWindowProcW;
+    ZeroMemory(&wndclass, sizeof(wndclass));
+
+    wndclass.lpfnWndProc = DefWindowProc;
     wndclass.style = CS_VREDRAW | CS_HREDRAW;
     wndclass.hInstance = g_hinstCabinet;
-    wndclass.hCursor = LoadCursorW(0, IDC_ARROW);
+    wndclass.hCursor = LoadCursor(0, IDC_ARROW);
     wndclass.hbrBackground = CreateSolidBrush(RGB(200, 200, 200));
-    wndclass.lpszClassName = L"ThumbnailClass";
+    wndclass.lpszClassName = TEXT("ThumbnailClass");
     RegisterClass(&wndclass);
 
-    wndclass.lpszClassName = L"ThumbnailStackClass";
+    wndclass.lpszClassName = TEXT("ThumbnailStackClass");
     RegisterClass(&wndclass);
 
-    HWND Window = SHFusionCreateWindowEx(
+    _hwndThumbStack[0] = SHFusionCreateWindowEx(
         WS_EX_TOPMOST, L"ThumbnailClass", L"", WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0, _hwnd, NULL,
         g_hinstCabinet, NULL);
-    _hwndThumbStack[0] = Window;
 
-    INT counter = 0;
-    HWND* v8 = &_hwndThumbStack[1];
-    while (counter < _cThumbnails)
+    for (int i = 0; i < _cThumbnails; ++i)
     {
-        HWND stackWnd = SHFusionCreateWindowEx(
+        _hwndThumbStack[1 + i] = SHFusionCreateWindowEx(
             WS_EX_TOPMOST, L"ThumbnailStackClass", L"", WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0,
             _hwnd, NULL, g_hinstCabinet, NULL);
-        HWND* stackWndPointer = v8;
-        ++counter;
-        ++v8;
-        *stackWndPointer = stackWnd;
+		wprintf(L"CTaskBand::_CreateThumbnailWindows: hwndThumbStack[%d] = %p\n", i, _hwndThumbStack[1 + i]);
     }
 }
 
@@ -4667,6 +4745,7 @@ void CTaskBand::_HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool fGlom
         _fShowThumbnail = FALSE;
         return;
     }
+
     if (_fShowThumbnail)
     {
         _ShowThumbnail(hwnd, hotItemInfo->idNew, fGlommed);
@@ -4688,15 +4767,13 @@ void CTaskBand::_HideThumbnail()
 
     _HideThumbnailWindows();
 
-    LRESULT IndexByHwnd = _FindIndexByHwnd(field_140);
-    TASKITEM* Item = _GetItem(IndexByHwnd, NULL, 1);
-    if (Item)
+    PTASKITEM pti = _GetItem(_FindIndexByHwnd(field_140), NULL, 1);
+    if (pti)
     {
         DWM_THUMBNAIL_PROPERTIES ptnProperties;
-        HTHUMBNAIL hTh = Item->hThumbnail;
-        ptnProperties.dwFlags = 8;
-        ptnProperties.fVisible = TRUE;
-        DwmUpdateThumbnailProperties(hTh, &ptnProperties);
+        ptnProperties.dwFlags = DWM_TNP_VISIBLE;
+        ptnProperties.fVisible = FALSE;
+        DwmUpdateThumbnailProperties(pti->hThumbnail, &ptnProperties);
     }
     field_140 = NULL;
 }
@@ -4723,10 +4800,29 @@ void CTaskBand::_HideThumbnailWindows()
 
 int g_iLPX;
 int g_iLPY;
+BOOL g_fHighDPI;
+BOOL g_fHighDPIAware;
 
-void __stdcall SHLogicalToPhysicalDPI(SIZE *a1)
+void WINAPI InitDPI()
 {
-    //InitDPI(); @MOD
+    BOOL v0 = IsProcessDPIAware();
+    if (g_iLPX == -1 || g_fHighDPIAware != v0)
+    {
+        g_fHighDPIAware = v0;
+        HDC DC = GetDC(0);
+        if (DC)
+        {
+            g_iLPX = GetDeviceCaps(DC, 88);
+            g_iLPY = GetDeviceCaps(DC, 90);
+            g_fHighDPI = g_iLPX != 96;
+            ReleaseDC(0, DC);
+        }
+    }
+}
+
+void WINAPI SHLogicalToPhysicalDPI(SIZE *a1)
+{
+    InitDPI();
     a1->cx = MulDiv(a1->cx, g_iLPX, 96);
     a1->cy = MulDiv(a1->cy, g_iLPY, 96);
 }
@@ -4814,19 +4910,19 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
 {
     // @MOD Skipped telemetry ShellTraceId_Taskbar_ShowThumbnail_Start
 
-    if (!this->_hwndThumbStack[0] || SendMessageW(hWnd, TB_GETHOTITEM, 0, 0) == -1)
+    if (!this->_hwndThumbStack[0] || SendMessage(hWnd, TB_GETHOTITEM, 0, 0) == -1)
     {
         return;
     }
 
     int iBtnId = wParam;
-    int iCommandId = SendMessageW(hWnd, TB_COMMANDTOINDEX, wParam, 0);
+    int iCommandId = SendMessage(hWnd, TB_COMMANDTOINDEX, wParam, 0);
     if (!fIsGlomMenu)
     {
         iBtnId = iCommandId;
     }
 
-    TASKITEM *pTaskItem = _GetItem(iBtnId, NULL, TRUE);
+    TASKITEM *pTaskItem = _GetItem(iBtnId);
 
     if (!pTaskItem)
     {
@@ -4858,7 +4954,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
     field_140 = pThumbnailTaskItem->hwnd;
 
     RECT rcTaskItem;
-    if (!SendMessageW(hWnd, TB_GETITEMRECT, iCommandId, (LPARAM)&rcTaskItem))
+    if (!SendMessage(hWnd, TB_GETITEMRECT, iCommandId, (LPARAM)&rcTaskItem))
     {
         return;
     }
@@ -4880,8 +4976,8 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
 
         RECT rc;
         SetRectEmpty(&rc);
-        DWORD dwExStyle = GetWindowLongW(this->_hwndThumbStack[0], GWL_EXSTYLE);
-        DWORD dwStyle = GetWindowLongW(this->_hwndThumbStack[0], GWL_STYLE);
+        DWORD dwExStyle = GetWindowLongPtr(_hwndThumbStack[0], GWL_EXSTYLE);
+        DWORD dwStyle = GetWindowLongPtr(_hwndThumbStack[0], GWL_STYLE);
         AdjustWindowRectEx(&rc, dwStyle, FALSE, dwExStyle);
 
         double fx;
@@ -4889,11 +4985,13 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         {
             // Thumbnail image is wide:
             fx = (double)_sizeThumbnailImage.cy * (double)size.cx / (double)size.cy + 0.5;
+            wprintf(L"fx = %.2f\n", fx);
         }
         else
         {
             // Thumbnail image is tall or square:
             fx = (double)_sizeThumbnailImage.cx;
+            wprintf(L"fx = %.2f\n", fx);
         }
 
         double fy;
@@ -4901,15 +4999,18 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         {
             // Thumbnail image is wide:
             fy = (double)_sizeThumbnailImage.cy;
+            wprintf(L"fy = %.2f\n", fy);
         }
         else
         {
             // Thumbnail image is tall or square:
             fy = (double)_sizeThumbnailImage.cx * (double)size.cy / (double)size.cx + 0.5;
+            wprintf(L"fy = %.2f\n", fy);
         }
 
         int iWidth = (int)fx + RECTWIDTH(rc);
         int iHeight = (int)fy + RECTHEIGHT(rc);
+		wprintf(L"iWidth = %d, iHeight = %d\n", iWidth, iHeight);
 
         MapWindowPoints(hWnd, NULL, (LPPOINT)&rcTaskItem, 2);
         int iPaddingWidth = cThumbnails * _sizeThumbnailGroupOffset.cx;
@@ -4923,6 +5024,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         // to not overlap.
         if (fIsGlomMenu && uStuckPlace != STICK_LEFT)
         {
+			wprintf(L"CTaskBand::_ShowThumbnail: glom menu detected, overriding uStuckPlace to STICK_RIGHT\n");
             uStuckPlace = STICK_RIGHT;
         }
 
@@ -4935,6 +5037,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
             {
                 x = (rcTaskItem.left + rcTaskItem.right - iWidth) / 2;
                 y = rcTaskItem.bottom + _sizeThumbnailMargin.cy;
+				wprintf(L"CTaskBand::_ShowThumbnail: STICK_TOP, x = %d, y = %d\n", x, y);
                 break;
             }
 
@@ -4943,6 +5046,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
             {
                 x = (rcTaskItem.left + rcTaskItem.right - iWidth) / 2;
                 y = rcTaskItem.top - iHeight - _sizeThumbnailMargin.cy;
+				wprintf(L"CTaskBand::_ShowThumbnail: STICK_BOTTOM, x = %d, y = %d\n", x, y);
                 break;
             }
 
@@ -4951,6 +5055,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
             {
                 x = rcTaskItem.right + iPaddingWidth + _sizeThumbnailMargin.cx;
                 y = rcTaskItem.bottom - iHeight;
+				wprintf(L"CTaskBand::_ShowThumbnail: STICK_LEFT, x = %d, y = %d\n", x, y);
                 break;
             }
 
@@ -4960,13 +5065,16 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
             {
                 x = rcTaskItem.left - iWidth - _sizeThumbnailMargin.cx;
                 y = rcTaskItem.bottom - iHeight;
+				wprintf(L"CTaskBand::_ShowThumbnail: STICK_RIGHT, x = %d, y = %d\n", x, y);
                 break;
             }
         }
         
         RECT rcDst;
         HMONITOR hMonitor = MonitorFromRect(&rcTaskItem, MONITOR_DEFAULTTONEAREST);
-        GetMonitorRects(hMonitor, &rcDst, FALSE);
+        GetMonitorRect(hMonitor, &rcDst);
+        wprintf(L"CTaskBand::_ShowThumbnail: Monitor Rect: left = %d, top = %d, right = %d, bottom = %d\n",
+			rcDst.left, rcDst.top, rcDst.right, rcDst.bottom);
 
         // The X position of the thumbnail should be clamped according to the end of the rcDestination.
         // Project the value so that we can adjust it further later.
@@ -4974,16 +5082,19 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         if (x >= rcDst.right - iWidth)
         {
             iProjectedX = rcDst.right - iWidth;
+			wprintf(L"CTaskBand::_ShowThumbnail: Projected X clamped to right edge: %d\n", iProjectedX);
         }
 
         // The X position is clamped to align with the rcDestination. Clamp it to one of the edges.
         if (iProjectedX <= iPaddingWidth + rcDst.left)
         {
             x = iPaddingWidth + rcDst.left;
+			wprintf(L"CTaskBand::_ShowThumbnail: X clamped to left edge: %d\n", x);
         }
         else if (x >= rcDst.right - iWidth)
         {
             x = rcDst.right - iWidth;
+			wprintf(L"CTaskBand::_ShowThumbnail: X clamped to right edge: %d\n", x);
         }
 
         // In the case of glom menu thumbnails, display the thumbnail to the right of
@@ -4991,6 +5102,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         if (fIsGlomMenu && rcTaskItem.left < x + iWidth + _sizeThumbnailMargin.cx)
         {
             x = rcTaskItem.right + _sizeThumbnailMargin.cx;
+			wprintf(L"CTaskBand::_ShowThumbnail: Glom menu detected, X adjusted to right of menu: %d\n", x);
         }
 
         // Ensure that there is enough room on screen above the thumbnail to display the
@@ -4998,16 +5110,21 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
         if (y <= rcDst.top + _sizeThumbnailTooltip.cy + _sizeThumbnailTooltipMargin.cy)
         {
             y = rcDst.top + _sizeThumbnailTooltip.cy + _sizeThumbnailTooltipMargin.cy;
+			wprintf(L"CTaskBand::_ShowThumbnail: Y adjusted to fit tooltip: %d\n", y);
         }
 
         _UpdateThumbnailBackgroundBrush(0, TRUE);
-        SetWindowPos(this->_hwndThumbStack[0], 0, x, y, iWidth, iHeight, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SetWindowPos(_hwndThumbStack[0], 0, x, y, iWidth, iHeight, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+		wprintf(L"CTaskBand::_ShowThumbnail: SetWindowPos: x = %d, y = %d, iWidth = %d, iHeight = %d\n", x, y, iWidth, iHeight);
 
         RECT rcDestination;
         rcDestination.right = fx;
         rcDestination.left = 0;
         rcDestination.top = 0;
         rcDestination.bottom = fy;
+
+        wprintf(L"CTaskBand::_ShowThumbnail: rcDestination: left = %d, top = %d, right = %d, bottom = %d\n",
+			rcDestination.left, rcDestination.top, rcDestination.right, rcDestination.bottom);
 
         DWM_THUMBNAIL_PROPERTIES tnProperties;
         tnProperties.dwFlags = DWM_TNP_VISIBLE | DWM_TNP_RECTDESTINATION;
@@ -5023,7 +5140,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
                 HDWP hdwp = BeginDeferWindowPos(cThumbnails + 1);
                 if (hdwp)
                 {
-                    DeferWindowPos(hdwp, this->_hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
+                    DeferWindowPos(hdwp, _hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
 
                     for (int i = cThumbnails; i >= 1; i--)
                     {
@@ -5034,9 +5151,9 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
                         DeferWindowPos(
                             hdwp,
                             hWndDefer,
-                            this->_hwndThumbStack[0],
-                            x - i * this->_sizeThumbnailGroupOffset.cx,
-                            y - i * this->_sizeThumbnailGroupOffset.cy,
+                            _hwndThumbStack[0],
+                            x - i * _sizeThumbnailGroupOffset.cx,
+                            y - i * _sizeThumbnailGroupOffset.cy,
                             iWidth,
                             iHeight,
                             SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER
@@ -5048,7 +5165,7 @@ void CTaskBand::_ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu)
             }
             else // For single task items
             {
-                SetWindowPos(this->_hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
+                SetWindowPos(_hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
             }
         }
 
@@ -5114,19 +5231,165 @@ void CTaskBand::_UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumb
 
     if (SendMessage(hwnd, TB_GETBUTTONINFO, wParam, (LPARAM)&tbbi) != -1)
     {
+		wprintf(L"CTaskBand::_UpdateThumbnailTitle: szTitle = %s\n", szTitle);
         SetWindowText(_hwndThumbStack[0], szTitle);
         if (cThumbnails >= 1)
         {
-            for (int i = cThumbnails; i > 0; --i)
+            for (int i = cThumbnails; i; --i)
             {
+                wprintf(L"CTaskBand::_UpdateThumbnailTitle: szTitle = %s\n", szTitle);
                 SetWindowText(_hwndThumbStack[i], szTitle);
             }
         }
     }
 }
 
+LRESULT CALLBACK CTaskBand::s_GlomMenuSiteSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    CTaskBand *pThis = (CTaskBand *)dwRefData;
+
+    switch (uMsg)
+    {
+        case WM_NOTIFY:
+        {
+            NMTBHOTITEM *phot = (NMTBHOTITEM *)lParam;
+            if (phot->hdr.code == TBN_HOTITEMCHANGE)
+            {
+                HWND hwndPopup;
+                if (SUCCEEDED(IUnknown_GetWindow(pThis->_psmPopup, &hwndPopup)))
+                {
+                    pThis->_HandleThumbnail(hwndPopup, phot, true);
+                }
+            }
+        }
+        break;
+
+        case WM_NCDESTROY:
+        {
+            pThis->_HideThumbnail();
+            KillTimer(pThis->_hwnd, 10);
+            pThis->_fShowThumbnail = FALSE;
+
+            RemoveWindowSubclass(hwnd, (SUBCLASSPROC)s_GlomMenuSiteSubclassProc, uIdSubclass);
+        }
+        break;
+
+        case WM_PRINTCLIENT:
+        {
+            if (pThis->_hThemeGlomMenu && IsCompositionActive())
+            {
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                DrawThemeBackground(pThis->_hThemeGlomMenu, (HDC)wParam, 0, 0, &rc, 0);
+            }
+        }   
+        break;
+    }
+
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+}
+
+int CTaskBand::_ShowTooltip(const HWND hWnd)
+{
+    DWORD TickCount; // eax
+    int v4; // ebx
+    int v5; // edi
+    int v6; // edi
+    HMONITOR v7; // eax
+    LONG v8; // ecx
+    struct tagRECT rcDst; // [esp+Ch] [ebp-3Ch] BYREF
+    struct tagRECT v11; // [esp+1Ch] [ebp-2Ch] BYREF
+    struct tagRECT Rect; // [esp+2Ch] [ebp-1Ch] BYREF
+    int X; // [esp+3Ch] [ebp-Ch]
+    int v14; // [esp+44h] [ebp-4h]
+
+    v14 = 1;
+    if (!this->_CanShowThumbnail())
+        return 0;
+
+    if (this->_dwInitialTooltipDelayTime + this->_dwInitialThumbDelayTime <= GetTickCount() - this->_dwTick)
+    {
+        if (IsWindowVisible(this->_hwndThumbStack[0]))
+        {
+            GetWindowRect(this->_hwndThumbStack[0], &Rect);
+            GetWindowRect(hWnd, &v11);
+            v4 = v11.right - v11.left;
+            v5 = Rect.top - this->_sizeThumbnailTooltip.cy;
+            X = Rect.left + (Rect.right - Rect.left - (v11.right - v11.left)) / 2;
+            v6 = v5 - (v11.bottom - v11.top);
+            v7 = MonitorFromRect(&Rect, 0);
+            GetMonitorRects(v7, &rcDst, 0);
+            v8 = X;
+            if (X >= rcDst.right - v4)
+                v8 = rcDst.right - v4;
+            if (rcDst.left <= v8)
+            {
+                if (X >= rcDst.right - v4)
+                    X = rcDst.right - v4;
+            }
+            else
+            {
+                X = rcDst.left;
+            }
+            SetWindowPos(hWnd, 0, X, v6, 0, 0, 0x211u);
+        }
+    }
+    else
+    {
+        SetWindowPos(hWnd, 0, 0, 0, 0, 0, 0x16u);
+        this->field_120 = hWnd;
+        SetTimer(
+            _hwnd,
+            0xBu,
+            this->_dwInitialTooltipDelayTime + this->_dwTick + this->_dwInitialThumbDelayTime - GetTickCount(),
+            0);
+    }
+    return v14;
+}
+
+LRESULT CALLBACK CTaskBand::s_GlomMenuToolbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    switch (uMsg)
+    {
+        case WM_NOTIFY:
+        {
+            NMTBHOTITEM *phot = (NMTBHOTITEM *)lParam;
+            if (phot->hdr.code == -521)
+            {
+                CTaskBand *pThis = (CTaskBand *)dwRefData;
+                if (!pThis->_ShowTooltip(phot->hdr.hwndFrom))
+                {
+                    return 1;
+                }
+            }
+        }
+        break;
+
+        case WM_NCDESTROY:
+        {
+            RemoveWindowSubclass(hwnd, s_GlomMenuToolbarSubclassProc, uIdSubclass);
+        }
+        break;
+    }
+
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+}
+
+void CTaskBand::_SetGlomMenuTheme(HWND hwnd)
+{
+    if (this->_hThemeGlomMenu)
+    {
+        LPCWSTR pszTheme = IsCompositionActive() ? L"TaskBandGroupMenuComposited" : L"TaskBandGroupMenu";
+        SendMessage(hwnd, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
+
+        if (IsCompositionActive())
+            SHSetWindowBits(hwnd, GWL_STYLE, 0x8000, 0x8000);
+    }
+}
+
 HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
 {
+#ifdef DEAD_CODE
     HRESULT hr = E_FAIL;
 
     CToolTipCtrl ttc = _tb.GetToolTips();
@@ -5184,6 +5447,101 @@ HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
     }
 
     return hr;
+#else
+	HRESULT hr = E_FAIL;
+
+    CToolTipCtrl ttc = _tb.GetToolTips();
+    ttc.Activate(FALSE);
+    SetActiveWindow(v_hwndTray);
+
+    CTaskBandSMC *ptbc = new CTaskBandSMC(this);
+    if (ptbc)
+    {
+        if (SUCCEEDED(CoCreateInstanceHook(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmPopup))) &&
+            SUCCEEDED(_psmPopup->Initialize(ptbc, 0, 0, SMINIT_CUSTOMDRAW | SMINIT_VERTICAL | SMINIT_TOPLEVEL)) &&
+            SUCCEEDED(CoCreateInstanceHook(CLSID_MenuDeskBar, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pmpPopup))) &&
+            SUCCEEDED(_psmPopup->SetMenu(_menuPopup, _hwnd, SMSET_USEPAGER | SMSET_NOPREFIX)) &&
+            SUCCEEDED(_psmPopup->QueryInterface(IID_PPV_ARGS(&_pmbPopup))))
+        {
+			_psmPopup->SetMinWidth(RECTWIDTH(*prcl));
+
+            IBandSite *pbs;
+            if (SUCCEEDED(CoCreateInstanceHook(CLSID_MenuBandSite, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pbs))))
+            {
+                if (SUCCEEDED(_pmpPopup->SetClient(pbs)))
+                {
+					IDeskBand *pdb;
+                    if (SUCCEEDED(_psmPopup->QueryInterface(IID_PPV_ARGS(&pdb))))
+                    {
+                        pbs->AddBand(pdb);
+                        pdb->Release();
+
+                        SendMessage(v_hwndTray, TM_SETPUMPHOOK, (WPARAM)_pmbPopup, (LPARAM)_pmpPopup);
+
+                        if (_hTheme)
+                        {
+                            HWND hwndTB;
+                            if (IUnknown_GetWindow(_psmPopup, &hwndTB) >= 0)
+                            {
+                                _SetGlomMenuTheme(hwndTB);
+
+                                if (_hTheme && _CanShowThumbnail())
+                                {
+                                    HWND hwndTooltip = (HWND)SendMessage(hwndTB, TB_GETTOOLTIPS, 0, 0);
+                                    if (hwndTooltip)
+                                    {
+                                        SendMessage(hwndTooltip, TTM_SETDELAYTIME, (WPARAM)TTDT_INITIAL, MAKELPARAM(_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime, 0));
+                                        SendMessage(hwndTooltip, TTM_SETDELAYTIME, (WPARAM)TTDT_AUTOPOP, MAKELPARAM(_dwAutoPopTooltipDelayTime, 0));
+                                    }
+                                }
+                                SetWindowSubclass(hwndTB, s_GlomMenuToolbarSubclassProc, 0, (DWORD_PTR)this);
+                            }
+
+                            IUnknown *punk;
+                            if (IUnknown_GetSite(_psmPopup, IID_PPV_ARGS(&punk)) >= 0)
+                            {
+                                HWND hWnd;
+                                if (IUnknown_GetWindow(punk, &hWnd) >= 0)
+                                {
+                                    SetWindowSubclass(hWnd, (SUBCLASSPROC)s_GlomMenuSiteSubclassProc, 0, (DWORD_PTR)this);
+                                    if (_hThemeGlomMenu && IsCompositionActive())
+                                    {
+
+                                        HWND hwndRoot = GetAncestor(hWnd, GA_ROOT);
+                                        if (hwndRoot)
+                                        {
+                                            DWM_BLURBEHIND blurBehind;
+                                            blurBehind.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+                                            blurBehind.fEnable = TRUE;
+                                            blurBehind.hRgnBlur = 0;
+                                            blurBehind.fTransitionOnMaximized = 0;
+                                            DwmEnableBlurBehindWindow(hwndRoot, &blurBehind);
+                                        }
+                                    }
+                                }
+                                punk->Release();
+                            }
+
+                            _psmPopup->SetNoBorder(TRUE);
+                        }
+
+                        hr = _pmpPopup->Popup(ppt, prcl, MPPF_BOTTOM);
+                    }
+                    pbs->Release();
+                }
+            }
+        }
+        ptbc->Release();
+    }
+    
+    if (FAILED(hr))
+    {
+		ttc.Activate(TRUE);
+        _FreePopupMenu();
+    }
+
+    return hr;
+#endif
 }
 
 void CTaskBand::_AddItemToDropDown(int iIndex)
@@ -6298,9 +6656,9 @@ void CTaskBand::_UpdateAllIcons()
 }
 
 //---------------------------------------------------------------------------
-LRESULT CTaskBand::_HandleWinIniChange(WPARAM wParam, LPARAM lParam, BOOL fOnCreate)
+LRESULT CTaskBand::_HandleSettingChange(WPARAM wParam, LPARAM lParam, BOOL fOnCreate)
 {
-    _tb.SendMessage(WM_WININICHANGE, wParam, lParam);
+    _tb.SendMessage(WM_SETTINGCHANGE, wParam, lParam);
 
     if (wParam == SPI_SETNONCLIENTMETRICS ||
         ((!wParam) && (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("WindowMetrics")) == 0)))) 
@@ -6346,6 +6704,7 @@ LRESULT CTaskBand::_HandleWinIniChange(WPARAM wParam, LPARAM lParam, BOOL fOnCre
         _RefreshSettings();
     }
 
+    _InitializeThumbnailMetrics();
     return 0;
 }
 
@@ -6536,7 +6895,29 @@ void CTaskBand::_OpenTheme()
         _hTheme = NULL;
     }
 
-    _hTheme = OpenThemeData(_hwnd, c_wzTaskBandTheme);
+    if (_hThemeGlomMenu)
+    {
+        CloseThemeData(_hThemeGlomMenu);
+        _hThemeGlomMenu = NULL;
+    }
+
+    WCHAR szClassList[64];
+    if (_CanGlassifyTaskbar())
+    {
+        StringCchPrintf(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"TaskBandComposited", L"TaskBand");
+        _hTheme = OpenThemeData(NULL, szClassList);
+    }
+    else
+    {
+        _hTheme = OpenThemeData(NULL, L"TaskBand");
+    }
+
+    if (!this->_hTheme)
+        this->field_144 = 0;
+
+	LPCWSTR pszClass = IsCompositionActive() ? L"TaskBandGroupMenuComposited" : L"TaskBandGroupMenu";
+    StringCchPrintf(szClassList, ARRAYSIZE(szClassList), L"%s::Toolbar", pszClass);
+	_hThemeGlomMenu = OpenThemeData(NULL, szClassList);
 
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
@@ -6603,38 +6984,38 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_ERASEBKGND:
+    {
+        if (_hTheme)
         {
-            if (_hTheme)
-            {
-                return 1;
-            }
-            else
-            {
-                RECT rc;
-                GetClientRect(hwnd, &rc);
-                FillRect((HDC)wParam, &rc, (HBRUSH)(COLOR_3DFACE + 1));
-            }
+            return 1;
         }
+        else
+        {
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            FillRect((HDC)wParam, &rc, (HBRUSH)(COLOR_3DFACE + 1));
+        }
+    }
 
     // this keeps our window from comming to the front on button down
     // instead, we activate the window on the up click
     // we only want this for the tree and the view window
     // (the view window does this itself)
     case WM_MOUSEACTIVATE:
-        {
-            POINT pt;
-            RECT rc;
+    {
+        POINT pt;
+        RECT rc;
 
-            GetCursorPos(&pt);
-            GetWindowRect(_hwnd, &rc);
+        GetCursorPos(&pt);
+        GetWindowRect(_hwnd, &rc);
 
-            if ((LOWORD(lParam) == HTCLIENT) && PtInRect(&rc, pt))
-                return MA_NOACTIVATE;
-            else
-                goto DoDefault;
-        }
+        if ((LOWORD(lParam) == HTCLIENT) && PtInRect(&rc, pt))
+            return MA_NOACTIVATE;
+        else
+            goto DoDefault;
+    }
 
-    case WM_SETFOCUS: 
+    case WM_SETFOCUS:
         _OnSetFocus();
         break;
 
@@ -6662,38 +7043,55 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case IDT_RECHECKRUDEAPP3:
         case IDT_RECHECKRUDEAPP4:
         case IDT_RECHECKRUDEAPP5:
+        {
+            HWND hwnd = _FindRudeApp(NULL);
+            _ptray->HandleFullScreenApp(hwnd);
+            if (hwnd)
             {
-                HWND hwnd = _FindRudeApp(NULL);
-                _ptray->HandleFullScreenApp(hwnd);
-                if (hwnd)
+                DWORD dwStyleEx = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+                if (!(dwStyleEx & WS_EX_TOPMOST) && !_IsRudeWindowActive(hwnd))
                 {
-                    DWORD dwStyleEx = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-                    if (!(dwStyleEx & WS_EX_TOPMOST) && !_IsRudeWindowActive(hwnd))
-                    {
-                        SwitchToThisWindow(hwnd, TRUE);
-                    }
-                }
-
-                KillTimer(_hwnd, wParam);
-                if (!hwnd && (wParam < IDT_RECHECKRUDEAPP5))
-                {
-                    SetTimer(_hwnd, wParam + 1, 1000, NULL);
+                    SwitchToThisWindow(hwnd, TRUE);
                 }
             }
-            break;
+
+            KillTimer(_hwnd, wParam);
+            if (!hwnd && (wParam < IDT_RECHECKRUDEAPP5))
+            {
+                SetTimer(_hwnd, wParam + 1, 1000, NULL);
+            }
+        }
+        break;
         case IDT_ASYNCANIMATION:
+			//wprintf(L"AsyncAnimation timeout\n");
             _AsyncAnimateItems();
             break;
         case IDT_REDRAW:
+			//wprintf(L"Redraw timeout\n");
             _DoRedrawWhereNeeded();
             KillTimer(hwnd, IDT_REDRAW);
             break;
         case IDT_SYSMENU:
+			//wprintf(L"SysMenu timeout\n");
             KillTimer(_hwnd, IDT_SYSMENU);
             _HandleSysMenuTimeout();
             break;
-        }
-        break;
+        case 10:
+            {
+                //wprintf(L"Hi\n");
+                KillTimer(_hwnd, 10);
+                if (!field_128
+                    && _thumbData.dwSomething == _dwTick
+                    && !c_tray._stb.IsPopupMenuVisible()
+                    && _hTheme
+                    && CTaskBand::_CanShowThumbnail())
+                    {
+                        _fShowThumbnail = TRUE;
+					    _ShowThumbnail(_thumbData.hwnd, (WPARAM)_hwnd, _thumbData.fSomething);
+                    }
+                }
+            }
+            break;
 
     case WM_COMMAND:
         _HandleCommand(GET_WM_COMMAND_CMD(wParam, lParam), GET_WM_COMMAND_ID(wParam, lParam), GET_WM_COMMAND_HWND(wParam, lParam));
@@ -6709,6 +7107,31 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case TBC_BUTTONHEIGHT:
         return _GetCurButtonHeight();
+
+    case 0x43F:
+        {
+            if (wParam)
+            {
+                CTaskBand::_HideThumbnail();
+                KillTimer(_hwnd, 0xAu);
+                _fShowThumbnail = 0;
+            }
+            else
+            {
+                field_CC = lParam;
+				CToolTipCtrl ttc = _tb.GetToolTips();
+                if (_hTheme && _CanShowThumbnail())
+                {
+                    ttc.SetDelayTime(TTDT_INITIAL, (_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime));
+                    ttc.SetDelayTime(TTDT_AUTOPOP, _dwAutoPopTooltipDelayTime);
+                }
+                else
+                {
+                    SendMessage(hwnd, 0x403, 0, 0xFFFF);
+                }
+            }
+            return 0;
+        }
 
     case WM_CONTEXTMENU:
         if (SHRestricted(REST_NOTRAYCONTEXTMENU))
@@ -6893,7 +7316,7 @@ int DestroyCB(PTASKITEM pti, LPVOID pData)
     return 0;
 }
 
-void CTaskBand::_RefreshSettings()
+void CTaskBand::_RefreshSettings() // EXEX-VISTA TODO: Add new argument
 {
     BOOL fOldGlom = _fGlom;
     int iOldGroupSize = _iGroupSize;

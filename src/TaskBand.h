@@ -23,6 +23,7 @@ public:
     TASKITEM(TASKITEM* pti);
     ~TASKITEM();
     HWND hwnd;  // NULL if this item is a group of application entries
+    HWND field_4;
     DWORD dwFlags;
     class TaskShortcut *ptsh;
     DWORD dwTimeLastClicked;
@@ -148,6 +149,8 @@ protected:
     void _UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumbnails);
 
     void _SetToolbarTheme();
+    void _SetGlomMenuTheme(HWND hwnd);
+
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
     void _CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows,
@@ -222,7 +225,7 @@ protected:
     void _InitFonts();
     void _SetItemImage(int iItem, int iImage, int iPref);
     void _UpdateAllIcons();
-    LRESULT _HandleWinIniChange(WPARAM wParam, LPARAM lParam, BOOL fOnCreate);
+    LRESULT _HandleSettingChange(WPARAM wParam, LPARAM lParam, BOOL fOnCreate);
     void _OnSetFocus();
     BOOL _RegisterWindowClass();
     void _UpdateFlashingFlag();
@@ -263,6 +266,12 @@ protected:
     void _AttachTaskShortcut(PTASKITEM pti, LPCTSTR pszExeName);
     void _ReattachTaskShortcut();
     void _BuildTaskList(CDPA<TASKITEM>* pDPA);
+
+    int _ShowTooltip(const HWND hWnd);
+
+    static LRESULT CALLBACK s_TaskbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    static LRESULT CALLBACK s_GlomMenuSiteSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    static LRESULT CALLBACK s_GlomMenuToolbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
     // *** Async-Animation 
     BOOL _fAnimate;

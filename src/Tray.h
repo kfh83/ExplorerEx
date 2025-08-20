@@ -42,6 +42,7 @@ typedef struct tagTRAYVIEWOPTS
     BOOL fSMSmallIcons;
     BOOL fHideClock;
     BOOL fNoTrayItemsDisplayPolicyEnabled;
+	BOOL fNoTaskbarThumbnailsPolicyEnabled; // EXEX-VISTA TODO: Figure out new order of the struct members
     BOOL fNoAutoTrayPolicyEnabled;
     BOOL fAutoTrayEnabledByUser;
     BOOL fShowQuickLaunch;
@@ -267,6 +268,7 @@ public:
         SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)ptvo->fShowQuickLaunch);
         _fSMSmallIcons = ptvo->fSMSmallIcons;
         _fHideClock = ptvo->fHideClock;
+		_fNoThumbnails = ptvo->fNoTaskbarThumbnailsPolicyEnabled;
         _uAutoHide = ptvo->uAutoHide;     // AH_HIDING , AH_ON
 
         // There is no necessity to save the fNoAutoTrayPolicyEnabled, 
@@ -575,6 +577,7 @@ protected:
     BOOL _fThreadTerminate;
     BOOL _fSysSizing;      // being sized by user; hold off on recalc
     BOOL _fHideClock;
+    BOOL _fNoThumbnails; // Vista - New
     BOOL _fShouldResize;
     BOOL _fMonitorClipped;
     BOOL _fHandledDelayBootStuff;

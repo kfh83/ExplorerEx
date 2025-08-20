@@ -402,6 +402,7 @@ void CTray::_GetSaveStateAndInitRects()
     _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
     _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
+	_fNoThumbnails = SHWindowsPolicy(POLID_TaskbarNoThumbnail) || BOOLIFY(dwTrayFlags & 0x80);
     _uAutoHide = (dwTrayFlags & TVSD_AUTOHIDE) ? AH_ON | AH_HIDING : 0;
     _RefreshSettings();
 
@@ -436,6 +437,7 @@ void CTray::_SaveTrayStuff(void)
     if (_fAlwaysOnTop)      tvsd.dwFlags |= TVSD_TOPMOST;
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
     if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
+    if (_fNoThumbnails)     tvsd.dwFlags |= 0x80;
     if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
 
     // Save in Stuck rects.
@@ -1337,6 +1339,8 @@ void CTray::_InitBandsite()
     BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARG(IDeskBand, &_pdbTasks), NULL, NULL);
     IUnknown_GetWindow(_pdbTasks, &_hwndTasks);
 
+    SendMessage(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
+
     // Now that bandsite is ready, set the correct size
     VerifySize(FALSE, TRUE);
     _AccountAllBandsForTaskbarSizingBar();
@@ -1381,9 +1385,6 @@ void CTray::_InitNonzeroGlobals()
     _RefreshSettings();
 }
 
-// EXEX-TODO: Hack to get the code compiling while this function is unimplemented.
-#define SHWindowsPolicy(x) (1)
-
 void CTray::_CreateTrayWindow()
 {
     _InitTrayClass();
@@ -1394,7 +1395,7 @@ void CTray::_CreateTrayWindow()
     _fNoToolbarsOnTaskbarPolicyEnabled = (SHRestricted(REST_NOTOOLBARSONTASKBAR) != 0);
     _fTaskbarLockAllPolicyEnabled = (SHWindowsPolicy(POLID_TaskbarLockAll) != 0);
     _fTaskbarNoRedockPolicyEnabled = (SHWindowsPolicy(POLID_TaskbarNoRedock) != 0);
-    _fTaskbarNoResizePolicyEnabled = (SHWindowsPolicy(POLID_TaskbarNoRedock) != 0);
+    _fTaskbarNoResizePolicyEnabled = (SHWindowsPolicy(POLID_TaskbarNoResize) != 0);
 
     DWORD dwExStyle = WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW;
     // Don't fadein because layered windows suck

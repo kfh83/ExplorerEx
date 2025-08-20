@@ -3103,3 +3103,9 @@ HRESULT WINAPI DwmpStartOrStopFlip3D()
     FreeLibrary(hDwmApi);
     return hr;
 }
+
+BOOL SHWindowsPolicy(REFGUID rpolid)
+{
+    static BOOL(WINAPI * fSHWindowsPolicy)(REFGUID) = decltype(fSHWindowsPolicy)(GetProcAddress(LoadLibrary(L"SHLWAPI.dll"), MAKEINTRESOURCEA(618)));
+    return fSHWindowsPolicy(rpolid);
+}
