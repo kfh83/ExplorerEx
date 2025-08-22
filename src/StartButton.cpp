@@ -327,24 +327,24 @@ void CStartButton::BuildStartMenu() // from xp
     if (Tray_StartPanelEnabled())
     {
         LPVOID pDeskHost;
-        DesktopV2_Create(&_pNewStartMenu, &_pNewStartMenuBand, &pDeskHost);
+        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pDeskHost);
         IUnknown_SetSite(_pUnk1, static_cast<IServiceProvider *>(this));
         DesktopV2_Build(pDeskHost);
     }
     else
     {
-        HRESULT hr = StartMenuHost_Create(&_pOldStartMenu, &_pOldStartMenuBand);
+        HRESULT hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu);
         if (SUCCEEDED(hr))
         {
             IUnknown_SetSite(_pUnk1, static_cast<IServiceProvider *>(this));
             HWND hwnd;
-            if (SUCCEEDED(IUnknown_GetWindow(_pOldStartMenu, &hwnd)))
+            if (SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)))
             {
                 SetWindowSubclass(hwnd, s_StartMenuSubclassProc, 0, (DWORD_PTR)this);
             }
 
             IBanneredBar* pbb;
-            hr = _pOldStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
+            hr = _pmpStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
             if (SUCCEEDED(hr))
             {
                 pbb->SetBitmap(_hbmpStartBkg);
@@ -361,14 +361,14 @@ void CStartButton::BuildStartMenu() // from xp
 
 void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
 {
-    if (_pOldStartMenu)
+    if (_pmpStartMenu)
     {
-        _pOldStartMenu->OnSelect(MPOS_FULLCANCEL);
-        // UnlockStartPane(); ?
+        _pmpStartMenu->OnSelect(MPOS_FULLCANCEL);
     }
-    if (_pNewStartMenu)
+
+    if (_pmpStartPane)
     {
-        _pNewStartMenu->OnSelect(MPOS_FULLCANCEL);
+        _pmpStartPane->OnSelect(MPOS_FULLCANCEL);
     }
 }
 
@@ -377,13 +377,13 @@ void CStartButton::DestroyStartMenu()
     IUnknown_SetSite(_pUnk1, NULL);
     ATOMICRELEASE(_pUnk1);
 
-    IUnknown_SetSite(_pOldStartMenu, NULL);
-    ATOMICRELEASE(_pOldStartMenu);
-    ATOMICRELEASE(_pOldStartMenuBand);
+    IUnknown_SetSite(_pmpStartMenu, NULL);
+    ATOMICRELEASE(_pmpStartMenu);
+    ATOMICRELEASE(_pmbStartMenu);
 
-    IUnknown_SetSite(_pNewStartMenu, NULL);
-    ATOMICRELEASE(_pNewStartMenu);
-    ATOMICRELEASE(_pNewStartMenuBand);
+    IUnknown_SetSite(_pmpStartPane, NULL);
+    ATOMICRELEASE(_pmpStartPane);
+    ATOMICRELEASE(_pmbStartPane);
 }
 
 // EXEX-VISTA: REVALIDATE. Partially reversed from Vista.
@@ -406,10 +406,10 @@ void CStartButton::DisplayStartMenu()
         dwFlags = 0;    // Then set to the default
     }
 
-    IMenuPopup** ppmpToDisplay = &_pOldStartMenu;
-    if (_pNewStartMenu)
+    IMenuPopup** ppmpToDisplay = &_pmpStartMenu;
+    if (_pmpStartPane)
     {
-        ppmpToDisplay = &_pNewStartMenu;
+        ppmpToDisplay = &_pmpStartPane;
     }
 
     if (!*ppmpToDisplay)
@@ -487,47 +487,46 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
             HDC hdcSrca = CreateCompatibleDC(DC);
             if (hdcSrca)
             {
-                RECT pRect;
-                pRect = { 0, 0, _size.cx, _size.cy };
+                RECT rcStart = { 0, 0, _size.cx, _size.cy };
 
                 BITMAPINFO pbmi;
-                pbmi.bmiHeader.biWidth = pRect.right;
+				ZeroMemory(&pbmi, sizeof(BITMAPINFO));
+
+                pbmi.bmiHeader.biWidth = rcStart.right;
                 pbmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
                 pbmi.bmiHeader.biHeight = -_size.cy;
                 pbmi.bmiHeader.biPlanes = 1;
                 pbmi.bmiHeader.biBitCount = 32;
                 pbmi.bmiHeader.biCompression = BI_RGB;
-                HBITMAP dibBmp = CreateDIBSection(DC, &pbmi, 0, 0, 0, 0);
+
+                HBITMAP dibBmp = CreateDIBSection(DC, &pbmi, DIB_RGB_COLORS, NULL, NULL, 0);
                 if (dibBmp)
                 {
-                    POINT pptSrc;
-                    SIZE psize;
                     HBITMAP hOldBmp = (HBITMAP)SelectObject(hdcSrca, dibBmp);
 
-                    bool isThemeEnabled = _hTheme == NULL;
-
                     HDC hdcDst = GetDC(NULL);
-                    psize = {_size.cx, _size.cy};
-                    pptSrc = {0, 0};
 
-                    if (isThemeEnabled)
+                    SIZE psize = {_size.cx, _size.cy};
+                    POINT pptSrc = { 0, 0 };
+
+                    if (!_hTheme)
                     {
-                        SendMessageW(_hwndStart, WM_PRINTCLIENT, (WPARAM)hdcSrca, PRF_CLIENT);
+                        SendMessage(_hwndStart, WM_PRINTCLIENT, (WPARAM)hdcSrca, PRF_CLIENT);
                         UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
                             0, NULL, ULW_OPAQUE);
                     }
                     else
                     {
-                        SHFillRectClr(hdcSrca, &pRect, 0);
-                        DrawThemeBackground(_hTheme, hdcSrca, 1, iStateId, &pRect, 0);
+                        SHFillRectClr(hdcSrca, &rcStart, 0);
+                        DrawThemeBackground(_hTheme, hdcSrca, 1, iStateId, &rcStart, 0);
 
-                        BLENDFUNCTION pblend;
-                        pblend.BlendOp = 0;
-                        pblend.BlendFlags = 0;
-                        pblend.SourceConstantAlpha = 255;
-                        pblend.AlphaFormat = 1;
+                        BLENDFUNCTION bf;
+                        bf.BlendOp = 0;
+                        bf.BlendFlags = 0;
+                        bf.SourceConstantAlpha = 255;
+                        bf.AlphaFormat = 1;
                         UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
-                            0, &pblend, ULW_ALPHA);
+                            0, &bf, ULW_ALPHA);
                     }
                     ReleaseDC(0, hdcDst);
                     SelectObject(hdcSrca, hOldBmp);
@@ -551,15 +550,15 @@ void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
 
 void CStartButton::ExecRefresh()
 {
-    if (_pOldStartMenuBand)
+    if (_pmbStartMenu)
     {
-        IUnknown_Exec(_pOldStartMenuBand, &CLSID_MenuBand, 0x10000000, 0, 0, 0);
+        IUnknown_Exec(_pmbStartMenu, &CLSID_MenuBand, MBANDCID_REFRESH, 0, 0, 0);
     }
     else
     {
-        if (_pNewStartMenu)
+        if (_pmpStartPane)
         {
-            IUnknown_Exec(_pNewStartMenu, &CLSID_MenuBand, 0x10000000, 0, 0, 0);
+            IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, 0, 0);
         }
     }
 }
@@ -703,17 +702,17 @@ BOOL CStartButton::IsButtonPushed()
 HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff @MOD
 {
     HRESULT hr;
-    if (_pOldStartMenuBand)
+    if (_pmbStartMenu)
     {
-        hr = _pOldStartMenuBand->IsMenuMessage(pmsg);
+        hr = _pmbStartMenu->IsMenuMessage(pmsg);
         if (hr != S_OK)
         {
             hr = S_FALSE;
         }
     }
-    else if (_pNewStartMenuBand)
+    else if (_pmbStartPane)
     {
-        hr = _pNewStartMenuBand->IsMenuMessage(pmsg);
+        hr = _pmbStartPane->IsMenuMessage(pmsg);
         if (hr != S_OK)
         {
             hr = S_FALSE;
@@ -729,8 +728,8 @@ HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff
 BOOL CStartButton::IsPopupMenuVisible()
 {
     HWND phwnd;
-    return SUCCEEDED(IUnknown_GetWindow(_pOldStartMenu, &phwnd)) && IsWindowVisible(phwnd)
-        || SUCCEEDED(IUnknown_GetWindow(_pNewStartMenu, &phwnd)) && IsWindowVisible(phwnd);
+    return SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &phwnd)) && IsWindowVisible(phwnd)
+        || SUCCEEDED(IUnknown_GetWindow(_pmpStartPane, &phwnd)) && IsWindowVisible(phwnd);
 }
 
 BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
@@ -933,16 +932,16 @@ int CStartButton::TrackMenu(HMENU hMenu)
 BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff @MOD
 {
     BOOL result = TRUE;
-    if (_pOldStartMenuBand)
+    if (_pmbStartMenu)
     {
         // S_FALSE is same as TRUE
         // S_OK is same as FALSE
         // in pseudocode, it checks if TranslateMenuMessage is TRUE (S_FALSE)
-        result = (_pOldStartMenuBand->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
+        result = (_pmbStartMenu->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
 
-        if (result && _pNewStartMenuBand)
+        if (result && _pmbStartPane)
         {
-            result = (_pNewStartMenuBand->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
+            result = (_pmbStartPane->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
         }
     }
     return result;

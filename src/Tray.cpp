@@ -172,7 +172,7 @@ CTray::CTray()
 
 void CTray::EnableTooltips(BOOL bEnable)
 {
-    SendMessageW(_hwndTrayTips, TTM_ACTIVATE, bEnable, NULL);
+    SendMessage(_hwndTrayTips, TTM_ACTIVATE, bEnable, NULL);
 }
 
 void CTray::PurgeRebuildRequests()
@@ -1125,10 +1125,15 @@ BOOL CTray::_IsTopmost()
 
 BOOL CTray::_IsPopupMenuVisible()
 {
+#ifdef DEAD_CODE
     HWND hwnd;
     return ((SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)) && IsWindowVisible(hwnd)) ||
         (SUCCEEDED(IUnknown_GetWindow(_pmpStartPane, &hwnd)) && IsWindowVisible(hwnd)) ||
         (SUCCEEDED(IUnknown_GetWindow(_pmpTasks, &hwnd)) && IsWindowVisible(hwnd)));
+#else
+    HWND hwnd;
+    return (_stb.IsPopupMenuVisible()) || (SUCCEEDED(IUnknown_GetWindow(_pmpTasks, &hwnd)) && IsWindowVisible(hwnd));
+#endif
 }
 
 BOOL CTray::_IsActive()
@@ -1154,6 +1159,20 @@ BOOL CTray::_IsActive()
     }
 
     return fActive;
+}
+
+BOOL CALLBACK CTray::s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam)
+{
+    WCHAR szClass[MAX_PATH];
+
+    if (hwnd != v_hwndTray
+        && GetParent(hwnd) == v_hwndTray
+        && GetClassName(hwnd, szClass, ARRAYSIZE(szClass))
+        && !StrCmpIC(szClass, TOOLTIPS_CLASS))
+    {
+        SetWindowPos(hwnd, (HWND)lParam, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    }
+    return 1;
 }
 
 // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
@@ -1197,7 +1216,7 @@ void CTray::_ResetZorder(int a2)
         SHForceWindowZorder(_hwnd, hwndZorder);
 
         // EXEX-VISTA TODO (isabella):
-        // EnumWindows(s_EnumTooltipWindowsProc, (LPARAM)hwndZorder);
+        EnumWindows(s_EnumTooltipWindowsProc, (LPARAM)hwndZorder);
     }
 }
 
@@ -3205,6 +3224,7 @@ LONG CTray::_SetAutoHideState(BOOL fAutoHide)
         _uAutoHide = AH_ON;
         _RefreshSettings();
         _Hide();
+        _AccountAllBandsForTaskbarSizingBar();
         #ifdef DEBUG
                 // _Hide updates the flags for us (sanity)
         if (!(_uAutoHide & AH_ON))

@@ -113,10 +113,10 @@ public:
     DWORD _tmOpen;
     HIMAGELIST _hIml;
     IStartButtonSite *_pStartButtonSite;
-    IMenuBand *_pOldStartMenuBand;
-    IMenuPopup *_pOldStartMenu;
-    IMenuBand *_pNewStartMenuBand;
-    IMenuPopup *_pNewStartMenu;
+    IMenuBand *_pmbStartMenu;
+    IMenuPopup *_pmpStartMenu;
+    IMenuBand *_pmbStartPane;
+    IMenuPopup *_pmpStartPane;
     IDeskBand *_pUnk1;
     char padding5[4];
     WCHAR _szWindowName[50];

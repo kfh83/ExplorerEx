@@ -551,6 +551,8 @@ protected:
     static void CALLBACK _MigrateOldBrowserSettingsCB(PVOID lpParameter, BOOLEAN);
     void _MigrateOldBrowserSettings();
 
+    static BOOL CALLBACK s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam);
+
     // protected data
     HWND _hwndNotify;     // clock window
     HWND _hwndRude;
