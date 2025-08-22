@@ -113,20 +113,20 @@ LRESULT CALLBACK TaskbarSizingBarSubclassProc(
         {
             if (uStuckPlace == 1)
             {
-                rc.bottom -= dword_106D610;
+                rc.bottom -= c_tray._cyClockMargin;
             }
             else if (uStuckPlace == 2)
             {
-                rc.left += dword_106D610;
+                rc.left += c_tray._cyClockMargin;
             }
             else
             {
-                rc.top += dword_106D610;
+                rc.top += c_tray._cyClockMargin;
             }
         }
         else
         {
-            rc.right -= dword_106D610;
+            rc.right -= c_tray._cyClockMargin;
         }*/
 
         POINT pt;
