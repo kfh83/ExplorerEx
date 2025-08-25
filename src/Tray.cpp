@@ -777,11 +777,7 @@ LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
                 // We do not need the capture, because we do all of our button processing
                 // on the button down. In fact taking capture for no good reason screws with
                 // drag and drop into the menus. We're overriding user.
-            ProcessCapture:
-                lRet = CallWindowProc(_pfnButtonProc, hwnd, uMsg, wParam, lParam);
-                SetCapture(NULL);
-                return lRet;
-                break;
+
 
             case WM_MOUSEMOVE:
             {

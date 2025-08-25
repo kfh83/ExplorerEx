@@ -219,7 +219,7 @@ BEGIN
             MENUITEM "", -1, MFT_SEPARATOR
         END
 
-        MENUITEM "&Help and Support",           IDM_HELPSEARCH
+        MENUITEM "&Help",           IDM_HELPSEARCH
         MENUITEM "&Run...",                     IDM_FILERUN
         MENUITEM "",                            IDM_SEP2,       MFT_SEPARATOR
         MENUITEM "S&ynchronize",                 IDM_CSC
