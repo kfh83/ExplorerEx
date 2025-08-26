@@ -1072,7 +1072,14 @@ void CTrayNotify::_NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR
     //ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
     if (_pNotifyCB)
     {
+        // XXX(isabella): This is allocated on the heap because it can be transferred between threads
+        // via the PostMessage call here.
         CNotificationItem * pni = new CNotificationItem;
+
+        // FIXFIX(isabella): Ensure that any consumers of the tray item cannot access uninitialised properties.
+        // This fixes a weird edge case crash I was encountering.
+        ZeroMemory(pni, sizeof(*pni));
+
         if (pni)
         {
             BOOL bStat = FALSE;

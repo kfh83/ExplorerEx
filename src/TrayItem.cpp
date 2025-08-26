@@ -310,10 +310,6 @@ BOOL CTrayItemManager::GetTrayItem(INT_PTR nIndex, CNotificationItem * pni, BOOL
     {
         CTrayItem * pti = (CTrayItem *)tbbi.lParam;
 
-        // FIXFIX(isabella): Ensure that any consumers of the tray item cannot access uninitialised properties.
-        // This fixes a weird edge case crash I was encountering.
-        ZeroMemory(pni, sizeof(*pni));
-
         // don't expose the NIS_HIDDEN icons
         if (pti && !pti->IsHidden())
         {
