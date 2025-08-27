@@ -1076,10 +1076,6 @@ void CTrayNotify::_NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR
         // via the PostMessage call here.
         CNotificationItem * pni = new CNotificationItem;
 
-        // FIXFIX(isabella): Ensure that any consumers of the tray item cannot access uninitialised properties.
-        // This fixes a weird edge case crash I was encountering.
-        ZeroMemory(pni, sizeof(*pni));
-
         if (pni)
         {
             BOOL bStat = FALSE;
