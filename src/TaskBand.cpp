@@ -2664,7 +2664,6 @@ void CTaskBand::_UpdateItemIcon(int iIndex)
         { CTaskBand::GetClassIconCB,    GCLP_HICONSM    },
         { CTaskBand::GetClassIconCB,    GCLP_HICON      },
         { CTaskBand::GetSHILIconCB,     0,              },
-        { CTaskBand::GetDefaultIconCB,  0,              },
     };
 
     TBBUTTONINFO tbbi{};
@@ -4112,6 +4111,103 @@ LRESULT CTaskBand::_HandleCustomDraw(LPNMTBCUSTOMDRAW ptbcd, PTASKITEM pti)
                         lres |= TBCDRF_NOEDGES;
                     }
                     lres |= TBCDRF_HILITEHOTTRACK;
+                }
+            }
+
+            if (pti->hwnd)
+            {
+                UINT uDCFlags;
+                BOOL fTruncated;
+                BOOL fToolbarFlat = GetWindowLong(ptbcd->nmcd.hdr.hwndFrom, GWL_STYLE) & TBSTYLE_FLAT;
+
+                lres = CDRF_SKIPDEFAULT;
+
+                if (pti->dwFlags & TIF_RENDERFLASHED)
+                {
+                    uDCFlags = DC_ACTIVE;
+                }
+                else
+                {
+                    uDCFlags =
+                        DC_INBUTTON |
+                        ((ptbcd->nmcd.uItemState & CDIS_CHECKED) ? DC_ACTIVE : 0);
+                }
+
+                SaveDC(ptbcd->nmcd.hdc);
+
+                if (fToolbarFlat)
+                {
+                    if (ptbcd->nmcd.uItemState & CDIS_CHECKED)
+                        DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, ((ptbcd->nmcd.uItemState & CDIS_CHECKED) << 7) | DFCS_BUTTONPUSH);
+                    else if (ptbcd->nmcd.uItemState & CDIS_HOT)
+                        DrawEdge(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, BDR_RAISEDINNER, BF_TOPLEFT | BF_BOTTOMRIGHT);
+                }
+                else
+                    DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, ((ptbcd->nmcd.uItemState & CDIS_CHECKED) << 7) | DFCS_BUTTONPUSH);
+
+                RECT rcCap = ptbcd->nmcd.rc;
+                InflateRect(&rcCap, -2, -2);
+
+                if (ptbcd->nmcd.uItemState & CDIS_CHECKED)
+                    OffsetRect(&rcCap, 0, 1);
+
+                HICON hicon = NULL;
+                TCHAR szWndText[MAX_WNDTEXT];
+                *szWndText = 0;
+
+                int iIndex = _FindIndexByHwnd(pti->hwnd);
+                if (iIndex >= 0)
+                {
+                    TBBUTTONINFO tbbi;
+                    PTASKITEM pti = _GetItem(iIndex, &tbbi);
+                    CImageList il = CImageList(_tb.GetImageList());
+                    _GetItemTitle(iIndex, szWndText, ARRAYSIZE(szWndText), FALSE);
+                    if (il)
+                        hicon = il.GetIcon(tbbi.iImage, 0);
+                }
+
+                fTruncated = !DrawCaptionTemp(pti->hwnd, ptbcd->nmcd.hdc, &rcCap,
+                    (ptbcd->nmcd.uItemState & CDIS_CHECKED && !_IsChineseLanguage()) ? _hfontCapBold : _hfontCapNormal,
+                    hicon, szWndText,
+                    uDCFlags | DC_TEXT | DC_ICON | DC_NOSENDMSG);
+
+                if (ERROR_ACCESS_DENIED == GetLastError())
+                {
+                    // window process is elevated
+                    fTruncated = !DrawCaptionTemp(NULL, ptbcd->nmcd.hdc, &rcCap,
+                        (ptbcd->nmcd.uItemState & CDIS_CHECKED && !_IsChineseLanguage()) ? _hfontCapBold : _hfontCapNormal,
+                        hicon, szWndText,
+                        uDCFlags | DC_TEXT | DC_ICON | DC_NOSENDMSG);
+                }
+
+                if (hicon)
+                    DestroyIcon(hicon);
+
+                if (fTruncated)
+                    pti->dwFlags |= TIF_SHOULDTIP;
+                else
+                    pti->dwFlags &= ~TIF_SHOULDTIP;
+
+                if (ptbcd->nmcd.uItemState & CDIS_CHECKED)
+                {
+                    HBRUSH hbrBtnHilight = GetSysColorBrush(COLOR_BTNHILIGHT);
+                    HBRUSH hbrBtnFace = GetSysColorBrush(COLOR_BTNFACE);
+                    RECT rcTop =
+                    {
+                        ptbcd->nmcd.rc.left + 2,
+                        ptbcd->nmcd.rc.top + 2,
+                        ptbcd->nmcd.rc.right - 2,
+                        ptbcd->nmcd.rc.top + 3
+                    };
+                    RECT rcBottom = 
+                    {
+                        ptbcd->nmcd.rc.left + 2,
+                        ptbcd->nmcd.rc.bottom - 2,
+                        ptbcd->nmcd.rc.right - 2,
+                        ptbcd->nmcd.rc.bottom - 1
+                    };
+                    FillRect(ptbcd->nmcd.hdc, &rcTop, hbrBtnHilight);
+                    FillRect(ptbcd->nmcd.hdc, &rcBottom, hbrBtnFace);
                 }
             }
 

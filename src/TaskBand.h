@@ -237,7 +237,7 @@ protected:
     void _HandleDropDown(int index);
     void _UpdateProgramCount();
     BOOL _AddToTaskbar(PTASKITEM pti, int indexTaskbar, BOOL fVisible, BOOL fForceGetIcon);
-    BOOL _InsertItem(HWND hwndTask, PTASKITEM ptiOveride = NULL, BOOL fForceGetIcon = FALSE);
+    BOOL _InsertItem(HWND hwndTask, PTASKITEM ptiOveride = NULL, BOOL fForceGetIcon = TRUE);
     void _DeleteItem(HWND hWnd, int index = -1);
     void _AttachTaskShortcut(PTASKITEM pti, LPCTSTR pszExeName);
     void _ReattachTaskShortcut();
