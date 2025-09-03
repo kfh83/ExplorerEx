@@ -2256,7 +2256,6 @@ typedef struct
 #define II_STFLDRPROP        45
 #define II_WINUPDATE         46
 
-#define IDI_MYDOCS                      100
 #define IDI_MYPICS                      101
 #define IDI_CSC                 179     // ClientSideCaching
 #define IDI_NETCONNECT          175
@@ -2284,7 +2283,6 @@ HRESULT CStartMenuCallback::_GetHmenuInfo(SMDATA* psmd, SMINFO* psminfo)
                        { IDM_CONTROLS,       II_STCPANEL },
                        { IDM_PRINTERS,       II_STPRNTRS },
                        { IDM_TRAYPROPERTIES, II_STTASKBR },
-                       { IDM_MYDOCUMENTS,    -IDI_MYDOCS},
                        { IDM_CSC,            -IDI_CSC},
                        { IDM_NETCONNECT,     -IDI_NETCONNECT},
     };
@@ -2335,6 +2333,23 @@ HRESULT CStartMenuCallback::_GetHmenuInfo(SMDATA* psmd, SMINFO* psminfo)
                         psf->Release();
                     }
                     ILFree(pidlMyPics);
+                }
+            }
+            else if (psmd->uId == IDM_MYDOCUMENTS)
+            {
+                LPITEMIDLIST pidlMyDocs = SHCloneSpecialIDList(NULL, CSIDL_MYDOCUMENTS, FALSE);
+                if (pidlMyDocs)
+                {
+                    LPCITEMIDLIST pidlObject;
+                    IShellFolder* psf;
+                    hr = SHBindToParent(pidlMyDocs, IID_PPV_ARG(IShellFolder, &psf), &pidlObject);
+                    if (SUCCEEDED(hr))
+                    {
+                        SHMapPIDLToSystemImageListIndex(psf, pidlObject, &psminfo->iIcon);
+                        dwFlags |= SMIF_ICON;
+                        psf->Release();
+                    }
+                    ILFree(pidlMyDocs);
                 }
             }
             else
