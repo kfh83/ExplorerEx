@@ -14,7 +14,20 @@ ExplorerEx is an adaptation of Windows Explorer from Windows Server 2003's sourc
 In other words, this brings the classic Windows XP Start Menu/Taskbar experience to more modern versions of Windows (8.1+).
 
 ## Previews
-Coming soon!
+Below is what you might expect when first running ExplorerEx:
+
+<img width="800" height="600" alt="aero" src="https://github.com/user-attachments/assets/6bca7f97-e019-40cf-b06a-a0d6a30e5f1e" />
+
+*Default Windows 10 theme*
+
+<img width="800" height="600" alt="classic" src="https://github.com/user-attachments/assets/72f5c240-8a7d-401f-977c-276d51d9824d" />
+
+*Classic theme using Windhawk*
+
+<img width="800" height="600" alt="luna" src="https://github.com/user-attachments/assets/1530f4fc-9249-4494-9ab0-2d0aef452687" />
+
+*Luna blue theme using [inactive theme Windhawk mod](https://raw.githubusercontent.com/kfh83/ExplorerEx/refs/heads/main/explorerex-inactive-theme-loader.wh.cpp)*
+
 
 ## Installation
 **TRYING OUT THE PROGRAM BEFORE INSTALLING**
@@ -48,6 +61,7 @@ If you have fetched a GitHub actions artifact, you *need* to fetch the release p
   <summary>.dll build</summary>
 
 **Note:** You MUST have [Windhawk](https://windhawk.net/) installed for the loader mod.
+In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You can either go into `Settings\Advanced Settings\More Advanced Settings` and add `winlogon.exe` into the Process inclusion list, or you can untick "Exclude critical system processes".
   
 **How-to**
 1. Copy over `ExplorerEx.dll` and your desired language folder `i.e, en-US` to a suitable location (i.e, `%SystemDrive%\ExplorerEx`).
