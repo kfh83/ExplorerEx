@@ -172,6 +172,7 @@ ULONG CClockCtl::Release()
     return _cRef;
 }
 
+// EXEX-VISTA: Validated.
 void CClockCtl::_UpdateLastHour()
 {
     SYSTEMTIME st;
@@ -183,6 +184,7 @@ void CClockCtl::_UpdateLastHour()
     _wLastSecond = st.wSecond;
 }
 
+// EXEX-VISTA: Validated.
 void CClockCtl::_EnableTimer(DWORD dtNextTick)
 {
     if (dtNextTick)
@@ -278,6 +280,7 @@ DWORD CClockCtl::_RecalcCurTime()
         // clients are listening...
         //
         SetWindowText(_hwnd, _szCurTime);
+        //NotifyWinEvent(EVENT_OBJECT_VALUECHANGE, _hwnd, OBJID_CLIENT, CHILDID_SELF);
     }
 
     //
@@ -312,6 +315,7 @@ void CClockCtl::_EnsureFontsInitialized(BOOL fForce)
     }
 }
 
+// EXEX-VISTA: Validated.
 void CClockCtl::_GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
 {
     if (_hTheme)
@@ -326,6 +330,27 @@ void CClockCtl::_GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcT
     }
 }
 
+BOOL
+WINAPI
+SHExtTextOutW(
+    HDC hdc,
+    int x,
+    int y,
+    UINT options,
+    CONST RECT* lprect,
+    LPCWSTR lpString,
+    UINT c,
+    CONST INT* lpDx)
+{
+    if (c)
+    {
+        DWORD dwLayout = GetLayout(hdc);
+        if (dwLayout != -1 && (dwLayout & LAYOUT_RTL) != 0)
+            --x;
+    }
+    return ExtTextOutW(hdc, x, y, options, lprect, lpString, c, lpDx);
+}
+
 void CClockCtl::_DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
 {
     if (_hTheme)
@@ -334,10 +359,11 @@ void CClockCtl::_DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
     }
     else
     {
-        ExtTextOut(hdc, prcText->left, prcText->top, ETO_OPAQUE, NULL, pszText, cchText, NULL);
+        SHExtTextOutW(hdc, prcText->left, prcText->top, ETO_OPAQUE, NULL, pszText, cchText, NULL);
     }
 }
 
+// EXEX-VISTA: Validated.
 LRESULT CClockCtl::_DoPaint(BOOL fPaint)
 {
     PAINTSTRUCT ps;
@@ -371,7 +397,22 @@ LRESULT CClockCtl::_DoPaint(BOOL fPaint)
     hdc = CreateCompatibleDC(ps.hdc);
     if (hdc)
     {
-        hMemBm = CreateCompatibleBitmap(ps.hdc, RECTWIDTH(ps.rcPaint), RECTHEIGHT(ps.rcPaint));
+        if (IsCompositionActive() && _hTheme)
+        {
+			BITMAPINFO bmi = { 0 };
+            bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+            bmi.bmiHeader.biWidth = RECTWIDTH(ps.rcPaint);
+			bmi.bmiHeader.biHeight = -RECTHEIGHT(ps.rcPaint);
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 32;
+            bmi.bmiHeader.biCompression = BI_RGB;
+            hMemBm = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, 0, NULL, 0);
+        }
+        else
+        {
+            hMemBm = CreateCompatibleBitmap(ps.hdc, RECTWIDTH(ps.rcPaint), RECTHEIGHT(ps.rcPaint));
+        }
+
         if (hMemBm)
         {
             hOldBm = (HBITMAP) SelectObject(hdc, hMemBm);

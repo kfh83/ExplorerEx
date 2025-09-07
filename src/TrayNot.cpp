@@ -1967,6 +1967,11 @@ LRESULT CTrayNotify::_Paint(HDC hdcIn)
 
         if (_hTheme)
         {
+            if (IsCompositionActive())
+            {
+                SHFillRectClr(hPaintDC, &ps.rcPaint, 0);
+            }
+
             SHSendPrintRect(GetParent(_hwnd), _hwnd, hPaintDC, &ps.rcPaint);
             
             if (_fAnimating)
@@ -4001,14 +4006,86 @@ void CTrayNotify::_UpdateChevronState( BOOL fBangMenuOpen,
     }
 }
 
+void CTrayNotify::_SetTrayNotifyTheme()
+{
+    const WCHAR* pwzTheme;
+
+    BOOL fComposited = IsCompositionActive() && c_tray.GlassEnabled();
+    if (_fVertical)
+    {
+        pwzTheme = fComposited ? L"TrayNotifyVertComposited" : c_wzTrayNotifyVertTheme;
+    }
+    else
+    {
+        pwzTheme = fComposited ? L"TrayNotifyHorizComposited" : c_wzTrayNotifyHorizTheme;
+    }
+    SetWindowTheme(_hwndNotify, pwzTheme, NULL);
+}
 
 void CTrayNotify::_UpdateVertical(BOOL fVertical)
 {
     _fVertical = fVertical;
-    LPCWSTR pwzTheme = _fVertical ? c_wzTrayNotifyVertTheme : c_wzTrayNotifyHorizTheme;
+    
+	// SIZE sizeSysToolBar{ 1, 1 };
+    // SendMessage(_hwndSysToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeSysToolBar);
 
-    SetWindowTheme(_hwndNotify, pwzTheme, NULL);
+    SIZE sizeToolBar{ 1, 1 };
+    SendMessage(_hwndToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeToolBar);
+
+    _SetTrayNotifyTheme();
     _UpdateChevronState(_fBangMenuOpen, TRUE, TRUE);
+}
+
+void CTrayNotify::_SetChevronTheme()
+{
+    if (this->_hTheme)
+    {
+        const WCHAR* pszTheme;
+        BOOL fComposited = IsCompositionActive() && c_tray.GlassEnabled();
+        if (this->_fBangMenuOpen)
+        {
+            if (this->_fVertical)
+            {
+				pszTheme = fComposited ? L"TrayNotifyVertOpenComposited" : L"TrayNotifyVertOpen";
+            }
+            else if (fComposited)
+            {
+                pszTheme = L"TrayNotifyHorizOpenComposited";
+            }
+            else
+            {
+                pszTheme = L"TrayNotifyHorizOpen";
+            }
+        }
+        else if (this->_fVertical)
+        {
+			pszTheme = fComposited ? L"TrayNotifyVertComposited" : L"TrayNotifyVert";
+        }
+        else
+        {
+			pszTheme = fComposited ? L"TrayNotifyHorizComposited" : L"TrayNotifyHoriz";
+        }
+        SetWindowTheme(_hwndChevron, pszTheme, 0);
+    }
+}
+
+extern HANDLE(*IsThemeClassDefined)(HTHEME hTheme, LPCWSTR pszAppName, LPCWSTR pszClassId, int fAllowInheritance);
+
+void CTrayNotify::_SetClockToolbarThemes()
+{
+    if (_hTheme)
+    {
+        LPCWSTR pszTheme = !IsCompositionActive() || !c_tray.GlassEnabled() ? L"TrayNotify" : L"TrayNotifyComposited";
+        SetWindowTheme(_hwndClock, pszTheme, NULL);
+
+        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Clock", FALSE)) // 4876
+
+        // SendMessage(_hwndSysToolbar, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
+        SendMessage(_hwndToolbar, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
+
+		ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)) // 4880
+        SendMessage(_hwndInfoTip, TB_SETWINDOWTHEME, 0, (LPARAM)L"TrayNotify");
+    }
 }
 
 void CTrayNotify::_OpenTheme()
@@ -4021,6 +4098,8 @@ void CTrayNotify::_OpenTheme()
     _hTheme = OpenThemeData(_hwndNotify, L"TrayNotify");
 
     _UpdateChevronSize();
+    _SetChevronTheme();
+    _SetClockToolbarThemes();
     SetWindowStyleEx(_hwndNotify, WS_EX_STATICEDGE, !_hTheme);
 
     InvalidateRect(_hwndNotify, NULL, FALSE);

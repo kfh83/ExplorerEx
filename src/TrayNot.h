@@ -262,6 +262,10 @@ protected:
     LRESULT _OnKeyDown(WPARAM wChar, LPARAM lFlags);
     void _SetUsedTime();
 
+	void _SetTrayNotifyTheme();
+    void _SetChevronTheme();
+    void _SetClockToolbarThemes();
+
 #ifdef DEBUG
     void _TestNotify();
 #endif
