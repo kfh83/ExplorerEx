@@ -614,11 +614,10 @@ void CTray::_AlignStartButton()
         RECT rcClient;
         if (_sizeStart.cy == 0)
         {
-            BITMAP bm;
-            HBITMAP hbm = (HBITMAP)SendMessage(hwndStart, BM_GETIMAGE, IMAGE_BITMAP, 0);
-            if (hbm)
+            if (_hbmpStart)
             {
-                GetObject(hbm, sizeof(bm), &bm);
+                BITMAP bm;
+                GetObject(_hbmpStart, sizeof(bm), &bm);
 
                 _sizeStart.cx = bm.bmWidth + 2 * g_cxEdge;
                 _sizeStart.cy = bm.bmHeight + 2 * g_cyEdge;
@@ -691,6 +690,9 @@ LRESULT CTray::_StartButtonSubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
     LRESULT lRet;
 
     ASSERT(_pfnButtonProc)
+
+        if (uMsg == WM_ERASEBKGND)
+            return 1;
 
         // Is the button going down?
         if (uMsg == BM_SETSTATE)
@@ -828,8 +830,6 @@ EXTERN_C const WCHAR c_wzTaskbarVertTheme[] = L"TaskbarVert";
 
 HWND CTray::_CreateStartButton()
 {
-	DWORD dwStyle = 0;//BS_BITMAP;
-
 	_uStartButtonBalloonTip = RegisterWindowMessage(TEXT("Welcome Finished"));
 
 	_uLogoffUser = RegisterWindowMessage(TEXT("Logoff User"));
@@ -840,7 +840,7 @@ HWND CTray::_CreateStartButton()
 
 	HWND hwnd = CreateWindowEx(0, WC_BUTTON, TEXT("Start"),
 		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS |
-		BS_PUSHBUTTON | BS_LEFT | BS_VCENTER | dwStyle,
+		BS_PUSHBUTTON | BS_LEFT | BS_VCENTER | BS_OWNERDRAW,
 		0, 0, 0, 0, _hwnd, (HMENU)IDC_START, hinstCabinet, NULL);
 	if (hwnd)
 	{
@@ -3870,12 +3870,6 @@ void CTray::_StartButtonReset()
 
     _hFontStart = _CreateStartFont(_hwndStart);
     _hbmpStart = _CreateStartBitmap();
-    if (_hbmpStart)
-    {
-        SendMessage(_hwndStart, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hbmpStart);
-        DWORD dwStyle = GetWindowLong(_hwndStart, GWL_STYLE);
-        SetWindowLong(_hwndStart, GWL_STYLE, dwStyle | BS_BITMAP);
-    }
 
     if (_hFontStart)
     {
@@ -6633,6 +6627,63 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (!_fFromStart)
         {
             BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, &lres);
+        }
+
+        if (uMsg == WM_DRAWITEM)
+        {
+            // draw with double buffer to avoid flickering
+            HDC hdcMem;
+            HBITMAP hbmMem;
+            HANDLE hOld;
+            LPDRAWITEMSTRUCT pdis = (LPDRAWITEMSTRUCT)(lParam);
+            SIZE size = { pdis->rcItem.right , pdis->rcItem.bottom };
+
+            hdcMem = CreateCompatibleDC(pdis->hDC);
+            hbmMem = CreateCompatibleBitmap(pdis->hDC, size.cx, size.cy);
+            hOld = SelectObject(hdcMem, hbmMem);
+
+            if (pdis->itemAction & ODA_FOCUS)
+                pdis->itemAction |= ODA_DRAWENTIRE;
+
+            if (pdis->itemAction & ODA_DRAWENTIRE)
+            {
+                DrawFrameControl(hdcMem, &pdis->rcItem, DFC_BUTTON, ((pdis->itemState & ODS_SELECTED) << 9) | DFCS_BUTTONPUSH);
+
+                if (_hbmpStart)
+                {
+                    HDC hdcBmp = CreateCompatibleDC(pdis->hDC);
+                    HGDIOBJ oldBitmap = SelectObject(hdcBmp, _hbmpStart);
+                    BITMAP bitmap;
+                    GetObject(_hbmpStart, sizeof(bitmap), &bitmap);
+
+                    POINT offset = { 2 * g_cxEdge, g_cyEdge };
+                    SIZE bmpSize = { size.cx - (g_cxEdge + CXGAP), bitmap.bmHeight };
+
+                    if (pdis->itemState & ODS_SELECTED)
+                    {
+                        offset.x++; offset.y++;
+                        bmpSize.cx--; bmpSize.cy--;
+                    }
+
+                    BitBlt(hdcMem, offset.x, offset.y, bmpSize.cx, bmpSize.cy, hdcBmp, 0, 0, SRCCOPY);
+
+                    SelectObject(hdcBmp, oldBitmap);
+                    DeleteDC(hdcBmp);
+                }
+
+                BitBlt(pdis->hDC, 0, 0, size.cx, size.cy, hdcMem, 0, 0, SRCCOPY);
+
+                if (pdis->itemState & ODS_FOCUS)
+                {
+                    RECT rcFocus = pdis->rcItem;
+                    InflateRect(&rcFocus, -3, -3);
+                    DrawFocusRect(pdis->hDC, &rcFocus);
+                }
+
+                SelectObject(hdcMem, hOld);
+                DeleteObject(hbmMem);
+                DeleteDC(hdcMem);
+            }
         }
         break;
 
