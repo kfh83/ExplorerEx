@@ -325,10 +325,10 @@ void CStartButton::BuildStartMenu() // from xp
     DestroyStartMenu();
     if (Tray_StartPanelEnabled())
     {
-        LPVOID pDeskHost;
-        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pDeskHost);
+        LPVOID pvStartPane;
+        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_pUnk1, v_hwndTray);
         IUnknown_SetSite(_pUnk1, static_cast<IServiceProvider *>(this));
-        DesktopV2_Build(pDeskHost);
+        DesktopV2_Build(pvStartPane);
     }
     else
     {

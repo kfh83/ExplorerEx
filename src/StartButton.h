@@ -3,7 +3,7 @@
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
-    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane);
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd);
 STDAPI DesktopV2_Build(void* pvStartPane);
 
 // from tray
@@ -117,7 +117,7 @@ public:
     IMenuPopup *_pmpStartMenu;
     IMenuBand *_pmbStartPane;
     IMenuPopup *_pmpStartPane;
-    IDeskBand *_pUnk1;
+    IUnknown *_pUnk1;
     char padding5[4];
     WCHAR _szWindowName[50];
 

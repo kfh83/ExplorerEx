@@ -82,7 +82,7 @@ CTray c_tray;
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
-    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane);
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd);
 STDAPI DesktopV2_Build(void* pvStartPane);
 
 // dyna-res change for multi-config hot/warm-doc
@@ -1288,10 +1288,7 @@ void CTray::HandleFullScreenApp(HWND hwnd)
 
 void CTray::StartButtonClicked()
 {
-    // TEMP
-    _stb.DisplayStartMenu();
-
-    SendMessageW(_hwnd, WM_COMMAND, IDC_START, NULL);
+    SendMessage(_hwnd, WM_COMMAND, IDC_START, NULL);
 }
 
 // to not break functionality

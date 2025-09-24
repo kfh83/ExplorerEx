@@ -1800,37 +1800,36 @@ STDMETHODIMP CDesktopHost::QueryService(REFGUID guidService, REFIID riid, void *
         return QueryInterface(riid, ppvObject);
 
     return E_FAIL;
-#else // DEAD_CODE
-    
+#else
     HRESULT hr = E_FAIL;
-    /*if (IsEqualGUID(guidService, SID_SMenuPopup))
-    {
-        if (!IsEqualGUID(guidService, SID_SM_OpenView) || !IsEqualGUID(guidService, SID_SM_TopMatch) || !IsEqualGUID(guidService, SID_SM_OpenHost))
-        {
-            ASSERT(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk != NULL) // 2410
-            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk, guidService, riid, ppvObject);
-        }
-        else if (!IsEqualGUID(guidService, SID_SM_OpenBox))
-        {
-            ASSERT(_spm.panes[SMPANETYPE_OPENBOX].punk != NULL) // 2415
-            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENBOX].punk, guidService, riid, ppvObject);
-        }
-        else if (!IsEqualGUID(guidService, SID_SM_UserPane))
-        {
-            ASSERT(_spm.panes[SMPANETYPE_USER].punk != NULL) // 2420
-            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_USER].punk, guidService, riid, ppvObject);
-        }
-        else if (!IsEqualGUID(guidService, IID_IFolderView))
-        {
-            ASSERT(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk != NULL) // 2425
-            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk, guidService, riid, ppvObject);
-        }
-    }
-    else*/
+    if (IsEqualGUID(guidService, SID_SMenuPopup))
     {
         hr = QueryInterface(riid, ppvObject);
     }
 
+    // EXEX-VISTA(allison): TODO.
+    /*else if (IsEqualGUID(guidService, SID_SM_OpenView)
+        || IsEqualGUID(guidService, SID_SM_TopMatch)
+        || IsEqualGUID(guidService, SID_SM_OpenHost))
+    {
+        ASSERT(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk != NULL); // 2410
+        hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk, guidService, riid, ppvObject);
+    }
+    else if (IsEqualGUID(guidService, SID_SM_OpenBox))
+    {
+        ASSERT(_spm.panes[SMPANETYPE_OPENBOX].punk != NULL); // 2415
+        hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENBOX].punk, guidService, riid, ppvObject);
+    }
+    else if (IsEqualGUID(guidService, SID_SM_UserPane))
+    {
+        ASSERT(_spm.panes[SMPANETYPE_USER].punk != NULL); // 2420
+        hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_USER].punk, guidService, riid, ppvObject);
+    }
+    else if (IsEqualGUID(guidService, IID_IFolderView))
+    {
+        ASSERT(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk != NULL); // 2425
+        hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk, guidService, riid, ppvObject);
+    }*/
     if (hr < 0)
     {
         return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
@@ -1846,8 +1845,8 @@ STDMETHODIMP  CDesktopHost::QueryStatus(const GUID* pguidCmdGroup,
     return E_NOTIMPL;
 }
 
-STDMETHODIMP  CDesktopHost::Exec(const GUID* pguidCmdGroup,
-    DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG* pvarargIn, VARIANTARG* pvarargOut)
+STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
+    DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
 {
     if (IsEqualGUID(CLSID_MenuBand, *pguidCmdGroup))
     {
@@ -2422,6 +2421,16 @@ IStartButton* CDesktopHost::_GetIStartButton()
     return pstb;
 }
 
+void CDesktopHost::_LockStartPane()
+{
+    IStartButton *pstb = _GetIStartButton();
+    if (pstb)
+    {
+        pstb->LockStartPane();
+        pstb->Release();
+    }
+}
+
 void CDesktopHost::_UnlockStartPane()
 {
     IStartButton *pstb = _GetIStartButton();
@@ -2430,6 +2439,16 @@ void CDesktopHost::_UnlockStartPane()
         pstb->UnlockStartPane();
         pstb->Release();
     }
+}
+
+void CDesktopHost::_SetFocusToStartButton()
+{
+    IStartButton *pstb = _GetIStartButton();
+    if (pstb)
+    {
+        pstb->SetFocusToStartButton();
+        pstb->Release();
+	}
 }
 
 void CDesktopHost::_OnDismiss(BOOL bDestroy)
@@ -2477,9 +2496,9 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
             
             // EXEX-VISTA(isabella): TODO.
             /*if (this->field_D0)
-            {
+            {   
                 this->field_D0 = 0;
-                PostMessageW(v_hwndTray, 0x40Du, 0, 0);
+                PostMessageW(v_hwndTray, 0x40D, 0, 0);
             }*/
         }
     }
@@ -2652,23 +2671,28 @@ STDAPI DesktopV2_Build(void* pvStartPane)
 
 
 STDAPI DesktopV2_Create(
-    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane)
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd)
 {
     *ppmp = NULL;
     *ppmb = NULL;
+	*ppunk = NULL;
 
     HRESULT hr;
     CDesktopHost* pdh = new CDesktopHost;
     if (pdh)
     {
         *ppvStartPane = pdh;
-        hr = pdh->Initialize();
+        hr = pdh->Initialize(/*EXEX-VISTA TODO(allison): add HWND argument*/);
         if (SUCCEEDED(hr))
         {
             hr = pdh->QueryInterface(IID_PPV_ARG(IMenuPopup, ppmp));
             if (SUCCEEDED(hr))
             {
                 hr = pdh->QueryInterface(IID_PPV_ARG(IMenuBand, ppmb));
+                if (SUCCEEDED(hr))
+                {
+					hr = pdh->QueryInterface(IID_PPV_ARG(IUnknown, ppunk));
+                }
             }
         }
         pdh->GetUnknown()->Release();
