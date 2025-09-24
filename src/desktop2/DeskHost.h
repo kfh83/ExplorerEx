@@ -254,6 +254,7 @@ class CDesktopHost
         void _DestroyClipBalloon();
 
 		IStartButton *_GetIStartButton();
+        void _UnlockStartPane();
 };
 
 

@@ -2417,43 +2417,66 @@ IStartButton* CDesktopHost::_GetIStartButton()
     return pstb;
 }
 
+void CDesktopHost::_UnlockStartPane()
+{
+    IStartButton *pstb = _GetIStartButton();
+    if (pstb)
+    {
+        pstb->UnlockStartPane();
+        pstb->Release();
+    }
+}
+
 void CDesktopHost::_OnDismiss(BOOL bDestroy)
 {
     // Break the recursion loop:  Call IMenuPopup::OnSelect only if the
     // window was previously visible.
-    _fOpen = FALSE;
-    if (ShowWindow(_hwnd, SW_HIDE))
+    if (_fOpen || IsWindowVisible(_hwnd))
     {
-        if (_ppmTracking)
+        ShowWindow(_hwnd, SW_HIDE);
+        _UnlockStartPane();
+
+        if (_fOpen)
         {
-            _ppmTracking->OnSelect(MPOS_FULLCANCEL);
+            _fOpen = FALSE;
+
+            // EXEX-VISTA(isabella): Figure out what is SMN_FIRST + 22.
+            NMHDR nm2 = { _hwnd, 0, SMN_FIRST + 22 };
+            SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm2, SPM_SEND | SPM_ONELEVEL);
+
+            if (_ppmTracking)
+            {
+                _ppmTracking->OnSelect(MPOS_FULLCANCEL);
+            }
+
+            OnSelect(MPOS_FULLCANCEL);
+
+            NMHDR nm = { _hwnd, 0, SMN_DISMISS };
+            SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm, SPM_SEND | SPM_ONELEVEL);
+
+            _DestroyClipBalloon();
+            // EXEX-VISTA: CDesktopHost::_RegisterForGlass(this, 0, 0);
+
+            IStartButton *pstb = _GetIStartButton();
+            if (pstb)
+            {
+                pstb->SetStartPaneActive(FALSE);
+                pstb->OnStartMenuDismissed();
+                pstb->Release();
+            }
+
+            // Don't try to preserve child focus across popups
+            _hwndChildFocus = NULL;
+
+            NotifyWinEvent(EVENT_SYSTEM_MENUPOPUPEND, _hwnd, OBJID_CLIENT, CHILDID_SELF);
+            
+            // EXEX-VISTA(isabella): TODO.
+            /*if (this->field_D0)
+            {
+                this->field_D0 = 0;
+                PostMessageW(v_hwndTray, 0x40Du, 0, 0);
+            }*/
         }
-
-        OnSelect(MPOS_FULLCANCEL);
-
-        NMHDR nm = { _hwnd, 0, SMN_DISMISS };
-        SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm, SPM_SEND | SPM_ONELEVEL);
-
-        _DestroyClipBalloon();
-
-        IStartButton *pstb = _GetIStartButton();
-        if (pstb)
-        {
-            pstb->SetStartPaneActive(FALSE);
-            pstb->OnStartMenuDismissed();
-			pstb->Release();
-        }
-
-        // Allow clicking on Start button to pop the menu immediately
-        // Tray_SetStartPaneActive(FALSE);
-
-        // Don't try to preserve child focus across popups
-        _hwndChildFocus = NULL;
-
-        // EXEX-VISTA(isabella): Temporarily disabled.
-        // Tray_OnStartMenuDismissed();
-
-        NotifyWinEvent(EVENT_SYSTEM_MENUPOPUPEND, _hwnd, OBJID_CLIENT, CHILDID_SELF);
     }
     if (bDestroy)
     {
