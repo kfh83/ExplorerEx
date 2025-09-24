@@ -163,7 +163,7 @@
 #define IDB_START16MASK             179 // ShellBrd #1043
 #define IDB_CLASSICSTARTBKG         180 // ShellBrd #1001; resource ID unused in Vista, but conflicts with XP notification area
 
-#define IDB_STARER                  184
+#define IDB_STARTER_WATERMARK       184
 
 #define IDB_NA_NOCLEAN_NOCLOCK_NOBATTERY_NONETWORK_NOSOUND 190
 #define IDB_NA_NOCLEAN_NOCLOCK_BATTERY_NONETWORK_NOSOUND   191

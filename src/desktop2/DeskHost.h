@@ -73,6 +73,7 @@ class CDesktopHost
     , public ITrayPriv2
     , public IServiceProvider
     , public IOleCommandTarget
+    , public CAccessible        // Vista - New
     , public CObjectWithSite
 {
     friend class CDeskHostShellMenuCallback;
@@ -251,6 +252,8 @@ class CDesktopHost
 
         void _MaybeShowClipBalloon();
         void _DestroyClipBalloon();
+
+		IStartButton *_GetIStartButton();
 };
 
 

@@ -25,15 +25,15 @@ HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)
 
 ULONG CStartButton::AddRef()
 {
-    return 1; // Copilot generated body
+    return 2;
 }
 
 ULONG CStartButton::Release()
 {
-    return 1; // Copilot generated body
+    return 1;
 }
 
-HRESULT CStartButton::SetFocusToStartButton()  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::SetFocusToStartButton()
 {
     SetFocus(_hwndStart);
     return S_OK;
@@ -46,26 +46,27 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
     SetForegroundWindow(hWnd);
 
     LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
-    IShellFolder* shlFldr;
+    IShellFolder* psf;
     LPCITEMIDLIST ppidlLast;
-    if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARG(IShellFolder, &shlFldr), &ppidlLast)))
+    if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARGS(&psf), &ppidlLast)))
     {
         HMENU hMenu = CreatePopupMenu();
-        IContextMenu* iContext;
-        if (SUCCEEDED(shlFldr->GetUIObjectOf(hWnd, CSIDL_INTERNET, &ppidlLast, IID_IContextMenu, NULL, (void**)&iContext)))
+        IContextMenu* pcm;
+        if (SUCCEEDED(psf->GetUIObjectOf(hWnd, CSIDL_INTERNET, &ppidlLast, IID_IContextMenu, NULL, (void**)&pcm)))
         {
-            if (SUCCEEDED(iContext->QueryContextMenu(hMenu, 0, 2, 32751, CMF_VERBSONLY)))
+            if (SUCCEEDED(pcm->QueryContextMenu(hMenu, 0, 2, 32751, CMF_VERBSONLY)))
             {
-                WCHAR Buffer[260];
-                LoadStringW(GetModuleHandle(NULL), 720u, Buffer, 260);
-                AppendMenuW(hMenu, 0, 32755u, Buffer);
+                WCHAR szBuffer[260];
+                LoadString(GetModuleHandle(NULL), 720, szBuffer, 260);
+                AppendMenu(hMenu, 0, 32755u, szBuffer);
                 if (!SHRestricted(REST_NOCOMMONGROUPS))
                 {
-                    if (SHGetFolderPathW(0, CSIDL_COMMON_STARTMENU, 0, 0, Buffer) != S_OK)
+                    if (SHGetFolderPath(0, CSIDL_COMMON_STARTMENU, 0, 0, szBuffer) != S_OK)
                     {
                         // some LUA crap
                     }
                 }
+
                 int bResult;
                 if (lParam == -1)
                 {
@@ -82,6 +83,7 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                     bResult = TrackPopupMenu(hMenu, uFlag,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) , 0, hWnd, 0);
                     _pStartButtonSite->EnableTooltips(TRUE);
                 }
+
                 if (bResult)
                 {
                     LPITEMIDLIST ppidl;
@@ -99,7 +101,7 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                         default:
                         {
                             WCHAR pszStr1[260];
-                            ContextMenu_GetCommandStringVerb(iContext, bResult - 2, pszStr1, 260);
+                            ContextMenu_GetCommandStringVerb(pcm, bResult - 2, pszStr1, 260);
                             if (StrCmpICW(pszStr1, L"find"))
                             {
                                 CHAR pszStr[260];
@@ -114,7 +116,8 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                                 SHGetPathFromIDListA(pidl, pszPath);
                                 cmInvokeInfo.fMask |= SEE_MASK_UNICODE;
                                 cmInvokeInfo.lpDirectory = pszPath;
-                                iContext->InvokeCommand(&cmInvokeInfo);
+
+                                pcm->InvokeCommand(&cmInvokeInfo);
                             }
                             else if (SUCCEEDED(SHGetKnownFolderIDList(FOLDERID_SearchHome, NULL, 0, &ppidl)))
                             {
@@ -130,11 +133,11 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                         }
                     }
                 }
-                iContext->Release();
+                pcm->Release();
             }
             DestroyMenu(hMenu);
         }
-        shlFldr->Release();
+        psf->Release();
     }
     ILFree(pidl);
     _nIsOnContextMenu = FALSE;
@@ -167,7 +170,9 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
     if (_hwndStartBalloon)
     {
         WCHAR szTip[MAX_PATH];
-        if (LoadString(g_hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip)))
+        szTip[0] = TEXT('\0');
+        LoadString(g_hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip));
+        if (szTip[0])
         {
             TOOLINFO ti = { 0 };
             ti.cbSize = sizeof(ti);
@@ -181,7 +186,8 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
             ti.lpszText = szTip;
             SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&ti);
 
-            if (LoadString(g_hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip)))
+            LoadString(g_hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip));
+            if (szTip[0])
             {
                 SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)szTip);
             }
@@ -199,36 +205,35 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
 // dwRefData-> CTray+988 -> CStartButton
 HWND CStartButton::CreateStartButton(HWND hWnd)
 {
-    wprintf(L"CStartButton::CreateStartButton zero\n");
+    wprintf(L"Entering CStartButton::CreateStartButton\n");
 
-    DWORD dwStyleEx =  GetWindowLongPtrW(hWnd, GWL_EXSTYLE);
-    HWND hWndStartBtn = (HWND)SHFusionCreateWindowEx(
+    DWORD dwStyleEx = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+    _hwndStart = SHFusionCreateWindowEx(
         dwStyleEx & (WS_EX_LAYOUTRTL | WS_EX_RTLREADING | WS_EX_RIGHT) | (WS_EX_LAYERED | WS_EX_TOOLWINDOW),
-        L"Button",
-        nullptr,
+        WC_BUTTON,
+        NULL,
         WS_POPUP | WS_CLIPSIBLINGS | BS_VCENTER,
         0, 0, 1, 1,
         hWnd,
-        nullptr,
-        GetModuleHandle(NULL),
-        nullptr);
-    _hwndStart = hWndStartBtn;
+        NULL,
+        g_hinstCabinet,
+        NULL);
 
     wprintf(L"CStartButton::CreateStartButton parent HWND = %p\n", hWnd);
 
     wprintf(L"CStartButton::CreateStartButton one\n");
 
-    if (hWndStartBtn)
+    if (_hwndStart)
     {
-        SetPropW(hWndStartBtn, L"StartButtonTag", (HANDLE)0x130);
-        SendMessageW(_hwndStart, CCM_DPISCALE, TRUE, 0);
+        SetProp(_hwndStart, TEXT("StartButtonTag"), (HANDLE)0x130);
+        SendMessage(_hwndStart, CCM_DPISCALE, TRUE, 0);
         SetWindowSubclass(
             _hwndStart,
-            (SUBCLASSPROC)CStartButton::s_StartButtonSubclassProc,
+            (SUBCLASSPROC)s_StartButtonSubclassProc,
             0,
             (DWORD_PTR)this);
-        LoadStringW(GetModuleHandle(NULL), IDS_STARTCLASSIC, (LPWSTR)_szWindowName, 50);
-        SetWindowTextW(_hwndStart, (LPCWSTR)_szWindowName);
+        LoadString(g_hinstCabinet, IDS_STARTCLASSIC, (LPWSTR)_szWindowName, 50);
+        SetWindowText(_hwndStart, (LPCWSTR)_szWindowName);
     }
 
     wprintf(L"CStartButton::CreateStartButton two\n");
@@ -236,9 +241,9 @@ HWND CStartButton::CreateStartButton(HWND hWnd)
     return _hwndStart;
 }
 
-HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
+HRESULT CStartButton::SetStartPaneActive(BOOL fActive)
 {
-    if (bActive)
+    if (fActive)
     {
         _uStartButtonState = 1;
 
@@ -257,27 +262,27 @@ HRESULT CStartButton::SetStartPaneActive(BOOL bActive)
     return S_OK;
 }
 
-HRESULT CStartButton::OnStartMenuDismissed()  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::OnStartMenuDismissed()
 {
     _pStartButtonSite->OnStartMenuDismissed();
     return S_OK;
 }
 
-HRESULT CStartButton::UnlockStartPane()  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::UnlockStartPane()
 {
-    if (_uLockCode)
+    if (_fForegroundLocked)
     {
-        _uLockCode = FALSE;
+        _fForegroundLocked = FALSE;
         LockSetForegroundWindow(LSFW_UNLOCK);
     }
     return S_OK;
 }
 
-HRESULT CStartButton::LockStartPane()  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::LockStartPane()
 {
-    if (!_uLockCode)
+    if (!_fForegroundLocked)
     {
-        _uLockCode = TRUE;
+        _fForegroundLocked = TRUE;
         LockSetForegroundWindow(LSFW_LOCK);
     }
     return S_OK;
@@ -308,7 +313,7 @@ HRESULT CStartButton::GetWindow(HWND* out)  // taken from ep_taskbar 7-stuff
 
 HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)  // taken from ep_taskbar 7-stuff
 {
-    *ppvObject = nullptr;
+    *ppvObject = NULL;
     HRESULT hr = E_FAIL;
 
     if (IsEqualGUID(guidService, __uuidof(IStartButton)))
@@ -359,7 +364,7 @@ void CStartButton::BuildStartMenu() // from xp
     }
 }
 
-void CStartButton::CloseStartMenu()  // taken from ep_taskbar 7-stuff @MOD
+void CStartButton::CloseStartMenu()
 {
     if (_pmpStartMenu)
     {
@@ -419,9 +424,9 @@ void CStartButton::DisplayStartMenu()
 
     // Recalculate the position of the taskbar and start button:
     bool fMoveTaskbar = false;
-    if ((GetWindowLongPtrW(_hwndStart, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
-        && _pszCurrentThemeName == L"StartBottom"
-        || _pszCurrentThemeName == L"StartTop")
+    if ((GetWindowLongPtr(_hwndStart, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
+        && _pszCurrentThemeName == TEXT("StartBottom")
+        || _pszCurrentThemeName == TEXT("StartTop"))
     {
         fMoveTaskbar = true;
         SetWindowPos(v_hwndTray, HWND_TOPMOST, 0, 0, 0, 0, (SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER));
@@ -473,79 +478,67 @@ void CStartButton::DisplayStartMenu()
     }
 }
 
-void CStartButton::DrawStartButton(int iStateId, bool hdcSrc)
+void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
 {
     POINT pptDst;
     HRGN hRgn;
-    BOOL started = _CalcStartButtonPos(&pptDst, &hRgn);
+    BOOL fCalculated = CStartButton::_CalcStartButtonPos(&pptDst, &hRgn);
 
-    if (hdcSrc)
+    if (bRepaint)
     {
-        HDC DC = GetDC(_hwndStart);
-        if (DC)
+        HDC hdc = GetDC(_hwndStart);
+        if (hdc)
         {
-            HDC hdcSrca = CreateCompatibleDC(DC);
-            if (hdcSrca)
+            HDC hdcMem = CreateCompatibleDC(hdc);
+            if (hdcMem)
             {
-                RECT rcStart = { 0, 0, _size.cx, _size.cy };
+                RECT rcStart = { 0, 0, _sizeStart.cx, _sizeStart.cy };
 
-                BITMAPINFO pbmi;
-				ZeroMemory(&pbmi, sizeof(BITMAPINFO));
+                BITMAPINFO bmi = { 0 };
+                bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                bmi.bmiHeader.biWidth = rcStart.right;
+                bmi.bmiHeader.biHeight = -rcStart.bottom;
+                bmi.bmiHeader.biPlanes = 1;
+                bmi.bmiHeader.biBitCount = 32;
+                bmi.bmiHeader.biCompression = BI_RGB;
 
-                pbmi.bmiHeader.biWidth = rcStart.right;
-                pbmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-                pbmi.bmiHeader.biHeight = -_size.cy;
-                pbmi.bmiHeader.biPlanes = 1;
-                pbmi.bmiHeader.biBitCount = 32;
-                pbmi.bmiHeader.biCompression = BI_RGB;
-
-                HBITMAP dibBmp = CreateDIBSection(DC, &pbmi, DIB_RGB_COLORS, NULL, NULL, 0);
-                if (dibBmp)
+                HBITMAP hbmStartButton = CreateDIBSection(hdc, &bmi, 0, 0, 0, 0);
+                if (hbmStartButton)
                 {
-                    HBITMAP hOldBmp = (HBITMAP)SelectObject(hdcSrca, dibBmp);
-
+                    HBITMAP hbmMem = (HBITMAP)SelectObject(hdcMem, hbmStartButton);
                     HDC hdcDst = GetDC(NULL);
 
-                    SIZE psize = {_size.cx, _size.cy};
-                    POINT pptSrc = { 0, 0 };
-
+                    POINT ptStart = { 0, 0 };
                     if (!_hTheme)
                     {
-                        SendMessage(_hwndStart, WM_PRINTCLIENT, (WPARAM)hdcSrca, PRF_CLIENT);
-                        UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
-                            0, NULL, ULW_OPAQUE);
+                        SendMessage(_hwndStart, WM_PRINTCLIENT, (WPARAM)hdcMem, PRF_CLIENT);
+                        UpdateLayeredWindow(_hwndStart, hdcDst, 0, &_sizeStart, hdcMem, &ptStart, 0, 0, ULW_OPAQUE);
                     }
                     else
                     {
-                        SHFillRectClr(hdcSrca, &rcStart, 0);
-                        DrawThemeBackground(_hTheme, hdcSrca, 1, iStateId, &rcStart, 0);
+                        SHFillRectClr(hdcMem, &rcStart, 0);
+                        DrawThemeBackground(_hTheme, hdcMem, 1, iStateId, &rcStart, 0);
 
                         BLENDFUNCTION bf;
                         bf.BlendOp = 0;
                         bf.BlendFlags = 0;
                         bf.SourceConstantAlpha = 255;
                         bf.AlphaFormat = 1;
-                        UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &psize, hdcSrca, &pptSrc,
-                            0, &bf, ULW_ALPHA);
+                        UpdateLayeredWindow(_hwndStart, hdcDst, 0, &_sizeStart, hdcMem, &ptStart, 0, &bf, ULW_ALPHA);
                     }
-                    ReleaseDC(0, hdcDst);
-                    SelectObject(hdcSrca, hOldBmp);
-                    DeleteObject(dibBmp);
+                    ReleaseDC(NULL, hdcDst);
+                    SelectObject(hdcMem, hbmMem);
+                    DeleteObject(hbmStartButton);
                 }
-                DeleteDC(hdcSrca);
+                DeleteDC(hdcMem);
             }
-            ReleaseDC(_hwndStart, DC);
+            ReleaseDC(_hwndStart, hdc);
         }
     }
+    UpdateLayeredWindow(_hwndStart, 0, &pptDst, 0, 0, 0, 0, 0, 0);
 
-    UpdateLayeredWindow(
-        _hwndStart, NULL, &pptDst, NULL, NULL, NULL, 0, NULL, 0);
-
-
-    if (started)
-    {
+    if (fCalculated)
         SetWindowRgn(_hwndStart, hRgn, TRUE);
-    }
 }
 
 void CStartButton::ExecRefresh()
@@ -567,18 +560,12 @@ void CStartButton::ForceButtonUp()
 {
     if (!_nStartBtnNotPressed)
     {
-        MSG Msg;
+        MSG msg;
         _nStartBtnNotPressed = 1;
-        PeekMessageW(
-            &Msg, _hwndStart, WM_MOUSEFIRST + 1, WM_MOUSEFIRST + 1, PM_REMOVE);
-        PeekMessageW(
-            &Msg, _hwndStart, WM_MOUSEFIRST + 1, WM_MOUSEFIRST + 1, PM_REMOVE);
-
-        SendMessageW(
-            _hwndStart, WM_PASTE, 0, 0);
-
-        PeekMessageW(
-            &Msg, _hwndStart, WM_MOUSEFIRST + 3, WM_MOUSEFIRST + 3, PM_REMOVE);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK, PM_REMOVE);
     }
 }
 
@@ -592,7 +579,7 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
     if (hTheme)
     {
         HDC hdc = GetDC(_hwndStart);
-        GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, CBS_UNCHECKEDNORMAL, nullptr, TS_TRUE, &_size);
+        GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, CBS_UNCHECKEDNORMAL, NULL, TS_TRUE, &_sizeStart);
         DWORD dwLogPixelsX = GetDeviceCaps(hdc, LOGPIXELSX);
 
         // XXX(isabella): Looks to be DPI resolution?
@@ -612,52 +599,51 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
     }
     else // Classic theme:
     {
-        int idResStartIcon = SHGetCurColorRes() <= 8 ? IDB_START16 : IDB_STARTCLASSIC;
+        int idbStart = SHGetCurColorRes() <= 8 ? IDB_START16 : IDB_STARTCLASSIC;
 
         // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
-        HBITMAP hBmpStartIcon = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(idResStartIcon));
-
-        if (hBmpStartIcon)
+        HBITMAP hbmFlag = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(idbStart));
+        if (hbmFlag)
         {
-            BITMAP bitmap{};
-
-            if (GetObjectW(hBmpStartIcon, sizeof(bitmap), &bitmap))
+            BITMAP bm;
+            if (GetObject(hbmFlag, sizeof(BITMAP), &bm))
             {
-                BUTTON_IMAGELIST buttonImageList = { 0 };
-
-                if (_hIml)
+                BUTTON_IMAGELIST biml = { 0 };
+                if (_himlStartFlag)
                 {
                     // Clean up any previously-existing image list:
-                    ImageList_Destroy(_hIml);
+                    ImageList_Destroy(_himlStartFlag);
                 }
 
-                HBITMAP hBmpStartIconMask = nullptr;
 
-                DWORD ilcFlags = ILC_COLOR32;
-
-                if (idResStartIcon == IDB_START16)
+                DWORD dwFlags = ILC_COLOR32;
+                HBITMAP hbmFlagMask = NULL;
+                if (idbStart == IDB_START16)
                 {
-                    ilcFlags = ILC_COLOR8 | ILC_MASK;
+                    dwFlags = ILC_COLOR8 | ILC_MASK;
 
                     // @MOD (isabella): Bitmap in Explorer instead of ShellBrd
-                    hBmpStartIconMask = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK));
+                    hbmFlagMask = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_START16MASK));
                 }
 
-                if ((GetWindowLongPtrW(_hwndStart, GWL_EXSTYLE) & WS_EX_LAYOUTRTL) != 0)
+                if ((GetWindowLongPtr(_hwndStart, GWL_EXSTYLE) & WS_EX_LAYOUTRTL) != 0)
                 {
-                    ilcFlags |= ILC_MIRROR;
+                    dwFlags |= ILC_MIRROR;
                 }
 
-                HIMAGELIST hIml = ImageList_Create(bitmap.bmWidth, bitmap.bmHeight, ilcFlags, 1, 1);
-                _hIml = hIml;
-                buttonImageList.himl = hIml;
-                ImageList_Add(hIml, hBmpStartIcon, hBmpStartIconMask);
-                if (hBmpStartIconMask)
-                    DeleteObject(hBmpStartIconMask);
-                buttonImageList.uAlign = 0;
-                SendMessageW(_hwndStart, BCM_SETIMAGELIST, 0, (LPARAM)&buttonImageList);
+                biml.himl = _himlStartFlag = ImageList_Create(bm.bmWidth, bm.bmHeight, dwFlags, 1, 1);
+                ImageList_Add(_himlStartFlag, hbmFlag, hbmFlagMask);
+
+                if (hbmFlagMask)
+                {
+                    DeleteObject(hbmFlagMask);
+                }
+
+                biml.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
+
+                Button_SetImageList(_hwndStart, &biml);
             }
-            DeleteObject(hBmpStartIcon);
+            DeleteObject(hbmFlag);
         }
 
         if (_hStartFont)
@@ -665,14 +651,13 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
             DeleteObject(_hStartFont);
         }
 
-        HFONT hFont = _CreateStartFont();
-        _hStartFont = hFont;
+        _hStartFont = _CreateStartFont();
 
-        SendMessageW(_hwndStart, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessage(_hwndStart, WM_SETFONT, (WPARAM)_hStartFont, TRUE);
 
         // Recalculate the size:
-        _size = { 0 };
-        SendMessageW(_hwndStart, BCM_GETIDEALSIZE, 0, (LPARAM)&_size);
+        _sizeStart = { 0 };
+        SendMessage(_hwndStart, BCM_GETIDEALSIZE, 0, (LPARAM)&_sizeStart);
     }
 }
 
@@ -685,7 +670,7 @@ BOOL CStartButton::InitBackgroundBitmap()
     //    _hbmpStartBkg = BrandingLoadBitmap(L"Shellbrd", 1001);
     _hbmpStartBkg = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_CLASSICSTARTBKG));
 
-    return _hbmpStartBkg != nullptr;
+    return _hbmpStartBkg != NULL;
 }
 
 void CStartButton::InitTheme()
@@ -696,40 +681,20 @@ void CStartButton::InitTheme()
 
 BOOL CStartButton::IsButtonPushed()
 {
-    return SendMessageW(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
+    return SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
 }
 
-HRESULT CStartButton::IsMenuMessage(MSG* pmsg)  // taken from ep_taskbar 7-stuff @MOD
+HRESULT CStartButton::IsMenuMessage(MSG *pmsg)
 {
-    HRESULT hr;
-    if (_pmbStartMenu)
-    {
-        hr = _pmbStartMenu->IsMenuMessage(pmsg);
-        if (hr != S_OK)
-        {
-            hr = S_FALSE;
-        }
-    }
-    else if (_pmbStartPane)
-    {
-        hr = _pmbStartPane->IsMenuMessage(pmsg);
-        if (hr != S_OK)
-        {
-            hr = S_FALSE;
-        }
-    }
-    else
-    {
-        hr = S_FALSE;
-    }
-    return hr;
+    return (!_pmbStartPane || _pmbStartPane->IsMenuMessage(pmsg))
+        && (!_pmbStartMenu || _pmbStartMenu->IsMenuMessage(pmsg));
 }
 
 BOOL CStartButton::IsPopupMenuVisible()
 {
-    HWND phwnd;
-    return SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &phwnd)) && IsWindowVisible(phwnd)
-        || SUCCEEDED(IUnknown_GetWindow(_pmpStartPane, &phwnd)) && IsWindowVisible(phwnd);
+    HWND hwnd;
+    return SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)) && IsWindowVisible(hwnd)
+        || SUCCEEDED(IUnknown_GetWindow(_pmpStartPane, &hwnd)) && IsWindowVisible(hwnd);
 }
 
 BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
@@ -746,18 +711,18 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
     if (_pszCurrentThemeName == L"StartTop")
     {
-        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
 
         if (rcTrayWnd.bottom <= cyFrameHalf)
-            pPoint->y = rcTrayWnd.top - _size.cy - cyFrameHalf;
+            pPoint->y = rcTrayWnd.top - _sizeStart.cy - cyFrameHalf;
         else
-            pPoint->y = rcTrayWnd.bottom + _nSomeSize - _size.cy;
+            pPoint->y = rcTrayWnd.bottom + _nSomeSize - _sizeStart.cy;
     }
     else if (_pszCurrentThemeName == L"StartBottom")
     {
         RECT rc;
 
-        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
 
         HMONITOR hMon = MonitorFromRect(&rcTrayWnd, MONITOR_DEFAULTTONEAREST);
         GetMonitorRects(hMon, &rc, FALSE);
@@ -773,12 +738,12 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
         if (STUCK_HORIZONTAL(c_tray._uStuckPlace))
         {
-            pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _size.cx : rcTrayWnd.left;
-            height = rcTrayWnd.bottom - _size.cy - rcTrayWnd.top;
+            pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
+            height = rcTrayWnd.bottom - _sizeStart.cy - rcTrayWnd.top;
         }
         else
         {
-            pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _size.cx - rcTrayWnd.left) / 2;
+            pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _sizeStart.cx - rcTrayWnd.left) / 2;
             height = g_cyTabSpace;
         }
 
@@ -789,7 +754,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         int cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
         int cyBorder = GetSystemMetrics(SM_CYBORDER);
         if (IsBiDiLocalizedSystem() && (c_tray._uStuckPlace == 1 || c_tray._uStuckPlace == 3) != 0)
-            pPoint->x = rcTrayWnd.right - _size.cx - cyBorder - cyDlgFrame;
+            pPoint->x = rcTrayWnd.right - _sizeStart.cx - cyBorder - cyDlgFrame;
         else
             pPoint->x = rcTrayWnd.left + cyBorder + cyDlgFrame;
         pPoint->y = rcTrayWnd.top + cyDlgFrame + cyBorder;
@@ -807,7 +772,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         {
             if (GetWindowRgnBox(_hwndStart, &rc))
             {
-                SetWindowRgn(_hwndStart, nullptr, TRUE);
+                SetWindowRgn(_hwndStart, NULL, TRUE);
             }
         }
         else
@@ -816,9 +781,9 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
             RECT rcSrc;
             rcSrc.left = pPoint->x;
-            rcSrc.bottom = pPoint->y + _size.cy;
+            rcSrc.bottom = pPoint->y + _sizeStart.cy;
             rcSrc.top = pPoint->y;
-            rcSrc.right = pPoint->x + _size.cx;
+            rcSrc.right = pPoint->x + _sizeStart.cx;
             IntersectRect(&rcDst, &rcSrc, &rc);
 
             if (EqualRect(&rcDst, &rcSrc))
@@ -871,7 +836,7 @@ void CStartButton::RecalcSize()
         RECT rc;
         GetClientRect(v_hwndTray, &rc);
         LPCWSTR pszWindowName = L"";
-        if (rc.right >= _size.cx)
+        if (rc.right >= _sizeStart.cx)
         {
             pszWindowName = _szWindowName;
         }
@@ -879,11 +844,11 @@ void CStartButton::RecalcSize()
         SetWindowTextW(_hwndStart, pszWindowName);
 
         int height = _pStartButtonSite->GetStartButtonMinHeight();
-        if (!height && _size.cy >= 0)
+        if (!height && _sizeStart.cy >= 0)
         {
-            height = _size.cy;
+            height = _sizeStart.cy;
         }
-        _size.cy = height;
+        _sizeStart.cy = height;
     }
 }
 
@@ -895,7 +860,7 @@ void CStartButton::RepositionBalloon()
         GetWindowRect(_hwndStart, &rc);
         WORD xCoordinate = (WORD)((rc.left + rc.right) / 2);
         WORD yCoordinate = LOWORD(rc.top);
-        SendMessageW(_hwndStartBalloon, 0x412u, 0, MAKELONG(xCoordinate, yCoordinate));
+        SendMessage(_hwndStartBalloon, 0x412u, 0, MAKELONG(xCoordinate, yCoordinate));
     }
 }
 
@@ -903,48 +868,40 @@ void CStartButton::StartButtonReset()
 {
     GetSizeAndFont(_hTheme);
     RecalcSize();
+    // c_tray.UpdateStuckRect();
 }
 
 int CStartButton::TrackMenu(HMENU hMenu)
 {
     TPMPARAMS tpm;
-    RECT rc;
+    int iRet;
+
     tpm.cbSize = sizeof(tpm);
     GetClientRect(_hwndStart, &tpm.rcExclude);
-    HWND Parent = GetParent(_hwndStart);
-    GetClientRect(Parent, &rc);
-    if (tpm.rcExclude.bottom >= rc.bottom)
-    {
-        tpm.rcExclude.bottom = rc.bottom;
-    }
+
+    RECT rcClient;
+    GetClientRect(GetParent(_hwndStart), &rcClient);
+    tpm.rcExclude.bottom = min(tpm.rcExclude.bottom, rcClient.bottom);
+
     MapWindowRect(_hwndStart, NULL, &tpm.rcExclude);
+
     UINT uFlag = TPM_RETURNCMD | TPM_RIGHTBUTTON;
-    if (IsBiDiLocalizedSystem())
+    if (IS_BIDI_LOCALIZED_SYSTEM())
     {
         uFlag |= TPM_LAYOUTRTL;
     }
+
     _pStartButtonSite->EnableTooltips(FALSE);
-    int nMenuResult = TrackPopupMenuEx(hMenu, uFlag, tpm.rcExclude.left, tpm.rcExclude.bottom, _hwndStart, &tpm);
+    iRet = TrackPopupMenuEx(hMenu, uFlag, tpm.rcExclude.left, tpm.rcExclude.bottom, _hwndStart, &tpm);
     _pStartButtonSite->EnableTooltips(TRUE);
-    return nMenuResult;
+
+    return iRet;
 }
 
-BOOL CStartButton::TranslateMenuMessage(MSG* pmsg, LRESULT* plRet)  // taken from ep_taskbar 7-stuff @MOD
+HRESULT CStartButton::TranslateMenuMessage(MSG *pmsg, LRESULT *plRet)
 {
-    BOOL result = TRUE;
-    if (_pmbStartMenu)
-    {
-        // S_FALSE is same as TRUE
-        // S_OK is same as FALSE
-        // in pseudocode, it checks if TranslateMenuMessage is TRUE (S_FALSE)
-        result = (_pmbStartMenu->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
-
-        if (result && _pmbStartPane)
-        {
-            result = (_pmbStartPane->TranslateMenuMessage(pmsg, plRet) == S_FALSE) ? TRUE : FALSE;
-        }
-    }
-    return result;
+    return (!_pmbStartMenu || _pmbStartMenu->TranslateMenuMessage(pmsg, plRet))
+        && (!_pmbStartPane || _pmbStartPane->TranslateMenuMessage(pmsg, plRet));
 }
 
 void CStartButton::UpdateStartButton(bool a2)
@@ -965,7 +922,7 @@ void CStartButton::_DestroyStartButtonBalloon()
     if (_hwndStartBalloon)
     {
         DestroyWindow(_hwndStartBalloon);
-        _hwndStartBalloon = nullptr;
+        _hwndStartBalloon = NULL;
     }
     KillTimer(_hwndStart, 1);
 }
@@ -973,8 +930,8 @@ void CStartButton::_DestroyStartButtonBalloon()
 void CStartButton::_DontShowTheStartButtonBalloonAnyMore()
 {
     DWORD dwData = 2;
-    SHSetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-        L"StartButtonBalloonTip", REG_DWORD, &dwData, sizeof(dwData));
+    SHSetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED,
+        TEXT("StartButtonBalloonTip"), REG_DWORD, (BYTE*)&dwData, sizeof(dwData));
 }
 
 LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
@@ -984,7 +941,7 @@ LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
     {
         RECT rcBalloon;
         GetWindowRect(_hwndStartBalloon, &rcBalloon);
-        MapWindowRect(nullptr, hWndTo, &rcBalloon);
+        MapWindowRect(NULL, hWndTo, &rcBalloon);
         if (PtInRect(&rcBalloon, {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}))
         {
             ShowWindow(_hwndStartBalloon, SW_HIDE);
@@ -1023,11 +980,11 @@ void CStartButton::_CalcExcludeRect(RECTL* lprcDst) // from xp
 
     RECT rcStuck = c_tray._arStuckRects[uStuckPlace];
     if (IsBiDiLocalizedSystem() && STUCK_HORIZONTAL(uStuckPlace))
-        rcStart.left = rcStuck.right - _size.cx;
+        rcStart.left = rcStuck.right - _sizeStart.cx;
     else
         rcStart.left = rcStuck.left;
 
-    if (uStuckPlace == 1 || uStuckPlace == 3)
+    if (uStuckPlace == STICK_TOP || uStuckPlace == STICK_BOTTOM)
     {
         rcStart.top = rcStuck.top;
         rcStart.bottom = rcStuck.bottom;
@@ -1063,16 +1020,18 @@ HFONT CStartButton::_CreateStartFont()  // taken from xp
 
 void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
 {
-    LPITEMIDLIST ppidl;
-    if (SUCCEEDED(SHGetFolderLocation(nullptr, CSIDL_COMMON_STARTMENU, nullptr, KF_FLAG_DEFAULT, &ppidl)))
+    LPITEMIDLIST pidl;
+    if (SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_COMMON_STARTMENU, NULL, KF_FLAG_DEFAULT, &pidl)))
     {
-        SHELLEXECUTEINFOW execInfo = { sizeof(execInfo) };
-        execInfo.fMask = SEE_MASK_IDLIST | SEE_MASK_ASYNCOK;
-        execInfo.lpVerb = bExplore ? L"explore" : L"open";
-        execInfo.nShow = SW_NORMAL;
-        execInfo.lpIDList = ppidl;
-        ShellExecuteExW(&execInfo);
-        ILFree(ppidl);
+        SHELLEXECUTEINFO sei = { 0 };
+
+		sei.cbSize       = sizeof(sei);
+        sei.fMask        = SEE_MASK_IDLIST | SEE_MASK_ASYNCOK;
+        sei.lpVerb       = bExplore ? TEXT("explore") : TEXT("open");
+        sei.nShow        = SW_SHOWNORMAL;
+        sei.lpIDList     = pidl;
+        ShellExecuteEx(&sei);
+        ILFree(pidl);
     }
 }
 
@@ -1081,11 +1040,11 @@ LPCWSTR CStartButton::_GetCurrentThemeName()
     RECT rc;
     GetWindowRect(v_hwndTray, &rc);
 
-    if (c_tray._uStuckPlace == STICK_BOTTOM && RECTHEIGHT(rc) < _size.cy)
+    if (c_tray._uStuckPlace == STICK_BOTTOM && RECTHEIGHT(rc) < _sizeStart.cy)
     {
         return L"StartBottom";
     }
-    else if (c_tray._uStuckPlace == STICK_TOP && RECTHEIGHT(rc) < _size.cy)
+    else if (c_tray._uStuckPlace == STICK_TOP && RECTHEIGHT(rc) < _sizeStart.cy)
     {
         return L"StartTop";
     }
@@ -1108,12 +1067,12 @@ void CStartButton::_HandleDestroy()
     {
         DeleteObject(_hStartFont);
     }
-    if (_hIml)
+    if (_himlStartFlag)
     {
-        ImageList_Destroy(_hIml);
+        ImageList_Destroy(_himlStartFlag);
     }
 
-    RemovePropW(_hwndStart, L"StartButtonTag");
+    RemoveProp(_hwndStart, TEXT("StartButtonTag"));
 }
 
 void CStartButton::_OnSettingChanged(UINT a2)
@@ -1123,7 +1082,7 @@ void CStartButton::_OnSettingChanged(UINT a2)
         bool v3 = !_nSettingsChangeType;
         if (_nSettingsChangeType)
         {
-            PostMessageW(_hwndStart, 0x31Au, 0, 0);
+            PostMessage(_hwndStart, 0x31Au, 0, 0);
             v3 = !_nSettingsChangeType;
         }
         _nSettingsChangeType = v3;
@@ -1135,7 +1094,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = nullptr;
+        _hTheme = NULL;
     }
 
     bool bThemeApplied = false;
@@ -1148,7 +1107,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     }
     else if (!bForceUpdate)
     {
-        _pszCurrentThemeName = nullptr;
+        _pszCurrentThemeName = NULL;
         if (!_nSettingsChangeType)
         {
             StartButtonReset();
@@ -1157,7 +1116,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
         }
         else
         {
-            PostMessageW(_hwndStart, 0x31Au, 0, 0);
+            PostMessage(_hwndStart, 0x31Au, 0, 0);
         }
         _nSettingsChangeType = !_nSettingsChangeType;
     }
@@ -1235,7 +1194,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
         if (_uStartButtonState == 2 && uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
         {
-            _uStartButtonState = 0;
+            _uStartButtonState = 0; // SBSM_NORMAL
             CloseStartMenu();
         }
 
@@ -1248,7 +1207,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 if (!(pWindowPos->flags & SWP_NOMOVE))
                 {
                     POINT pt;
-                    _CalcStartButtonPos(&pt, nullptr);
+                    _CalcStartButtonPos(&pt, NULL);
 
                     if (pWindowPos->x != pt.x || pWindowPos->y != pt.y)
                     {
@@ -1296,13 +1255,13 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 {
                     DrawStartButton(PBS_HOT, true);
 
-                    TRACKMOUSEEVENT evt;
-                    evt.dwHoverTime = HOVER_DEFAULT;
-                    evt.hwndTrack = _hwndStart;
-                    evt.cbSize = sizeof(TRACKMOUSEEVENT);
-                    evt.dwFlags = TME_LEAVE;
+                    TRACKMOUSEEVENT tme;
+                    tme.cbSize = sizeof(TRACKMOUSEEVENT);
+                    tme.dwFlags = TME_LEAVE;
+                    tme.hwndTrack = _hwndStart;
+                    tme.dwHoverTime = HOVER_DEFAULT;
 
-                    TrackMouseEvent(&evt);
+                    TrackMouseEvent(&tme);
 
                     _mouseOver = 1;
                 }
@@ -1341,7 +1300,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 }
                 if (uMsg == WM_LBUTTONDOWN)
                 {
-                    SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
+                    SendMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
                     LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
                     SetCapture(0);
                     return lr;
@@ -1370,16 +1329,16 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_APP + 1: // probably like "get size"
             {
-                return MAKELRESULT(_size.cx, _size.cy);
+                return MAKELRESULT(_sizeStart.cx, _sizeStart.cy);
             }
 
             case WM_KEYDOWN:
             {
-                SendMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEACCEL), 0);
+                SendMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEACCEL), 0);
 
                 if (wParam == VK_RETURN)
                 {
-                    PostMessageW(GetAncestor(hWnd, GA_ROOTOWNER), WM_COMMAND, 0x131, 0);
+                    PostMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_COMMAND, 0x131, 0);
                 }
 
                 LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -1431,27 +1390,27 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
-LRESULT CStartButton::s_StartButtonSubclassProc(
-    HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+LRESULT CStartButton::s_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
     return ((CStartButton *)dwRefData)->_StartButtonSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
 LRESULT CStartButton::s_StartMenuSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
-    if (uMsg != WM_WINDOWPOSCHANGING)
+    if (uMsg == WM_WINDOWPOSCHANGING)
     {
-        if (uMsg == WM_NCDESTROY)
-            RemoveWindowSubclass(hWnd, s_StartMenuSubclassProc, uIdSubclass);
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
+        PWINDOWPOS pwp = (WINDOWPOS*)lParam;
+        if ((pwp->flags & SWP_NOZORDER) != 0 || c_tray._uStuckPlace != 1 && c_tray._uStuckPlace != 3)
+        {
+            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        }
+        pwp->hwndInsertAfter = v_hwndTray;
 
-    WINDOWPOS* wndPos = (WINDOWPOS*)lParam;
-    if ((wndPos->flags & SWP_NOZORDER) != 0 || c_tray._uStuckPlace != 1 && c_tray._uStuckPlace != 3)
+        return 0;
+    }
+    if (uMsg == WM_NCDESTROY)
     {
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        RemoveWindowSubclass(hWnd, s_StartMenuSubclassProc, uIdSubclass);
     }
-    wndPos->hwndInsertAfter = v_hwndTray;
-
-    return 0;
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }

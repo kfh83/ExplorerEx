@@ -133,6 +133,8 @@ IDB_TRAYCHEVRONHORIZOPEN BITMAP DISCARDABLE PURE "resources\\traycho.bmp"
 IDB_TRAYCHEVRONVERT      BITMAP DISCARDABLE PURE "resources\\traycv.bmp"
 IDB_TRAYCHEVRONVERTOPEN  BITMAP DISCARDABLE PURE "resources\\traycvo.bmp"
 
+IDB_STARTER_WATERMARK    BITMAP DISCARDABLE PURE "resources\\starter.bmp"
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // PNG

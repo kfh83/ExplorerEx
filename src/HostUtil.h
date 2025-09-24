@@ -73,7 +73,7 @@ protected:
 //  Implementation of IAccessible that wraps the default IAccessible
 //  of a window, but allows people to override selected methods.
 //
-class CAccessible : public IAccessible
+class CAccessible : public IAccessible, public IEnumVARIANT
 {
 public:
     // *** IUnknown ***
@@ -113,6 +113,11 @@ public:
     STDMETHODIMP put_accName(VARIANT varChild, BSTR szName);
     STDMETHODIMP put_accValue(VARIANT varChild, BSTR pszValue);
 
+    STDMETHODIMP Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched);
+    STDMETHODIMP Skip(ULONG celt);
+    STDMETHODIMP Reset();
+	STDMETHODIMP Clone(IEnumVARIANT **ppEnum);
+
 protected:
     ~CAccessible() { ATOMICRELEASE(_paccInner); }
 
@@ -140,8 +145,12 @@ private:
                          HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
                          UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
+    HRESULT GetInnerObject(HWND hwnd, LONG idObject); // Vista - New
+
 protected:
     IAccessible *_paccInner;
+	IEnumVARIANT *_pevarInner;  // Vista - New
+    int field_10;               // Vista - New
 };
 
 #endif // _HOSTUTIL_H_

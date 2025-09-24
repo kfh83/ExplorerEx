@@ -73,7 +73,7 @@ public:
     HWND CreateStartButton(HWND hwnd);
     void DestroyStartMenu();
     void DisplayStartMenu();
-    void DrawStartButton(int iStateId, bool hdcSrc /*allegedly*/);
+    void DrawStartButton(int iStateId, bool bRepaint /*allegedly*/);
     void ExecRefresh();
     void ForceButtonUp();
     void GetRect(RECT* lpRect);
@@ -87,7 +87,7 @@ public:
     void RepositionBalloon();
     void StartButtonReset();
     int TrackMenu(HMENU hMenu);
-    BOOL TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
+    HRESULT TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
     void UpdateStartButton(bool a2 /*allegedly*/);
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
@@ -98,7 +98,7 @@ public:
     int _fAllowUp;                // can we un-press it?
     HWND _hwndStart;
     HWND _hwndStartBalloon;
-    SIZE _size;
+    SIZE _sizeStart;
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
@@ -106,12 +106,12 @@ public:
     int _mouseOver;                // verify
     int _nStartBtnNotPressed;
     int _nIsOnContextMenu;
-    BOOL _uLockCode;
+    BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;
     bool _nSettingsChangeType;
-    int _uStartButtonState;
+    UINT _uStartButtonState;
     DWORD _tmOpen;
-    HIMAGELIST _hIml;
+    HIMAGELIST _himlStartFlag;
     IStartButtonSite *_pStartButtonSite;
     IMenuBand *_pmbStartMenu;
     IMenuPopup *_pmpStartMenu;

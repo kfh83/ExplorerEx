@@ -553,6 +553,8 @@ protected:
 
     static BOOL CALLBACK s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam);
 
+    void _StarterWatermarkCreate(int fCreate);
+
     // protected data
     HWND _hwndNotify;     // clock window
     HWND _hwndRude;
@@ -678,6 +680,11 @@ protected:
 
     BOOL _fIsDesktopLocked;
     BOOL _fIsDesktopConnected;
+
+    // CSystemMixer *field_630; // EXEX-VISTA
+	int field_634; // EXEX-VISTA
+	int field_638; // EXEX-VISTA
+	DWORD _dwWatermarkPolicy; // EXEX-VISTA
 
     // These member variables are used to keep track of downlevel apps
     // which attempt to take over as default web browser

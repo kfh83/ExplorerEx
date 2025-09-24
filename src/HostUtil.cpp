@@ -271,8 +271,28 @@ LRESULT HandleApplyRegion(HWND hwnd, HTHEME hTheme,
 #define ACCESSIBILITY_FORWARD(fn, typedargs, args)  \
 HRESULT CAccessible::fn typedargs                   \
 {                                                   \
-    return _paccInner->fn args;                     \
-}
+    if (_paccInner)                                 \
+    {                                               \
+        return _paccInner->fn args;                 \
+    }                                               \
+    else                                            \
+    {                                               \
+        return E_FAIL;                              \
+    }                                               \
+}                                                   \
+
+#define ENUMVARIANT_FORWARD(fn, typedargs, args)    \
+HRESULT CAccessible::fn typedargs                   \
+{                                                   \
+    if (_pevarInner)                                \
+    {                                               \
+        return _pevarInner->fn args;                \
+    }                                               \
+    else                                            \
+    {                                               \
+        return E_FAIL;                              \
+    }                                               \
+}                                                   \
 
 ACCESSIBILITY_FORWARD(get_accParent,
                       (IDispatch **ppdispParent),
@@ -355,6 +375,36 @@ ACCESSIBILITY_FORWARD(put_accValue,
                       (VARIANT varChild, BSTR pszValue),
                       (varChild, pszValue));
 
+ENUMVARIANT_FORWARD(Next,
+                   (ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched),
+                   (celt, rgVar, pCeltFetched));
+ENUMVARIANT_FORWARD(Skip,
+                   (ULONG celt),
+                   (celt));
+ENUMVARIANT_FORWARD(Reset,
+                   (),
+	               ());
+ENUMVARIANT_FORWARD(Clone,
+                   (IEnumVARIANT **ppEnum),
+	               (ppEnum));
+
+HRESULT CAccessible::GetInnerObject(HWND hwnd, LONG idObject)
+{
+    if (_pevarInner)
+        return S_OK;
+
+    HRESULT hr = CreateStdAccessibleObject(hwnd, idObject, IID_PPV_ARGS(&this->_paccInner));
+    if (SUCCEEDED(hr))
+    {
+        hr = _paccInner->QueryInterface(IID_PPV_ARGS(&_pevarInner));
+        if (FAILED(hr))
+        {
+            IUnknown_SafeReleaseAndNullPtr(&_paccInner);
+        }
+        return hr;
+    }
+    return hr;
+}
 
 LRESULT CALLBACK CAccessible::s_SubclassProc(
                          HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
@@ -368,19 +418,8 @@ LRESULT CALLBACK CAccessible::s_SubclassProc(
     case WM_GETOBJECT:
         if ((DWORD)lParam == OBJID_CLIENT)
         {
-            HRESULT hr;
-
-            // Create the accessibility object for the inner listview if we haven't already
-            // We forward nearly all calls to the inner IAccessible.
-            if (!self->_paccInner)
-            {
-                hr = CreateStdAccessibleObject(hwnd, (DWORD)lParam, IID_PPV_ARGS(&self->_paccInner));
-            }
-            else
-            {
-                hr = S_OK;
-            }
-
+            HRESULT hr = self->GetInnerObject(hwnd, (LONG)lParam);
+            ASSERT((self->_paccInner == NULL) == (self->_pevarInner == NULL)); // 424
             if (SUCCEEDED(hr))
             {
                 return LresultFromObject(IID_IAccessible, wParam, SAFECAST(self, IAccessible *));
@@ -396,7 +435,10 @@ LRESULT CALLBACK CAccessible::s_SubclassProc(
         RemoveWindowSubclass(hwnd, s_SubclassProc, 0);
         break;
 
-
+    case 0x10C1:
+        if (self && self->field_10)
+            return S_OK;
+        break;
     }
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }

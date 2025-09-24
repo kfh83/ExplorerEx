@@ -176,6 +176,9 @@ HRESULT CDesktopHost::QueryInterface(REFIID riid, void** ppvObj)
 
         QITABENT(CDesktopHost, ITrayPriv),      // going away
         QITABENT(CDesktopHost, ITrayPriv2),     // going away
+
+        QITABENTMULTI(CDesktopHost, IDispatch, IAccessible),    // Vista - New
+		QITABENT(CDesktopHost, IEnumVARIANT),                   // Vista - New
         { 0 },
     };
 
@@ -1785,12 +1788,50 @@ HRESULT CDesktopHost::TranslateMenuMessage(MSG* pmsg, LRESULT* plres)
 }
 
 // IServiceProvider::QueryService
-STDMETHODIMP CDesktopHost::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
+STDMETHODIMP CDesktopHost::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
 {
+#ifdef DEAD_CODE
     if (IsEqualGUID(guidService, SID_SMenuPopup))
         return QueryInterface(riid, ppvObject);
 
     return E_FAIL;
+#else // DEAD_CODE
+    
+    HRESULT hr = E_FAIL;
+    /*if (IsEqualGUID(guidService, SID_SMenuPopup))
+    {
+        if (!IsEqualGUID(guidService, SID_SM_OpenView) || !IsEqualGUID(guidService, SID_SM_TopMatch) || !IsEqualGUID(guidService, SID_SM_OpenHost))
+        {
+            ASSERT(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk != NULL) // 2410
+            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENVIEWHOST].punk, guidService, riid, ppvObject);
+        }
+        else if (!IsEqualGUID(guidService, SID_SM_OpenBox))
+        {
+            ASSERT(_spm.panes[SMPANETYPE_OPENBOX].punk != NULL) // 2415
+            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_OPENBOX].punk, guidService, riid, ppvObject);
+        }
+        else if (!IsEqualGUID(guidService, SID_SM_UserPane))
+        {
+            ASSERT(_spm.panes[SMPANETYPE_USER].punk != NULL) // 2420
+            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_USER].punk, guidService, riid, ppvObject);
+        }
+        else if (!IsEqualGUID(guidService, IID_IFolderView))
+        {
+            ASSERT(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk != NULL) // 2425
+            hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk, guidService, riid, ppvObject);
+        }
+    }
+    else*/
+    {
+        hr = QueryInterface(riid, ppvObject);
+    }
+
+    if (hr < 0)
+    {
+        return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
+    }
+    return hr;
+#endif
 }
 
 // *** IOleCommandTarget ***
@@ -2369,6 +2410,12 @@ void CDesktopHost::_DestroyClipBalloon()
     }
 }
 
+IStartButton* CDesktopHost::_GetIStartButton()
+{
+    IStartButton* pstb = NULL;
+	IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb));
+    return pstb;
+}
 
 void CDesktopHost::_OnDismiss(BOOL bDestroy)
 {
@@ -2389,8 +2436,16 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
 
         _DestroyClipBalloon();
 
+        IStartButton *pstb = _GetIStartButton();
+        if (pstb)
+        {
+            pstb->SetStartPaneActive(FALSE);
+            pstb->OnStartMenuDismissed();
+			pstb->Release();
+        }
+
         // Allow clicking on Start button to pop the menu immediately
-        Tray_SetStartPaneActive(FALSE);
+        // Tray_SetStartPaneActive(FALSE);
 
         // Don't try to preserve child focus across popups
         _hwndChildFocus = NULL;

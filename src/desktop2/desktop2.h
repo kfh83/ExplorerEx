@@ -51,6 +51,9 @@ typedef struct {
     SIZE    size;                   // (default) initial size of this pane
     HTHEME  hTheme;                 // (runtime) theme to pass to the control
     HWND    hwnd;                   // (runtime) filled in at runtime
+
+    BOOL    bPartDefined;           // Vista - New
+	IUnknown *punk;                 // Vista - New
 } SMPANEDATA;
 
 typedef struct {
