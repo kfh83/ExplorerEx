@@ -1307,15 +1307,8 @@ void Tray_OnStartMenuDismissed()
 
 void CTray::OnStartMenuDismissed()
 {
-    _bMainMenuInit = 0;
-    _stb._fAllowUp = TRUE;
-    _stb._uDown = 0;
-
     ForceStartButtonUp();
-
-    _stb.SetStartPaneActive(FALSE);
-    _stb.DrawStartButton(PBS_NORMAL, true);
-
+    _bMainMenuInit = 0;
     PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
 }
 

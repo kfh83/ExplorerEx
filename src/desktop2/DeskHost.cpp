@@ -730,7 +730,12 @@ HRESULT CDesktopHost::_Popup(POINT* ppt, RECT* prcExclude, DWORD dwFlags)
 
         // Tell tray that the start pane is active, so it knows to eat
         // mouse clicks on the Start Button.
-        Tray_SetStartPaneActive(TRUE);
+        IStartButton *pstb = _GetIStartButton();
+        if (pstb)
+        {
+            pstb->SetStartPaneActive(TRUE);
+            pstb->Release();
+        }
 
         _fOpen = TRUE;
         _fMenuBlocked = FALSE;

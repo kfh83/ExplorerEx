@@ -94,8 +94,8 @@ public:
 
     LPCWSTR _pszCurrentThemeName;
     INT _nSomeSize;
-    int _uDown;                   // start btn pressed?
-    int _fAllowUp;                // can we un-press it?
+    int _mouseOver;                // verify
+    BOOL _fDisableVisualUpdateFromMouse;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
     SIZE _sizeStart;
@@ -103,8 +103,8 @@ public:
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
     char padding[4];
-    int _mouseOver;                // verify
-    int _nStartBtnNotPressed;
+    int _uDown;                   // start btn pressed?
+    int _fAllowUp;                // can we un-press it?
     int _nIsOnContextMenu;
     BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;

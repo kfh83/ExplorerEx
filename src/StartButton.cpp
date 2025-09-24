@@ -246,17 +246,11 @@ HRESULT CStartButton::SetStartPaneActive(BOOL fActive)
     if (fActive)
     {
         _uStartButtonState = 1;
-
-        // @MOD check if this happens
-        _uDown = 1;
     }
     else if (_uStartButtonState != 2)
     {
         _uStartButtonState = 0;
 
-        // @MOD check if this happens
-
-        _uDown = 0;
         UnlockStartPane();
     }
     return S_OK;
@@ -419,6 +413,7 @@ void CStartButton::DisplayStartMenu()
 
     if (!*ppmpToDisplay)
     {
+        // TraceMsg(TF_WARNING, "e.tbm: Rebuilding Start Menu");
         BuildStartMenu();
     }
 
@@ -558,10 +553,10 @@ void CStartButton::ExecRefresh()
 
 void CStartButton::ForceButtonUp()
 {
-    if (!_nStartBtnNotPressed)
+    if (!_fAllowUp)
     {
         MSG msg;
-        _nStartBtnNotPressed = 1;
+        _fAllowUp = 1;
         PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
         PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
         SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
@@ -868,7 +863,7 @@ void CStartButton::StartButtonReset()
 {
     GetSizeAndFont(_hTheme);
     RecalcSize();
-    // c_tray.UpdateStuckRect();
+    // EXEX-VISTA TODO(isabella): c_tray.UpdateStuckRect();
 }
 
 int CStartButton::TrackMenu(HMENU hMenu)
@@ -1154,10 +1149,10 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 _pStartButtonSite->EnableTooltips(FALSE);
 
                 // Show the button down.
-                LRESULT lRet = DefWindowProc(hWnd, uMsg, wParam, lParam);
-                SendMessage(GetParent(hWnd), WM_COMMAND, (WPARAM)LOWORD(GetDlgCtrlID(hWnd)), (LPARAM)hWnd);
-                _pStartButtonSite->StartButtonClicked();
+                _fDisableVisualUpdateFromMouse = TRUE;
+                LRESULT lRet = DefSubclassProc(hWnd, BM_SETSTATE, wParam, lParam);
                 DrawStartButton(PBS_PRESSED, true);
+                _pStartButtonSite->StartButtonClicked();
                 _tmOpen = GetTickCount();
                 return lRet;
             }
@@ -1175,16 +1170,18 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_UP);
 
                 _uDown = 2;
-                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+                return DefWindowProc(hWnd, uMsg, 0, lParam);
             }
             else
             {
-                _pStartButtonSite->EnableTooltips(TRUE);
 
                 // Nope, Forward it on.
-                _uDown = 0;
+                _fDisableVisualUpdateFromMouse = FALSE;
+                LRESULT lr = DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
                 DrawStartButton(PBS_NORMAL, true);
-                return DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
+                _pStartButtonSite->EnableTooltips(TRUE);
+                _uDown = 0;
+                return lr;
             }
         }
     }
@@ -1230,7 +1227,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_KILLFOCUS:
             {
-                if (!_fAllowUp && _hTheme && !_uDown)
+                if (!_mouseOver && _hTheme && !_uDown)
                 {
                     DrawStartButton(PBS_NORMAL, true);
                 }
@@ -1251,7 +1248,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_MOUSEMOVE:
             {
-                if (_hTheme && !_mouseOver && !_uDown)
+                if (_hTheme && !_mouseOver && !_fDisableVisualUpdateFromMouse)
                 {
                     DrawStartButton(PBS_HOT, true);
 
@@ -1259,7 +1256,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                     tme.cbSize = sizeof(TRACKMOUSEEVENT);
                     tme.dwFlags = TME_LEAVE;
                     tme.hwndTrack = _hwndStart;
-                    tme.dwHoverTime = HOVER_DEFAULT;
+                    tme.dwHoverTime = 0;
 
                     TrackMouseEvent(&tme);
 
@@ -1270,7 +1267,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_MOUSELEAVE:
             {
-                if (_hTheme && !_uDown)
+                if (_hTheme && !_fDisableVisualUpdateFromMouse && !c_tray.IsMouseOverStartButton())
                 {
                     DrawStartButton(PBS_NORMAL, true);
                 }
