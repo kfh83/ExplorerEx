@@ -135,6 +135,9 @@ class CDesktopHost
 
         HBITMAP         _hbmCachedSnapshot; // This bitmap reflects the current look of the start menu, ready to show!
 
+        int field_1A8;                      // Vista - New
+        int field_1AC;                      // Vista - New
+
     public:
         // *** IUnknown ***
         STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
@@ -257,6 +260,8 @@ class CDesktopHost
         void _LockStartPane();
         void _UnlockStartPane();
         void _SetFocusToStartButton();
+
+        HTHEME _GetStartMenuTheme();
 };
 
 

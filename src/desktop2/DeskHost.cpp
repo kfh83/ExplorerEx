@@ -148,6 +148,20 @@ const STARTPANELMETRICS g_spmDefault = {
     }
 };
 
+
+// EXEX-VISTA TODO(allison): These are the new panel metrics for Vista although we should not use them until 
+// more work is done on the panes themselves.
+const STARTPANELMETRICS g_spmDefaultVista = {
+    {400,410},
+    {
+        {L"Desktop User Pane",      0x10000000,     SPP_USERPANE,   {150,   75}, NULL, NULL, FALSE, NULL},
+        {L"Desktop Open Pane Host", 0x12000000,     SPP_PROGLIST,   {250,  330}, NULL, NULL, FALSE, NULL},
+        {L"Desktop OpenBox Host",   0x10010000,     SPP_OPENBOX,    {250,   40}, NULL, NULL, FALSE, NULL},
+        {L"DesktopSFTBarHost",      0x12000000,     SPP_PLACESLIST, {150,  295}, NULL, NULL, FALSE, NULL},
+        {L"DesktopLogoffPane",      0x10000000,     SPP_LOGOFF,     {150,   40}, NULL, NULL, FALSE, NULL},
+    }
+};
+
 HRESULT
 CDesktopHost::Initialize()
 {
@@ -1962,6 +1976,7 @@ void CDesktopHost::LoadResourceInt(UINT ids, LONG* pl)
     }
 }
 
+#define THEME_CHECK
 
 static HANDLE(*IsThemeClassDefined)(HTHEME hTheme, LPCWSTR pszAppName, LPCWSTR pszClassId, int fAllowInheritance);
 
@@ -2002,12 +2017,13 @@ void CDesktopHost::LoadPanelMetrics()
     ASSERT(!_hTheme);
     // only try to use themes if our color depth is greater than 8bpp.
     if (SHGetCurColorRes() > 8)
-        _hTheme = OpenThemeData(_hwnd, STARTPANELTHEME);
+        _hTheme = _GetStartMenuTheme();
 
     IsThemeClassDefined = (decltype(IsThemeClassDefined))GetProcAddress(GetModuleHandle(L"uxtheme.dll"), (LPSTR)0x32);
 
     if (_hTheme)
     { 
+#ifdef THEME_CHECK
         // If there is no start button defined, start menu will fall back to classic theme state.
         // This is better for incompatible styles as it prevents the interface from being functionally limited
         if (!IsThemeClassDefined(_hTheme, L"Start", L"Button", 0))
@@ -2015,6 +2031,7 @@ void CDesktopHost::LoadPanelMetrics()
             CloseThemeData(_hTheme);
             _hTheme = NULL;
         }
+#endif
 
         // if we fail reading the size from the theme, it will fall back to the defaul size....
 
@@ -2449,6 +2466,31 @@ void CDesktopHost::_SetFocusToStartButton()
         pstb->SetFocusToStartButton();
         pstb->Release();
 	}
+}
+
+HTHEME CDesktopHost::_GetStartMenuTheme()
+{
+    field_1AC = 0;
+
+    IStartButton *pstb = _GetIStartButton();
+    if (pstb)
+    {
+        DWORD v8 = 0;
+        pstb->GetPopupPosition(&v8);
+        pstb->Release();
+        this->field_1AC |= v8;
+    }
+
+    LPCWSTR pszTheme;
+    if (this->field_1AC == 0x80000000)
+    {
+        pszTheme = IsCompositionActive() ? L"StartPanelCompositedBottom::StartPanel" : L"StartPanelBottom::StartPanel";
+    }
+    else
+    {
+        pszTheme = IsCompositionActive() ? L"StartPanelComposited::StartPanel" : L"StartPanel";
+    }
+    return OpenThemeData(this->_hwnd, pszTheme);
 }
 
 void CDesktopHost::_OnDismiss(BOOL bDestroy)
