@@ -162,9 +162,11 @@ const STARTPANELMETRICS g_spmDefaultVista = {
     }
 };
 
+// Done
 HRESULT
-CDesktopHost::Initialize()
+CDesktopHost::Initialize(HWND hwndParent)
 {
+	_hwndParent = hwndParent;
     ASSERT(_hwnd == NULL);
 
     //
@@ -175,6 +177,7 @@ CDesktopHost::Initialize()
     return S_OK;
 }
 
+// Done
 HRESULT CDesktopHost::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =
@@ -199,6 +202,7 @@ HRESULT CDesktopHost::QueryInterface(REFIID riid, void** ppvObj)
     return QISearch(this, qit, riid, ppvObj);
 }
 
+// Done
 HRESULT CDesktopHost::SetSite(IUnknown* punkSite)
 {
     CObjectWithSite::SetSite(punkSite);
@@ -208,15 +212,27 @@ HRESULT CDesktopHost::SetSite(IUnknown* punkSite)
         // The _ppmpPrograms contains multiple backreferences to
         // the CDesktopHost (we are its site, it also references
         // us via CDesktopShellMenuCallback...)
-        if (_ppmPrograms)
+        IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
+
+        for (int i = 0; i < ARRAYSIZE(_spm.panes); ++i)
         {
-            _ppmPrograms->Release();
-            _ppmPrograms = NULL;
+            if (_spm.panes[i].punk)
+            {
+                IUnknown_SetSite(_spm.panes[i].punk, NULL);
+				IUnknown_SafeReleaseAndNullPtr(&_spm.panes[i].punk);
+            }
+        }
+
+        if (_hwnd)
+        {
+            ASSERT(GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId()) // 211
+            DestroyWindow(_hwnd);
         }
     }
     return S_OK;
 }
 
+// Done
 CDesktopHost::~CDesktopHost()
 {
     if (_hbmCachedSnapshot)
@@ -224,26 +240,16 @@ CDesktopHost::~CDesktopHost()
         DeleteObject(_hbmCachedSnapshot);
     }
 
-	if (_ppmPrograms)
-	{
-        _ppmPrograms->Release();
-        _ppmPrograms = 0;
-	}
-    if (_ppmTracking)
-    {
-        _ppmTracking->Release();
-        _ppmTracking = 0;
-    }
+	IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
+	IUnknown_SafeReleaseAndNullPtr(&_ppmTracking);
 
     if (_hwnd)
     {
-        ASSERT(GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId());
-        DestroyWindow(_hwnd);
+        SetWindowLongPtr(_hwnd, GWLP_USERDATA, NULL);
     }
-    ATOMICRELEASE(_ptFader);
-
 }
 
+// @Done
 BOOL CDesktopHost::Register()
 {
     _wmDragCancel = RegisterWindowMessage(TEXT("CMBDragCancel"));
@@ -271,6 +277,14 @@ inline int _ClipCoord(int x, int xMin, int xMax)
     if (x < xMin) x = xMin;
     if (x > xMax) x = xMax;
     return x;
+}
+
+void ClipRect(RECT *prcDst, const RECT *prcMax)
+{
+    prcDst->left = _ClipCoord(prcDst->left, prcMax->left, prcMax->right);
+    prcDst->right = _ClipCoord(prcDst->right, prcMax->left, prcMax->right);
+    prcDst->top = _ClipCoord(prcDst->top, prcMax->top, prcMax->bottom);
+    prcDst->bottom = _ClipCoord(prcDst->bottom, prcMax->top, prcMax->bottom);
 }
 
 //
@@ -487,6 +501,7 @@ void CDesktopHost::_ComputeActualSize(MONITORINFO* pminfo, LPCRECT prcExclude)
     EndDeferWindowPos(hdwp);
 }
 
+// Done
 HWND CDesktopHost::_Create()
 {
     TCHAR szTitle[MAX_PATH];
@@ -519,16 +534,23 @@ HWND CDesktopHost::_Create()
         dwStyle,
         0, 0,
         0, 0,
-        v_hwndTray,
+        NULL,
         NULL,
         g_hinstCabinet,
         this);
-
-    v_hwndStartPane = _hwnd;
+    if (_hwnd)
+    {
+        v_hwndStartPane = _hwnd;
+        if (_hwnd)
+        {
+            SetAccessibleSubclassWindow(_hwnd);
+        }
+    }
 
     return _hwnd;
 }
 
+// Done
 void CDesktopHost::_ReapplyRegion()
 {
     SMNMAPPLYREGION ar;
@@ -538,23 +560,43 @@ void CDesktopHost::_ReapplyRegion()
     // Yes it means you get ugly black corners, but it's better than
     // clipping away huge chunks of the Start Menu!
 
-    ar.hrgn = CreateRectRgn(0, 0, _sizWindowPrev.cx, _sizWindowPrev.cy);
-    if (ar.hrgn)
+    if (_hTheme)
     {
-        // Let all the clients take a bite out of it
-        ar.hdr.hwndFrom = _hwnd;
-        ar.hdr.idFrom = 0;
-        ar.hdr.code = SMN_APPLYREGION;
-
-        SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&ar, SPM_SEND | SPM_ONELEVEL);
-    }
-
-    if (!SetWindowRgn(_hwnd, ar.hrgn, FALSE))
-    {
-        // SetWindowRgn takes ownership on success
-        // On failure we need to free it ourselves
+        ar.hrgn = CreateRectRgn(0, 0, _sizWindowPrev.cx, _sizWindowPrev.cy);
         if (ar.hrgn)
         {
+            // Let all the clients take a bite out of it
+            ar.hdr.hwndFrom = _hwnd;
+            ar.hdr.idFrom = 0;
+            ar.hdr.code = SMN_APPLYREGION;
+
+            SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&ar, SPM_SEND | SPM_ONELEVEL);
+
+            RECT rcNew = {0};
+            RECT rc;
+            GetWindowRect(_spm.panes[0].hwnd, &rc);
+            MapWindowRect(0, _hwnd, &rc);
+            UnionRect(&rcNew, &rcNew, &rc);
+
+            GetWindowRect(_spm.panes[3].hwnd, &rc);
+            MapWindowRect(0, _hwnd, &rc);
+            UnionRect(&rcNew, &rcNew, &rc);
+
+            GetWindowRect(_spm.panes[4].hwnd, &rc);
+            MapWindowRect(0, _hwnd, &rc);
+            UnionRect(&rcNew, &rcNew, &rc);
+
+            HandleApplyRegionFromRect(rcNew, _hTheme, &ar, SPP_PLACESLIST, 0);
+        }
+
+        if (SetWindowRgn(_hwnd, ar.hrgn, FALSE))
+        {
+            _RegisterForGlass(TRUE, ar.hrgn);
+        }
+        else if (ar.hrgn)
+        {
+            // SetWindowRgn takes ownership on success
+            // On failure we need to free it ourselves
             DeleteObject(ar.hrgn);
         }
     }
@@ -645,7 +687,7 @@ BOOL ShowCachedWindow(HWND hwnd, SIZE sizWindow, HBITMAP hbmpSnapshot, BOOL fRep
 
 
 
-
+// Done
 BOOL CDesktopHost::_TryShowBuffered()
 {
     BOOL fSuccess = FALSE;
@@ -673,6 +715,7 @@ BOOL CDesktopHost::_TryShowBuffered()
     return fSuccess;
 }
 
+// Done
 LRESULT CDesktopHost::OnNeedRepaint()
 {
     if (_hwnd && _hbmCachedSnapshot)
@@ -703,6 +746,8 @@ HRESULT CDesktopHost::_Popup(POINT* ppt, RECT* prcExclude, DWORD dwFlags)
             // We need to repaint since our size has changed
             OnNeedRepaint();
         }
+
+        _RegisterForGlass(TRUE, NULL);
 
         // If the user toggles the tray between topmost and nontopmost
         // our own topmostness can get messed up, so re-assert it here.
@@ -1927,6 +1972,14 @@ BOOL CDesktopHost::AddWin32Controls()
 
 void CDesktopHost::OnPaint(HDC hdc, BOOL bBackground)
 {
+    if (IsCompositionActive())
+    {
+        RECT rc;
+        GetClientRect(this->_hwnd, &rc);
+        rc.left = this->_spm.panes[1].size.cx;
+        SHFillRectClr(hdc, &rc, 0);
+        DrawThemeBackground(this->_hTheme, hdc, 6, 0, &rc, 0);
+    }
 }
 
 void CDesktopHost::_ReadPaneSizeFromTheme(SMPANEDATA* psmpd)
@@ -2016,7 +2069,7 @@ void CDesktopHost::LoadPanelMetrics()
     // load the theme file (which shouldn't be loaded yet)
     ASSERT(!_hTheme);
     // only try to use themes if our color depth is greater than 8bpp.
-    if (SHGetCurColorRes() > 8)
+    if (!_hTheme && SHGetCurColorRes() > 8)
         _hTheme = _GetStartMenuTheme();
 
     IsThemeClassDefined = (decltype(IsThemeClassDefined))GetProcAddress(GetModuleHandle(L"uxtheme.dll"), (LPSTR)0x32);
@@ -2105,14 +2158,14 @@ LRESULT CDesktopHost::OnCommandInvoked(NMHDR* pnm)
     BOOL fFade = FALSE;
     if (SystemParametersInfo(SPI_GETSELECTIONFADE, 0, &fFade, 0) && fFade)
     {
-        if (!_ptFader)
-        {
-            CoCreateInstance(CLSID_FadeTask, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_ptFader));
-        }
-        if (_ptFader)
-        {
-            _ptFader->FadeRect(&pci->rcItem);
-        }
+        //if (!_ptFader)
+        //{
+        //    CoCreateInstance(CLSID_FadeTask, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_ptFader));
+        //}
+        //if (_ptFader)
+        //{
+        //    _ptFader->FadeRect(&pci->rcItem);
+        //}
     }
 
     return OnSelect(MPOS_EXECUTE);
@@ -2493,6 +2546,19 @@ HTHEME CDesktopHost::_GetStartMenuTheme()
     return OpenThemeData(this->_hwnd, pszTheme);
 }
 
+void CDesktopHost::_RegisterForGlass(BOOL a2, HRGN a3)
+{
+    if (a2)
+        a2 = IsCompositionActive() && this->_hTheme;
+
+    DWM_BLURBEHIND BlurBehind;
+    BlurBehind.fTransitionOnMaximized = 0;
+    BlurBehind.fEnable = a2;
+    BlurBehind.hRgnBlur = a3;
+    BlurBehind.dwFlags = 3;
+    DwmEnableBlurBehindWindow(_hwnd, &BlurBehind);
+}
+
 void CDesktopHost::_OnDismiss(BOOL bDestroy)
 {
     // Break the recursion loop:  Call IMenuPopup::OnSelect only if the
@@ -2521,7 +2587,7 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
             SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm, SPM_SEND | SPM_ONELEVEL);
 
             _DestroyClipBalloon();
-            // EXEX-VISTA: CDesktopHost::_RegisterForGlass(this, 0, 0);
+            _RegisterForGlass(FALSE, NULL);
 
             IStartButton *pstb = _GetIStartButton();
             if (pstb)
@@ -2724,7 +2790,7 @@ STDAPI DesktopV2_Create(
     if (pdh)
     {
         *ppvStartPane = pdh;
-        hr = pdh->Initialize(/*EXEX-VISTA TODO(allison): add HWND argument*/);
+        hr = pdh->Initialize(hwnd);
         if (SUCCEEDED(hr))
         {
             hr = pdh->QueryInterface(IID_PPV_ARG(IMenuPopup, ppmp));

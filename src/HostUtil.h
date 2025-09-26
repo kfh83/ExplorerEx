@@ -13,6 +13,7 @@ HWND CreateBalloonTip(HWND hwndOwner, int x, int y, HFONT hf, UINT idsTitle, UIN
 void MakeMultilineTT(HWND hwndTT);
 LRESULT HandleApplyRegion(HWND hwnd, HTHEME hTheme,
                           PSMNMAPPLYREGION par, int iPartId, int iStateId);
+void HandleApplyRegionFromRect(const RECT& rc, HTHEME hTheme, SMNMAPPLYREGION* par, int iPartId, int iStateId);
 
 class CPropBagFromReg : public IPropertyBag
 {

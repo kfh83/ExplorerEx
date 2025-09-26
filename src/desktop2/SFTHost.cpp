@@ -961,6 +961,10 @@ void SFTBarHost::_InternalRepopulateList()
     _DebugConsistencyCheck();
 }
 
+#define NTDDI_VERSION NTDDI_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#include <commoncontrols.h>
+
 LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     RECT rc;
@@ -972,9 +976,9 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     }
     else
     {
-        _margins.cyTopHeight = 2*GetSystemMetrics(SM_CXEDGE);
-        _margins.cxLeftWidth = 2*GetSystemMetrics(SM_CXEDGE);
-        _margins.cxRightWidth = 2*GetSystemMetrics(SM_CXEDGE);
+        _margins.cyTopHeight = _iThemePart == SPP_PLACESLIST ? 0 : 2 * GetSystemMetrics(SM_CXEDGE);
+        _margins.cxLeftWidth = 2 * GetSystemMetrics(SM_CXEDGE);
+        _margins.cxRightWidth = 2 * GetSystemMetrics(SM_CXEDGE);
     }
 
 
@@ -1003,6 +1007,15 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
                                _AtlBaseModule.GetModuleInstance(), NULL);
     if (!_hwndList) 
         return -1;
+
+    LPCWSTR v11 = L"StartMenuComposited";
+    if (this->_iThemePart == 6)
+        v11 = L"StartMenuPlaceListComposited";
+    BOOL v12 = !IsCompositionActive();
+    LPCWSTR v13 = v11;
+    if (v12)
+        v13 = L"StartMenu";
+    SetWindowTheme(this->_hwndList, v13, 0);
 
     //
     //  Don't freak out if this fails.  It just means that the accessibility
@@ -1070,7 +1083,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     //-------------------------
     // Imagelist goo
-
+#ifdef DEAD_CODE
     int iIconSize = ReadIconSize();
 
     Shell_GetImageLists(iIconSize ? &_himl : NULL, iIconSize ? NULL : &_himl);
@@ -1127,6 +1140,50 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     }
 
     ListView_SetImageList(_hwndList, _himl, LVSIL_NORMAL);
+#else
+    int iImageList = -1;
+    int iIconSize = ReadIconSize();
+    this->_iconsize = (ICONSIZE)iIconSize;
+    if (iIconSize == 2)
+    {
+        this->_cyIcon = 64;
+        this->_cxIcon = 64;
+        // SHLogicalToPhysicalDPI(&this->_cxIcon, &this->_cyIcon);
+    }
+    else
+    {
+        int SystemMetrics;
+        if (iIconSize)
+            SystemMetrics = GetSystemMetrics(SM_CXICON);
+        else
+            SystemMetrics = GetSystemMetrics(SM_CXSMICON);
+        this->_cyIcon = SystemMetrics;
+        this->_cxIcon = SystemMetrics;
+        iImageList = this->_iconsize != 0 ? SHIL_LARGE : SHIL_SYSSMALL;
+    }
+
+    IImageList2* piml;
+    if (SHGetImageList(iImageList, IID_PPV_ARGS(&piml)) >= 0)
+    {
+        if (piml->Resize(this->_cxIcon, this->_cyIcon) < 0)
+            piml->Release();
+        else
+            this->_himl = (HIMAGELIST)piml;
+    }
+
+    if (SFTBarHost::_IsPrivateImageList())
+    {
+        UINT flags = ImageList_GetFlags(this->_himl);
+        ImageList_Destroy(this->_himl);
+        this->_himl = ImageList_Create(this->_cxIcon, this->_cyIcon, flags, 8, 2);
+    }
+
+    if (!this->_himl)
+        return -1;
+
+    if (_iconsize != 2)
+        SendMessageW(this->_hwndList, LVM_SETIMAGELIST, 0, (LPARAM)this->_himl);
+#endif
 
     // Register for SHCNE_UPDATEIMAGE so we know when to reload our icons
     _RegisterNotify(SFTHOST_HOSTNOTIFY_UPDATEIMAGE, SHCNE_UPDATEIMAGE, NULL, FALSE);
@@ -1148,7 +1205,12 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     if (_hTheme)
     {
         SIZE siz={0};
-        GetThemePartSize(_hTheme, NULL, _iThemePartSep, 0, NULL, TS_TRUE, &siz);
+        HDC hdc = GetDC(_hwndList);
+        if (hdc)
+        {
+            GetThemePartSize(_hTheme, hdc, _iThemePartSep, 0, NULL, TS_DRAW, &siz);
+            ReleaseDC(_hwndList, hdc);
+        }
         _cySep = siz.cy;
     }
     else
@@ -1156,7 +1218,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
         _cySep = GetSystemMetrics(SM_CYEDGE);
     }
 
-    _cySepTile = 4 * _cySep;
+    _cySepTile = _iThemePart == SPP_PLACESLIST ? _cySep + 1 : 4 * _cySep;
 
     ASSERT(rc.left == 0 && rc.top == 0); // Should still be a client rectangle
     _SetTileWidth(rc.right);             // so rc.right = RCWIDTH and rc.bottom = RCHEIGHT
@@ -1698,12 +1760,58 @@ LRESULT SFTBarHost::_OnSetFocus(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     return 0;
 }
 
+int __stdcall DrawPlacesListBackground(HTHEME hTheme, HWND hWnd, HDC hdc)
+{
+    int v3; // edi
+    struct tagRECT rcParent; // [esp+Ch] [ebp-24h] BYREF
+    RECT rc; // [esp+1Ch] [ebp-14h] BYREF
+    POINT pt; // [esp+24h] [ebp-Ch] SPLIT BYREF
+    HWND hwndParent; // [esp+2Ch] [ebp-4h]
+
+    hwndParent = GetParent(hWnd);
+    GetClientRect(hwndParent, &rcParent);
+    v3 = 0;
+    if (IsCompositionActive())
+    {
+        memset(&rc, 0, sizeof(rc));
+        GetClipBox(hdc, &rc);
+        SHFillRectClr(hdc, &rc, 0);
+        v3 = 1;
+    }
+
+    if (hwndParent)
+    {
+        pt.x = 0;
+        pt.y = 0;
+        SetBkMode(hdc, 1);
+        MapWindowPoints(hWnd, hwndParent, &pt, 1u);
+        rcParent.right -= pt.x;
+        OffsetWindowOrgEx(hdc, 0, pt.y, &pt);
+        DrawThemeBackground(hTheme, hdc, 6, 0, &rcParent, 0);
+        SetWindowOrgEx(hdc, pt.x, pt.y, 0);
+    }
+    return v3;
+}
+
 LRESULT SFTBarHost::_OnEraseBackground(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     RECT rc;
     GetClientRect(hwnd, &rc);
     if (_hTheme)
-        DrawThemeBackground(_hTheme, (HDC)wParam, _iThemePart, 0, &rc, 0);
+    {
+        if (_iThemePart == 6)
+        {
+            DrawPlacesListBackground(_hTheme, hwnd, (HDC)wParam);
+        }
+        else
+        {
+            if (IsCompositionActive())
+            {
+                SHFillRectClr((HDC)wParam, &rc, 0);
+            }
+            DrawThemeBackground(_hTheme, (HDC)wParam, _iThemePart, 0, &rc, 0);
+        }
+    }
     else
     {
         SHFillRectClr((HDC)wParam, &rc, _clrBG);

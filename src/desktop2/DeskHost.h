@@ -91,6 +91,8 @@ class CDesktopHost
     private:
         HWND            _hwnd;             // window handle
 
+        HWND            _hwndParent;       // Vista - New
+
         HTHEME          _hTheme;
 
         HWND            _hwndChildFocus;   // which child last had focus?
@@ -127,7 +129,7 @@ class CDesktopHost
 
         HWND            _hwndClipBalloon;   // HWND of "you've been clipped!" balloon tip
 
-        IFadeTask *     _ptFader;           // For cool selection fading
+        // IFadeTask *     _ptFader;           // For cool selection fading
 
         SIZE            _sizWindowPrev;     // previous size of window when we popped up
 
@@ -184,7 +186,7 @@ class CDesktopHost
         STDMETHODIMP SetSite(IUnknown *punkSite);
 
     public:
-        HRESULT Initialize();
+        HRESULT Initialize(HWND hwndParent);
         HRESULT Build();
 
     private:
@@ -262,6 +264,7 @@ class CDesktopHost
         void _SetFocusToStartButton();
 
         HTHEME _GetStartMenuTheme();
+        void _RegisterForGlass(BOOL a2, HRGN a3);
 };
 
 

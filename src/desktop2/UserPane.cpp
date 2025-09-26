@@ -104,13 +104,13 @@ void CUserPane::OnDrawItem(DRAWITEMSTRUCT *pdis)
         rcUser.right = pdis->rcItem.right + iOffsetX;
 
         // First calculate the bounding rectangle to reduce the cost of DrawShadowText
-        DrawText(pdis->hDC, _szUserName, cchName, &rcUser, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS | DT_CALCRECT);
+        //DrawText(pdis->hDC, _szUserName, cchName, &rcUser, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS | DT_CALCRECT);
 
-        DrawThemeText(_hTheme, pdis->hDC, SPP_USERPANE, 0, _szUserName, cchName, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS, 0, &rcUser);
+        //DrawThemeText(_hTheme, pdis->hDC, SPP_USERPANE, 0, _szUserName, cchName, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS, 0, &rcUser);
     }
     else
     {
-        ExtTextOut(pdis->hDC, pdis->rcItem.left+ iOffsetX, pdis->rcItem.top+iOffset, 0, NULL, _szUserName, cchName, NULL);
+        //ExtTextOut(pdis->hDC, pdis->rcItem.left+ iOffsetX, pdis->rcItem.top+iOffset, 0, NULL, _szUserName, cchName, NULL);
     }
 
     SetBkMode(pdis->hDC, iOldMode);

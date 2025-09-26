@@ -161,6 +161,7 @@ typedef struct SMNFILTEROPTIONS {
 typedef struct SMNGETMINSIZE {
     NMHDR hdr;
     SIZE  siz;                  // IN OUT
+    SIZE field_14;              // Vista - New
 } SMNGETMINSIZE, *PSMNGETMINSIZE;
 
 typedef struct SMNDIALOGMESSAGE {

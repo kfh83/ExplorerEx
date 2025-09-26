@@ -13,4 +13,9 @@ void RegisterDesktopControlClasses()
     UserPane_RegisterClass();
     MorePrograms_RegisterClass();
     LogoffPane_RegisterClass();
+    //NSCHost_RegisterClass();
+    //OpenViewHost_RegisterClass();
+    //SearchView_RegisterClass();
+    //TopMatch_RegisterClass();
+    //UserPicture_RegisterClass();
 }

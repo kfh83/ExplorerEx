@@ -264,6 +264,25 @@ LRESULT HandleApplyRegion(HWND hwnd, HTHEME hTheme,
     return 0;
 }
 
+void HandleApplyRegionFromRect(const RECT& rc, HTHEME hTheme, SMNMAPPLYREGION* par, int iPartId, int iStateId)
+{
+    HRGN hrgn;
+    if (SUCCEEDED(GetThemeBackgroundRegion(hTheme, nullptr, iPartId, iStateId, &rc, &hrgn)) && hrgn)
+    {
+        HRGN hrgnRect = CreateRectRgnIndirect(&rc);
+        if (hrgnRect)
+        {
+            int iResult = CombineRgn(hrgn, hrgn, hrgnRect, RGN_XOR);
+            if (iResult != ERROR && iResult != NULLREGION)
+            {
+                CombineRgn(par->hrgn, par->hrgn, hrgn, RGN_XOR);
+            }
+            DeleteObject(hrgnRect);
+        }
+        DeleteObject(hrgn);
+    }
+}
+
 //****************************************************************************
 //
 //  CAccessible - Most of this class is just forwarders
