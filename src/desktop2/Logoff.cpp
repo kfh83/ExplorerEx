@@ -24,6 +24,49 @@ static const UINT c_rgidmLegacy[] =
     IDM_MU_DISCONNECT,
 };
 
+// EXEX-TODO: Move? (This one is still in use by Windows 10.)
+// {14CE31DC-ABC2-484C-B061-CF3416AED8FF}
+DEFINE_GUID(CLSID_AuthUIShutdownChoices, 0x14CE31DC, 0xABC2, 0x484C, 0xB0, 0x61, 0xCF, 0x34, 0x16, 0xAE, 0xD8, 0xFF);
+
+// EXEX-TODO: Move? Copied from https://github.com/AllieTheFox/AuthUX-Styles/blob/e05fda9e431ce5715e2e05093febc45cf8146d5c/sdk/inc/logoninterfaces.h#L1044-L1051
+MIDL_INTERFACE("a0b16477-52f1-4cfe-b1cc-388cd0e3e23a")
+IEnumShutdownChoices : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Next(DWORD, DWORD*, DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Skip(DWORD) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Reset() = 0;
+    virtual HRESULT STDMETHODCALLTYPE Clone(IEnumShutdownChoices**) = 0;
+};
+
+// EXEX-TODO: Move? Vista implementation.
+MIDL_INTERFACE("79D6926F-5F85-4F37-B3AE-427A9B015CB2")
+IShutdownChoiceListener : IUnknown
+{
+    STDMETHOD(SetNotifyWnd)(HWND hwnd, UINT a3) PURE;
+    STDMETHOD(GetMessageWnd)(HWND *phwnd) PURE;
+    STDMETHOD(ScanForPassiveChange)() PURE;
+    STDMETHOD(StartListening)() PURE;
+    STDMETHOD(StopListening)() PURE;
+}
+
+// EXEX-TODO: Move? Also, this interface changed between Windows versions. This is the Vista version.
+typedef SHUTDOWN_CHOICE; // Temporary type to represent while I figure out the real type.
+MIDL_INTERFACE("A5DBD3DC-EE32-497A-AB84-F2C6AA5913F5")
+IShutdownChoices : IUnknown
+{
+    STDMETHOD(Refresh)() PURE;
+    STDMETHOD(CreateListener)(IShutdownChoiceListener **ppOut) PURE;
+    STDMETHOD(SetShowBadChoices)(BOOL fShow) PURE;
+    STDMETHOD(GetChoiceEnumerator)(IEnumShutdownChoices **ppOut) PURE;
+    STDMETHOD(GetDefaultChoice)(int **piOut) PURE; // This returns an ID representing the choice.
+    STDMETHOD(GetMenuChoices)(IEnumShutdownChoices **ppOut) PURE;
+    STDMETHOD_(BOOL, UserHasShutdownRights)() PURE;
+    STDMETHOD(GetChoiceName)(SHUTDOWN_CHOICE choice, int a3, LPWSTR a4, UINT a5) PURE;
+    STDMETHOD(GetChoiceDesc)(SHUTDOWN_CHOICE, LPWSTR, UINT) PURE;
+    STDMETHOD(GetChoiceVerb)(SHUTDOWN_CHOICE, LPWSTR, UINT) PURE;
+    STDMETHOD(GetChoiceIcon)(SHUTDOWN_CHOICE choice, enum SHUTDOWN_CHOICE_ICON *pIcon) PURE;
+};
+
 class CLogoffPane
     : public CUnknown
     , public CAccessible
@@ -61,13 +104,26 @@ public:
 private:
     HWND _hwnd;
     HWND _hwndTB;
+    HWND _hwndSplit;
     HWND _hwndTT;   //Tooltip window.
     COLORREF _clr;
     int      _colorHighlight;
     int      _colorHighlightText;
     HTHEME _hTheme;
     BOOL   _fSettingHotItem;
+    int field_40; // EXEX-TODO(isabella): Rename.
     MARGINS _margins;
+    HFONT _hfMarlett;
+    int field_58;
+    int field_5c;
+    HIMAGELIST _himl;
+    int field_64;
+    int field_68;
+    IShutdownChoices *_psdc;
+    IShutdownChoiceListener *_psdListen;
+    HWND _hwndSdListenMsg;
+    int field_78;
+
 
     // helper functions
     int _GetCurButton();
@@ -76,9 +132,9 @@ private:
     TCHAR _GetButtonAccelerator(int i);
     void _RightAlign();
     void _ApplyOptions();
+    HRESULT _InitShutdownObjects();
 
     BOOL _SetTBButtons(int id, UINT iMsg);
-    BOOL _ThemedSetTBButtons(int iState, UINT iMsg);
 
     friend BOOL CLogoffPane_RegisterClass();
 };
@@ -99,6 +155,7 @@ HRESULT CLogoffPane::QueryInterface(REFIID riid, void * *ppvOut)
     static const QITAB qit[] = {
         QITABENT(CLogoffPane, IAccessible),
         QITABENT(CLogoffPane, IDispatch), // IAccessible derives from IDispatch
+        QITABENT(CLogoffPane, IEnumVARIANT),
         { 0 },
     };
     return QISearch(this, qit, riid, ppvOut);
@@ -196,6 +253,7 @@ void AddBitmapToToolbar(HWND hwndTB, HBITMAP hBitmap, int cxTotal, int cy, UINT 
     }
 }
 
+// EXEX-VISTA: Validated.
 BOOL CLogoffPane::_SetTBButtons(int id, UINT iMsg)
 {
     HBITMAP hBitmap = LoadBitmap(_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(id));
@@ -211,55 +269,7 @@ BOOL CLogoffPane::_SetTBButtons(int id, UINT iMsg)
     return BOOLIFY(hBitmap);
 }
 
-BOOL CLogoffPane::_ThemedSetTBButtons(int iState, UINT iMsg)
-{
-    BOOL bRet = FALSE;
-    HDC hdcScreen = GetDC(NULL);
-    HDC hdc = CreateCompatibleDC(hdcScreen);
-    if (hdc)
-    {
-        SIZE siz;
-        if (SUCCEEDED(GetThemePartSize(_hTheme, NULL, SPP_LOGOFFBUTTONS, iState, 
-            NULL, TS_TRUE, &siz)))
-        {
-            void *pvDestBits;
-            BITMAPINFO bi = {0};
-
-            bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
-            bi.bmiHeader.biWidth = siz.cx;
-            bi.bmiHeader.biHeight = siz.cy;
-            bi.bmiHeader.biPlanes = 1;
-            bi.bmiHeader.biBitCount = 32;
-            bi.bmiHeader.biCompression = BI_RGB;
-
-            // Create a DIB Section so we can force it to be 32 bits, and preserve the alpha channel.
-            HBITMAP hbm = CreateDIBSection(hdcScreen, &bi, DIB_RGB_COLORS, &pvDestBits, NULL, 0);
-            if (hbm)
-            {
-                HBITMAP hbmOld = (HBITMAP) SelectObject(hdc, hbm);
-
-                RECT rc={0,0,siz.cx,siz.cy};
-
-                // draws into the DC, which updates the bitmap
-                DTBGOPTS dtbg = {sizeof(DTBGOPTS), DTBG_DRAWSOLID, 0,};   // tell drawthemebackground to preserve the alpha channel
-                bRet = SUCCEEDED(DrawThemeBackgroundEx(_hTheme, hdc, SPP_LOGOFFBUTTONS, iState, &rc, &dtbg));
-
-                SelectObject(hdc, hbmOld);                                  // unselect the bitmap, so we can use it
-
-                if (bRet)
-                    AddBitmapToToolbar(_hwndTB, hbm, siz.cx, siz.cy, iMsg);
-
-                DeleteObject(hbm);
-            }
-        }
-        DeleteDC(hdc);
-    }
-    if (hdcScreen)
-        ReleaseDC(NULL, hdcScreen);
-
-    return bRet;
-}
-
+// EXEX-VISTA: Validated.
 void CLogoffPane::_OnDestroy()
 {
     if (IsWindow(_hwndTB))
@@ -276,11 +286,20 @@ void CLogoffPane::_OnDestroy()
         {
             ImageList_Destroy(himl);
         }
+
+        himl = (HIMAGELIST)SendMessage(_hwndTB, TB_GETPRESSEDIMAGELIST, 0, 0);
+        if (himl)
+        {
+            ImageList_Destroy(himl);
+        }
     }
 }
 
+// EXEX-VISTA: Partially reversed.
 LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
 {
+    _InitShutdownObjects();
+
     // Do not set WS_TABSTOP here; that's CLogoffPane's job
 
     DWORD dwStyle = WS_CHILD|WS_CLIPSIBLINGS|WS_VISIBLE | CCS_NORESIZE|CCS_NODIVIDER | TBSTYLE_FLAT|TBSTYLE_LIST|TBSTYLE_TOOLTIPS;
@@ -788,6 +807,46 @@ HRESULT CLogoffPane::get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction)
         return GetRoleString(ACCSTR_EXECUTE, pszDefAction);
     }
     return CAccessible::get_accDefaultAction(varChild, pszDefAction);
+}
+
+// EXEX-VISTA: Partially reversed.
+HRESULT CLogoffPane::_InitShutdownObjects()
+{
+    ASSERT(NULL == _psdc); // 805
+
+    HRESULT hr = CoCreateInstance(CLSID_AuthUIShutdownChoices, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psdc));
+
+    if (SUCCEEDED(hr))
+    {
+        _psdc->SetShowBadChoices(TRUE);
+        ASSERT(!_psdListen); // 811
+
+        hr = _psdc->CreateListener(&_psdListen);
+
+        if (SUCCEEDED(hr))
+        {
+            _psdListen->SetNotifyWnd(_hwnd, 0);
+            hr = _psdListen->StartListening();
+            if (SUCCEEDED(hr))
+            {
+                _psdListen->GetMessageWnd(&_hwndSdListenMsg);
+            }
+            else
+            {
+                // TODO: Trace
+            }
+        }
+        else
+        {
+            // TODO: Trace.
+        }
+    }
+    else
+    {
+        // TODO: Trace.
+    }
+
+    return hr;
 }
 
 
