@@ -6,7 +6,7 @@
 
 // WARNING!  Must be in sync with c_rgidmLegacy
 
-#define NUM_TBBUTTON_IMAGES 3
+#define NUM_TBBUTTON_IMAGES 6
 static const TBBUTTON tbButtonsCreate [] = 
 {
     {0, SMNLC_EJECT,    TBSTATE_ENABLED, BTNS_SHOWTEXT|BTNS_AUTOSIZE, {0,0}, IDS_LOGOFF_TIP_EJECT, 0},
@@ -235,11 +235,10 @@ LRESULT CLogoffPane::_OnNCCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     return FALSE;
 }
 
-
-
-void AddBitmapToToolbar(HWND hwndTB, HBITMAP hBitmap, int cxTotal, int cy, UINT iMsg)
+// EXEX-VISTA: Validated.
+void AddBitmapToToolbar(HWND hwndTB, HBITMAP hBitmap, int cxTotal, int cy, int iNumImages, UINT iMsg)
 {
-    HIMAGELIST himl = ImageList_Create(cxTotal / NUM_TBBUTTON_IMAGES, cy, ILC_COLOR32, 0, NUM_TBBUTTON_IMAGES);
+    HIMAGELIST himl = ImageList_Create(cxTotal / iNumImages, cy, ILC_COLOR32, 0, iNumImages);
 
     if (himl)
     {
@@ -262,7 +261,7 @@ BOOL CLogoffPane::_SetTBButtons(int id, UINT iMsg)
         BITMAP bm;
         if (GetObject(hBitmap, sizeof(BITMAP), &bm))
         {
-            AddBitmapToToolbar(_hwndTB, hBitmap, bm.bmWidth, bm.bmHeight, iMsg);
+            AddBitmapToToolbar(_hwndTB, hBitmap, bm.bmWidth, bm.bmHeight, NUM_TBBUTTON_IMAGES, iMsg);
         }
         DeleteObject(hBitmap);
     }
