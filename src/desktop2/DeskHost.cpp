@@ -137,14 +137,14 @@ HRESULT CPopupMenu_CreateInstance(IShellMenu* psm,
 //*****************************************************************
 
 const STARTPANELMETRICS g_spmDefault = {
-    {380,440},
+    {400,410},
     {
         {WC_USERPANE,   0,                      SPP_USERPANE,      {380,  40}, NULL, NULL},
         {WC_SFTBARHOST, WS_TABSTOP | WS_CLIPCHILDREN,
                                                 SPP_PROGLIST,      {190, 330}, NULL, NULL},
         {WC_MOREPROGRAMS, 0,                    SPP_MOREPROGRAMS,  {190,  30}, NULL, NULL},
         {WC_SFTBARHOST, WS_CLIPCHILDREN,        SPP_PLACESLIST,    {190, 360}, NULL, NULL},
-        {WC_LOGOFF,     0,                      SPP_LOGOFF,        {380,  40}, NULL, NULL},
+        {WC_LOGOFF,     0x10000000,             SPP_LOGOFF,        {150,  40}, NULL, NULL},
     }
 };
 

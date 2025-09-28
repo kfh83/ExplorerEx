@@ -18,7 +18,11 @@ BEGIN
     IDS_STARTPANE_TITLE_FILERUN   "&Run..."
     IDS_STARTPANE_TITLE_CLIENTINET "Internet"
     IDS_STARTPANE_TITLE_CLIENTMAIL "E-mail"
-
+	IDS_STARTPANE_TITLE_SPLITTER   "More"
+    7032                           "Provides options for turning off or restarting your computer, or for activating Stand By or Hibernate modes."
+    7033                           "Disconnects your session.  You can reconnect to the session when you log on again."
+    7034                           "Lock this computer."
+    7035                           " Switch users without closing programs."
 END
 
 STRINGTABLE
@@ -85,16 +89,20 @@ BEGIN
 END
 
 
-IDB_LOGOFF_NORMAL BITMAP "resources\\LogoffButtons.bmp"
-// IDB_LOGOFF_HOT    BITMAP "resources\\LogoffButtonsHot.bmp"
-IDB_LOGOFF_PRESSED BITMAP "resources\\LogoffButtonsPressed.bmp"
-IDB_LOGOFF_EXPANDER BITMAP "resources\\LogoffButtonsExpander.bmp"
-IDB_LOGOFF_LARGE_NORMAL BITMAP "resources\\LogoffButtonsLarge.bmp"
-IDB_LOGOFF_LARGE_PRESSED BITMAP "resources\\LogoffButtonsLargePressed.bmp"
-IDB_LOGOFF_LARGE_EXPANDER BITMAP "resources\\LogoffButtonsLargeExpander.bmp"
-IDB_LOGOFF_AERO_DISABLED BITMAP "resources\\LogoffButtonsAeroDisabled.bmp"
-IDB_LOGOFF_AERO_PRESSED BITMAP "resources\\LogoffButtonsAeroPressed.bmp"
-IDB_LOGOFF_AERO_NORMAL BITMAP "resources\\LogoffButtonsAero.bmp"
-IDB_LOGOFF_LARGE_AERO_DISABLED BITMAP "resources\\LogoffButtonsLargeAeroDisabled.bmp"
-IDB_LOGOFF_LARGE_AERO_PRESSED BITMAP "resources\\LogoffButtonsLargeAeroPressed.bmp"
-IDB_LOGOFF_LARGE_AERO_NORMAL BITMAP "resources\\LogoffButtonsLargeAero.bmp"
+IDB_LOGOFF_NORMAL               BITMAP      "resources\\LogoffButtons.bmp"
+// IDB_LOGOFF_HOT                  BITMAP      "resources\\LogoffButtonsHot.bmp"
+IDB_LOGOFF_PRESSED              BITMAP      "resources\\LogoffButtonsPressed.bmp"
+
+IDB_LOGOFF_EXPANDER             BITMAP      "resources\\LogoffButtonsExpander.bmp"
+
+IDB_LOGOFF_LARGE_NORMAL         BITMAP      "resources\\LogoffButtonsLarge.bmp"
+IDB_LOGOFF_LARGE_PRESSED        BITMAP      "resources\\LogoffButtonsLargePressed.bmp"
+IDB_LOGOFF_LARGE_EXPANDER       BITMAP      "resources\\LogoffButtonsLargeExpander.bmp"
+
+IDB_LOGOFF_AERO_NORMAL          BITMAP      "resources\\LogoffButtonsAeroNormal.bmp"
+IDB_LOGOFF_AERO_PRESSED         BITMAP      "resources\\LogoffButtonsAeroPressed.bmp"
+IDB_LOGOFF_AERO_HOT             BITMAP      "resources\\LogoffButtonsAeroHot.bmp"
+
+IDB_LOGOFF_LARGE_AERO_NORMAL    BITMAP      "resources\\LogoffButtonsLargeAeroNormal.bmp"
+IDB_LOGOFF_LARGE_AERO_PRESSED   BITMAP      "resources\\LogoffButtonsLargeAeroPressed.bmp"
+IDB_LOGOFF_LARGE_AERO_HOT       BITMAP      "resources\\LogoffButtonsLargeAeroHot.bmp"
