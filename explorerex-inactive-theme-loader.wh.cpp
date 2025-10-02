@@ -2,7 +2,7 @@
 // @id              explorerex-inactive-theme-loader
 // @name            ExplorerEx Inactive Theme Loader
 // @description     Loads an "inactive theme", or alternate visual style, for the taskbar in ExplorerEx.
-// @version         1.0
+// @version         1.1
 // @author          Isabella Lulamoon (kawapure)
 // @github          https://github.com/kawapure
 // @twitter         https://twitter.com/kawaipure
@@ -27,14 +27,17 @@ with ExplorerEx for the taskbar and start menu.
 // ==/WindhawkModSettings==
 
 #include <processenv.h>
+#include <windhawk_api.h>
 #include <windhawk_utils.h>
 #include <libloaderapi.h>
 #include <memoryapi.h>
 #include <uxtheme.h>
+#include <winerror.h>
 #include <winnt.h>
 #include <tlhelp32.h>
 #include <dwmapi.h>
 #include <shlwapi.h>
+#include <vector>
 
 LPCWSTR g_rgszTaskbarClasses[] = {
     L"Clock",
@@ -54,6 +57,9 @@ LPCWSTR g_rgszTaskbarClasses[] = {
     L"TaskBand2::Scrollbar",
     L"TaskbarShowDesktop", // Windows 7
     L"Start::Button",
+    L"StartTop::Button",    // Windows Vista
+    L"StartMiddle::Button", // Windows Vista
+    L"StartBottom::Button", // Windows Vista
     L"StartMenu",
     L"StartPanel",
     L"MoreProgramsArrow",
@@ -106,6 +112,12 @@ bool IsTaskbarClass(HWND hWnd, LPCWSTR szClassName)
 #define WINAPI_STR L"__cdecl"
 #else
 #define WINAPI_STR L"__stdcall"
+#endif
+
+#if __WIN64
+#define THISCALL_STR L"__cdecl"
+#else
+#define THISCALL_STR L"__thiscall"
 #endif
 
 typedef HRESULT WINAPI (*GetThemeDefaults_t)(
@@ -443,8 +455,100 @@ DWORD WINAPI ThemeChangeThread(LPVOID lpParam)
     SleepEx(2, NULL);
     UpdateWindowThemes(GetCurrentProcessId());
     return 0;
-} 
+}
 
+static std::vector<int>* patternToByte(const char* pattern)
+{
+	auto bytes = new std::vector<int>();
+	const auto start = const_cast<char*>(pattern);
+	const auto end = const_cast<char*>(pattern) + strlen(pattern);
+
+	for (auto current = start; current < end; ++current)
+	{
+		if (*current == '?')
+		{
+			++current;
+			if (*current == '?')
+				++current;
+			bytes->push_back(-1);
+		}
+		else { bytes->push_back(strtoul(current, &current, 16)); }
+	}
+	return bytes;
+}
+
+static uintptr_t FindPattern(uintptr_t baseAddress, const char* signature)
+{
+	const auto dosHeader = (PIMAGE_DOS_HEADER)baseAddress;
+	const auto ntHeaders = (PIMAGE_NT_HEADERS)((unsigned char*)baseAddress + dosHeader->e_lfanew);
+
+	const auto sizeOfImage = ntHeaders->OptionalHeader.SizeOfImage;
+	auto patternBytes = patternToByte(signature);
+	const auto scanBytes = reinterpret_cast<unsigned char*>(baseAddress);
+
+	const auto s = patternBytes->size();
+	const auto d = patternBytes->data();
+
+	for (size_t i = 0; i < sizeOfImage - s; ++i)
+	{
+		bool found = true;
+		for (size_t j = 0; j < s; ++j)
+		{
+			if (scanBytes[i + j] != d[j] && d[j] != -1)
+			{
+				found = false;
+				break;
+			}
+		}
+
+		if (found)
+		{
+			uintptr_t address = reinterpret_cast<uintptr_t>(&scanBytes[i]);
+
+			delete patternBytes;
+			return address;
+		}
+	}
+
+	delete patternBytes;
+
+	return NULL;
+}
+
+//Ittr: Consolidated function for pattern byte replacements.
+static void ChangeImportedPattern(void* dllPattern, const unsigned char* newBytes, SIZE_T size) //thank you wiktor
+{
+	if (dllPattern)
+	{
+		DWORD old;
+		VirtualProtect(dllPattern, size, PAGE_EXECUTE_READWRITE, &old);
+		memcpy(dllPattern, newBytes, size);
+		VirtualProtect(dllPattern, size, old, 0);
+	}
+}
+
+// Remove AMAP class from loaded msstyle so that Vista and 7 msstyles are compatible
+void RemoveLoadAnimationDataMap()
+{
+	// 48 8B 53 20 48 8B ?? E8 ?? ?? ?? ?? 8B ?? 48 8B ?? E8 ?? ?? ?? ?? 8B ?? EB 05 B8 57 00 07 80
+	// thank you amrsatrio for the pattern + offsetting method
+	const char* LoadAnimationDataMap = "48 8B 53 20 48 8B ?? E8 ?? ?? ?? ?? 8B ?? 48 8B";
+
+	HMODULE uxTheme = GetModuleHandle(L"uxtheme.dll");
+	if (uxTheme)
+	{
+		char* LADMPattern = (char*)FindPattern((uintptr_t)uxTheme, LoadAnimationDataMap);
+
+		if (LADMPattern)
+		{
+			LADMPattern += 7;
+			LADMPattern += 5 + *(int*)(LADMPattern + 1);
+
+			unsigned char bytes[] = { 0x31, 0xC0, 0xC3 }; // mov eax 0, ret
+			ChangeImportedPattern(LADMPattern, bytes, sizeof(bytes));
+		}
+	}
+}
 
 // The mod is being initialized, load settings, hook functions, and do other
 // initialization stuff if required.
@@ -463,8 +567,6 @@ BOOL Wh_ModInit()
         FARPROC OpenNcThemeData = GetProcAddress(hUxtheme, (LPCSTR)49);
         if (GetThemeDefaults && LoaderLoadTheme && OpenThemeDataFromFile && OpenNcThemeData)
         {
-            LoadSettings();
-    
             Wh_SetFunctionHook(
                 (void *)OpenThemeData,
                 (void *)OpenThemeData_hook,
@@ -476,13 +578,27 @@ BOOL Wh_ModInit()
                 (void *)OpenThemeDataEx_hook,
                 (void **)&OpenThemeDataEx_orig
             );
-    
-            WindhawkUtils::SYMBOL_HOOK hook = {
-                { L"void * " WINAPI_STR " _OpenThemeData(struct HWND__ *,unsigned short const *,int,unsigned long,bool)" },
-                (void **)&_OpenThemeData_orig,
-                (void *)_OpenThemeData_hook
+
+            WindhawkUtils::SYMBOL_HOOK rgHooks[] = {
+                {
+                    { L"void * " WINAPI_STR L" _OpenThemeData(struct HWND__ *,unsigned short const *,int,unsigned long,bool)" },
+                    (void **)&_OpenThemeData_orig,
+                    (void *)_OpenThemeData_hook
+                },
             };
-            WindhawkUtils::HookSymbols(hUxtheme, &hook, 1);
+
+
+            if (!WindhawkUtils::HookSymbols(hUxtheme, rgHooks, ARRAYSIZE(rgHooks)))
+            {
+                Wh_Log(L"Failed to hook.");
+            }
+            
+            // Remove the animation data map now that symbol hooks are done.
+            // For some reason, I can't seem to get it to work at all with a symbol hook.
+            RemoveLoadAnimationDataMap();
+
+            // Now that everything is set up, apply the theme:
+            LoadSettings();
         }
     }
 
