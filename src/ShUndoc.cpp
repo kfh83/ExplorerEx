@@ -2858,6 +2858,15 @@ bool SHUndocInit(void)
     LOAD_FUNCTION(winsta, WinStationSetInformationW);
     LOAD_FUNCTION(winsta, WinStationUnRegisterConsoleNotification);
 
+    HMODULE hMod_sndvolsso = LoadLibrary(L"sndvolsso.dll");
+    if (hMod_sndvolsso)
+    {
+        LOAD_ORDINAL_NO_FAIL(sndvolsso, AudioHIDInitialize, 1);
+        LOAD_ORDINAL_NO_FAIL(sndvolsso, AudioHIDShutdown, 2);
+        LOAD_ORDINAL_NO_FAIL(sndvolsso, AudioHIDProcessMessage, 3);
+        LOAD_ORDINAL_NO_FAIL(sndvolsso, AudioHIDProcessAppCommand, 4);
+    }
+
     LOAD_MODULE(comctl32);
     LOAD_FUNCTION(comctl32, ImageList_GetFlags);
 

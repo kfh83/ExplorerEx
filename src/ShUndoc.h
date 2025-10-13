@@ -1149,6 +1149,10 @@ BOOL SHSetTermsrvAppInstallMode(BOOL bState);
 
 inline BOOL(STDMETHODCALLTYPE* WinStationRegisterConsoleNotification)(HANDLE  hServer, HWND    hWnd, DWORD   dwFlags);
 
+inline BOOL(*AudioHIDInitialize)(HWND);
+inline void(*AudioHIDShutdown)();
+inline void(*AudioHIDProcessMessage)(UINT, WPARAM, LPARAM);
+inline BOOL(*AudioHIDProcessAppCommand)(int);
 
 #define GMI_DOCKSTATE           0x0000
 // Return values for SHGetMachineInfo(GMI_DOCKSTATE)
