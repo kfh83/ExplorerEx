@@ -5501,6 +5501,12 @@ HWND CTaskBand::_FindRudeApp(HWND hwndPossible)
 LRESULT CTaskBand::_OnAppCommand(int cmd)
 {
     BOOL bHandled = FALSE;
+    
+    if (_ptray->GetIsAudioHIDInitialized() && AudioHIDProcessAppCommand(cmd))
+    {
+        return 0;
+    }
+    
     switch (cmd)
     {
     // skip all of these, they are either handled by the system volume control

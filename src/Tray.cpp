@@ -1363,6 +1363,8 @@ LRESULT CTray::_OnCreate(HWND hwnd)
     LRESULT lres = -1;
     v_hwndTray = hwnd;
 
+    _fIsAudioHIDInitialized = AudioHIDInitialize ? AudioHIDInitialize(hwnd) : FALSE;
+
     Mixer_SetCallbackWindow(hwnd);
     SendMessage(_hwnd, WM_CHANGEUISTATE, MAKEWPARAM(UIS_INITIALIZE, 0), 0);
 
@@ -4200,6 +4202,11 @@ LRESULT CTray::_HandleDestroy()
         TBOOL(WinStationUnRegisterConsoleNotification(SERVERNAME_CURRENT, v_hwndTray));
     }
 
+    if (_fIsAudioHIDInitialized)
+    {
+        AudioHIDShutdown();
+    }
+
     DeleteCriticalSection(&_csHotkey);
 
     // The order in which we shut down the HTTP key monitoring is important.
@@ -6405,6 +6412,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // Don't go to default wnd proc for this one...
     case WM_INPUTLANGCHANGEREQUEST:
         return(LRESULT)0L;
+    case WM_INPUT:
+    {
+        if (_fIsAudioHIDInitialized)
+        {
+            AudioHIDProcessMessage(uMsg, wParam, lParam);
+        }
+        break;
+    }
 
     case WM_GETMINMAXINFO:
         ((MINMAXINFO*)lParam)->ptMinTrackSize.x = g_cxFrame + g_cxPaddedBorder;
