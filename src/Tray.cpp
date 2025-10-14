@@ -1692,6 +1692,8 @@ void CTray::_InitBandsite()
 
     BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARG(IDeskBand, &_pdbTasks), NULL, NULL);
     IUnknown_GetWindow(_pdbTasks, &_hwndTasks);
+    // ITaskbarList interface uses this property to get the tasks window
+    SetProp(_hwnd, L"TaskbandHWND", _hwndTasks);
 
     // Now that bandsite is ready, set the correct size
     VerifySize(FALSE, TRUE);
@@ -4152,6 +4154,7 @@ LRESULT CTray::_HandleDestroy()
 
     ATOMICRELEASE(_ptbs);
     ATOMICRELEASE(_pdbTasks);
+    RemoveProp(_hwnd, L"TaskbandHWND");
     _hwndTasks = NULL;
 
     if (_hwndTrayTips)

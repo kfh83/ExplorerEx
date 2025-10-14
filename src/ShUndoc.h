@@ -1043,6 +1043,11 @@ typedef enum
 
 typedef UINT RRA_FLAGS;
 
+// Undocumented shell hook codes related to fullscreen windows,
+// It may have unintended behaviour so unused for now
+#define HSHELL_WINDOWENTERFULLSCREEN 53
+#define HSHELL_WINDOWEXITFULLSCREEN  54
+
 //
 // Function definitions
 //
