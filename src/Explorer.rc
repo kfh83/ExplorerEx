@@ -373,8 +373,5 @@ END
 #include "explorer.rcv"
 #include "dlg.rc"
 
-#include "desktop2\resource.h"
-#include "desktop2\StartPane.rc"
-
 /////////////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

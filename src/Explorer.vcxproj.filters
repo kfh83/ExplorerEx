@@ -24,9 +24,6 @@
     <ClInclude Include="dlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="hostutil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="mfulist.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -219,36 +216,6 @@
     <ClInclude Include="wtl\atlwinx.h">
       <Filter>Header Files\ATL</Filter>
     </ClInclude>
-    <ClInclude Include="desktop2\deskhost.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\desktop2.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\moreprog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\pidlbutton.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\proglist.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\sfthost.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\specfldr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\userpane.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="UEMApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -420,9 +387,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="hostutil.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="initcab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -477,9 +441,6 @@
     <ClCompile Include="debug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="desktop2\DefaultMFU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="shundoc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -520,30 +481,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pinnedlist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\deskhost.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\logoff.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\moreprog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\proglist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\sfthost.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\specfldr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\userpane.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\wrapctl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">

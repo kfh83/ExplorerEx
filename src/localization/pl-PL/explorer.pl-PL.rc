@@ -327,8 +327,5 @@ END
 #include "explorer.rcv"
 #include "dlg.pl-PL.rc"
 
-#include "resource.h"
-#include "StartPane.pl-PL.rc"
-
 /////////////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

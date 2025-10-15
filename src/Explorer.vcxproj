@@ -668,16 +668,6 @@ del "$(IntermediateOutputPath)temp.res"
   <ItemGroup>
     <ClInclude Include="CoCreateInstanceHook.h" />
     <ClInclude Include="COWSite.h" />
-    <ClInclude Include="desktop2\DeskHost.h" />
-    <ClInclude Include="desktop2\Desktop2.h" />
-    <ClInclude Include="desktop2\MoreProg.h" />
-    <ClInclude Include="desktop2\PidlButton.h" />
-    <ClInclude Include="desktop2\ProgList.h" />
-    <ClInclude Include="desktop2\resource.h" />
-    <ClInclude Include="desktop2\SFTHost.h" />
-    <ClInclude Include="desktop2\SpecFldr.h" />
-    <ClInclude Include="desktop2\stdafx.h" />
-    <ClInclude Include="desktop2\UserPane.h" />
     <ClInclude Include="desktopp.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
@@ -718,7 +708,6 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="dlg.h" />
     <ClInclude Include="DPA.h" />
     <ClInclude Include="Help.h" />
-    <ClInclude Include="HostUtil.h" />
     <ClInclude Include="IEGuidP.h" />
     <ClInclude Include="MFUList.h" />
     <ClInclude Include="Mixer.h" />
@@ -821,18 +810,8 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="COWSite.cpp" />
     <ClCompile Include="CWndProc.cpp" />
     <ClCompile Include="debug.cpp" />
-    <ClCompile Include="desktop2\DefaultMFU.cpp" />
-    <ClCompile Include="desktop2\DeskHost.cpp" />
-    <ClCompile Include="desktop2\Logoff.cpp" />
-    <ClCompile Include="desktop2\MoreProg.cpp" />
-    <ClCompile Include="desktop2\ProgList.cpp" />
-    <ClCompile Include="desktop2\SFTHost.cpp" />
-    <ClCompile Include="desktop2\SpecFldr.cpp" />
-    <ClCompile Include="desktop2\UserPane.cpp" />
-    <ClCompile Include="desktop2\WrapCtl.cpp" />
     <ClCompile Include="DesktopP.cpp" />
     <ClCompile Include="DllLoad.cpp" />
-    <ClCompile Include="HostUtil.cpp" />
     <ClCompile Include="IEGuidP.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />

@@ -328,8 +328,5 @@ END
 #include "explorer.rcv"
 #include "dlg.ko-kr.rc"
 
-#include "resource.h"
-#include "StartPane.ko-kr.rc"
-
 /////////////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

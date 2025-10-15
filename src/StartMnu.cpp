@@ -282,7 +282,7 @@ HRESULT IMenuPopup_SetIconSize(IMenuPopup* pmp,DWORD iIcon)
     return hres;
 }
 
-void CreateInitialMFU(BOOL fReset);
+//void CreateInitialMFU(BOOL fReset);
 
 //
 //  "Delayed per-user install".
@@ -333,7 +333,7 @@ void HandleFirstTime()
             // User has never seen XP before.
             // PMs in certain groups insist on getting free advertising
             // even on upgrades, so we do it.
-            CreateInitialMFU(dwStartMenuInit == 0);
+            //CreateInitialMFU(dwStartMenuInit == 0);
 
             // FALL THROUGH
 

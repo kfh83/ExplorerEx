@@ -10,7 +10,6 @@
 #include "tray.h"
 #include "traycmn.h"
 #include "startmnu.h"
-#include "desktop2.h"
 #include "uemapp.h"
 
 #define GROUPID_CURRENTITEMS    5
@@ -1036,22 +1035,28 @@ private:
     //helpers
     DWORD _ReadStartPageSetting(LPCTSTR pszVal, DWORD dwDefault)
     {
+#if 0
         DWORD dw, cb=sizeof(dw), dwType;
         SHRegGetUSValue(REGSTR_PATH_STARTPANE_SETTINGS, pszVal, &dwType, &dw, &cb, FALSE, &dwDefault, sizeof(dwDefault));
         return dw; // since we passed a default value, above fn will return our default on failure
+#endif
+        return 0;
     }
     BOOL _ReadStartPageCUSetting(LPCTSTR pszVal, DWORD *pdw) // returns TRUE/FALSE for present under CU or not, actual value in pdw
     {
+#if 0
         DWORD cb=sizeof(*pdw), dwType;
         return NO_ERROR == SHGetValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal, &dwType, pdw, &cb);
+#endif
+        return 0;
     }
     BOOL _WriteStartPageSetting(LPCTSTR pszVal, DWORD dwVal)
     {
-        return SHSetValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal, REG_DWORD, &dwVal, sizeof(dwVal)) == NO_ERROR;
+        return FALSE;
     }
     BOOL _ClearStartPageSetting(LPCTSTR pszVal)
     {
-        return SHDeleteValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal) == NO_ERROR;
+        return FALSE;
     }
 
     // State
@@ -1163,6 +1168,7 @@ BOOL_PTR CCustomizeSPPropSheet::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM w
 
 BOOL CCustomizeSPPropSheet::GeneralTabInit(HWND hDlg)
 {
+#if 0
     _fInsideInit = TRUE; //We are getting inside initilization!
     
     ::SendMessage(::GetDlgItem(hDlg, IDC_SPCUST_MINPROGS_ARROW), UDM_SETRANGE, 0, (LPARAM)MAKELONG(MAX_PROGS_ALLOWED, 0));
@@ -1198,6 +1204,8 @@ BOOL CCustomizeSPPropSheet::GeneralTabInit(HWND hDlg)
     _fInsideInit = FALSE;  //We are done initializing.
     
     return TRUE;
+#endif
+	return FALSE;
 }
 
 // Temp until the new UEM code gets in...
@@ -1238,8 +1246,8 @@ void ClearUEMData()
 
         FILETIME ftNow;
         GetSystemTimeAsFileTime(&ftNow);
-        SHRegSetUSValue(DV2_REGPATH, DV2_SYSTEM_START_TIME, REG_BINARY,
-                        &ftNow, sizeof(ftNow), SHREGSET_FORCE_HKCU);
+        //SHRegSetUSValue(DV2_REGPATH, DV2_SYSTEM_START_TIME, REG_BINARY,
+        //                &ftNow, sizeof(ftNow), SHREGSET_FORCE_HKCU);
 
 
         // Start a new session - this kick-starts anybody who is listening
@@ -1325,7 +1333,7 @@ BOOL CCustomizeSPPropSheet::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwn
 
 BOOL CCustomizeSPPropSheet::OnGeneralApply(HWND hDlg)
 {
-
+#if 0
     _WriteStartPageSetting(REGSTR_VAL_DV2_LARGEICONS,  _bLargeIcons);
 
     if (_pph && _bDirtyPinList)
@@ -1350,10 +1358,13 @@ BOOL CCustomizeSPPropSheet::OnGeneralApply(HWND hDlg)
     }
 
     return TRUE;
+#endif
+	return FALSE;
 }
 
 BOOL_PTR CCustomizeSPPropSheet::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 {
+#if 0
     ::SetWindowLongPtr( hwndDlg, DWLP_MSGRESULT, 0); // handled
     switch (pnm->code)
     {
@@ -1427,6 +1438,8 @@ BOOL_PTR CCustomizeSPPropSheet::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 #endif 
     }
     return TRUE;
+#endif
+	return FALSE;
 }
 
 BOOL_PTR CCustomizeSPPropSheet::OnAdvancedHelp(HWND hDlg, HELPINFO *phi)
@@ -1483,12 +1496,14 @@ BOOL_PTR CCustomizeSPPropSheet::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM 
 
 int DefaultNetConValue()
 {
-    return ShouldShowConnectTo() ? 2 : 0;      // default to menu-style (2)
+    //return ShouldShowConnectTo() ? 2 : 0;      // default to menu-style (2)
+    return 0;
 }
 
 int DefaultNetPlacesValue()
 {
-    return ShouldShowNetPlaces() ? 1 : 0;      // default to link -style (1)
+    //return ShouldShowNetPlaces() ? 1 : 0;      // default to link -style (1)
+    return 0;
 }
 
 // These two "magic" functions maintain the proper behavior of the network places and network connections settings
@@ -1497,6 +1512,7 @@ int DefaultNetPlacesValue()
 
 void CCustomizeSPPropSheet::_InitMagicEntries()
 {
+#if 0
     BOOL bNewNetPlaces;
     BOOL bNewNetConn;
 
@@ -1520,10 +1536,12 @@ void CCustomizeSPPropSheet::_InitMagicEntries()
                           (_ReadStartPageSetting(TEXT("StartMenuAdminTools"), FALSE) ? 1 : 0);
 
     _WriteStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP, iAdminToolsTemp);
+#endif
 }
 
 void CCustomizeSPPropSheet::_SaveMagicEntries()
 {
+#if 0
     BOOL bNewNetPlaces = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETPL, FALSE);
     BOOL bNewNetConn   = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETCONN, FALSE);
 
@@ -1552,14 +1570,16 @@ void CCustomizeSPPropSheet::_SaveMagicEntries()
                 iATRoot = 2;
             }
         }
-        _WriteStartPageSetting(REGSTR_VAL_DV2_ADMINTOOLSROOT, iATRoot);
+        //_WriteStartPageSetting(REGSTR_VAL_DV2_ADMINTOOLSROOT, iATRoot);
         _WriteStartPageSetting(TEXT("StartMenuAdminTools"), iATPrograms);
     }
     _ClearStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP);
+#endif
 }
 
 BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
 {
+#if 0
     if (SUCCEEDED(CoCreateInstanceHook(CLSID_CRegTreeOptions, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_prto))))
     {
         HRESULT hr;
@@ -1598,6 +1618,8 @@ BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
     }
 
     
+    return FALSE;
+#endif
     return FALSE;
 }
 

@@ -17,7 +17,6 @@
 
 #define NO_NOTIFYSUBCLASSWNDPROC
 #include "cwndproc.h"
-#include "desktop2.h"
 #include "mixer.h"
 #include "port32.h"
 #include "shundoc.h"
@@ -287,7 +286,7 @@ void CTray::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
             SendMessage(_hwndStartBalloon, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
 
             // Tell the Start Menu that this is a special balloon tip
-            SetProp(_hwndStartBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_STARTBUTTON);
+            //SetProp(_hwndStartBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_STARTBUTTON);
         }
     }
 
@@ -1855,7 +1854,7 @@ DWORD CTray::_SyncThreadProc()
         if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC,
             IID_PPV_ARG(IShellTaskScheduler, &pScheduler))))
         {
-            AddMenuItemsCacheTask(pScheduler, Tray_StartPanelEnabled());
+            //AddMenuItemsCacheTask(pScheduler, Tray_StartPanelEnabled());
             pScheduler->Release();
         }
 
@@ -2152,12 +2151,12 @@ void CTray::_BuildStartMenu()
 
     _DestroyStartMenu();
 
-    if (Tray_StartPanelEnabled())
-    {
-        hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &_pvStartPane);
-        DesktopV2_Build(_pvStartPane);
-    }
-    else
+    //if (Tray_StartPanelEnabled())
+    //{
+    //    hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &_pvStartPane);
+    //    DesktopV2_Build(_pvStartPane);
+    //}
+    //else
     {
         hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu);
         if (SUCCEEDED(hr))

@@ -2,9 +2,7 @@
 #include "ShGuidP.h"
 #include "cocreateinstancehook.h"
 #include "shundoc.h"
-#include "stdafx.h"
 #pragma hdrstop
-#include "resource.h"
 #include "runtask.h"
 #include "msi.h"
 #include "cabinet.h"
