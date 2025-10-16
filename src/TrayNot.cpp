@@ -3872,6 +3872,48 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
     return bRet;
 }
 
+LRESULT CTrayNotify::_TrayNotifyInfo(PTRAYNOTIFYINFO pni)
+{
+    PNOTIFYICONINFO32 pNII = &pni->nii;
+    if (pNII->cbSize < sizeof(NOTIFYICONINFO32))
+    {
+        return 0;
+    }
+
+    LRESULT lRet = 0;
+
+    INT_PTR nIcon = m_TrayItemManager.FindItemAssociatedWithHwndUid(GetHWnd(pNII), pNII->uID);
+    if (nIcon == -1) nIcon = m_TrayItemManager.FindItemAssociatedWithGuid(pNII->guidItem);
+
+    if (nIcon >= 0)
+    {
+        CTrayItem* pti = m_TrayItemManager.GetItemData(nIcon, TRUE, _hwndToolbar);
+
+        if (pti)
+        {
+            RECT rcItem = { 0 };
+
+            if (!IsWindow(_hwndToolbar) && !IsWindowVisible(_hwndToolbar))
+            {
+                if (pni->dwMessage == 2)
+                    return -1;
+                return lRet;
+            }
+
+            if (SendMessage(_hwndToolbar, TB_GETITEMRECT, (WPARAM)nIcon, (LPARAM)&rcItem))
+            {
+                MapWindowPoints(_hwndToolbar, nullptr, (LPPOINT)&rcItem, 2);
+
+                if (pni->dwMessage == 1)
+                    lRet = MAKELRESULT(rcItem.left, rcItem.top);
+                if (pni->dwMessage == 2)
+                    lRet = MAKELRESULT((rcItem.right - rcItem.left), (rcItem.bottom + rcItem.top));
+            }
+        }
+    }
+
+    return lRet;
+}
 
 // Public
 LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh)
@@ -3896,6 +3938,31 @@ LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT 
     }
 
     return _TrayNotifyIcon(pnid, pbRefresh);
+}
+
+// Public
+LRESULT CTrayNotify::TrayNotifyInfo(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds)
+{
+    PTRAYNOTIFYINFO pnii;
+
+    if (!hwndNotify || !pcds)
+    {
+        return FALSE;
+    }
+
+    if (pcds->cbData < sizeof(TRAYNOTIFYINFO))
+    {
+        return FALSE;
+    }
+
+    // We'll add a signature just in case
+    pnii = (PTRAYNOTIFYINFO)pcds->lpData;
+    if (pnii->dwSignature != NI_SIGNATURE)
+    {
+        return FALSE;
+    }
+
+    return _TrayNotifyInfo(pnii);
 }
 
 // Public

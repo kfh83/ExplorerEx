@@ -140,6 +140,7 @@ public:
     // *** Other ***
     HWND TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst);
     LRESULT TrayNotify(HWND hwndTray, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
+    LRESULT TrayNotifyInfo(HWND hwndTray, HWND hwndFrom, PCOPYDATASTRUCT pcds);
 
 protected:
     static BOOL GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG trayCallbackArg, 
@@ -249,6 +250,7 @@ protected:
     void _OnSysChange(UINT uMsg, WPARAM wParam, LPARAM lParam);
     void _OnCommand(UINT id, UINT uCmd);
     BOOL _TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh);
+    LRESULT _TrayNotifyInfo(PTRAYNOTIFYINFO pnii);
 
     // User Event Timer functions
     HRESULT _SetItemTimer(CTrayItem *pti);
