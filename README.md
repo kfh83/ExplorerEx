@@ -77,7 +77,7 @@ In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You c
 </details>
 
 ## Important notes
-- Regular release builds (.exe) **don't and won't** support UWP apps (Microsoft Store apps, PC settings...). You must use a .dll binary for it. Currently dll builds aren't provided in the release packages, so you must build it yourself.
+- Regular release builds (.exe) **don't and won't** support UWP apps (Microsoft Store apps, PC settings...). You must use a .dll binary for it.
 - Currently, system tray icons (volume, network...) aren't working. We have *started* work on a [parallel project](https://github.com/kfh83/StobjectEx) to bring over the XP tray icons in a similar fashion to this project. BEWARE!
 - To configure your startup programs, you **must** use msconfig.exe from Windows 7 or earlier. This is due to a difference in how Task Manager sets startup apps. You can find an easy-to-install package [here](https://www.majorgeeks.com/files/details/classic_msconfig.html).
 - Currently, you must use the "Eradicate immersive menus" Windhawk mod by aubymori to see the taskbar context menu properly.
