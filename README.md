@@ -46,19 +46,7 @@ your regular explorer shell.
 If you have fetched a GitHub actions artifact, you *need* to fetch the release package for the "Import Me!.reg" file which includes some important tweaks. Please apply this .reg file before proceeding.
 
 <details>
-  <summary><b>Release/.exe build</b></summary>
-
-**How-to**
-1. Copy over `explorer.exe` and your desired language folder `i.e, en-US` to a suitable location (i.e, `%SystemDrive%\ExplorerEx`). This cannot be `%SystemRoot%`.
-2. Open the Registry Editor and go to `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\` and change the `Shell` key to the path of where you copied explorer.exe to (i.e `C:\ExplorerEx\explorer.exe`).
-3. **OPTIONAL:** If you wish to set the shell on a per-user basis instead of machine-wide you can do the same as above on `HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\`. You'll need to create the `Shell` key.
-4. Run Task Manager, restart Windows Explorer, it should automatically start ExplorerEx.
-
-  **You're all set!**
-</details>
-
-<details>
-  <summary>.dll build</summary>
+  <summary><b>ReleaseDLL/.DLL build</b></summary>
 
 **Note:** You MUST have [Windhawk](https://windhawk.net/) installed for the loader mod.
 In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You can either go into `Settings\Advanced Settings\More Advanced Settings` and add `winlogon.exe` into the Process inclusion list, or you can untick "Exclude critical system processes".
@@ -76,8 +64,20 @@ In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You c
   **You're all set!**
 </details>
 
+<details>
+  <summary>Release/.EXE build</summary>
+
+**How-to**
+1. Copy over `explorer.exe` and your desired language folder `i.e, en-US` to a suitable location (i.e, `%SystemDrive%\ExplorerEx`). This cannot be `%SystemRoot%`.
+2. Open the Registry Editor and go to `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\` and change the `Shell` key to the path of where you copied explorer.exe to (i.e `C:\ExplorerEx\explorer.exe`).
+3. **OPTIONAL:** If you wish to set the shell on a per-user basis instead of machine-wide you can do the same as above on `HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\`. You'll need to create the `Shell` key.
+4. Run Task Manager, restart Windows Explorer, it should automatically start ExplorerEx.
+
+  **You're all set!**
+</details>
+
 ## Important notes
-- Regular release builds (.exe) **don't and won't** support UWP apps (Microsoft Store apps, PC settings...). You must use a .dll binary for it.
+- Regular release builds (.exe) **don't and won't** support UWP apps (Microsoft Store apps, PC settings...). You must use the .DLL build install method for this.
 - Currently, system tray icons (volume, network...) aren't working. We have *started* work on a [parallel project](https://github.com/kfh83/StobjectEx) to bring over the XP tray icons in a similar fashion to this project. BEWARE!
 - To configure your startup programs, you **must** use msconfig.exe from Windows 7 or earlier. This is due to a difference in how Task Manager sets startup apps. You can find an easy-to-install package [here](https://www.majorgeeks.com/files/details/classic_msconfig.html).
 - Currently, you must use the "Eradicate immersive menus" Windhawk mod by aubymori to see the taskbar context menu properly.
