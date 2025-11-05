@@ -7,9 +7,9 @@ name: MSBuildDLL
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "ExplorerEx-2k" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "ExplorerEx-2k" ]
 
 env:
   # Path to the solution file relative to the root of the project.
