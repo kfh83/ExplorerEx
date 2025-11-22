@@ -1,764 +1,270 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Header Files\ATL">
-      <UniqueIdentifier>{263cc518-0f76-4592-89d5-fdb0a4e6d9a0}</UniqueIdentifier>
-    </Filter>
+    <Manifest Include="WindowsShell.manifest" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cabinet.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hostutil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mfulist.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mixer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcids.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ssomgr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="startmnu.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="taskband.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="taskbar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tray.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayclok.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="traycmn.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayitem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="traynot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayreg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="userpane.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="w4warn.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="bandsite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shguidp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shdguid.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ieguidp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shundoc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dpa.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="help.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="startids.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cwndproc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="winuserp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="port32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="criticalsection.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="runtask.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cowsite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ntwmi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ntperf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wmiumkm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktopp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="path.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qsort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="winter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cocreateinstancehook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shfusion.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="thememanager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="patternhelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlapp.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlcrack.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrls.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrlw.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrlx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atldlgs.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlddx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlfind.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlframe.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlgdi.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlmisc.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlprint.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlres.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlresce.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlscrl.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlsplit.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="atlstuff.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atltheme.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atluser.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlwince.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlwinx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\deskhost.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\desktop2.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\moreprog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\pidlbutton.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\proglist.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\sfthost.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\specfldr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktop2\userpane.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="UEMApp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-    <ClInclude Include="StartButton.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\ImmersiveDefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\ImmersiveInit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\MinHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\Hooks.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\ImmersiveDefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="immersive\ImmersiveInit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClCompile Include="BandSite.cpp" />
+    <ClCompile Include="ClassFac.cpp" />
+    <ClCompile Include="CoCreateInstanceHook.cpp" />
+    <ClCompile Include="COWSite.cpp" />
+    <ClCompile Include="CWndProc.cpp" />
+    <ClCompile Include="debug.cpp" />
+    <ClCompile Include="desktop2\DefaultMFU.cpp" />
+    <ClCompile Include="desktop2\DeskHost.cpp" />
+    <ClCompile Include="desktop2\Logoff.cpp" />
+    <ClCompile Include="desktop2\MoreProg.cpp" />
+    <ClCompile Include="desktop2\ProgList.cpp" />
+    <ClCompile Include="desktop2\SFTHost.cpp" />
+    <ClCompile Include="desktop2\SpecFldr.cpp" />
+    <ClCompile Include="desktop2\UserPane.cpp" />
+    <ClCompile Include="desktop2\WrapCtl.cpp" />
+    <ClCompile Include="DesktopP.cpp" />
+    <ClCompile Include="DllLoad.cpp" />
+    <ClCompile Include="HostUtil.cpp" />
+    <ClCompile Include="IEGuidP.cpp" />
+    <ClCompile Include="immersive\ImmersiveInit.cpp" />
+    <ClCompile Include="InitCab.cpp" />
+    <ClCompile Include="libx.cpp" />
+    <ClCompile Include="Mixer.cpp" />
+    <ClCompile Include="Path.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="PinnedList.cpp" />
+    <ClCompile Include="RunTask.cpp" />
+    <ClCompile Include="Shell32StartMnu.cpp" />
+    <ClCompile Include="SHFusion.cpp" />
+    <ClCompile Include="ShUndoc.cpp" />
+    <ClCompile Include="SSOMgr.cpp" />
+    <ClCompile Include="StartButton.cpp" />
+    <ClCompile Include="StartMnu.cpp" />
+    <ClCompile Include="TaskBand.cpp" />
+    <ClCompile Include="TaskBar.cpp" />
+    <ClCompile Include="ThemeManager.cpp" />
+    <ClCompile Include="Tray.cpp" />
+    <ClCompile Include="TrayClok.cpp" />
+    <ClCompile Include="TrayCmn.cpp" />
+    <ClCompile Include="TrayItem.cpp" />
+    <ClCompile Include="TrayNot.cpp" />
+    <ClCompile Include="TrayProp.cpp" />
+    <ClCompile Include="TrayReg.cpp" />
+    <ClCompile Include="UEMApp.cpp" />
+    <ClCompile Include="Util.cpp" />
+    <ClCompile Include="Desktop2\OpenHost.cpp" />
+    <ClCompile Include="Desktop2\OpenBox.cpp" />
+    <ClCompile Include="Desktop2\NSCHost.cpp" />
+    <ClCompile Include="Desktop2\SrchView.cpp" />
+    <ClCompile Include="Desktop2\TopMatch.cpp" />
+    <ClCompile Include="shstr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="explorer.rcv">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="interfacesp.inc">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="immersive\README.md" />
+    <ClInclude Include="CoCreateInstanceHook.h" />
+    <ClInclude Include="COWSite.h" />
+    <ClInclude Include="desktop2\DeskHost.h" />
+    <ClInclude Include="desktop2\Desktop2.h" />
+    <ClInclude Include="desktop2\MoreProg.h" />
+    <ClInclude Include="desktop2\PidlButton.h" />
+    <ClInclude Include="desktop2\ProgList.h" />
+    <ClInclude Include="desktop2\resource.h" />
+    <ClInclude Include="desktop2\SFTHost.h" />
+    <ClInclude Include="desktop2\SpecFldr.h" />
+    <ClInclude Include="desktop2\stdafx.h" />
+    <ClInclude Include="desktop2\UserPane.h" />
+    <ClInclude Include="desktopp.h" />
+    <ClInclude Include="immersive\ImmersiveDefs.h" />
+    <ClInclude Include="immersive\ImmersiveInit.h" />
+    <ClInclude Include="PatternHelper.h" />
+    <ClInclude Include="NtPerf.h" />
+    <ClInclude Include="NtWmi.h" />
+    <ClInclude Include="Path.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="QSort.h" />
+    <ClInclude Include="RunTask.h" />
+    <ClInclude Include="SHFusion.h" />
+    <ClInclude Include="StartButton.h" />
+    <ClInclude Include="ThemeManager.h" />
+    <ClInclude Include="UEMApp.h" />
+    <ClInclude Include="Winter.h" />
+    <ClInclude Include="wmiumkm.h" />
+    <ClInclude Include="wtl\atlapp.h" />
+    <ClInclude Include="wtl\atlcrack.h" />
+    <ClInclude Include="wtl\atlctrls.h" />
+    <ClInclude Include="wtl\atlctrlw.h" />
+    <ClInclude Include="wtl\atlctrlx.h" />
+    <ClInclude Include="wtl\atlddx.h" />
+    <ClInclude Include="wtl\atldlgs.h" />
+    <ClInclude Include="wtl\atlfind.h" />
+    <ClInclude Include="wtl\atlframe.h" />
+    <ClInclude Include="wtl\atlgdi.h" />
+    <ClInclude Include="wtl\atlmisc.h" />
+    <ClInclude Include="wtl\atlprint.h" />
+    <ClInclude Include="wtl\atlres.h" />
+    <ClInclude Include="wtl\atlresce.h" />
+    <ClInclude Include="wtl\atlscrl.h" />
+    <ClInclude Include="wtl\atlsplit.h" />
+    <ClInclude Include="atlstuff.h" />
+    <ClInclude Include="BandSite.h" />
+    <ClInclude Include="cabinet.h" />
+    <ClInclude Include="CriticalSection.h" />
+    <ClInclude Include="CWndProc.h" />
+    <ClInclude Include="debug.h" />
+    <ClInclude Include="dlg.h" />
+    <ClInclude Include="DPA.h" />
+    <ClInclude Include="Help.h" />
+    <ClInclude Include="HostUtil.h" />
+    <ClInclude Include="IEGuidP.h" />
+    <ClInclude Include="MFUList.h" />
+    <ClInclude Include="Mixer.h" />
+    <ClInclude Include="Port32.h" />
+    <ClInclude Include="rcids.h" />
+    <ClInclude Include="ShDGuid.h" />
+    <ClInclude Include="ShGuidP.h" />
+    <ClInclude Include="ShUndoc.h" />
+    <ClInclude Include="SSOMgr.h" />
+    <ClInclude Include="StartIds.h" />
+    <ClInclude Include="StartMnu.h" />
+    <ClInclude Include="TaskBand.h" />
+    <ClInclude Include="TaskBar.h" />
+    <ClInclude Include="Tray.h" />
+    <ClInclude Include="TrayClok.h" />
+    <ClInclude Include="TrayCmn.h" />
+    <ClInclude Include="TrayItem.h" />
+    <ClInclude Include="TrayNot.h" />
+    <ClInclude Include="TrayP.h" />
+    <ClInclude Include="TrayReg.h" />
+    <ClInclude Include="UserPane.h" />
+    <ClInclude Include="Util.h" />
+    <ClInclude Include="w4warn.h" />
+    <ClInclude Include="WinUserP.h" />
+    <ClInclude Include="wtl\atltheme.h" />
+    <ClInclude Include="wtl\atluser.h" />
+    <ClInclude Include="wtl\atlwince.h" />
+    <ClInclude Include="wtl\atlwinx.h" />
+    <ClInclude Include="Desktop2\OpenHost.h" />
+    <ClInclude Include="Desktop2\OpenBox.h" />
+    <ClInclude Include="Desktop2\NSCHost.h" />
+    <ClInclude Include="Desktop2\SrchView.h" />
+    <ClInclude Include="Desktop2\TopMatch.h" />
+    <ClInclude Include="shstr.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="explorer.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="dlg.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="nanoclocknoclean.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\clasicsm.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\classicsm.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\desktop.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\docs.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\folderop.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\inetmail.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\inetweb.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\logoffbuttons.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\logoffbuttonshot.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\mycomold.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\mycomp.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\naclockclean.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\naclocknoclean.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\nanoclockclean.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\newsm.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\old_error.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\old_info.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\old_printer.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\old_printerr.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\old_warning.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\overflow.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\sbsbkg.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\smwmail.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvadv2.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvapp.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvbkg.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvdc2.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvemb.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\srvweb.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\start.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\start.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\start16.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\start16mask.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\startclassic.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\startem.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmuper.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmupr64.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmupro.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\stmutab.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taautohide.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\talockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\talocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\tanolockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\tanolocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqllockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqllocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqlnolockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqlnolocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\traych.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\traycho.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\traycv.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\traycvo.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\treeup.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\tsbanner.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\underflow.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsAero.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsAeroDisabled.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsAeroPressed.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsExpander.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsExpanderLarge.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsLarge.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsLargeAero.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsLargeAeroDisabled.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsLargeAeroPressed.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsLargePressed.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\LogoffButtonsPressed.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\Marketplace.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\Messenger.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NoProgram.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\ShowDesktop.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\starter.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\WindowsWeb.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_Battery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_NoSound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_Sound.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\ShellBrd\ClassicSMBanner.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\ShellBrd\start16.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\ShellBrd\start16mask.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\ShellBrd\startclassic.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="hostutil.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="initcab.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="libx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mixer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ssomgr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="startmnu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="taskband.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="taskbar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayclok.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="traycmn.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayitem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="traynot.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayprop.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayreg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="bandsite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="classfac.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\DefaultMFU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shundoc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cwndproc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="path.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllload.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ieguidp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="uemapp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cowsite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktopp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="runtask.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cocreateinstancehook.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shfusion.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shell32startmnu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="thememanager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pinnedlist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\deskhost.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\logoff.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\moreprog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\proglist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\sfthost.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\specfldr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\userpane.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktop2\wrapctl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pch.cpp">
-    <ClCompile Include="StartButton.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="immersive\ImmersiveInit.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="immersive\ImmersiveInit.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Manifest Include="WindowsShell.manifest">
-      <Filter>Header Files</Filter>
-    </Manifest>
+    <ResourceCompile Include="dlg.rc" />
+    <ResourceCompile Include="Explorer.rc" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="muiconfig.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\clasicsm.ico" />
+    <Image Include="resources\classicsm.bmp" />
+    <Image Include="resources\desktop.ico" />
+    <Image Include="resources\docs.ico" />
+    <Image Include="resources\folderop.ico" />
+    <Image Include="resources\inetmail.ico" />
+    <Image Include="resources\inetweb.ico" />
+    <Image Include="resources\logoffbuttons.bmp" />
+    <Image Include="resources\LogoffButtonsAero.bmp" />
+    <Image Include="resources\LogoffButtonsAeroDisabled.bmp" />
+    <Image Include="resources\LogoffButtonsAeroPressed.bmp" />
+    <Image Include="resources\LogoffButtonsExpander.bmp" />
+    <Image Include="resources\LogoffButtonsExpanderLarge.bmp" />
+    <Image Include="resources\logoffbuttonshot.bmp" />
+    <Image Include="resources\LogoffButtonsLarge.bmp" />
+    <Image Include="resources\LogoffButtonsLargeAero.bmp" />
+    <Image Include="resources\LogoffButtonsLargeAeroDisabled.bmp" />
+    <Image Include="resources\LogoffButtonsLargeAeroPressed.bmp" />
+    <Image Include="resources\LogoffButtonsLargePressed.bmp" />
+    <Image Include="resources\LogoffButtonsPressed.bmp" />
+    <Image Include="resources\Marketplace.ico" />
+    <Image Include="resources\Messenger.ico" />
+    <Image Include="resources\mycomold.ico" />
+    <Image Include="resources\mycomp.ico" />
+    <Image Include="resources\naclockclean.bmp" />
+    <Image Include="resources\naclocknoclean.bmp" />
+    <Image Include="resources\nanoclockclean.bmp" />
+    <Image Include="nanoclocknoclean.bmp" />
+    <Image Include="resources\newsm.bmp" />
+    <Image Include="resources\NoProgram.ico" />
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_Battery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_Clock_NoBattery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_Battery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\Clean_NoClock_NoBattery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_Battery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_Clock_NoBattery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_Battery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_Network_Sound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_NoSound.bmp" />
+    <Image Include="resources\NotificationArea\NoClean_NoClock_NoBattery_NoNetwork_Sound.bmp" />
+    <Image Include="resources\old_error.ico" />
+    <Image Include="resources\old_info.ico" />
+    <Image Include="resources\old_printer.ico" />
+    <Image Include="resources\old_printerr.ico" />
+    <Image Include="resources\old_warning.ico" />
+    <Image Include="resources\overflow.ico" />
+    <Image Include="resources\sbsbkg.bmp" />
+    <Image Include="resources\ShellBrd\ClassicSMBanner.bmp" />
+    <Image Include="resources\ShellBrd\start16.bmp" />
+    <Image Include="resources\ShellBrd\start16mask.bmp" />
+    <Image Include="resources\ShellBrd\startclassic.bmp" />
+    <Image Include="resources\ShowDesktop.ico" />
+    <Image Include="resources\smwmail.ico" />
+    <Image Include="resources\srvadv2.bmp" />
+    <Image Include="resources\srvapp.bmp" />
+    <Image Include="resources\srvbkg.bmp" />
+    <Image Include="resources\srvdc2.bmp" />
+    <Image Include="resources\srvemb.bmp" />
+    <Image Include="resources\srvweb.bmp" />
+    <Image Include="resources\start.bmp" />
+    <Image Include="resources\start.ico" />
+    <Image Include="resources\start16.bmp" />
+    <Image Include="resources\start16mask.bmp" />
+    <Image Include="resources\startclassic.bmp" />
+    <Image Include="resources\startem.bmp" />
+    <Image Include="resources\starter.bmp" />
+    <Image Include="resources\stmuper.bmp" />
+    <Image Include="resources\stmupr64.bmp" />
+    <Image Include="resources\stmupro.bmp" />
+    <Image Include="resources\stmutab.bmp" />
+    <Image Include="resources\taautohide.bmp" />
+    <Image Include="resources\talockgroup.bmp" />
+    <Image Include="resources\talocknogroup.bmp" />
+    <Image Include="resources\tanolockgroup.bmp" />
+    <Image Include="resources\tanolocknogroup.bmp" />
+    <Image Include="resources\taqllockgroup.bmp" />
+    <Image Include="resources\taqllocknogroup.bmp" />
+    <Image Include="resources\taqlnolockgroup.bmp" />
+    <Image Include="resources\taqlnolocknogroup.bmp" />
+    <Image Include="resources\traych.bmp" />
+    <Image Include="resources\traycho.bmp" />
+    <Image Include="resources\traycv.bmp" />
+    <Image Include="resources\traycvo.bmp" />
+    <Image Include="resources\treeup.ico" />
+    <Image Include="resources\tsbanner.bmp" />
+    <Image Include="resources\underflow.ico" />
+    <Image Include="resources\WindowsWeb.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Explorer.rcv" />
+    <None Include="immersive\README.md" />
+    <None Include="InterfacesP.inc" />
   </ItemGroup>
 </Project>

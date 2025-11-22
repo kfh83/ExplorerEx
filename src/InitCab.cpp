@@ -1871,6 +1871,17 @@ public:
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
 #ifndef RELEASE
+    // If Shift is held down at startup, wait for debugger to attach
+    if (GetKeyState(VK_SHIFT) < 0)
+    {
+        // Wait for a debugger to attach
+        while (!IsDebuggerPresent())
+        {
+            Sleep(100);
+        }
+        DebugBreak(); // Optional: break into debugger immediately
+    }
+
 	AllocConsole();
 	FILE* pFile;
 	freopen_s(&pFile, "CONOUT$", "w", stdout);

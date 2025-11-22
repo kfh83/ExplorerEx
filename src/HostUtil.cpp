@@ -481,3 +481,112 @@ HRESULT CAccessible::CreateAcceleratorBSTR(TCHAR tch, BSTR *pbsOut)
     *pbsOut = SysAllocString(sz);
     return *pbsOut ? S_OK : E_OUTOFMEMORY;
 }
+
+// EXEX-TODO: Move? Currently in TaskBand.cpp
+extern int g_iLPX;
+extern int g_iLPY;
+extern BOOL g_fHighDPI;
+
+extern void InitDPI();
+
+BOOL IsHighDPI()
+{
+    InitDPI();
+    return g_fHighDPI;
+}
+
+int SHGetSystemMetricsScaled(int nIndex)
+{
+    int SystemMetrics; // eax MAPDST
+    int result; // eax
+
+    InitDPI();
+    SystemMetrics = GetSystemMetrics(nIndex);
+    switch (nIndex)
+    {
+    case SM_CXSCREEN:
+    case SM_CXVSCROLL:
+    case SM_CXBORDER:
+    case SM_CXDLGFRAME:
+    case SM_CXHTHUMB:
+    case SM_CXICON:
+    case SM_CXCURSOR:
+    case SM_CXFULLSCREEN:
+    case SM_CXHSCROLL:
+    case SM_CXMIN:
+    case SM_CXSIZE:
+    case SM_CXFRAME:
+    case SM_CXMINTRACK:
+    case SM_CXDOUBLECLK:
+    case SM_CXICONSPACING:
+    case SM_CXEDGE:
+    case SM_CXMINSPACING:
+    case SM_CXSMICON:
+    case SM_CXSMSIZE:
+    case SM_CXMENUSIZE:
+    case SM_CXMINIMIZED:
+    case SM_CXMAXTRACK:
+    case SM_CXMAXIMIZED:
+    case SM_CXDRAG:
+    case SM_CXMENUCHECK:
+    case SM_XVIRTUALSCREEN:
+    case SM_CXVIRTUALSCREEN:
+    case SM_CXFOCUSBORDER:
+        result = MulDiv(SystemMetrics, g_iLPX, 96);
+        break;
+    case SM_CYSCREEN:
+    case SM_CYHSCROLL:
+    case SM_CYCAPTION:
+    case SM_CYBORDER:
+    case SM_CYDLGFRAME:
+    case SM_CYVTHUMB:
+    case SM_CYICON:
+    case SM_CYCURSOR:
+    case SM_CYMENU:
+    case SM_CYFULLSCREEN:
+    case SM_CYKANJIWINDOW:
+    case SM_CYVSCROLL:
+    case SM_CYMIN:
+    case SM_CYSIZE:
+    case SM_CYFRAME:
+    case SM_CYMINTRACK:
+    case SM_CYDOUBLECLK:
+    case SM_CYICONSPACING:
+    case SM_CYEDGE:
+    case SM_CYMINSPACING:
+    case SM_CYSMICON:
+    case SM_CYSMCAPTION:
+    case SM_CYSMSIZE:
+    case SM_CYMENUSIZE:
+    case SM_CYMINIMIZED:
+    case SM_CYMAXTRACK:
+    case SM_CYMAXIMIZED:
+    case SM_CYDRAG:
+    case SM_CYMENUCHECK:
+    case SM_YVIRTUALSCREEN:
+    case SM_CYVIRTUALSCREEN:
+    case SM_CYFOCUSBORDER:
+        result = MulDiv(SystemMetrics, g_iLPY, 96);
+        break;
+    default:
+        ASSERTMSG(FALSE, "SHGetSystemMetricsScaled called with non-scaling metric!");
+        result = SystemMetrics;
+        break;
+    }
+    return result;
+}
+
+HBITMAP CreateBitmap(HDC hdc, int cx, int cy)
+{
+    if (!IsCompositionActive())
+        return CreateCompatibleBitmap(hdc, cx, cy);
+
+    BITMAPINFO bmi = { 0 };
+    bmi.bmiHeader.biWidth = cx;
+    bmi.bmiHeader.biHeight = -cy;
+    bmi.bmiHeader.biCompression = 0;
+    bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    return CreateDIBSection(hdc, &bmi, 0, 0, 0, 0);
+}

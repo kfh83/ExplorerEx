@@ -792,13 +792,16 @@ public:
         psp.dwFlags = PSP_DEFAULT;
         psp.hInstance = g_hinstCabinet;
 
-        //taskbar page
-        psp.pszTemplate = MAKEINTRESOURCE(DLG_TRAY_OPTIONS);
-        psp.pfnDlgProc = s_TaskbarOptionsDlgProc;
-        psp.lParam = (LPARAM) this;
-        hpage = CreatePropertySheetPage(&psp);
-        if (hpage)
-            AddPage(hpage);
+        if (!SHWindowsPolicy(POLID_TaskbarLockAll))
+        {
+            //taskbar page
+            psp.pszTemplate = MAKEINTRESOURCE(DLG_TRAY_OPTIONS);
+            psp.pfnDlgProc = s_TaskbarOptionsDlgProc;
+            psp.lParam = (LPARAM)this;
+            hpage = CreatePropertySheetPage(&psp);
+            if (hpage)
+                AddPage(hpage);
+        }
 
         //start page
         psp.pszTemplate = MAKEINTRESOURCE(DLG_START);
@@ -807,6 +810,22 @@ public:
         hpage = CreatePropertySheetPage(&psp);
         if (hpage)
             AddPage(hpage);
+
+		//notification page
+        psp.pszTemplate = (LPCWSTR)5;
+        //psp.pfnDlgProc = s_NotificationOptionsDlgProc;
+        psp.lParam = (LPARAM)this;
+        hpage = CreatePropertySheetPageW(&psp);
+        if (hpage)
+            AddPage(hpage);
+
+		//toolbar page
+		psp.pszTemplate = (LPCWSTR)10;
+		//psp.pfnDlgProc = s_ToolbarOptionsDlgProc;
+		psp.lParam = (LPARAM)this;
+		hpage = CreatePropertySheetPageW(&psp);
+		if (hpage)
+			AddPage(hpage);
 
         _pDlgNotify = new CComObject<CNotificationsDlg>;
         if (_pDlgNotify)
@@ -1474,12 +1493,14 @@ BOOL_PTR CCustomizeSPPropSheet::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM 
 
 int DefaultNetConValue()
 {
-    return ShouldShowConnectTo() ? 2 : 0;      // default to menu-style (2)
+    //return ShouldShowConnectTo() ? 2 : 0;      // default to menu-style (2)
+    return 0;
 }
 
 int DefaultNetPlacesValue()
 {
-    return ShouldShowNetPlaces() ? 1 : 0;      // default to link -style (1)
+    //return ShouldShowNetPlaces() ? 1 : 0;      // default to link -style (1)
+    return 0;
 }
 
 // These two "magic" functions maintain the proper behavior of the network places and network connections settings
@@ -1592,12 +1613,26 @@ BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
     return FALSE;
 }
 
+void SetTaskbarIcon(HWND hwnd)
+{
+    HWND hwndParent = GetParent(hwnd);
+    if (hwndParent)
+    {
+        LONG_PTR WindowLongW = GetWindowLongPtr(hwndParent, GWL_EXSTYLE);
+        SetWindowLongPtr(hwndParent, GWL_EXSTYLE, WindowLongW | WS_EX_APPWINDOW);
+        HMODULE hMod = GetModuleHandle(TEXT("SHELL32"));
+        HICON hIcon = LoadIcon(hMod, MAKEINTRESOURCE(40));
+        SendMessage(hwndParent, WM_SETICON, 0, (LPARAM)hIcon);
+    }
+}
+
 BOOL_PTR CTaskBarPropertySheet::s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     CTaskBarPropertySheet* self = NULL;
 
     if (uMsg == WM_INITDIALOG)
     {
+        SetTaskbarIcon(hDlg);
         ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
         self = (CTaskBarPropertySheet*) ((PROPSHEETPAGE*)lParam)->lParam;
     }
@@ -1626,28 +1661,12 @@ void _TaskbarOptions_OnInitDialog(HWND hDlg)
     CheckDlgButton(hDlg, IDC_QUICKLAUNCH, tvo.fShowQuickLaunch);
     CheckDlgButton(hDlg, IDC_TRAYOPTONTOP, tvo.fAlwaysOnTop);
     CheckDlgButton(hDlg, IDC_TRAYOPTAUTOHIDE, (tvo.uAutoHide & AH_ON));
-    CheckDlgButton(hDlg, IDC_TRAYOPTSHOWCLOCK, !tvo.fHideClock);
-    if (SHRestricted(REST_HIDECLOCK))
-    {
-        EnableWindow(GetDlgItem(hDlg, IDC_TRAYOPTSHOWCLOCK), FALSE);
-    }
 
-    if (SHRestricted(REST_NOTOOLBARSONTASKBAR))
+    if (SHRestricted(REST_NOTOOLBARSONTASKBAR)
+        || SHWindowsPolicy(POLID_TaskbarNoAddRemoveToolbar)
+        || SHWindowsPolicy(POLID_QuickLaunchEnabled) != -1)
     {
         EnableWindow(GetDlgItem(hDlg, IDC_QUICKLAUNCH), FALSE);
-    }
-    // Restriction- either the tray is disabled by policy, or the "smart" auto tray 
-    // is disabled by policy
-    if (tvo.fNoTrayItemsDisplayPolicyEnabled || tvo.fNoAutoTrayPolicyEnabled) 
-    {
-        EnableWindow(GetDlgItem(hDlg, IDC_NOTIFYMAN), FALSE);
-        EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), FALSE);
-        EnableWindow(GetDlgItem(hDlg, IDC_STATIC_NOTIFY), FALSE);
-    }
-    else
-    {
-        EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), tvo.fAutoTrayEnabledByUser);
-        CheckDlgButton(hDlg, IDC_NOTIFYMAN, tvo.fAutoTrayEnabledByUser);
     }
 
     CheckDlgButton(hDlg, IDC_LOCKTASKBAR, !_IsSizeMoveEnabled());
@@ -1659,13 +1678,21 @@ void _TaskbarOptions_OnInitDialog(HWND hDlg)
         // If there is a restriction of any kine, hide the window
         ShowWindow(GetDlgItem(hDlg, IDC_GROUPITEMS), FALSE);
     }
-    else if (SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"),
-                        FALSE, TRUE))
+    else if (_SHRegGetBoolValueFromHKCUHKLM(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"), TRUE))
     {
         CheckDlgButton(hDlg, IDC_GROUPITEMS, TRUE);
     }
 
-    _TaskbarOptionsSizeControls(hDlg);
+    if (!SHWindowsPolicy(POLID_TaskbarNoThumbnail) && c_tray.GlassEnabled() && IsCompositionActive())
+    {
+        CheckDlgButton(hDlg, IDC_SHOW_THUMBNAILS, !tvo.fNoTaskbarThumbnailsPolicyEnabled);
+    }
+    else
+    {
+        CheckDlgButton(hDlg, IDC_SHOW_THUMBNAILS, 0);
+        EnableWindow(GetDlgItem(hDlg, IDC_SHOW_THUMBNAILS), 0);
+    }
+
     _TaskbarOptionsUpdateDisplay(hDlg);
 }
 
@@ -1777,6 +1804,7 @@ BOOL_PTR CTaskBarPropertySheet::s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM 
 
     if (uMsg == WM_INITDIALOG)
     {
+        SetTaskbarIcon(hDlg);
         ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
         self = (CTaskBarPropertySheet*) ((PROPSHEETPAGE*)lParam)->lParam;
     }
@@ -1897,7 +1925,7 @@ void _UpdateNotifySetting(BOOL fNotifySetting)
     }
 }
 
-void CTaskBarPropertySheet ::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
+void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
 {
     // We need to get the Cabinet structure from the property sheet info.
 
@@ -1925,9 +1953,6 @@ void CTaskBarPropertySheet ::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
     if (fChanged)
         c_tray._AppBarNotifyAll(NULL, ABN_STATECHANGE, NULL, 0);
 
-    // show/hide the clock
-    tvo.fHideClock = !::IsDlgButtonChecked(hDlg, IDC_TRAYOPTSHOWCLOCK);
-
     if (!tvo.fNoTrayItemsDisplayPolicyEnabled && !tvo.fNoAutoTrayPolicyEnabled)
     {
         BOOL fNotifySetting = ::IsDlgButtonChecked(hDlg, IDC_NOTIFYMAN);
@@ -1937,25 +1962,30 @@ void CTaskBarPropertySheet ::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
             _UpdateNotifySetting(fNotifySetting);
         }
     }
-        
+
     tvo.fShowQuickLaunch = ::IsDlgButtonChecked(hDlg, IDC_QUICKLAUNCH);
 
+    if (::IsWindowEnabled(::GetDlgItem(hDlg, IDC_SHOW_THUMBNAILS)))
+    {
+        BOOL v4 = ::IsDlgButtonChecked(hDlg, IDC_SHOW_THUMBNAILS);
+        tvo.fNoTaskbarThumbnailsPolicyEnabled = !v4;
+        SendMessage(c_tray._hwndTasks, 0x43F, 0, v4);
+    }
+
     c_tray.SetTrayViewOpts(&tvo);
-    SendMessage(c_tray.GetTrayNotifyHWND(), TNM_HIDECLOCK, 0, tvo.fHideClock);
 
     c_tray.SizeWindows();
 
     // Update registry for locked taskbar
-    DWORD dwEnableSizeMove = !::IsDlgButtonChecked(hDlg, IDC_LOCKTASKBAR);
-    SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarSizeMove"),
-        REG_DWORD, &dwEnableSizeMove, sizeof(DWORD), SHREGSET_FORCE_HKCU);
+    DWORD dwEnableSizeMove = ::IsDlgButtonChecked(hDlg, IDC_LOCKTASKBAR);
+    c_tray._SetLockState(dwEnableSizeMove);
 
     //Update registry for grouping behavior
     DWORD dwGlom = ::IsDlgButtonChecked(hDlg, IDC_GROUPITEMS);
-    SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"),
-        REG_DWORD, &dwGlom, sizeof(DWORD), SHREGSET_FORCE_HKCU);
+    SHSetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"),
+        REG_DWORD, &dwGlom, sizeof(DWORD));
 
-    ::SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, NULL, (LPARAM)TEXT("TraySettings"), SMTO_NOTIMEOUTIFNOTHUNG, 1000, NULL);
+    ::SendNotifyMessage(HWND_BROADCAST, WM_SETTINGCHANGE, NULL, (LPARAM)TEXT("TraySettings"));
 }
 
 void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
@@ -2298,7 +2328,7 @@ void MenuOrderSort(HKEY hkeyRoot, IShellFolder* psf)
 }
 
 // Defined in Tray.c
-IShellFolder* BindToFolder(LPCITEMIDLIST pidl);
+IShellFolder* BindToFolder(PCIDLIST_RELATIVE pidl);
 
 void StartMenuSort()
 {

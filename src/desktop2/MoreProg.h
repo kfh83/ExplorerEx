@@ -1,9 +1,24 @@
 // window class name of More Programs pane control
 #define WC_MOREPROGRAMS TEXT("Desktop More Programs Pane")
 
+#include "COWSite.h"
+
+enum OPENHOSTVIEW
+{
+    OHVIEW_0 = 0x0,
+    OHVIEW_1 = 0x1,
+    OHVIEW_2 = 0x2,
+    OHVIEW_3 = 0x3,
+    OHVIEW_4 = 0x4,
+    OHVIEW_5 = 0x5,
+};
+
 class CMorePrograms
     : public IDropTarget
     , public CAccessible
+    , public IServiceProvider
+    , public CObjectWithSite
+    , public IOleCommandTarget
 {
 public:
     /*
@@ -28,6 +43,13 @@ public:
     STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction);
     STDMETHODIMP accDoDefaultAction(VARIANT varChild);
 
+	// *** IServiceProvider ***
+	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void **ppvObject);
+
+    // *** IOleCommandTarget ***
+    STDMETHODIMP QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT *pCmdText);
+    STDMETHODIMP Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut);
+
 private:
     CMorePrograms(HWND hwnd);
     ~CMorePrograms();
@@ -49,15 +71,23 @@ private:
     LRESULT _OnSMNFindItem(PSMNDIALOGMESSAGE pdm);
     LRESULT _OnSMNShowNewAppsTip(PSMNMBOOL psmb);
     LRESULT _OnSMNDismiss();
+    LRESULT _OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	LRESULT _OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _OnMouseLeave();
 
     void    _InitMetrics();
     HWND    _CreateTooltip();
+    void    _TooltipAddTool();
     void    _PopBalloon();
+    void    _BuildHoverRect(const LPPOINT ppt);
     void    _TrackShellMenu(DWORD dwFlags);
+    HRESULT _GetCurView(OPENHOSTVIEW *pView);
+    int     _OnSetCurView(OPENHOSTVIEW view);
+    int     _Mark(SMNDIALOGMESSAGE *pdm, UINT a3);
 
     friend BOOL MorePrograms_RegisterClass();
 
-    enum { IDC_BUTTON = 1,
+    enum { IDC_ALL = 1,
            IDC_KEYPRESS = 2 };
 
 private:
@@ -84,25 +114,39 @@ private:
 
     DWORD    _tmHoverStart;         // When did the user start a drag/drop hover?
 
+    RECT    field_64;
+
     // Assorted metrics for painting
     int     _tmAscent;              // Ascent of main font
     int     _tmAscentMarlett;       // Ascent of Marlett font
     int     _cxText;                // width of entire client text
+    int     _cxText2;               // Vista - New
     int     _cxTextIndent;          // distance to beginning of text
     int     _cxArrow;               // width of the arrow image or glyph
     MARGINS _margins;               // margins for the proglist listview
     int     _iTextCenterVal;        // space added to top of text to center with arrow bitmap
+
+	int     field_A0;               // Vista - New
 
     RECT    _rcExclude;             // Exclusion rectangle for when the menu comes up
 
     // More random stuff
     LONG    _lRef;                  // reference count
 
+
+    int field_B4;
+    DWORD dwordB8;
+    int field_BC;
+
     TCHAR   _chMnem;                // Mnemonic
+	WCHAR   _chMnemBack;            // Vista - New
     BOOL    _fMenuOpen;             // Is the menu open?
 
     IShellMenu *_psmPrograms;       // Cached ShellMenu for perf
 
     // Large things go at the end
-    TCHAR  _szMessage[128];
+    WCHAR  _szMessage[128];
+	WCHAR _szMessageBack[128];
+    WCHAR  _szTool[256];
+	WCHAR  _szToolBack[256];
 };

@@ -557,6 +557,14 @@ HRESULT SHCoInitialize(void)
     return hr;
 }
 
+void SHCoUninitialize(HRESULT hr)
+{
+    if (hr == S_OK)
+    {
+        CoUninitialize();
+    }
+}
+
 BOOL SHIsSameObject(IUnknown* punk1, IUnknown* punk2)
 {
     if (!punk1 || !punk2)
@@ -1810,10 +1818,36 @@ HRESULT DataObj_SetGlobal(IDataObject* pdtobj, UINT cf, HGLOBAL hGlobal)
     return pdtobj->SetData(&fmte, &medium, TRUE);
 }
 
-BOOL GetInfoTip(IShellFolder* psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTextMax)
+BOOL GetInfoTipEx(IShellFolder *psf, DWORD dwFlags, PCUITEMID_CHILD pidl, LPWSTR pszText, int cchTextMax)
 {
+    BOOL fRet = FALSE;
+
     *pszText = 0;
-    return FALSE;
+
+    if (pidl)
+    {
+        IQueryInfo *pqi;
+        if (SUCCEEDED(psf->GetUIObjectOf(NULL, 1, &pidl, IID_IQueryInfo, NULL, (void**)&pqi)))
+        {
+            WCHAR *pwszTip;
+            pqi->GetInfoTip(dwFlags, &pwszTip);
+            if (pwszTip)
+            {
+                fRet = TRUE;
+                StringCchCopy(pszText, cchTextMax, pwszTip);
+                CoTaskMemFree(pwszTip);
+            }
+
+            pqi->Release();
+        }
+    }
+
+    return fRet;
+}
+
+BOOL GetInfoTip(IShellFolder* psf, LPCITEMIDLIST pidl, LPWSTR pszText, int cchTextMax)
+{
+    return GetInfoTipEx(psf, 0, pidl, pszText, cchTextMax);
 }
 
 HRESULT SHGetUIObjectFromFullPIDL(LPCITEMIDLIST pidl, HWND hwnd, REFIID riid, void** ppv)
@@ -2748,6 +2782,7 @@ bool SHUndocInit(void)
 	LOAD_ORDINAL(shlwapi, IUnknown_Exec, 164);
     LOAD_ORDINAL(shlwapi, SHSetWindowBits, 165);
 	LOAD_ORDINAL(shlwapi, IUnknown_OnFocusChangeIS, 509);
+    LOAD_ORDINAL(shlwapi, SHLoadMenuPopup, 177);
 	LOAD_ORDINAL(shlwapi, SHPropagateMessage, 178);
 	LOAD_ORDINAL(shlwapi, SHGetCurColorRes, 193);
 	LOAD_ORDINAL(shlwapi, SHFillRectClr, 197);
@@ -2762,6 +2797,7 @@ bool SHUndocInit(void)
     LOAD_ORDINAL(shlwapi, SHGetMenuFromID, 192);
     LOAD_ORDINAL(shlwapi, SHCreatePropertyBagOnMemory, 477);
     LOAD_ORDINAL(shlwapi, SHPropertyBag_WriteBOOL, 499);
+    LOAD_ORDINAL(shlwapi, SHCreateStreamOnModuleResourceW, 628);
     LOAD_FUNCTION(shlwapi, SHIsChildOrSelf);
 
 	LOAD_MODULE(shell32);
@@ -2775,12 +2811,15 @@ bool SHUndocInit(void)
     LOAD_ORDINAL(shell32, SHFindComputer, 91);
     LOAD_ORDINAL(shell32, SHTestTokenPrivilegeW, 236);
     LOAD_ORDINAL(shell32, SHMapIDListToSystemImageListIndexAsync, 787);
-    LOAD_ORDINAL(shell32, SHGetUserPicturePath_t, 261);
+    LOAD_ORDINAL(shell32, SHGetUserPicturePath, 261);
     LOAD_FUNCTION(shell32, SHUpdateRecycleBinIcon);
+    LOAD_ORDINAL(shell32, SHGetFolderPathEx, 369);
     LOAD_ORDINAL(shell32, SHMapIDListToSystemImageListIndex, 790);
     LOAD_ORDINAL(shell32, CheckWinIniForAssocs, 711);
     LOAD_ORDINAL(shell32, CheckDiskSpace, 733);
     LOAD_ORDINAL(shell32, CheckStagingArea, 753);
+    LOAD_ORDINAL(shell32, SHCreateFilter, 818);
+    LOAD_ORDINAL(shell32, SHCreateConditionFactory, 849)
 
     //shunimpld
     //LOAD_ORDINAL(shell32, DDECreatePostNotify, 82);
@@ -2789,6 +2828,9 @@ bool SHUndocInit(void)
     HMODULE hMod_shcore = LoadLibraryW(L"shcore.dll");
     if (hMod_shcore)
     {
+        LOAD_ORDINAL(shcore, _SHRegSetValue, 121);
+        LOAD_ORDINAL(shcore, _SHRegGetValueFromHKCUHKLM, 122);
+        LOAD_ORDINAL(shcore, _SHRegGetBoolValueFromHKCUHKLM, 123);
 		LOAD_ORDINAL(shcore, IUnknown_GetClassID, 142);
 		LOAD_ORDINAL(shcore, SHQueueUserWorkItem, 162)
 		LOAD_ORDINAL(shcore, SHLoadRegUIStringW, 126);
@@ -3080,10 +3122,10 @@ HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* pp
 
 }
 
-HRESULT SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath)
-{
-    return SHGetUserPicturePath_t(pszUsername, dwFlags, pszPath, MAX_PATH);
-}
+//HRESULT SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath)
+//{
+//    return SHGetUserPicturePath(pszUsername, dwFlags, pszPath, MAX_PATH);
+//}
 
 // BUGBUG: On Windows 8+, the OS will return S_OK no matter what. This means that we
 // are told that Flip 3D succeeded in displaying, and thus we might not fallthrough
@@ -3108,4 +3150,18 @@ BOOL SHWindowsPolicy(REFGUID rpolid)
 {
     static BOOL(WINAPI * fSHWindowsPolicy)(REFGUID) = decltype(fSHWindowsPolicy)(GetProcAddress(LoadLibrary(L"SHLWAPI.dll"), MAKEINTRESOURCEA(618)));
     return fSHWindowsPolicy(rpolid);
+}
+
+HRESULT IUnknown_QueryServiceExec(IUnknown* punk, REFGUID guidService, const GUID* guid,
+    DWORD cmdID, DWORD cmdParam, VARIANT* pvarargIn, VARIANT* pvarargOut)
+{
+    IOleCommandTarget* poct;
+    HRESULT hres = IUnknown_QueryService(punk, guidService, IID_PPV_ARG(IOleCommandTarget, &poct));
+    if (SUCCEEDED(hres))
+    {
+        hres = poct->Exec(guid, cmdID, cmdParam, pvarargIn, pvarargOut);
+        poct->Release();
+    }
+
+    return hres;
 }

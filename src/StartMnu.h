@@ -4,6 +4,8 @@
 #include "pch.h"
 #include "shundoc.h"
 
+#include "COWSite.h"
+
 //--------------------------------------------------------------------------
 // 
 //---------------------------------------------------------------------------
@@ -29,62 +31,64 @@ BOOL _ShowStartMenuShutdown();
 BOOL _ShowStartMenuDisconnect();
 BOOL _ShowStartMenuSearch();
 
-class CStartMenuHost : public ITrayPriv,
-                        public IServiceProvider,
-                        public IShellService,
-                        public IMenuPopup,
-                        public IOleCommandTarget,
-                        public IWinEventHandler
+class CStartMenuHost
+    : public ITrayPriv
+    , public IServiceProvider
+    , public IShellService
+    , public IMenuPopup
+    , public IOleCommandTarget
+    , public IWinEventHandler
+    , public CObjectWithSite
 
 {
 public:
     // *** IUnknown methods ***
-    STDMETHODIMP QueryInterface (REFIID riid, LPVOID * ppvObj) override;
-    STDMETHODIMP_(ULONG) AddRef () override;
-    STDMETHODIMP_(ULONG) Release () override;
+    STDMETHODIMP QueryInterface(REFIID riid, LPVOID *ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
 
     // *** ITrayPriv methods ***
-    STDMETHODIMP ExecItem (IShellFolder* psf, LPCITEMIDLIST pidl) override;
-    STDMETHODIMP GetFindCM(HMENU hmenu, UINT idFirst, UINT idLast, IContextMenu** ppcmFind) override;
-    STDMETHODIMP GetStaticStartMenu(HMENU* phmenu) override;
+    STDMETHODIMP ExecItem(IShellFolder *psf, LPCITEMIDLIST pidl) override;
+    STDMETHODIMP GetFindCM(HMENU hmenu, UINT idFirst, UINT idLast, IContextMenu **ppcmFind) override;
+    STDMETHODIMP GetStaticStartMenu(HMENU *phmenu) override;
 
     // *** IServiceProvider ***
-    STDMETHODIMP QueryService (REFGUID guidService, REFIID riid, void ** ppvObject);
+    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void **ppvObject);
 
     // *** IShellService ***
-    STDMETHODIMP SetOwner (struct IUnknown* punkOwner);
+    STDMETHODIMP SetOwner(struct IUnknown *punkOwner);
 
     // *** IOleWindow methods ***
-    STDMETHODIMP GetWindow         (HWND * lphwnd);
-    STDMETHODIMP ContextSensitiveHelp  (THIS_ BOOL fEnterMode) { return E_NOTIMPL; }
+    STDMETHODIMP GetWindow(HWND *lphwnd);
+    STDMETHODIMP ContextSensitiveHelp(THIS_ BOOL fEnterMode) { return E_NOTIMPL; }
 
     // *** IDeskBarClient methods ***
-    STDMETHODIMP SetClient         (IUnknown* punkClient) { return E_NOTIMPL; }
-    STDMETHODIMP GetClient         (IUnknown** ppunkClient) { return E_NOTIMPL; }
-    STDMETHODIMP OnPosRectChangeDB (LPRECT prc) { return E_NOTIMPL; }
+    STDMETHODIMP SetClient(IUnknown *punkClient) { return E_NOTIMPL; }
+    STDMETHODIMP GetClient(IUnknown **ppunkClient) { return E_NOTIMPL; }
+    STDMETHODIMP OnPosRectChangeDB(LPRECT prc) { return E_NOTIMPL; }
 
     // *** IMenuPopup methods ***
-    STDMETHODIMP Popup             (POINTL *ppt, RECTL *prcExclude, MP_POPUPFLAGS dwFlags);
-    STDMETHODIMP OnSelect          (DWORD dwSelectType);
-    STDMETHODIMP SetSubMenu        (IMenuPopup* pmp, BOOL fSet);
+    STDMETHODIMP Popup(POINTL *ppt, RECTL *prcExclude, MP_POPUPFLAGS dwFlags);
+    STDMETHODIMP OnSelect(DWORD dwSelectType);
+    STDMETHODIMP SetSubMenu(IMenuPopup *pmp, BOOL fSet);
 
     // *** IOleCommandTarget ***
-    STDMETHODIMP QueryStatus(const GUID * pguidCmdGroup,
-                             ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT *pcmdtext);
-    STDMETHODIMP Exec(const GUID * pguidCmdGroup,
-                             DWORD nCmdID, DWORD nCmdexecopt, 
-                             VARIANTARG *pvarargIn, VARIANTARG *pvarargOut);
+    STDMETHODIMP QueryStatus(const GUID *pguidCmdGroup,
+        ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT *pcmdtext);
+    STDMETHODIMP Exec(const GUID *pguidCmdGroup,
+        DWORD nCmdID, DWORD nCmdexecopt,
+        VARIANTARG *pvarargIn, VARIANTARG *pvarargOut);
 
     // *** IWinEventHandler ***
     STDMETHODIMP OnWinEvent(HWND h, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *plres);
-    STDMETHODIMP IsWindowOwner (HWND hwnd);
+    STDMETHODIMP IsWindowOwner(HWND hwnd);
 
     // *** IBanneredBar ***
 
 protected:
     CStartMenuHost();
 
-    friend HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb);
+    friend HRESULT StartMenuHost_Create(IMenuPopup **ppmp, IMenuBand **ppmb);
 
     int    _cRef;
 };

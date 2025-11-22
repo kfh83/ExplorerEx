@@ -160,7 +160,7 @@ void CNotifySubclassWndProc::_FlushNotifyMessages(HWND hwnd)
     }
 }
 
-void CNotifySubclassWndProc::_RegisterWindow(HWND hwnd, LPCITEMIDLIST pidl, long lEvents,
+void CNotifySubclassWndProc::_RegisterWindow(HWND hwnd, PCIDLIST_ABSOLUTE pidl, long lEvents,
                                              UINT uFlags/* = SHCNRF_ShellLevel | SHCNRF_InterruptLevel*/)
 {
     ASSERT(0 != g_idFSNotify);

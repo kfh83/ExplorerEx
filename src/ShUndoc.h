@@ -204,16 +204,17 @@ typedef struct
     FILETIME ftExecute; // Last execute filetime
 } UEMINFO, * LPUEMINFO;
 */
+
 typedef struct tagUEMINFO {
-    DWORD cbSize; /*  +0x0000  */
-    DWORD dwMask; /*  +0x0004  */
-    DWORD R; /*  +0x0008 40 00 00 00  */
-    DWORD cHit; /*  +0x000c 75 00 00 00  */
-    DWORD cSwitches; /*  +0x0010 75 00 00 00  */
-    DWORD dwTime; /*  +0x0014  */
-    FILETIME ftExecute; /*  +0x0018 ce 1a 00 00  */
-    BOOL fExcludeFromMFU; /*  +0x0020 74 00 00 00  */
-} UEMINFO, * LPUEMINFO;
+    DWORD cbSize;           // SIZEOF
+	DWORD dwMask;           // INOUT requested/given (UEIM_*)
+	FLOAT R;                // recency
+	UINT cLaunches;         // profile count
+	UINT cSwitches;         // number of times app was switched to
+	DWORD dwTime;           // total time app has been used (in seconds)
+	FILETIME ftExecute;     // Last execute filetime
+	BOOL fExcludeFromMFU;   // exclude from most frequently used lists
+} UEMINFO, *LPUEMINFO;
 
 typedef struct _SHShortcutInvokeAsIDList {
     USHORT  cb;
@@ -552,7 +553,9 @@ void IUnknown_SafeReleaseAndNullPtr(T **ptr)
 
 #define SERVERNAME_CURRENT  ((HANDLE)NULL)
 
-#define SHCoUninitialize(hr) if (SUCCEEDED(hr)) CoUninitialize()
+//#define SHCoUninitialize(hr) if (SUCCEEDED(hr)) CoUninitialize()
+
+void SHCoUninitialize(HRESULT hr);
 
 #define IS_BIDI_LOCALIZED_SYSTEM()       IsBiDiLocalizedSystem()
 
@@ -1084,16 +1087,20 @@ inline VOID(STDMETHODCALLTYPE* DisconnectWindowsDialog)(HWND hwndParent);
 inline COLORREF(STDMETHODCALLTYPE* SHFillRectClr)(HDC hdc, LPRECT lprect, COLORREF color);
 inline HMENU(STDMETHODCALLTYPE* SHGetMenuFromID)(HMENU hmMain, UINT uID);
 inline UINT(WINAPI* ImageList_GetFlags)(HIMAGELIST himl);
+
+typedef void (CALLBACK* PFNASYNCICONTASKBALLBACK)(LPVOID pvData, LPVOID pvHint, int iIconIndex, int iOpenIconIndex);
+
 inline HRESULT(WINAPI *SHMapIDListToSystemImageListIndexAsync)(
-    void *psts,
-    void *psf,
-    LPCITEMIDLIST pidlChild,
-    void (CALLBACK *pfnCallback)(LPCITEMIDLIST pidl, LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex),
+    IShellTaskScheduler* psts,
+    IShellFolder* psf,
+    LPCITEMIDLIST pidl,
+    PFNASYNCICONTASKBALLBACK pfn,
     void *pvCallbackData,
     void *pvCallbackHint,
     int *outIndex1,
     int *outIndex2
 );
+
 inline HRESULT(WINAPI* SHMapIDListToSystemImageListIndex)(
 	void* psf,
 	LPCITEMIDLIST pidlChild,
@@ -1127,7 +1134,6 @@ LPITEMIDLIST ILCloneParent(LPCITEMIDLIST pidl);
 HRESULT SHGetIDListFromUnk(IUnknown* punk, LPITEMIDLIST* ppidl);
 void _SHPrettyMenu(HMENU hm);
 HRESULT DataObj_SetGlobal(IDataObject* pdtobj, UINT cf, HGLOBAL hGlobal);
-BOOL GetInfoTip(IShellFolder* psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTextMax);
 HRESULT SHGetUIObjectFromFullPIDL(LPCITEMIDLIST pidl, HWND hwnd, REFIID riid, void** ppv);
 
 #define GUIDSTR_MAX 38
@@ -1369,6 +1375,7 @@ typedef struct {
 typedef DWORD OBJCOMPATFLAGS;
 
 HRESULT SHGetNameAndFlags(LPCITEMIDLIST pidl, DWORD dwFlags, LPTSTR pszName, UINT cchName, DWORD* pdwAttribs);
+DWORD SHGetAttributes(IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwAttribs);
 HRESULT DisplayNameOf(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR psz, UINT cch);
 #define SHGetAttributesOf(pidl, prgfInOut) SHGetNameAndFlags(pidl, 0, NULL, 0, prgfInOut)
 #define ToolBar_CommandToIndex(hwnd, idBtn)  \
@@ -1430,8 +1437,7 @@ void HIDA_ReleaseStgMedium(LPIDA pida, STGMEDIUM* pmedium);
 
 HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* ppidl);
 
-inline HRESULT(WINAPI* SHGetUserPicturePath_t)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathMax);
-HRESULT WINAPI SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath);
+inline HRESULT(WINAPI* SHGetUserPicturePath)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathMax);
 
 inline HRESULT(*CFSFolder_CreateFolder)(IUnknown* punkOuter, LPBC pbc, LPCITEMIDLIST pidl, const PERSIST_FOLDER_TARGET_INFO* pf, REFIID riid, void** ppv);
 inline HRESULT(*SHCreatePropertyBagOnMemory)(DWORD grfMode, REFIID riid, void** ppv);
@@ -1531,7 +1537,33 @@ HRESULT WINAPI DwmpStartOrStopFlip3D();
 
 BOOL SHWindowsPolicy(REFGUID rpolid);
 
-DEFINE_GUID(POLID_TaskbarLockAll, 0xC79A44A1, 0xDB7C, 0x4212, 0xA8, 0x37, 0x4B, 0x07, 0x3F, 0x6C, 0x48, 0x15);
-DEFINE_GUID(POLID_TaskbarNoRedock, 0xE647CF99, 0x8FAB, 0x456B, 0xAC, 0x73, 0x54, 0x51, 0xBE, 0x8A, 0xF5, 0x71);
-DEFINE_GUID(POLID_TaskbarNoResize, 0x0BC4821B, 0x02C8, 0x4C31, 0x9F, 0x07, 0x15, 0x2A, 0xC0, 0x75, 0xB0, 0xA6);
-DEFINE_GUID(POLID_TaskbarNoThumbnail, 0x95F4BC76, 0x74B9, 0x4926, 0xAD, 0x60, 0xB8, 0x3D, 0xB7, 0xF3, 0xC8, 0xA4);
+DEFINE_GUID(POLID_TaskbarLockAll,               0xC79A44A1, 0xDB7C, 0x4212, 0xA8, 0x37, 0x4B, 0x07, 0x3F, 0x6C, 0x48, 0x15);
+DEFINE_GUID(POLID_TaskbarNoAddRemoveToolbar,    0xA25B814E, 0x7145, 0x4113, 0x91, 0x16, 0x07, 0x8B, 0xB1, 0x9D, 0x4F, 0xE4);
+DEFINE_GUID(POLID_TaskbarNoRedock,              0xE647CF99, 0x8FAB, 0x456B, 0xAC, 0x73, 0x54, 0x51, 0xBE, 0x8A, 0xF5, 0x71);
+DEFINE_GUID(POLID_TaskbarNoResize,              0x0BC4821B, 0x02C8, 0x4C31, 0x9F, 0x07, 0x15, 0x2A, 0xC0, 0x75, 0xB0, 0xA6);
+DEFINE_GUID(POLID_TaskbarNoThumbnail,           0x95F4BC76, 0x74B9, 0x4926, 0xAD, 0x60, 0xB8, 0x3D, 0xB7, 0xF3, 0xC8, 0xA4);
+DEFINE_GUID(POLID_QuickLaunchEnabled,           0x7F57E917, 0xA64B, 0x41A4, 0x9C, 0x42, 0x60, 0x58, 0x8D, 0x5A, 0x7B, 0x1D);
+
+HRESULT IUnknown_QueryServiceExec(IUnknown* punk, REFGUID guidService, const GUID* guid,
+    DWORD cmdID, DWORD cmdParam, VARIANT* pvarargIn, VARIANT* pvarargOut);
+
+inline HRESULT(*SHCreateConditionFactory)(REFIID riid, void **ppv);
+inline HRESULT(*SHCreateStreamOnModuleResourceW)(HMODULE hModule, LPCWSTR pwszName, LPCWSTR pwszType, IStream **ppStream);
+
+inline LSTATUS (* _SHRegSetValue)(_In_ HKEY    hkey, _In_opt_ LPCWSTR pszSubKey, _In_opt_ LPCWSTR pszValue, _In_ SRRF srrfFlags,
+    _In_ DWORD dwType, _In_reads_bytes_opt_(cbData) LPCVOID pvData, _In_opt_ DWORD cbData);
+inline LSTATUS(*_SHRegGetValueFromHKCUHKLM)(_In_ PCWSTR pwszKey, _In_opt_ PCWSTR pwszValue, _In_ SRRF srrfFlags,
+    _Out_opt_ DWORD *pdwType, _Out_writes_bytes_to_opt_(*pcbData, *pcbData) void *pvData,
+    _Inout_opt_ _When_(pvData != 0, _Pre_notnull_) DWORD *pcbData);
+inline BOOL (* _SHRegGetBoolValueFromHKCUHKLM)(_In_ PCWSTR pszKey, _In_opt_ PCWSTR pszValue, _In_ BOOL fDefault);
+inline HRESULT(*SHCreateLeafConditionEx)(
+    REFPROPERTYKEY propkey, CONDITION_OPERATION cop, REFPROPVARIANT propvar, LPCWSTR pszSemanticType,
+    LPCWSTR pszLocaleName, IRichChunk *pPropertyNameTerm, IRichChunk *pOperationTerm, IRichChunk *pValueTerm,
+    interface IConditionFactory2 *ppf, REFIID riid, void **ppv);
+
+enum FC_FLAGS;
+inline HRESULT(*SHCreateFilter)(const WCHAR *pszName, const WCHAR *pszInFolder, REFPROPERTYKEY propkey, FC_FLAGS fcFlags, ICondition *pc, REFIID riid, void **ppv);
+BOOL GetInfoTip(IShellFolder *psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTextMax);
+
+inline HRESULT (*SHGetFolderPathEx)(REFKNOWNFOLDERID rfid, DWORD flags, HANDLE token, LPWSTR path, DWORD len);
+inline HMENU(*SHLoadMenuPopup)(HINSTANCE hinst, UINT id);

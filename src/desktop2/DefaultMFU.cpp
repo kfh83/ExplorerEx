@@ -454,7 +454,7 @@ void CreateInitialMFU(BOOL fReset)
 
             // Number of points decrease as you go down the list, with
             // the bottom slot getting 14 points.
-            uei.cHit = 14 + ARRAYSIZE(rgpidlMFU) - 1 - iSlot;
+            uei.cLaunches = 14 + ARRAYSIZE(rgpidlMFU) - 1 - iSlot;
 
             // Shortcut points are read via UEME_RUNPIDL so that's
             // how we have to set them.

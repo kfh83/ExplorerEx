@@ -52,7 +52,7 @@ public:
 protected:
     BOOL _SubclassWindow(HWND hwnd);
     void _UnsubclassWindow(HWND hwnd);
-    void _RegisterWindow(HWND hwnd, LPCITEMIDLIST pidl, long lEvents,
+    void _RegisterWindow(HWND hwnd, PCIDLIST_ABSOLUTE pidl, long lEvents,
                          UINT uFlags = (SHCNRF_ShellLevel | SHCNRF_InterruptLevel));
     void _UnregisterWindow(HWND hwnd);
     virtual LRESULT _DefWindowProc(HWND hwnd, UINT uMessage, WPARAM wParam, LPARAM lParam);

@@ -28,7 +28,7 @@ typedef OBJECTINFO const* LPCOBJECTINFO;
 #define UEIM_FILETIME   0x02
 
 
-MIDL_INTERFACE("49b36d57-5fd2-45a7-981b-06028d577a47")
+MIDL_INTERFACE("49B36D57-5FD2-45A7-981B-06028D577A47")
 IShellUserAssist : IUnknown
 {
 	virtual HRESULT STDMETHODCALLTYPE FireEvent(const GUID * pguidGrp, UAEVENT eCmd, const WCHAR * pszPath, DWORD dwTimeElapsed) = 0;
@@ -40,9 +40,7 @@ IShellUserAssist : IUnknown
 	virtual HRESULT STDMETHODCALLTYPE RegisterNotify(UACallback pfnUACB, void* param, int) = 0;
 };
 
-
-
-IShellUserAssist* i10 = NULL;
+IShellUserAssist *g_uempUa = NULL;
 
 BOOL UEMIsLoaded()
 {
@@ -57,10 +55,10 @@ BOOL UEMIsLoaded()
 
 VOID EnsureUserAssist()
 {
-	if (!i10)
+	if (!g_uempUa)
 	{
-		CoCreateInstance(CLSID_UserAssist, NULL, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IUserAssist10, (PVOID*)&i10);
-		i10->Enable(TRUE);
+		CoCreateInstance(CLSID_UserAssist, NULL, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IUserAssist10, (PVOID*)&g_uempUa);
+		g_uempUa->Enable(TRUE);
 	}
 }
 
@@ -81,7 +79,7 @@ HRESULT UEMFireEvent(const GUID* pguidGrp, int eCmd, DWORD dwFlags, WPARAM wPara
 
 		EnsureUserAssist();
 
-		i10->FireEvent(&UAIID_SHORTCUTS, (UAEVENT)eCmd, psz, GetTickCount64());
+		g_uempUa->FireEvent(&UAIID_SHORTCUTS, (UAEVENT)eCmd, psz, GetTickCount64());
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -105,7 +103,7 @@ HRESULT UEMQueryEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lPar
 
 		EnsureUserAssist();
 
-		i10->QueryEntry(&UAIID_SHORTCUTS, psz, pui);
+		g_uempUa->QueryEntry(&UAIID_SHORTCUTS, psz, pui);
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -132,7 +130,7 @@ HRESULT UEMSetEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam
 
 		EnsureUserAssist();
 
-		i10->SetEntry(&UAIID_SHORTCUTS, psz, pui);
+		g_uempUa->SetEntry(&UAIID_SHORTCUTS, psz, pui);
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -144,7 +142,8 @@ HRESULT UEMRegisterNotify(UACallback pfnUEMCB, void* param)
 {
 	printf("UEMRegisterNotify\n");
 	EnsureUserAssist();
-	HRESULT hr = i10->RegisterNotify(pfnUEMCB, param, 1);
+	HRESULT hr = g_uempUa->RegisterNotify(pfnUEMCB, param, 1);
+	printf("UEMRegisterNotify hr=%x\n", hr);
 	return hr;
 }
 
@@ -164,4 +163,65 @@ BOOL UEMGetInfo(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LP
 
 	hr = UEMQueryEvent(pguidGrp, eCmd, wParam, lParam, pui);
 	return SUCCEEDED(hr);
+}
+
+
+// shlwapi.dll ordinal 236
+typedef HMODULE(*SHPinDllOfCLSID_t)(REFCLSID rclsid);
+HMODULE SHPinDllOfCLSID(REFCLSID rclsid)
+{
+	static SHPinDllOfCLSID_t fn = nullptr;
+	if (!fn)
+	{
+		HMODULE h = GetModuleHandleW(L"shlwapi.dll");
+		if (h)
+			fn = (SHPinDllOfCLSID_t)GetProcAddress(h, MAKEINTRESOURCEA(236));
+	}
+	return fn ? fn(rclsid) : nullptr;
+}
+
+IShellUserAssist *GetUserAssistWorker(REFCLSID clsidUserAssist)
+{
+	IShellUserAssist *pua;
+
+	if (!g_uempUa)
+	{
+		if (SUCCEEDED(CoCreateInstance(clsidUserAssist, nullptr, CLSCTX_INPROC | CLSCTX_NO_CODE_DOWNLOAD, IID_PPV_ARGS(&pua))))
+		{
+			SHPinDllOfCLSID(clsidUserAssist);
+		}
+		else
+		{
+			pua = (IShellUserAssist *)-1;
+		}
+
+		if (InterlockedCompareExchangePointer((void **)&g_uempUa, pua, nullptr) && pua != (IShellUserAssist *)-1)
+		{
+			pua->Release();
+		}
+	}
+
+	return g_uempUa != (IShellUserAssist *)-1 ? g_uempUa : nullptr;
+}
+
+HRESULT UAQueryEntry(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist *pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->QueryEntry(pguidGrp, pszPath, pueiOut);
+	}
+	return hr;
+}
+
+HRESULT UARegisterNotify(UACallback a1, void *a2, int a3)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist *pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->RegisterNotify(a1, a2, a3);
+	}
+	return hr;
 }

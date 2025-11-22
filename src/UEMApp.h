@@ -89,6 +89,8 @@
 #define UEMIID_SHELL    CLSID_ActiveDesktop     // FEATURE need better one
 #define UEMIID_BROWSER  CLSID_InternetToolbar   // FEATURE need better one
 
+DEFINE_GUID(UAIID_APPLICATIONS, 0xCEBFF5CD, 0xACE2, 0x4F4F, 0x91, 0x78, 0x99, 0x26, 0xF4, 0x17, 0x49, 0xEA);
+DEFINE_GUID(UAIID_AUTOMATIC, 0x6B2FC80B, 0xBE21, 0x4A6A, 0x97, 0xC4, 0x11, 0x79, 0xB2, 0x95, 0x03, 0x6E);
 DEFINE_GUID(UAIID_SHORTCUTS, 0xF4E57C4B, 0x2036, 0x45f0, 0xa9, 0xab, 0x44, 0x3b, 0xcf, 0xe3, 0x3d, 0x9f);
 
 #define UEMIND_NIL      (-1)
@@ -105,6 +107,7 @@ HRESULT UEMFireEvent(const GUID *pguidGrp, int eCmd, DWORD dwFlags, WPARAM wPara
 HRESULT UEMQueryEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui);
 HRESULT UEMSetEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui);
 
+// *** NEW User Assist functions from Windows 7 build 6519 ***
 
 typedef enum tagUAEVENT
 {
@@ -115,10 +118,14 @@ typedef enum tagUAEVENT
     UAE_EXCLUDEAPP = 4,
 } UAEVENT;
 
+typedef int(CALLBACK *UACallback)(void *, const GUID *, LPCWSTR, UAEVENT);
+
+HRESULT UAQueryEntry(const GUID *pguidGrp, LPCWSTR pszPath, LPUEMINFO pui);
+HRESULT UARegisterNotify(UACallback a1, void *a2, int a3);
+
+
 
 //typedef int (CALLBACK *UEMCallback)(void *param, const GUID *pguidGrp, int eCmd);
-typedef int (CALLBACK* UACallback)(void* param, const GUID* pguidGrp, const WCHAR*, int eCmd);
-
 HRESULT UEMRegisterNotify(UACallback pfnUEMCB, void *param);
 
 #if 1 // {

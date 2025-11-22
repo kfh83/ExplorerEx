@@ -12,26 +12,27 @@
 //
 //  Helper classes
 
-class ByUsageItem;                          // "item", "pitem"
-class ByUsageShortcut;                      // "scut", "pscut"
-class ByUsageDir;                           // "dir", "pdir"
-class ByUsageAppInfo;                       // "app", "papp"
-class ByUsageHiddenData;                    // "hd", "phd"
+class CByUsageItem;                          // "item", "pitem"
+class CByUsageShortcut;                      // "scut", "pscut"
+class CByUsageDir;                           // "dir", "pdir"
+class CByUsageAppInfo;                       // "app", "papp"
+class CByUsageHiddenData;                    // "hd", "phd"
 
 // fwd declares
 class ByUsageUI;
 class ByUsageDUI;
 
-typedef CDPA<ByUsageShortcut> ByUsageShortcutList;  // "sl", "psl"
-typedef CDPA<UNALIGNED ITEMIDLIST> CDPAPidl;// save typing
-typedef CDPA<ByUsageAppInfo>  ByUsageAppInfoList;
+typedef CDPA<CByUsageShortcut, CTContainer_PolicyUnOwned<CByUsageShortcut>> ByUsageShortcutList;  // "sl", "psl"
+typedef CDPA<UNALIGNED ITEMIDLIST, CTContainer_PolicyUnOwned<UNALIGNED ITEMIDLIST>> CDPAPidl;// save typing
+typedef CDPA<CByUsageAppInfo, CTContainer_PolicyUnOwned<CByUsageAppInfo>>  ByUsageAppInfoList;
 
 // Helper routines
 BOOL LocalFreeCallback(LPTSTR psz, LPVOID);
 BOOL ILFreeCallback(LPITEMIDLIST pidl, LPVOID);
-void AppendString(CDPA<TCHAR> dpa, LPCTSTR psz);
+void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* dpa, LPCTSTR psz);
 
-class ByUsageRoot {                         // "rt", "prt"
+class CByUsageRoot
+{                         // "rt", "prt"
 public:
     ByUsageShortcutList _sl;                // The list of shortcuts
     ByUsageShortcutList _slOld;             // The previous list (used when merging)
@@ -50,7 +51,7 @@ public:
     void SetNeedRefresh() { _fNeedRefresh = TRUE; }
     void ClearNeedRefresh() { _fNeedRefresh = FALSE; }
     BOOL NeedsRefresh() const { return _fNeedRefresh; }
-    
+
     void SetRegistered() { _fRegistered = TRUE; }
     void ClearRegistered() { _fRegistered = FALSE; }
     BOOL NeedsRegister() const { return !_fRegistered; }
@@ -58,7 +59,8 @@ public:
 
 
 
-class CMenuItemsCache {
+class CMenuItemsCache
+{
 public:
     CMenuItemsCache();
     LONG AddRef();
@@ -71,6 +73,8 @@ public:
 
     BOOL IsCacheUpToDate() { return _fIsCacheUpToDate; }
 
+    BOOL InitDesktopFolder();
+
     HRESULT GetFileCreationTimes();
     void DelayGetFileCreationTimes() { _fCheckNew = FALSE; }
     void DelayGetDarwinInfo() { _fCheckDarwin = FALSE; }
@@ -80,10 +84,12 @@ public:
     {
         EnterCriticalSection(&_csInUse);
     }
+
     void Unlock()
     {
         LeaveCriticalSection(&_csInUse);
     }
+
     BOOL IsLocked()
     {
         return _csInUse.OwningThread == UlongToHandle(GetCurrentThreadId());
@@ -93,15 +99,16 @@ public:
     // Keep Lock/Unlock light since we use it a lot.  Deferral is
     // comparatively rare.  Note that we process incoming SendMessage
     // while waiting for the popup lock.  This prevents deadlocks.
-    void LockPopup()
+    HRESULT LockPopup()
     {
         ASSERT(!IsLocked()); // enforce mutex hierarchy;
 
         using fnSHWaitForSendMessageThread = DWORD(WINAPI*)(HANDLE, DWORD);
         fnSHWaitForSendMessageThread SHWaitForSendMessageThread;
         SHWaitForSendMessageThread = reinterpret_cast<fnSHWaitForSendMessageThread>(GetProcAddress(GetModuleHandle(L"shlwapi.dll"), MAKEINTRESOURCEA(194)));
-        SHWaitForSendMessageThread(_hPopupReady, INFINITE);
+        return SHWaitForSendMessageThread(_hPopupReady, INFINITE) != -1 ? S_OK : E_FAIL;
     }
+
     void UnlockPopup()
     {
         ReleaseMutex(_hPopupReady);
@@ -111,21 +118,39 @@ public:
     void UnregisterNotifyAll();
 
     ByUsageAppInfoList *GetAppList() { return &_dpaAppInfo ; }
-    ByUsageAppInfo *GetAppInfo(LPTSTR pszAppPath, bool fIgnoreTimestamp);
-    ByUsageAppInfo *GetAppInfoFromHiddenData(ByUsageHiddenData *phd);
-    ByUsageAppInfo *GetAppInfoFromSpecialPidl(LPCITEMIDLIST pidl);
+    CByUsageAppInfo *GetAppInfo(LPTSTR pszAppPath, bool fIgnoreTimestamp);
+    CByUsageAppInfo *GetAppInfoFromHiddenData(CByUsageHiddenData *phd);
+    CByUsageAppInfo *GetAppInfoFromSpecialPidl(LPCITEMIDLIST pidl);
 
+    PIDLIST_ABSOLUTE GetPerUserVersionOfSharedItem(PCIDLIST_ABSOLUTE pidlChild)
+    {
+        ITEMIDLIST_ABSOLUTE *v3; // esi
+        ITEMIDLIST *pidl; // eax
+        const ITEMIDLIST *v5; // eax
+        v3 = 0;
+        if (this->_rgrt[1]._pidl)
+        {
+            pidl = this->_rgrt[3]._pidl;
+            if (pidl)
+            {
+                v5 = ILFindChild(pidl, pidlChild);
+                if (v5)
+                    return ILCombine(this->_rgrt[1]._pidl, v5);
+            }
+        }
+        return v3;
+    }
 
     void StartEnum();
     void EndEnum();
-    ByUsageShortcut *GetNextShortcut();
+    CByUsageShortcut *GetNextShortcut();
 
     static DWORD WINAPI ReInitCacheThreadProc(void *pv);
     static HRESULT ReCreateMenuItemsCache(ByUsageUI *pbuUI, FILETIME *ftOSInstall, CMenuItemsCache **ppMenuCache);
-    void RefreshDarwinShortcuts(ByUsageRoot *prt);
+    void RefreshDarwinShortcuts(CByUsageRoot *prt);
     void RefreshCachedDarwinShortcuts();
 
-    ByUsageShortcut *CreateShortcutFromHiddenData(ByUsageDir *pdir, LPCITEMIDLIST pidl, ByUsageHiddenData *phd, BOOL fForce = FALSE);
+    CByUsageShortcut *CreateShortcutFromHiddenData(CByUsageDir *pdir, LPCITEMIDLIST pidl, CByUsageHiddenData *phd, BOOL fForce = FALSE);
 
     //
     //  Called from helper objects.
@@ -142,7 +167,7 @@ public:
         return CompareFileTime(pftCreated, &_ftOldApps) >= 0;
     }
 
-    enum { MAXNOTIFY = 6 }; // Number of ChangeNotify slots we use in the cache
+    enum { MAXNOTIFY = 7 }; // Number of ChangeNotify slots we use in the cache
 
 protected:
     ~CMenuItemsCache();
@@ -172,42 +197,43 @@ protected:
     UINT                    _enumfl;
 
     struct ROOTFOLDERINFO {
-        int _csidl;
+		KNOWNFOLDERID _kfid;
+        DWORD _dwFlags;
         UINT _enumfl;
     };
 
-    enum { NUM_PROGLIST_ROOTS = 6 };
+    enum { NUM_PROGLIST_ROOTS = 7 };
 
     typedef struct ENUMFOLDERINFO
     {
         CMenuItemsCache *self;
-        ByUsageDir *pdir;
-        ByUsageRoot *prt;
+        CByUsageDir *pdir;
+        CByUsageRoot *prt;
     } ENUMFOLDERINFO;
 
     void _SaveCache();
 
     BOOL _ShouldProcessRoot(int iRoot);
 
-    void _FillFolderCache(ByUsageDir *pdir, ByUsageRoot *prt);
-    void _MergeIntoFolderCache(ByUsageRoot *prt, ByUsageDir *pdir, CDPAPidl dpaFiles);
-    ByUsageShortcut *_NextFromCacheInDir(ByUsageRoot *prt, ByUsageDir *pdir);
-    ByUsageShortcut *_CreateFromCachedPidl(ByUsageRoot *prt, ByUsageDir *pdir, LPITEMIDLIST pidl);
+    void _FillFolderCache(CByUsageDir *pdir, CByUsageRoot *prt);
+    void _MergeIntoFolderCache(CByUsageRoot *prt, CByUsageDir *pdir, CDPAPidl* pdpaFiles);
+    CByUsageShortcut *_NextFromCacheInDir(CByUsageRoot *prt, CByUsageDir *pdir);
+    CByUsageShortcut *_CreateFromCachedPidl(CByUsageRoot *prt, CByUsageDir *pdir, LPITEMIDLIST pidl);
 
-    void _AddShortcutToCache(ByUsageDir *pdir, LPITEMIDLIST pidl, ByUsageShortcutList slFiles);
-    void _TransferShortcutToCache(ByUsageRoot *prt, ByUsageShortcut *pscut);
+    void _AddShortcutToCache(CByUsageDir *pdir, LPITEMIDLIST pidl, ByUsageShortcutList* pslFiles);
+    void _TransferShortcutToCache(CByUsageRoot *prt, CByUsageShortcut *pscut);
 
     BOOL _GetExcludedDirectories();
-    BOOL _IsExcludedDirectory(IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwAttributes);
-    BOOL _IsInterestingDirectory(ByUsageDir *pdir);
+    BOOL _IsExcludedDirectory(LPCITEMIDLIST a2, IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwAttributes);
+    BOOL _IsInterestingDirectory(CByUsageDir *pdir);
 
-    static void _InitStringList(HKEY hk, LPCTSTR pszValue, CDPA<TCHAR> dpa);
+    static void _InitStringList(HKEY hk, LPCTSTR pszValue, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa);
     void _InitKillList();
-    bool _SetInterestingLink(ByUsageShortcut *pscut);
+    bool _SetInterestingLink(CByUsageShortcut *pscut);
     BOOL _PathIsInterestingExe(LPCTSTR pszPath);
     BOOL _IsExcludedExe(LPCTSTR pszPath);
 
-    HRESULT _UpdateMSIPath(ByUsageShortcut *pscut);
+    HRESULT _UpdateMSIPath(CByUsageShortcut *pscut);
 
     inline static BOOL IsRestrictedCsidl(int csidl)
     {
@@ -215,33 +241,42 @@ protected:
                 SHRestricted(REST_NOCOMMONGROUPS);
     }
 
+    inline static BOOL IsRestrictedKfid(REFKNOWNFOLDERID kfid)
+    {
+        return (IsEqualGUID(kfid, FOLDERID_CommonPrograms)
+            || IsEqualGUID(kfid, FOLDERID_PublicDesktop)
+            || IsEqualGUID(kfid, FOLDERID_CommonStartMenu))
+            && SHRestricted(REST_NOCOMMONGROUPS);
+    }
+
     static int FolderEnumCallback(LPITEMIDLIST pidlChild, ENUMFOLDERINFO *pinfo);
 
-    ByUsageDir *            _pdirDesktop; // ByUsageDir for the desktop
+public: // @TEMP?
+    CByUsageDir *           _pdirDesktop; // CByUsageDir for the desktop
 
+protected:
     int                     _iCurrentRoot;  // For Enumeration
     int                     _iCurrentIndex;
 
     // The directories we care about.
-    ByUsageRoot             _rgrt[NUM_PROGLIST_ROOTS];
+    CByUsageRoot             _rgrt[NUM_PROGLIST_ROOTS];
 
     ByUsageAppInfoList      _dpaAppInfo; // apps we've seen so far
 
     IQueryAssociations *    _pqa;
 
-    CDPA<TCHAR>             _dpaNotInteresting; // directories that yield shortcuts that we want to ignore
-    CDPA<TCHAR>             _dpaKill;    // program names to ignore
-    CDPA<TCHAR>             _dpaKillLink;// link names (substrings) to ignore
+    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaNotInteresting; // directories that yield shortcuts that we want to ignore
+    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaKill;    // program names to ignore
+    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaKillLink;// link names (substrings) to ignore
 
     BOOL                    _fIsCacheUpToDate;  // Do we need to walk the start menu dirs?
     BOOL                    _fIsInited;
     BOOL                    _fCheckNew;         // Do we want to extract creation time for apps?
     BOOL                    _fCheckDarwin;      // Do we want to fetch Darwin info?
-    BOOL                    _fCSInited;         // Did we successfully initialize the critsec?
 
     HANDLE                  _hPopupReady;       // mutex handle - controls access to cache (re)initialization
 
-    static const struct ROOTFOLDERINFO c_rgrfi[NUM_PROGLIST_ROOTS];
+    static const ROOTFOLDERINFO c_rgrfi[NUM_PROGLIST_ROOTS];
 };
 
 
@@ -250,17 +285,16 @@ protected:
 class ByUsage
 {
     friend class ByUsageUI;
-    friend class ByUsageDUI;
 
 public:        // Methods required by SFTBarHost
-    ByUsage(ByUsageUI *pByUsageUI, ByUsageDUI *pByUsageDUI);
+    ByUsage(ByUsageUI *pByUsageUI);
     virtual ~ByUsage();
 
     virtual HRESULT Initialize();
     virtual void EnumItems();
     virtual LPITEMIDLIST GetFullPidl(PaneItem *p);
 
-    static int CompareUEMInfo(UEMINFO *puei1, UEMINFO *puei2);
+    static int CompareUAInfo(const UEMINFO *puei1, const UEMINFO *puei2);
 
     virtual int CompareItems(PaneItem *p1, PaneItem *p2);
 
@@ -293,8 +327,8 @@ private:
     };
 
 
-    inline BOOL _IsPinned(ByUsageItem *pitem);
-    BOOL _IsPinnedExe(ByUsageItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlItem);
+    inline BOOL _IsPinned(CByUsageItem *pitem);
+    BOOL _IsPinnedExe(CByUsageItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlItem);
     HRESULT _GetShortcutExeTarget(IShellFolder *psf, LPCITEMIDLIST pidl, LPTSTR pszPath, UINT cchPath);
 
     void _FillPinnedItemsCache();
@@ -307,21 +341,23 @@ private:
     typedef struct AFTERENUMINFO {
         ByUsage *self;
         CDPAPidl dpaNew;
+		int field_8;    // Vista - NEW
     } AFTERENUMINFO;
-    static BOOL CALLBACK _AfterEnumCB(ByUsageAppInfo *papp, AFTERENUMINFO *paei);
+    static BOOL CALLBACK _AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei);
 
+    static void _AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl);
 
-    static int UEMNotifyCB(void* param, const GUID* pguidGrp, const WCHAR*, int eCmd);
+    static int UANotifyCB(void *param, const GUID *pguidGrp, const WCHAR *, UAEVENT eCmd);
 
     BOOL _GetExcludedDirectories();
-    bool _IsShortcutNew(ByUsageShortcut *pscut, ByUsageAppInfo *papp, const UEMINFO *puei);
+    bool _IsShortcutNew(CByUsageShortcut *pscut, CByUsageAppInfo *papp, const UEMINFO *puei);
     void _DestroyExcludedDirectories();
     LRESULT _ModifySMInfo(PSMNMMODIFYSMINFO pmsi);
 
     LRESULT _OnNotify(LPNMHDR pnm);
     LRESULT _OnSetNewItems(HDPA dpaNew);
 
-    BOOL IsSpecialPinnedItem(ByUsageItem *pitem);
+    BOOL IsSpecialPinnedItem(CByUsageItem *pitem);
     BOOL IsSpecialPinnedPidl(LPCITEMIDLIST pidl);
 public:
     //
@@ -340,21 +376,22 @@ private:
     FILETIME                _ftStartTime;    /* The time when StartMenu was first invoked */
     FILETIME                _ftNewestApp;   // The time of the newest app
 
-    ByUsageRoot             _rtPinned;
+    CByUsageRoot            _rtPinned;
 
     ULONG                   _ulPinChange; // detect if the pinlinst changed
 
-    ByUsageDir *            _pdirDesktop; // ByUsageDir for the desktop
+    CByUsageDir *           _pdirDesktop; // ByUsageDir for the desktop
 
     ByUsageUI  *            _pByUsageUI;
     HWND                    _hwnd;
-
-    ByUsageDUI  *           _pByUsageDUI;
 
     CMenuItemsCache *       _pMenuCache;
 
     BOOL                    _fUEMRegistered;
     int                     _cMFUDesired;
+	FILETIME 			    field_5C;       // Vista - NEW
+
+    static BOOL             s_fDoneCreateMenuItemCachTask;
 };
 
 class ByUsageUI : public SFTBarHost
@@ -372,6 +409,10 @@ private:        // Methods required by SFTBarHost
     {
         return _byUsage.GetFolderAndPidl(pitem, ppsfOut, ppidlOut);
     }
+    HRESULT GetFolderAndPidlForActivate(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut)
+    {
+        return GetFolderAndPidl(pitem, ppsfOut, ppidlOut);
+	}
     void OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
     {
         _byUsage.OnChangeNotify(id, lEvent, pidl1, pidl2);
@@ -398,24 +439,4 @@ private:
 private:
     ByUsage                 _byUsage;
 
-};
-
-class ByUsageDUI
-{
-public:
-    /*
-     * Add a PaneItem to the list - if add fails, item will be delete'd.
-     *
-     * CLEANUP psf must be NULL; pidl must be the absolute pidl to the item
-     * being added.  Leftover from dead HOSTF_PINITEMSBYFOLDER feature.
-     * Needs to be cleaned up.
-     *
-     * Passing psf and pidlChild are for perf.
-     */
-    virtual BOOL AddItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlChild) PURE;
-    /*
-     * Hooking into change notifications
-     */
-    virtual BOOL RegisterNotify(UINT id, LONG lEvents, LPITEMIDLIST pidl, BOOL fRecursive) PURE;
-    virtual BOOL UnregisterNotify(UINT id) PURE;
 };

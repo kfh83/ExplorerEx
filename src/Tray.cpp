@@ -752,7 +752,7 @@ void CTray::_CreateTrayTips()
         ti.hinst = g_hinstCabinet;
         SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
 
-        // EXEX - VISTA TODO(Olivia) : Remove this because vista uses a custom clock tooltip.
+        // EXEX - VISTA TODO(allison) : Remove this because vista uses a custom clock tooltip.
         HWND hwndClock = _GetClockWindow();
         if (hwndClock)
         {
@@ -802,7 +802,7 @@ LRESULT CTray::_CreateWindows()
 
             if (!SHRestricted(REST_NOCDBURNING))
             {
-                LPITEMIDLIST pidlStaging;
+                PIDLIST_ABSOLUTE pidlStaging;
                 if (SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_CDBURN_AREA | CSIDL_FLAG_CREATE, NULL, 0, &pidlStaging)))
                 {
                     SHChangeNotifyEntry fsne;
@@ -1249,6 +1249,7 @@ BOOL WINAPI CTray::FullScreenEnumProc(HMONITOR hmon, HDC hdc, LPRECT prc, LPARAM
 
 void CTray::HandleFullScreenApp(HWND hwnd)
 {
+#ifdef DEAD_CODE
     //
     // First check to see if something has actually changed
     //
@@ -1284,6 +1285,36 @@ void CTray::HandleFullScreenApp(HWND hwnd)
     // Finally, let traynot know about whether the tray is hiding
     //
     SendMessage(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
+#else
+    int fProcessingDesktopRaise; // eax
+    struct tagRECT rc; // [esp+Ch] [ebp-24h] BYREF
+    int v6; // [esp+28h] [ebp-8h]
+    int fStuckRudeApp; // [esp+2Ch] [ebp-4h]
+
+    if (g_fDesktopRaised || _fProcessingDesktopRaise)
+        hwnd = 0;
+    fStuckRudeApp = _fStuckRudeApp;
+
+	FSEPDATA d = { 0 };
+    v6 = 0;
+    fProcessingDesktopRaise = _fProcessingDesktopRaise;
+    _hwndRude = hwnd;
+    v6 = fProcessingDesktopRaise;
+    if (hwnd && GetWindowRect(hwnd, &rc))
+    {
+        d.prc = &rc;
+        d.hmon = MonitorFromWindow(hwnd, 0);
+    }
+    d.ptray = this;
+
+    EnumDisplayMonitors(0, 0, CTray::FullScreenEnumProc, (LPARAM)&d);
+    if (fStuckRudeApp != _fStuckRudeApp)
+    {
+        CTray::_ResetZorder(0);
+        SendMessageW(_hwndNotify, 0x403u, 0, _fStuckRudeApp);
+        SendMessageW(_hwndNotify, 0x407u, _fStuckRudeApp, 0);
+    }
+#endif
 }
 
 void CTray::StartButtonClicked()
@@ -1439,6 +1470,7 @@ void CTray::_ResetZorder(int a2)
 
 void CTray::_MessageLoop()
 {
+#ifdef DEAD_CODE
     for (;;)
     {
         MSG  msg;
@@ -1497,6 +1529,64 @@ void CTray::_MessageLoop()
             WaitMessage();
         }
     }
+#else
+    HRESULT v2; // eax
+    HWND hwndTasks; // eax
+    HACCEL hMainAccel; // eax
+    MSG msg; // [esp+Ch] [ebp-1Ch] BYREF
+
+    while (1)
+    {
+        while (!PeekMessage(&msg, 0, 0, 0, 1u))
+        {
+            //ResponseMonitor::IndicateIdle(&this->field_640);
+            WaitMessage();
+        }
+        if (msg.message == 0x12)
+            break;
+        //ResponseMonitor::UpdateLatency(&this->field_640, &msg);
+        //if (msg.message == 0x100)
+        //{
+        //    if (msg.wParam == 0xD)
+        //        SHTracePerf(&ShellTraceId_CTray_MessageLoop_Return_Info);
+        //}
+        //else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP)
+        //{
+        //    if (WPP_GLOBAL_Control != &WPP_GLOBAL_Control && (*((_BYTE*)WPP_GLOBAL_Control + 28) & 8) != 0)
+        //        WPP_SF_d(*((_QWORD*)WPP_GLOBAL_Control + 2), 0xAu, &MessageGuid, msg.message);
+        //    SHTracePerfLoop(&ShellTraceId_CTray_MessageLoop_LButtonAction_Info, msg.message);
+        //}
+
+        if (this->_pmbTasks)
+        {
+            v2 = this->_pmbTasks->IsMenuMessage(&msg);
+            if (v2 == 0x80004005)
+            {
+                hwndTasks = this->_hwndTasks;
+                if (hwndTasks)
+                    SendMessageW(hwndTasks, 0x438u, 0, 0);
+                goto LABEL_17;
+            }
+            if (v2)
+                goto LABEL_17;
+        }
+        else
+        {
+        LABEL_17:
+            if (_stb.IsMenuMessage(&msg))
+            {
+                hMainAccel = this->_hMainAccel;
+                if (!hMainAccel || !TranslateAcceleratorW(this->_hwnd, hMainAccel, &msg))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+        }
+    }
+    if (this->_hwnd && IsWindow(this->_hwnd))
+        SendMessageW(this->_hwnd, WM_ENDSESSION, 1u, 0);
+#endif
 }
 
 BOOL CTray::Init()
@@ -1748,20 +1838,27 @@ DWORD CTray::_SyncThreadProc()
         // _StuckTrayChange(); // seems removed in Vista
 
         ShowWindow(_stb._hwndStart, SW_SHOW);
+
         _stb.InitTheme();
         _stb.UpdateStartButton(true);
-        // _StarterWatermarkUpdate();
+
+        //_StarterWatermarkUpdate();
         _bBool679 = true;   // ExplorerEx-Vista
-        // get the system background scheduler thread
-        IShellTaskScheduler* pScheduler;
-        if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC,
-            IID_PPV_ARG(IShellTaskScheduler, &pScheduler))))
-        {
-            AddMenuItemsCacheTask(pScheduler, Tray_StartPanelEnabled());
-            pScheduler->Release();
-        }
+
+        //_SignalShellDesktopSwitchEvent();
 
         SetTimer(_hwnd, IDT_HANDLEDELAYBOOTSTUFF, 5 * 1000, NULL);
+
+        // get the system background scheduler thread
+        if (!Tray_StartPanelEnabled())
+        {
+            IShellTaskScheduler *pScheduler;
+            if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&pScheduler))))
+            {
+                AddMenuItemsCacheTask(pScheduler, FALSE);
+                pScheduler->Release();
+            }
+        }
     }
 
     if (g_dwProfileCAP & 0x00020000)
@@ -3890,6 +3987,7 @@ void CTray::_SetFocus(HWND hwnd)
 // EXEX-VISTA: SLIGHTLY MODIFIED. Confidently incomplete.
 void CTray::_ActAsSwitcher()
 {
+#ifdef DEAD_CODE
     if (_uModalMode)
     {
         if (_uModalMode != MM_SHUTDOWN)
@@ -3964,6 +4062,64 @@ void CTray::_ActAsSwitcher()
             PostMessage(_hwnd, TM_ACTASTASKSW, 0, 0);
         }
     }
+#else
+    static int s_iRecurse;
+
+    if (_uModalMode)
+    {
+        if (_uModalMode != MM_SHUTDOWN)
+        {
+            SwitchToThisWindow(GetLastActivePopup(_hwnd), TRUE);
+        }
+        MessageBeep(0);
+    }
+    else
+    {
+        ASSERT(s_iRecurse < TRIEDTOOMANYTIMES); // 5504
+        //TraceMsg(TF_TRAY, "s_iRecurse = %d", s_iRecurse);
+
+
+        HWND ForegroundWindow = GetForegroundWindow();
+        HWND ActiveWindow = GetActiveWindow();
+        HWND Ancestor = GetAncestor(_stb._hwndStart, GA_ROOTOWNER);
+        HWND hwnd = Ancestor;
+        BOOL v6 = ForegroundWindow == Ancestor && ActiveWindow == Ancestor;
+        if (v_hwndStartPane && ForegroundWindow == v_hwndStartPane && ActiveWindow == v_hwndStartPane)
+        {
+            v6 = 1;
+        }
+        if (v6)
+        {
+            SendMessageW(this->_stb._hwndStart, 0x128u, 0x10002u, 0);
+            if (_stb.IsButtonPushed())
+            {
+				_stb.CloseStartMenu();
+                ForceStartButtonUp();
+            }
+            else
+            {
+                SendMessageW(this->_stb._hwndStart, 0xF3u, 1u, 0);
+            }
+            s_iRecurse = 0;
+        }
+        else if (s_iRecurse <= 25)
+        {
+            HandleFullScreenApp(NULL);
+            if (ForegroundWindow != v_hwndDesktop
+                || (_SetFocus(_stb._hwndStart), GetFocus() == this->_stb._hwndStart))
+            {
+                SwitchToThisWindow(hwnd, 1);
+                SetForegroundWindow(hwnd);
+                Sleep(20);
+                PostMessage(_hwnd, 0x504u, 0, 0);
+            }
+        }
+        else
+        {
+            s_iRecurse = 0;
+        }
+    }
+#endif
 }
 
 // EXEX-VISTA: Slightly modified. Revalidate later.
@@ -4738,7 +4894,7 @@ void CTray::_DrawBackupStartButton(const HDC hdc)
     }
 }
 
-// @NOTE (Olivia): Cleanup/simplifiy
+// @NOTE (allison): Cleanup/simplifiy
 BOOL CTray::_ShouldSubclassForSizingBar()
 {
     if (!_hTheme)
@@ -4767,7 +4923,6 @@ void CTray::_AccountAllBandsForTaskbarSizingBar()
     }
 }
 
-// @NOTE (Olivia): Cleanup
 void CTray::_OnThemeChanged()
 {
     if (_hTheme)
@@ -4792,7 +4947,7 @@ void CTray::_OnThemeChanged()
     SetWindowStyle(_hwnd, WS_THICKFRAME | WS_BORDER, !_hTheme);
     SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
     InvalidateRect(_hwnd, nullptr, TRUE);
-    PostMessageW(_hwnd, 0x40D, 0, 0);
+    PostMessage(_hwnd, SBM_REBUILDMENU, 0, 0);
     _AccountAllBandsForTaskbarSizingBar();
 }
 
@@ -5948,13 +6103,17 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         // EXEX-VISTA: LAZILY MODIFIED. Redo later.
         case WMTRAY_QUERY_MENU:
-            return (LRESULT)_stb._hwndStart;
+            //return (LRESULT)_stb._hwndStart;
+            return 0;
 
         case WMTRAY_QUERY_VIEW:
             return (LRESULT)_hwndTasks;
 
         case WMTRAY_TOGGLEQL:
             return _ToggleQL((int)lParam);
+
+        case WM_USER + 240:
+            return (LRESULT)_stb._hwndStart;
 
         case WM_COPYDATA:
             // Check for NULL it can happen if user runs out of selectors or memory...
@@ -6165,7 +6324,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if ((_uAutoHide & AH_ON) == 0)
             {
                 // EXEX-VISTA TODO: Uncomment when implemented _DrawBackupStartButton.
-                _DrawBackupStartButton(hdc);
+                //_DrawBackupStartButton(hdc);
             }
 
             if (wParam == 0)
@@ -6697,7 +6856,6 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
             {
                 // DOESNT WORK (do we need?, cstartbutton handles it fine when the button is big enough)
-                /*
                 if (((HWND)wParam) == _stb._hwndStart)
                 {
                     // Don't display of the Start Menu is up.
@@ -6707,7 +6865,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     _stb.OnContextMenu(_stb._hwndStart, (DWORD)lParam);
                     _fFromStart = FALSE;
                 }
-                */
+
                 if (IsPosInHwnd(lParam, _hwndNotify) || SHIsChildOrSelf(_hwndNotify, GetFocus()) == S_OK)
                 {
                     // if click was inthe clock, include
@@ -8097,44 +8255,31 @@ DWORD CALLBACK _EjectThreadProc(LPVOID lpThreadParameter)
 // EXEX-VISTA: Validated.
 BOOL _AllowLockWorkStation()
 {
-    BOOL fResult = FALSE;
-    HKEY phkResult;
-    DWORD dwValue;
+    DWORD dwData;
+    BOOL fSuccess = FALSE;
 
-    if (RegOpenKeyExW(
-        HKEY_LOCAL_MACHINE,
-        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system"),
-        0,
-        KEY_QUERY_VALUE,
-        &phkResult) == ERROR_SUCCESS)
+    HKEY hkey;
+    if (!RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system"), 0, KEY_QUERY_VALUE, &hkey))
     {
         DWORD cbData = sizeof(DWORD);
-        if (!RegQueryValueExW(phkResult, TEXT("DisableLockWorkstation"), NULL, NULL, (LPBYTE)&dwValue, &cbData))
+        if (!RegQueryValueEx(hkey, TEXT("DisableLockWorkstation"), 0, 0, (LPBYTE)&dwData, &cbData))
         {
-            fResult = dwValue != FALSE;
+            fSuccess = dwData != 0;
         }
-        RegCloseKey(phkResult);
+        RegCloseKey(hkey);
     }
 
-    if (RegOpenKeyExW(
-        HKEY_CURRENT_USER,
-        REGSTR_POLICIES_EXPLORER,
-        0,
-        KEY_QUERY_VALUE,
-        &phkResult) == ERROR_SUCCESS)
+    if (!RegOpenKeyEx(HKEY_CURRENT_USER, REGSTR_POLICIES_EXPLORER, 0, KEY_QUERY_VALUE, &hkey))
     {
         DWORD cbData = sizeof(DWORD);
-        if (!RegQueryValueExW(phkResult, TEXT("DisableLockWorkstation"), 0, 0, (LPBYTE)&dwValue, &cbData))
+        if (!RegQueryValueEx(hkey, TEXT("DisableLockWorkstation"), 0, 0, (LPBYTE)&dwData, &cbData))
         {
-            if (fResult)
-            {
-                fResult = dwValue ? TRUE : FALSE;
-            }
+            fSuccess = fSuccess || dwData;
         }
-        RegCloseKey(phkResult);
+        RegCloseKey(hkey);
     }
 
-    return fResult ? TRUE : FALSE;
+    return fSuccess ? FALSE : TRUE;
 }
 
 // EXEX-VISTA: Validated.
@@ -8201,351 +8346,597 @@ void CTray::_InvokeSearch()
 // EXEX-VISTA: Validated.
 void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
 {
+#ifdef DEAD_CODE
     INSTRUMENT_ONCOMMAND(SHCNFI_TRAYCOMMAND, _hwnd, idCmd);
 
     switch (idCmd) {
 
         // EXEX-VISTA: Validated.
-        case IDM_CONTROLS:
-        case IDM_PRINTERS:
-            _ShowFolder(_hwnd,
-                idCmd == IDM_CONTROLS ? CSIDL_CONTROLS : CSIDL_PRINTERS, FALSE);
-            break;
+    case IDM_CONTROLS:
+    case IDM_PRINTERS:
+        _ShowFolder(_hwnd,
+            idCmd == IDM_CONTROLS ? CSIDL_CONTROLS : CSIDL_PRINTERS, FALSE);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_WINDOWSWITCHER:
-            _ActivateWindowSwitcher();
-            break;
+    case IDM_WINDOWSWITCHER:
+        _ActivateWindowSwitcher();
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_EJECTPC:
-            // Must use SHCreateThread and not a queued workitem because
-            // a workitem might inherit a thread that has windows on it.
-            // CTF_INSIST: In emergency, eject synchronously.  This stalls
-            // for 15 seconds but it's better than nothing.
-            SHCreateThread(_EjectThreadProc, NULL, CTF_INSIST, NULL);
-            break;
+    case IDM_EJECTPC:
+        // Must use SHCreateThread and not a queued workitem because
+        // a workitem might inherit a thread that has windows on it.
+        // CTF_INSIST: In emergency, eject synchronously.  This stalls
+        // for 15 seconds but it's better than nothing.
+        SHCreateThread(_EjectThreadProc, NULL, CTF_INSIST, NULL);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_LOGOFF:
-            // Let the desktop get a chance to repaint to get rid of the
-            // start menu bits before bringing up the logoff dialog box.
-            UpdateWindow(_hwnd);
-            Sleep(100);
+    case IDM_LOGOFF:
+        // Let the desktop get a chance to repaint to get rid of the
+        // start menu bits before bringing up the logoff dialog box.
+        UpdateWindow(_hwnd);
+        Sleep(100);
 
-            _SaveTrayAndDesktop();
-            LogoffWindowsDialog(v_hwndDesktop);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_MU_DISCONNECT:
-            // Do the same sleep as above for the same reason.
-            UpdateWindow(_hwnd);
-            Sleep(100);
-            DisconnectWindowsDialog(v_hwndDesktop);
-            break;
+        _SaveTrayAndDesktop();
+        LogoffWindowsDialog(v_hwndDesktop);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_EXITWIN:
-            // Do the same sleep as above for the same reason.
-            UpdateWindow(_hwnd);
-            Sleep(100);
-
-            _DoExitWindows(v_hwndDesktop, FALSE, fFromNotifArea);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_TOGGLEDESKTOP:
-            _RaiseDesktop(!g_fDesktopRaised, TRUE);
-            break;
+    case IDM_MU_DISCONNECT:
+        // Do the same sleep as above for the same reason.
+        UpdateWindow(_hwnd);
+        Sleep(100);
+        DisconnectWindowsDialog(v_hwndDesktop);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_FILERUN:
-            _RunDlg(FALSE);
-            break;
+    case IDM_EXITWIN:
+        // Do the same sleep as above for the same reason.
+        UpdateWindow(_hwnd);
+        Sleep(100);
+
+        _DoExitWindows(v_hwndDesktop, FALSE, fFromNotifArea);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_MINIMIZEALLHOTKEY:
-            _HandleGlobalHotkey(GHID_MINIMIZEALL);
-            break;
+    case IDM_TOGGLEDESKTOP:
+        _RaiseDesktop(!g_fDesktopRaised, TRUE);
+        break;
+
+        // EXEX-VISTA: Validated.
+    case IDM_FILERUN:
+        _RunDlg(FALSE);
+        break;
+
+        // EXEX-VISTA: Validated.
+    case IDM_MINIMIZEALLHOTKEY:
+        _HandleGlobalHotkey(GHID_MINIMIZEALL);
+        break;
 
 #ifdef DEBUG
-        case IDM_SIZEUP:
-        {
-            RECT rcView;
-            GetWindowRect(_hwndRebar, &rcView);
-            MapWindowPoints(HWND_DESKTOP, _hwnd, (LPPOINT)&rcView, 2);
-            rcView.bottom -= 18;
-            SetWindowPos(_hwndRebar, NULL, 0, 0, RECTWIDTH(rcView), RECTHEIGHT(rcView), SWP_NOMOVE | SWP_NOZORDER);
-        }
-        break;
+    case IDM_SIZEUP:
+    {
+        RECT rcView;
+        GetWindowRect(_hwndRebar, &rcView);
+        MapWindowPoints(HWND_DESKTOP, _hwnd, (LPPOINT)&rcView, 2);
+        rcView.bottom -= 18;
+        SetWindowPos(_hwndRebar, NULL, 0, 0, RECTWIDTH(rcView), RECTHEIGHT(rcView), SWP_NOMOVE | SWP_NOZORDER);
+    }
+    break;
 
-        case IDM_SIZEDOWN:
-        {
-            RECT rcView;
-            GetWindowRect(_hwndRebar, &rcView);
-            MapWindowPoints(HWND_DESKTOP, _hwnd, (LPPOINT)&rcView, 2);
-            rcView.bottom += 18;
-            SetWindowPos(_hwndRebar, NULL, 0, 0, RECTWIDTH(rcView), RECTHEIGHT(rcView), SWP_NOMOVE | SWP_NOZORDER);
-        }
-        break;
+    case IDM_SIZEDOWN:
+    {
+        RECT rcView;
+        GetWindowRect(_hwndRebar, &rcView);
+        MapWindowPoints(HWND_DESKTOP, _hwnd, (LPPOINT)&rcView, 2);
+        rcView.bottom += 18;
+        SetWindowPos(_hwndRebar, NULL, 0, 0, RECTWIDTH(rcView), RECTHEIGHT(rcView), SWP_NOMOVE | SWP_NOZORDER);
+    }
+    break;
 #endif
 
-        // EXEX-VISTA: Validated.
-        case IDM_MINIMIZEALL:
-            // minimize all window
-            _MinimizeAll(FALSE);
-            _fUndoEnabled = TRUE;
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_UNDO:
-            _RestoreWindowPositions(FALSE);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_SETTIME:
-            // run the default applet in timedate.cpl
-            ShellExecuteW(_hwnd, NULL, TEXT("timedate.cpl"), NULL, NULL, SW_SHOWNORMAL);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_NOTIFYCUST:
-            DoProperties(TPF_INVOKECUSTOMIZE);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case IDM_LOCKTASKBAR:
-        {
-            // @MOD Skipped telemetry ShellTraceId_Taskbar_LockState_ChangeNotify_Start
-
-            _SetLockState(SLS_TOGGLE);
-
-            // @MOD Skipped telemetry ShellTraceId_Taskbar_LockState_ChangeNotify_Stop
-        }
+    // EXEX-VISTA: Validated.
+    case IDM_MINIMIZEALL:
+        // minimize all window
+        _MinimizeAll(FALSE);
+        _fUndoEnabled = TRUE;
         break;
 
         // EXEX-VISTA: Validated.
-        case IDM_SHOWTASKMAN:
-            RunSystemMonitor();
-            break;
-
-        // EXEX-VISTA: Validated. (all 3 cases)
-        case IDM_CASCADE:
-        case IDM_VERTTILE:
-        case IDM_HORIZTILE:
-            if (_CanTileAnyWindows())
-            {
-                UINT idRes;
-                switch (idCmd)
-                {
-                    case IDM_CASCADE:
-                        idRes = IDS_CASCADE; 
-                        break;
-                    case IDM_HORIZTILE:
-                        idRes = IDS_SHOW_STACKED;
-                        break;
-                    case IDM_VERTTILE:
-                        idRes = IDS_SHOW_SIDE_BY_SIDE;
-                        break;
-                }
-
-                SaveWindowPositions(idRes);
-
-                _AppBarNotifyAll(NULL, ABN_WINDOWARRANGE, NULL, TRUE);
-
-                if (idCmd == IDM_CASCADE)
-                {
-                    CascadeWindows(GetDesktopWindow(), 0, NULL, 0, NULL);
-                }
-                else
-                {
-                    TileWindows(GetDesktopWindow(), ((idCmd == IDM_VERTTILE) ?
-                        MDITILE_VERTICAL : MDITILE_HORIZONTAL), NULL, 0, NULL);
-                }
-
-                // do it *before* ABN_xxx so don't get 'indirect' moves
-                // REVIEW or should it be after?
-                // CheckWindowPositions();
-                _fUndoEnabled = FALSE;
-                SetTimer(_hwnd, IDT_ENABLEUNDO, 500, NULL);
-
-                _AppBarNotifyAll(NULL, ABN_WINDOWARRANGE, NULL, FALSE);
-            }
-            break;
+    case IDM_UNDO:
+        _RestoreWindowPositions(FALSE);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_TRAYPROPERTIES:
-            if (fFromNotifArea)
+    case IDM_SETTIME:
+        // run the default applet in timedate.cpl
+        ShellExecuteW(_hwnd, NULL, TEXT("timedate.cpl"), NULL, NULL, SW_SHOWNORMAL);
+        break;
+
+        // EXEX-VISTA: Validated.
+    case IDM_NOTIFYCUST:
+        DoProperties(TPF_INVOKECUSTOMIZE);
+        break;
+
+        // EXEX-VISTA: Validated.
+    case IDM_LOCKTASKBAR:
+    {
+        // @MOD Skipped telemetry ShellTraceId_Taskbar_LockState_ChangeNotify_Start
+
+        _SetLockState(SLS_TOGGLE);
+
+        // @MOD Skipped telemetry ShellTraceId_Taskbar_LockState_ChangeNotify_Stop
+    }
+    break;
+
+    // EXEX-VISTA: Validated.
+    case IDM_SHOWTASKMAN:
+        RunSystemMonitor();
+        break;
+
+        // EXEX-VISTA: Validated. (all 3 cases)
+    case IDM_CASCADE:
+    case IDM_VERTTILE:
+    case IDM_HORIZTILE:
+        if (_CanTileAnyWindows())
+        {
+            UINT idRes;
+            switch (idCmd)
             {
-                DoProperties(TPF_NOTIFAREAPAGE);
+            case IDM_CASCADE:
+                idRes = IDS_CASCADE;
+                break;
+            case IDM_HORIZTILE:
+                idRes = IDS_SHOW_STACKED;
+                break;
+            case IDM_VERTTILE:
+                idRes = IDS_SHOW_SIDE_BY_SIDE;
+                break;
+            }
+
+            SaveWindowPositions(idRes);
+
+            _AppBarNotifyAll(NULL, ABN_WINDOWARRANGE, NULL, TRUE);
+
+            if (idCmd == IDM_CASCADE)
+            {
+                CascadeWindows(GetDesktopWindow(), 0, NULL, 0, NULL);
             }
             else
             {
-                DoProperties(TPF_TASKBARPAGE);
+                TileWindows(GetDesktopWindow(), ((idCmd == IDM_VERTTILE) ?
+                    MDITILE_VERTICAL : MDITILE_HORIZONTAL), NULL, 0, NULL);
             }
-            break;
+
+            // do it *before* ABN_xxx so don't get 'indirect' moves
+            // REVIEW or should it be after?
+            // CheckWindowPositions();
+            _fUndoEnabled = FALSE;
+            SetTimer(_hwnd, IDT_ENABLEUNDO, 500, NULL);
+
+            _AppBarNotifyAll(NULL, ABN_WINDOWARRANGE, NULL, FALSE);
+        }
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_HELPSEARCH:
+    case IDM_TRAYPROPERTIES:
+        if (fFromNotifArea)
         {
-            CoInitialize(NULL);
+            DoProperties(TPF_NOTIFAREAPAGE);
+        }
+        else
+        {
+            DoProperties(TPF_TASKBARPAGE);
+        }
+        break;
 
-            IHxHelpPane *pHelpPane = NULL;
-            if (SUCCEEDED(CoCreateInstance(CLSID_HxHelpPane, NULL, CLSCTX_SERVER, IID_PPV_ARGS(&pHelpPane))))
+        // EXEX-VISTA: Validated.
+    case IDM_HELPSEARCH:
+    {
+        CoInitialize(NULL);
+
+        IHxHelpPane* pHelpPane = NULL;
+        if (SUCCEEDED(CoCreateInstance(CLSID_HxHelpPane, NULL, CLSCTX_SERVER, IID_PPV_ARGS(&pHelpPane))))
+        {
+            CComBSTR bstrUri(TEXT("mshelp://help/?id=home"));
+
+            if (bstrUri)
             {
-                CComBSTR bstrUri(TEXT("mshelp://help/?id=home"));
-
-                if (bstrUri)
-                {
-                    pHelpPane->DisplayTask(bstrUri.m_str);
-                }
+                pHelpPane->DisplayTask(bstrUri.m_str);
             }
-
-            CoUninitialize();
-
-            if (pHelpPane)
-            {
-                pHelpPane->Release();
-            }
-
-            break;
         }
 
-        // NB The Alt-s comes in here.
-        // EXEX-VISTA: Validated.
-        case IDC_KBSTART:
-            SetForegroundWindow(_hwnd);
-            // This pushes the start button and causes the start menu to popup.
-            SendMessage(_stb._hwndStart, BM_SETSTATE, TRUE, 0);
-            // This forces the button back up.
-            SendMessage(_stb._hwndStart, BM_SETSTATE, FALSE, 0);
-            break;
+        CoUninitialize();
+
+        if (pHelpPane)
+        {
+            pHelpPane->Release();
+        }
+
+        break;
+    }
+
+    // NB The Alt-s comes in here.
+    // EXEX-VISTA: Validated.
+    case IDC_KBSTART:
+        SetForegroundWindow(_hwnd);
+        // This pushes the start button and causes the start menu to popup.
+        SendMessage(_stb._hwndStart, BM_SETSTATE, TRUE, 0);
+        // This forces the button back up.
+        SendMessage(_stb._hwndStart, BM_SETSTATE, FALSE, 0);
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDC_ASYNCSTART:
-            #if 0 // (for testing UAssist locking code)
-            UEMFireEvent(&UEMIID_SHELL, UEME_DBSLEEP, UEMF_XEVENT, -1, (LPARAM)10000);
-            #endif
-            #ifdef DEBUG
-            if (GetAsyncKeyState(VK_SHIFT) < 0)
-            {
-                UEMFireEvent(&UEMIID_SHELL, UEME_CTLSESSION, UEMF_XEVENT, TRUE, -1);
-                _RefreshStartMenu();
-            }
-            #endif
+    case IDC_ASYNCSTART:
+#if 0 // (for testing UAssist locking code)
+        UEMFireEvent(&UEMIID_SHELL, UEME_DBSLEEP, UEMF_XEVENT, -1, (LPARAM)10000);
+#endif
+#ifdef DEBUG
+        if (GetAsyncKeyState(VK_SHIFT) < 0)
+        {
+            UEMFireEvent(&UEMIID_SHELL, UEME_CTLSESSION, UEMF_XEVENT, TRUE, -1);
+            _RefreshStartMenu();
+        }
+#endif
 
-            // Make sure the button is down.
-            // DebugMsg(DM_TRACE, "c.twp: IDC_START.");
+        // Make sure the button is down.
+        // DebugMsg(DM_TRACE, "c.twp: IDC_START.");
 
-            // Make sure the Start button is down.
-            if (!_bMainMenuInit && _stb.IsButtonPushed())
-            {
-                // DebugMsg(DM_TRACE, "c.twp: Start button down.");
-                // Set the focus.
-                _SetFocus(_stb._hwndStart);
-                _ToolbarMenu();
-            }
-            break;
+        // Make sure the Start button is down.
+        if (!_bMainMenuInit && _stb.IsButtonPushed())
+        {
+            // DebugMsg(DM_TRACE, "c.twp: Start button down.");
+            // Set the focus.
+            _SetFocus(_stb._hwndStart);
+            _ToolbarMenu();
+        }
+        break;
 
         // NB LButtonDown on the Start button come in here.
         // Space-bar stuff also comes in here.
         // EXEX-VISTA: Validated.
-        case IDC_START:
-            // User gets a bit confused with space-bar tuff (the popup ends up
-            // getting the key-up and beeps).
-            PostMessage(_hwnd, WM_COMMAND, IDC_ASYNCSTART, 0);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case FCIDM_FINDFILES:
-            _InvokeSearch();
-            break;
-
-        // EXEX-VISTA: Validated.
-        case FCIDM_FINDCOMPUTER:
-            SHFindComputer(NULL, NULL);
-            break;
-
-        // EXEX-VISTA: Validated.
-        case FCIDM_REFRESH:
-            _RefreshStartMenu();
-            break;
-
-        // EXEX-VISTA: Validated.
-        case FCIDM_NEXTCTL:
-        {
-            MSG msg = { 0, WM_KEYDOWN, VK_TAB };
-            HWND hwndFocus = GetFocus();
-
-            // Since we are Tab or Shift Tab we should turn the focus rect on.
-            //
-            // Note: we don't need to do this in the GiveDesktopFocus cases below,
-            // but in those cases we're probably already in the UIS_CLEAR UISF_HIDEFOCUS
-            // state so this message is cheap to send.
-            //
-            SendMessage(_hwnd, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
-                UISF_HIDEFOCUS), 0);
-
-            BOOL fShift = GetAsyncKeyState(VK_SHIFT) < 0;
-
-            if (hwndFocus && (IsChildOrHWND(_stb._hwndStart, hwndFocus)))
-            {
-                if (fShift)
-                {
-                    // gotta deactivate manually
-                    GiveDesktopFocus();
-                }
-                else
-                {
-                    IUnknown_UIActivateIO(_ptbs, TRUE, &msg);
-                }
-            }
-            else if (hwndFocus && (IsChildOrHWND(_hwndNotify, hwndFocus)))
-            {
-                if (fShift)
-                {
-                    IUnknown_UIActivateIO(_ptbs, TRUE, &msg);
-                }
-                else
-                {
-                    GiveDesktopFocus();
-                }
-            }
-            else
-            {
-                if (IUnknown_TranslateAcceleratorIO(_ptbs, &msg) != S_OK)
-                {
-                    if (fShift)
-                    {
-                        _SetFocus(_stb._hwndStart);
-                    }
-                    else
-                    {
-                        // if you tab forward out of the bands, the next focus guy is the tray notify set
-                        _SetFocus(_hwndNotify);
-                    }
-                }
-            }
-        }
+    case IDC_START:
+        // User gets a bit confused with space-bar tuff (the popup ends up
+        // getting the key-up and beeps).
+        PostMessage(_hwnd, WM_COMMAND, IDC_ASYNCSTART, 0);
         break;
 
         // EXEX-VISTA: Validated.
-        case IDM_MU_SECURITY:
-            MuSecurity();
-            break;
+    case FCIDM_FINDFILES:
+        _InvokeSearch();
+        break;
 
         // EXEX-VISTA: Validated.
-        case IDM_LOCKWORKSTATION:
-        {
-            if (_AllowLockWorkStation())
-            {
-                LockWorkStation();
-            }
+    case FCIDM_FINDCOMPUTER:
+        SHFindComputer(NULL, NULL);
+        break;
 
-            break;
+        // EXEX-VISTA: Validated.
+    case FCIDM_REFRESH:
+        _RefreshStartMenu();
+        break;
+
+        // EXEX-VISTA: Validated.
+    case FCIDM_NEXTCTL:
+    {
+        MSG msg = { 0, WM_KEYDOWN, VK_TAB };
+        HWND hwndFocus = GetFocus();
+
+        // Since we are Tab or Shift Tab we should turn the focus rect on.
+        //
+        // Note: we don't need to do this in the GiveDesktopFocus cases below,
+        // but in those cases we're probably already in the UIS_CLEAR UISF_HIDEFOCUS
+        // state so this message is cheap to send.
+        //
+        SendMessage(_hwnd, WM_UPDATEUISTATE, MAKEWPARAM(UIS_CLEAR,
+            UISF_HIDEFOCUS), 0);
+
+        BOOL fShift = GetAsyncKeyState(VK_SHIFT) < 0;
+
+        if (hwndFocus && (IsChildOrHWND(_stb._hwndStart, hwndFocus)))
+        {
+            if (fShift)
+            {
+                // gotta deactivate manually
+                GiveDesktopFocus();
+            }
+            else
+            {
+                IUnknown_UIActivateIO(_ptbs, TRUE, &msg);
+            }
+        }
+        else if (hwndFocus && (IsChildOrHWND(_hwndNotify, hwndFocus)))
+        {
+            if (fShift)
+            {
+                IUnknown_UIActivateIO(_ptbs, TRUE, &msg);
+            }
+            else
+            {
+                GiveDesktopFocus();
+            }
+        }
+        else
+        {
+            if (IUnknown_TranslateAcceleratorIO(_ptbs, &msg) != S_OK)
+            {
+                if (fShift)
+                {
+                    _SetFocus(_stb._hwndStart);
+                }
+                else
+                {
+                    // if you tab forward out of the bands, the next focus guy is the tray notify set
+                    _SetFocus(_hwndNotify);
+                }
+            }
         }
     }
+    break;
+
+    // EXEX-VISTA: Validated.
+    case IDM_MU_SECURITY:
+        MuSecurity();
+        break;
+
+        // EXEX-VISTA: Validated.
+    case IDM_LOCKWORKSTATION:
+    {
+        if (_AllowLockWorkStation())
+        {
+            LockWorkStation();
+        }
+
+        break;
+    }
+    }
+#else
+    unsigned int v5; // eax
+    HWND DesktopWindow; // eax
+    LONG v7; // eax
+    HWND Focus; // edi
+    HWND hwnd; // [esp-10h] [ebp-38h]
+    struct tagRECT rcView; // [esp+18h] [ebp-10h] BYREF
+
+    if (idCmd <= 0x1A5)
+    {
+        if (idCmd == 0x1A5)
+        {
+            CTray::DoProperties(4u);
+        }
+        else if (idCmd > 0x198)
+        {
+            switch (idCmd)
+            {
+            case 0x19Au:
+                SHCreateThread(_EjectThreadProc, 0, 1u, 0);
+                break;
+            case 0x19Bu:
+                CTray::_ActivateWindowSwitcher();
+                break;
+            case 0x19Du:
+                if (fFromNotifArea)
+                    CTray::DoProperties(8u);
+                else
+                    CTray::DoProperties(1u);
+                break;
+            case 0x19Fu:
+                CTray::_MinimizeAll(0);
+                this->_fUndoEnabled = 1;
+                break;
+            case 0x1A0u:
+                CTray::_RestoreWindowPositions(0);
+                break;
+            case 0x1A3u:
+                CTray::_HandleGlobalHotkey(0x1F5u);
+                break;
+            case 0x1A4u:
+                RunSystemMonitor();
+                break;
+            }
+        }
+        else if (idCmd == 408)
+        {
+            ShellExecuteW(this->_hwnd, 0, L"timedate.cpl", 0, 0, 1);
+        }
+        else if (idCmd > 0x191)
+        {
+            if (idCmd == 402)
+            {
+                UpdateWindow(this->_hwnd);
+                Sleep(0x64u);
+                //g_fEndSessionInitiated = 1;
+                CTray::_SaveTrayAndDesktop();
+                LogoffWindowsDialog(v_hwndDesktop);
+            }
+            else if (idCmd <= 0x195)
+            {
+                if (CTray::_CanTileAnyWindows())
+                {
+                    if (idCmd == 403)
+                        v5 = 535;
+                    else
+                        v5 = 2 * (idCmd != 404) + 536;
+                    CTray::SaveWindowPositions(v5);
+                    CTray::_AppBarNotifyAll(0, 3u, 0, 1);
+                    DesktopWindow = GetDesktopWindow();
+                    if (idCmd == 403)
+                        CascadeWindows(DesktopWindow, 0, 0, 0, 0);
+                    else
+                        TileWindows(DesktopWindow, idCmd != 404, 0, 0, 0);
+                    hwnd = this->_hwnd;
+                    this->_fUndoEnabled = 0;
+                    SetTimer(hwnd, 0x12u, 0x1F4u, 0);
+                    CTray::_AppBarNotifyAll(0, 3u, 0, 0);
+                }
+            }
+            else if (idCmd == 407)
+            {
+                CTray::_RaiseDesktop(g_fDesktopRaised == 0, 1);
+            }
+        }
+        else
+        {
+            switch (idCmd)
+            {
+            case 0x191u:
+                CTray::_RunDlg(0);
+                break;
+            case 0x130u:
+                PostMessageW(this->_hwnd, 0x111u, 0x132u, 0);
+                break;
+            case 0x131u:
+                SetForegroundWindow(this->_hwnd);
+                SendMessageW(this->_stb._hwndStart, 0xF3u, 1u, 0);
+                SendMessageW(this->_stb._hwndStart, 0xF3u, 0, 0);
+                break;
+            case 0x132u:
+                if (GetAsyncKeyState(16) < 0)
+                {
+                    UEMFireEvent(&CLSID_ActiveDesktop, 40, 0, 1, -1);
+                    CTray::_RefreshStartMenu();
+                }
+                if (!this->_bMainMenuInit)
+                {
+                    if (_stb.IsButtonPushed())
+                    {
+                        CTray::_SetFocus(this->_stb._hwndStart);
+                        CTray::_ToolbarMenu();
+                    }
+                }
+                break;
+            }
+        }
+        return;
+    }
+    if (idCmd > 0x205)
+    {
+        if (idCmd == 5000)
+        {
+            UpdateWindow(this->_hwnd);
+            Sleep(0x64u);
+            DisconnectWindowsDialog(v_hwndDesktop);
+            return;
+        }
+        if (idCmd == 5001)
+        {
+            if (SHGetMachineInfo(3))
+                WinStationSetInformationW(0, -1, WinStationNtSecurity, 0, 0);
+            return;
+        }
+        if (idCmd != 41008)
+        {
+            switch (idCmd)
+            {
+            case 0xA065u:
+                CTray::_RefreshStartMenu();
+                break;
+            case 0xA085u:
+                CTray::_InvokeSearch();
+                break;
+            case 0xA086u:
+                SHFindComputer(0, 0);
+                break;
+            }
+            return;
+        }
+
+        MSG msg = { 0, WM_KEYDOWN, VK_TAB };
+        memset(&rcView, 0, sizeof(rcView));
+        Focus = GetFocus();
+        SendMessageW(this->_hwnd, 0x128u, 0x10002u, 0);
+        fFromNotifArea = GetAsyncKeyState(16) < 0;
+        if (Focus)
+        {
+            if (IsChildOrHWND(this->_stb._hwndStart, Focus))
+            {
+                if (!fFromNotifArea)
+                {
+                LABEL_84:
+                    IUnknown_UIActivateIO(this->_ptbs, 1, &msg);
+                    return;
+                }
+            LABEL_87:
+                GiveDesktopFocus();
+                return;
+            }
+            if (IsChildOrHWND(this->_hwndNotify, Focus))
+            {
+                if (fFromNotifArea)
+                    goto LABEL_84;
+                goto LABEL_87;
+            }
+        }
+        if (IUnknown_TranslateAcceleratorIO(this->_ptbs, &msg))
+        {
+            if (fFromNotifArea)
+                CTray::_SetFocus(this->_stb._hwndStart);
+            else
+                CTray::_SetFocus(this->_hwndNotify);
+        }
+        return;
+    }
+    switch (idCmd)
+    {
+    case 0x205u:
+        if (_AllowLockWorkStation())
+            LockWorkStation();
+        return;
+    case 0x1A8u:
+        //SHTracePerf(&ShellTraceId_Taskbar_LockState_ChangeNotify_Start);
+        CTray::_SetLockState(2u);
+        //SHTracePerf(&ShellTraceId_Taskbar_LockState_ChangeNotify_Stop);
+        return;
+    case 0x1ABu:
+        GetWindowRect(this->_hwndRebar, &rcView);
+        MapWindowPoints(0, this->_hwnd, (LPPOINT)&rcView, 2u);
+        v7 = rcView.bottom - 18;
+        goto LABEL_68;
+    case 0x1ACu:
+        GetWindowRect(this->_hwndRebar, &rcView);
+        MapWindowPoints(0, this->_hwnd, (LPPOINT)&rcView, 2u);
+        v7 = rcView.bottom + 18;
+    LABEL_68:
+        rcView.bottom = v7;
+        SetWindowPos(this->_hwndRebar, 0, 0, 0, rcView.right - rcView.left, v7 - rcView.top, 6u);
+        return;
+    }
+    if (idCmd != 503)
+    {
+        if (idCmd != 505)
+        {
+            if (idCmd == 506)
+            {
+                UpdateWindow(this->_hwnd);
+                Sleep(0x64u);
+                //g_fEndSessionInitiated = 1;
+                CTray::_DoExitWindows(v_hwndDesktop, 0, fFromNotifArea);
+                return;
+            }
+            if (idCmd != 510)
+                return;
+        }
+        _ShowFolder(this->_hwnd, (idCmd != 505) + 3, 0);
+        return;
+    }
+
+    CoInitialize(0);
+    IHxHelpPane* pxhp = 0;
+    if (CoCreateInstance(CLSID_HxHelpPane, 0, 0x17u, IID_IHxHelpPane, (LPVOID*)&pxhp) >= 0)
+    {
+        CComBSTR bstrUri(TEXT("mshelp://help/?id=home"));
+        if (bstrUri)
+        {
+            pxhp->DisplayTask(bstrUri.m_str);
+        }
+    }
+    CoUninitialize();
+
+    if (pxhp)
+        pxhp->Release();
+#endif
 }
 
 //// Start menu/Tray tab as a drop target

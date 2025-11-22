@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -428,12 +428,17 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="desktop2\DeskHost.h" />
     <ClInclude Include="desktop2\Desktop2.h" />
     <ClInclude Include="desktop2\MoreProg.h" />
+    <ClInclude Include="Desktop2\NSCHost.h" />
+    <ClInclude Include="Desktop2\OpenBox.h" />
+    <ClInclude Include="Desktop2\OpenHost.h" />
     <ClInclude Include="desktop2\PidlButton.h" />
     <ClInclude Include="desktop2\ProgList.h" />
     <ClInclude Include="desktop2\resource.h" />
     <ClInclude Include="desktop2\SFTHost.h" />
     <ClInclude Include="desktop2\SpecFldr.h" />
+    <ClInclude Include="Desktop2\SrchView.h" />
     <ClInclude Include="desktop2\stdafx.h" />
+    <ClInclude Include="Desktop2\TopMatch.h" />
     <ClInclude Include="desktop2\UserPane.h" />
     <ClInclude Include="desktopp.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
@@ -446,6 +451,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="QSort.h" />
     <ClInclude Include="RunTask.h" />
     <ClInclude Include="SHFusion.h" />
+    <ClInclude Include="shstr.h" />
     <ClInclude Include="StartButton.h" />
     <ClInclude Include="ThemeManager.h" />
     <ClInclude Include="UEMApp.h" />
@@ -644,9 +650,14 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClCompile Include="desktop2\DeskHost.cpp" />
     <ClCompile Include="desktop2\Logoff.cpp" />
     <ClCompile Include="desktop2\MoreProg.cpp" />
+    <ClCompile Include="Desktop2\NSCHost.cpp" />
+    <ClCompile Include="Desktop2\OpenBox.cpp" />
+    <ClCompile Include="Desktop2\OpenHost.cpp" />
     <ClCompile Include="desktop2\ProgList.cpp" />
     <ClCompile Include="desktop2\SFTHost.cpp" />
     <ClCompile Include="desktop2\SpecFldr.cpp" />
+    <ClCompile Include="Desktop2\SrchView.cpp" />
+    <ClCompile Include="Desktop2\TopMatch.cpp" />
     <ClCompile Include="desktop2\UserPane.cpp" />
     <ClCompile Include="desktop2\WrapCtl.cpp" />
     <ClCompile Include="DesktopP.cpp" />
@@ -673,6 +684,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="shstr.cpp" />
     <ClCompile Include="ShUndoc.cpp" />
     <ClCompile Include="SSOMgr.cpp" />
     <ClCompile Include="StartButton.cpp" />

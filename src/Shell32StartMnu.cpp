@@ -622,7 +622,7 @@ protected:
 
     //DEBUG_CODE(DWORD _dwThreadID; )   // Cache the thread of the object
 
-        LPTSTR          _pszPrograms;
+    LPTSTR          _pszPrograms;
     LPTSTR          _pszWindowsUpdate;
     LPTSTR          _pszConfigurePrograms;
     LPTSTR          _pszAdminTools;
@@ -1573,7 +1573,7 @@ HRESULT CStartMenuCallback::_Demote(LPSMDATA psmd)
         UEMINFO uei;
         uei.cbSize = sizeof(uei);
         uei.dwMask = UEIM_HIT;
-        uei.cHit = 0;
+        uei.cLaunches = 0;
         hr = UEMSetEvent(psmd->uIdAncestor == IDM_PROGRAMS ? &UEMIID_SHELL : &UEMIID_BROWSER,
             UEME_RUNPIDL, (WPARAM)psmd->psf, (LPARAM)psmd->pidlItem, &uei);
     }
@@ -1614,7 +1614,7 @@ HRESULT CStartMenuCallbackBase::_HandleNew(LPSMDATA psmd)
         UEMINFO uei;
         uei.cbSize = sizeof(uei);
         uei.dwMask = UEIM_HIT;
-        uei.cHit = UEM_NEWITEMCOUNT;
+        uei.cLaunches = UEM_NEWITEMCOUNT;
         hr = UEMSetEvent(psmd->uIdAncestor == IDM_PROGRAMS ? &UEMIID_SHELL : &UEMIID_BROWSER,
             UEME_RUNPIDL, (WPARAM)psmd->psf, (LPARAM)psmd->pidlItem, &uei);
     }
@@ -1939,13 +1939,6 @@ void _FixMenuItemName(IShellMenu* psm, UINT uID, LPTSTR pszNewMenuName)
     }
 }
 
-HMENU SHLoadMenuPopup(HINSTANCE hinst, UINT id)
-{
-	static HMODULE shlwapi = LoadLibraryW(L"shlwapi.dll");
-	static HMENU(__fastcall * fSHLoadMenuPopup)(HINSTANCE a1, unsigned __int16 a2) = (decltype(fSHLoadMenuPopup))GetProcAddress(shlwapi, MAKEINTRESOURCEA(177));
-
-	return fSHLoadMenuPopup(hinst, id);
-}
 #define MENU_STARTMENU_MYDOCS           401
 
 void CStartMenuCallback::_UpdateDocumentsShellMenu(IShellMenu* psm)
@@ -2398,7 +2391,7 @@ DWORD CStartMenuCallback::_GetDemote(SMDATA* psmd)
     if (SUCCEEDED(UEMQueryEvent(psmd->uIdAncestor == IDM_PROGRAMS ? &UEMIID_SHELL : &UEMIID_BROWSER,
         UEME_RUNPIDL, (WPARAM)psmd->psf, (LPARAM)psmd->pidlItem, &uei)))
     {
-        if (uei.cHit == 0)
+        if (uei.cLaunches == 0)
         {
             dwFlags |= SMIF_DEMOTED;
         }
@@ -2498,12 +2491,12 @@ void UEMRenamePidl(const GUID* pguidGrp1, IShellFolder* psf1, LPCITEMIDLIST pidl
     if (SUCCEEDED(UEMQueryEvent(pguidGrp1,
         UEME_RUNPIDL, (WPARAM)psf1,
         (LPARAM)pidl1, &uei)) &&
-        uei.cHit > 0)
+        uei.cLaunches > 0)
     {
         UEMSetEvent(pguidGrp2,
             UEME_RUNPIDL, (WPARAM)psf2, (LPARAM)pidl2, &uei);
 
-        uei.cHit = 0;
+        uei.cLaunches = 0;
         UEMSetEvent(pguidGrp1,
             UEME_RUNPIDL, (WPARAM)psf1, (LPARAM)pidl1, &uei);
     }
@@ -2516,7 +2509,7 @@ void UEMDeletePidl(const GUID* pguidGrp, IShellFolder* psf, LPCITEMIDLIST pidl)
     UEMINFO uei;
     uei.cbSize = sizeof(uei);
     uei.dwMask = UEIM_HIT;
-    uei.cHit = 0;
+    uei.cLaunches = 0;
     UEMSetEvent(pguidGrp, UEME_RUNPIDL, (WPARAM)psf, (LPARAM)pidl, &uei);
 }
 
@@ -2631,7 +2624,7 @@ HRESULT CStartMenuCallbackBase::_ProcessChangeNotify(SMDATA* psmd, LONG lEvent,
             UEMINFO uei;
             uei.cbSize = sizeof(uei);
             uei.dwMask = UEIM_HIT;
-            uei.cHit = UEM_NEWITEMCOUNT;
+            uei.cLaunches = UEM_NEWITEMCOUNT;
             UEMSetEvent(psmd->uIdAncestor == IDM_FAVORITES ? &UEMIID_BROWSER : &UEMIID_SHELL,
                 UEME_RUNPIDL, (WPARAM)psf, (LPARAM)pidl, &uei);
             psf->Release();

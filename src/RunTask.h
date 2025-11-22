@@ -3,7 +3,7 @@
 
 #include "pch.h"
 
-class CRunnableTask : public IRunnableTask
+class CRunnableTask : public IRunnableTask, public IServiceProvider, public IQueryContinue
 {
 public:
     // *** IUnknown ***
@@ -18,12 +18,28 @@ public:
     virtual STDMETHODIMP Resume(void);
     virtual STDMETHODIMP_(ULONG) IsRunning(void);
 
+	// *** IServiceProvider ***
+	virtual STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void **ppvObject);
+
+	// *** IQueryContinue ***
+	virtual STDMETHODIMP QueryContinue(void);
+
     // *** pure virtuals ***
-    virtual STDMETHODIMP RunInitRT(void) PURE;
+	virtual STDMETHODIMP RunInitRT(void)        { return S_OK; };
     virtual STDMETHODIMP KillRT(BOOL bWait)     { return S_OK; };
     virtual STDMETHODIMP SuspendRT(void)        { return S_OK; };
     virtual STDMETHODIMP ResumeRT(void)         { return InternalResumeRT(); };
     virtual STDMETHODIMP InternalResumeRT(void) { _lState = IRTIR_TASK_FINISHED; return S_OK; };
+
+    HRESULT ShouldContinue()
+    {
+        HRESULT hr = S_OK;
+        if (_fAbort)
+        {
+            hr = _lState == IRTIR_TASK_SUSPENDED ? E_PENDING : E_FAIL;
+        }
+        return hr;
+    }
     
 protected:
     CRunnableTask(DWORD dwFlags);
@@ -32,7 +48,8 @@ protected:
     LONG            _cRef;
     LONG            _lState;
     DWORD           _dwFlags;       // RTF_*
-    HANDLE          _hDone;
+    BOOL            _fAbort;
+    HKL             _hklKeyboard;
 
 #ifdef DEBUG
     DWORD           _dwTaskID;

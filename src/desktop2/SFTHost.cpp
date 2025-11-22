@@ -5,6 +5,10 @@
 #include "sfthost.h"
 #include "startmnu.h"
 
+#define NTDDI_VERSION NTDDI_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#include <commoncontrols.h>
+
 
 #define TF_HOST     0x00000010
 #define TF_HOSTDD   0x00000040 // drag/drop
@@ -96,6 +100,7 @@ static CEmptyContextMenu s_EmptyContextMenu;
 
 #define WC_SFTBARHOST       TEXT("DesktopSFTBarHost")
 
+// EXEX-VISTA(allison): Validated.
 BOOL GetFileCreationTime(LPCTSTR pszFile, FILETIME *pftCreate)
 {
     WIN32_FILE_ATTRIBUTE_DATA wfad;
@@ -113,6 +118,7 @@ const CLSID TOID_SFTBarHostBackgroundEnum = {
     0x2A1339D7, 0x523C, 0x4E21,
     { 0x80, 0xD3, 0x30, 0xC9, 0x7B, 0x06, 0x98, 0xD2} };
 
+// EXEX-VISTA(allison): Validated.
 BOOL SFTBarHost::Register()
 {
     WNDCLASS wc;
@@ -135,8 +141,10 @@ BOOL SFTBarHost::Unregister()
     return ::UnregisterClass(WC_SFTBARHOST, _AtlBaseModule.GetModuleInstance());
 }
 
+// EXEX-VISTA(allison): Partially validated. Recheck flow.
 LRESULT CALLBACK SFTBarHost::_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#ifdef DEAD_CODE
     SFTBarHost *self = reinterpret_cast<SFTBarHost *>(GetWindowLongPtr(hwnd, 0));
 
     if (uMsg == WM_NCCREATE)
@@ -150,45 +158,45 @@ LRESULT CALLBACK SFTBarHost::_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 
         switch (uMsg)
         {
-        HANDLE_SFT_MESSAGE(WM_CREATE,       _OnCreate);
-        HANDLE_SFT_MESSAGE(WM_DESTROY,      _OnDestroy);
-        HANDLE_SFT_MESSAGE(WM_NCDESTROY,    _OnNcDestroy);
-        HANDLE_SFT_MESSAGE(WM_NOTIFY,       _OnNotify);
-        HANDLE_SFT_MESSAGE(WM_SIZE,         _OnSize);
-        HANDLE_SFT_MESSAGE(WM_ERASEBKGND,   _OnEraseBackground);
-        HANDLE_SFT_MESSAGE(WM_CONTEXTMENU,  _OnContextMenu);
-        HANDLE_SFT_MESSAGE(WM_CTLCOLORSTATIC,_OnCtlColorStatic);
-        HANDLE_SFT_MESSAGE(WM_TIMER,        _OnTimer);
-        HANDLE_SFT_MESSAGE(WM_SETFOCUS,     _OnSetFocus);
+            HANDLE_SFT_MESSAGE(WM_CREATE, _OnCreate);
+            HANDLE_SFT_MESSAGE(WM_DESTROY, _OnDestroy);
+            HANDLE_SFT_MESSAGE(WM_NCDESTROY, _OnNcDestroy);
+            HANDLE_SFT_MESSAGE(WM_NOTIFY, _OnNotify);
+            HANDLE_SFT_MESSAGE(WM_SIZE, _OnSize);
+            HANDLE_SFT_MESSAGE(WM_ERASEBKGND, _OnEraseBackground);
+            HANDLE_SFT_MESSAGE(WM_CONTEXTMENU, _OnContextMenu);
+            HANDLE_SFT_MESSAGE(WM_CTLCOLORSTATIC, _OnCtlColorStatic);
+            HANDLE_SFT_MESSAGE(WM_TIMER, _OnTimer);
+            HANDLE_SFT_MESSAGE(WM_SETFOCUS, _OnSetFocus);
 
-        HANDLE_SFT_MESSAGE(WM_INITMENUPOPUP,_OnMenuMessage);
-        HANDLE_SFT_MESSAGE(WM_DRAWITEM,     _OnMenuMessage);
-        HANDLE_SFT_MESSAGE(WM_MENUCHAR,     _OnMenuMessage);
-        HANDLE_SFT_MESSAGE(WM_MEASUREITEM,  _OnMenuMessage);
+            HANDLE_SFT_MESSAGE(WM_INITMENUPOPUP, _OnMenuMessage);
+            HANDLE_SFT_MESSAGE(WM_DRAWITEM, _OnMenuMessage);
+            HANDLE_SFT_MESSAGE(WM_MENUCHAR, _OnMenuMessage);
+            HANDLE_SFT_MESSAGE(WM_MEASUREITEM, _OnMenuMessage);
 
-        HANDLE_SFT_MESSAGE(WM_SYSCOLORCHANGE,   _OnSysColorChange);
-        HANDLE_SFT_MESSAGE(WM_DISPLAYCHANGE,    _OnForwardMessage);
-        HANDLE_SFT_MESSAGE(WM_SETTINGCHANGE,    _OnForwardMessage);
+            HANDLE_SFT_MESSAGE(WM_SYSCOLORCHANGE, _OnSysColorChange);
+            HANDLE_SFT_MESSAGE(WM_DISPLAYCHANGE, _OnForwardMessage);
+            HANDLE_SFT_MESSAGE(WM_SETTINGCHANGE, _OnForwardMessage);
 
-        HANDLE_SFT_MESSAGE(WM_UPDATEUISTATE,    _OnUpdateUIState);
+            HANDLE_SFT_MESSAGE(WM_UPDATEUISTATE, _OnUpdateUIState);
 
-        HANDLE_SFT_MESSAGE(SFTBM_REPOPULATE,_OnRepopulate);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+0,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+1,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+2,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+3,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+4,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+5,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+6,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+7,_OnChangeNotify);
-        HANDLE_SFT_MESSAGE(SFTBM_REFRESH,       _OnRefresh);
-        HANDLE_SFT_MESSAGE(SFTBM_CASCADE,       _OnCascade);
-        HANDLE_SFT_MESSAGE(SFTBM_ICONUPDATE,    _OnIconUpdate);
+            HANDLE_SFT_MESSAGE(SFTBM_REPOPULATE, _OnRepopulate);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 0, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 1, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 2, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 3, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 4, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 5, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 6, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY + 7, _OnChangeNotify);
+            HANDLE_SFT_MESSAGE(SFTBM_REFRESH, _OnRefresh);
+            HANDLE_SFT_MESSAGE(SFTBM_CASCADE, _OnCascade);
+            HANDLE_SFT_MESSAGE(SFTBM_ICONUPDATE, _OnIconUpdate);
         }
 
         // If this assert fires, you need to add more
         // HANDLE_SFT_MESSAGE(SFTBM_CHANGENOTIFY+... entries.
-        COMPILETIME_ASSERT(SFTHOST_MAXNOTIFY == 8);
+        COMPILETIME_ASSERT(SFTHOST_MAXNOTIFY == 9);
 
 #undef HANDLE_SFT_MESSAGE
 
@@ -196,39 +204,217 @@ LRESULT CALLBACK SFTBarHost::_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     }
 
     return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
+#else
+    LRESULT v6; // esi
+    LRESULT updated; // eax
+    unsigned int v8; // eax
+
+    SFTBarHost *self = reinterpret_cast<SFTBarHost *>(GetWindowLongPtr(hwnd, 0));
+    if (uMsg == 0x81)
+    {
+        return _OnNcCreate(hwnd, uMsg, wParam, lParam);
+    }
+    if (self)
+    {
+        self->AddRef();
+        if (uMsg <= 0x121)
+        {
+            if (uMsg == 0x121)
+            {
+				//updated = self->_OnSetIdle(hwnd, uMsg, wParam, lParam); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
+                goto LABEL_74;
+            }
+            if (uMsg > 0x2C)
+            {
+                switch (uMsg)
+                {
+                    case 0x4Eu:
+                        updated = self->_OnNotify(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x7Bu:
+                        updated = self->_OnContextMenu(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x7Eu:
+                        updated = self->_OnForwardMessage(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x82u:
+                        updated = self->_OnNcDestroy(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x113u:
+                        updated = self->_OnTimer(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x117u:
+                        updated = self->_OnMenuMessage(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x120u:
+                        updated = self->_OnMenuMessage(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                }
+            }
+            else
+            {
+                if (uMsg == 44)
+                {
+                    updated = self->_OnMenuMessage(hwnd, 0x2Cu, wParam, lParam);
+                    goto LABEL_74;
+                }
+                if (uMsg <= 0x14)
+                {
+                    switch (uMsg)
+                    {
+                        case 0x14u:
+                            updated = self->_OnEraseBackground(hwnd, uMsg, wParam, lParam);
+                            break;
+                        case 1u:
+                            updated = self->_OnCreate(hwnd, uMsg, wParam, lParam);
+                            break;
+                        case 2u:
+                            updated = self->_OnDestroy( hwnd, uMsg, wParam, lParam);
+                            break;
+                        case 5u:
+                            updated = self->_OnSize(hwnd, uMsg, wParam, lParam);
+                            break;
+                        case 7u:
+                            if (self->_hwndList)
+                                SetFocus(self->_hwndList);
+                            goto LABEL_16;
+                        default:
+                            goto LABEL_66;
+                    }
+                LABEL_74:
+                    v6 = updated;
+                    goto LABEL_75;
+                }
+                switch (uMsg)
+                {
+                    case 0x15u:
+                        updated = self->_OnSysColorChange(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x1Au:
+                        updated = self->_OnForwardMessage(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x2Bu:
+                        updated = self->_OnMenuMessage(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                }
+            }
+        LABEL_66:
+            updated = self->OnWndProc(hwnd, uMsg, wParam, lParam);
+            goto LABEL_74;
+        }
+        v8 = 1030;
+        if (uMsg > 0x406)
+        {
+            v8 = 1031;
+            if (uMsg != 1031)
+            {
+                switch (uMsg)
+                {
+                    case 0x408u:
+                        updated = self->_OnChangeNotify(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x409u:
+                        updated = self->_OnChangeNotify(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x40Au:
+                        self->_EnumerateContents(wParam);
+                    LABEL_16:
+                        v6 = 0;
+                    LABEL_75:
+                        self->Release();
+                        return v6;
+                    case 0x40Bu:
+                        updated = self->_OnCascade(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x40Cu:
+                        updated = self->_OnIconUpdate(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x40Du:
+                        updated = self->_OnItemUpdate(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                }
+                goto LABEL_66;
+            }
+        }
+        else if (uMsg != 1030)
+        {
+            v8 = 1026;
+            if (uMsg > 0x402)
+            {
+                v8 = 1027;
+                if (uMsg != 1027)
+                {
+                    if (uMsg == 1028)
+                        updated = self->_OnChangeNotify(hwnd, uMsg, wParam, lParam);
+                    else
+                        updated = self->_OnChangeNotify(hwnd, uMsg, wParam, lParam);
+                    goto LABEL_74;
+                }
+            }
+            else if (uMsg != 1026)
+            {
+                switch (uMsg)
+                {
+                    case 0x128u:
+                        updated = self->_OnUpdateUIState(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x138u:
+                        updated = self->_OnCtlColorStatic(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x400u:
+                        updated = self->_OnRepopulate(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                    case 0x401u:
+                        updated = self->_OnChangeNotify(hwnd, uMsg, wParam, lParam);
+                        goto LABEL_74;
+                }
+                goto LABEL_66;
+            }
+        }
+        updated = self->_OnChangeNotify(hwnd, v8, wParam, lParam);
+        goto LABEL_74;
+    }
+    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+#endif
 }
 
+
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    SMPANEDATA *pspld = PaneDataFromCreateStruct(lParam);
-    SFTBarHost *self = NULL;
+    SFTBarHost *self = NULL; // eax MAPDST
 
-    switch (pspld->iPartId)
+    SMPANEDATA *pspld = PaneDataFromCreateStruct(lParam);
+    if (pspld->iPartId == SPP_PROGLIST)
     {
-        case SPP_PROGLIST:
-            self = ByUsage_CreateInstance();
-            break;
-        case SPP_PLACESLIST:
-            self = SpecList_CreateInstance();
-            break;
+        self = ByUsage_CreateInstance();
+    }
+    else if (pspld->iPartId == SPP_PLACESLIST)
+    {
+        self = SpecList_CreateInstance();
+    }
+    else
+    {
+        //CcshellDebugMsgW(2, "Unknown panetype %d", pspld->iPartId);
+        return 0;
     }
 
     if (self)
     {
-        (void *)SetWindowLongPtr(hwnd, 0,(LONG_PTR)self);
+        (void*)SetWindowLongPtr(hwnd, 0, (LONG_PTR)self);
+
+        IUnknown_Set(&pspld->punk, static_cast<IServiceProvider *>(self));
 
         self->_hwnd = hwnd;
         self->_hTheme = pspld->hTheme;
-
         if (FAILED(self->Initialize()))
         {
-            return FALSE;
+            //CcshellDebugMsgW(2, "SFTBarHost::NcCreate Initialize call failed");
+            return 0;
         }
-
         return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
-
-    return FALSE;
+    return 0;
 }
 
 //
@@ -236,14 +422,18 @@ LRESULT SFTBarHost::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 //  The margin is "scientifically computed" to be the value that looks
 //  reasonably close to the bitmaps the designers gave us.
 //
+
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_ComputeTileMetrics()
 {
     int cyTile = _cyIcon;
 
+    if (_iconsize == ICONSIZE_MEDIUM)
+        cyTile /= 2;
+
     HDC hdc = GetDC(_hwndList);
     if (hdc)
     {
-        // SOMEDAY - get this to play friendly with themes
         HFONT hf = GetWindowFont(_hwndList);
         HFONT hfPrev = SelectFont(hdc, hf);
         SIZE siz;
@@ -263,11 +453,18 @@ void SFTBarHost::_ComputeTileMetrics()
         ReleaseDC(_hwndList, hdc);
     }
 
-    // Listview draws text at left margin + icon + edge
-    _cxIndent = _cxMargin + _cxIcon + GetSystemMetrics(SM_CXEDGE);
-    _cyTile = cyTile + (4 * _cyMargin) + _cyTilePadding;
+    _cxIndent = _cxMargin + 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
+    if (_iconsize != ICONSIZE_MEDIUM)
+        _cxIndent += _cxIcon;
+    
+    _cyTile = cyTile + _cyMargin * (_iconsize == ICONSIZE_MEDIUM ? 1 : 3);
+    if (_iconsize == ICONSIZE_MEDIUM && _hTheme)
+    {
+        _cyTile += 1;
+    }
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_SetTileWidth(int cxTile)
 {
     LVTILEVIEWINFO tvi;
@@ -280,7 +477,7 @@ void SFTBarHost::_SetTileWidth(int cxTile)
     {
         // WARNING!  _OnLVItemPostPaint uses these margins
         tvi.dwMask |= LVTVIM_LABELMARGIN;
-        tvi.rcLabelMargin.left   = 0;
+        tvi.rcLabelMargin.left   = 2;
         tvi.rcLabelMargin.top    = 0;
         tvi.rcLabelMargin.right  = _cxMarlett;
         tvi.rcLabelMargin.bottom = 0;
@@ -290,12 +487,26 @@ void SFTBarHost::_SetTileWidth(int cxTile)
     tvi.cLines = _CanHaveSubtitles() ? 1 : 0;
 
     // _cyTile has the padding into account, but we want each item to be the height without padding
-    tvi.sizeTile.cy = _cyTile - _cyTilePadding;
+    tvi.sizeTile.cy = _cyTile;
     tvi.sizeTile.cx = cxTile;
     ListView_SetTileViewInfo(_hwndList, &tvi);
     _cxTile = cxTile;
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup
+void SFTBarHost::_CalculateSize(int a2)
+{
+    BOOL v3 = this->_cSep;
+    if (!this->_cSep)
+        v3 = this->_cPinnedDesired > 0;
+    int cyTile = this->_cyTile;
+    if (cyTile > 0)
+        this->field_6C = (a2 - v3 * this->_cySepTile) / cyTile - this->_cPinned - this->_cSep;
+    if (this->field_6C < 0)
+        this->field_6C = 0;
+}
+
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (_hwndList)
@@ -309,14 +520,16 @@ LRESULT SFTBarHost::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                      SWP_NOZORDER | SWP_NOOWNERZORDER);
 
         _SetTileWidth(sizeClient.cx);
-        if (HasDynamicContent())
+        if (HasDynamicContent() || field_170)
         {
-            _InternalRepopulateList();
+            _CalculateSize(sizeClient.cy);
+            _InternalRepopulateList(field_170);
         }
     }
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     // if we're in unthemed mode, then we need to update our colors
@@ -334,9 +547,10 @@ LRESULT SFTBarHost::_OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return _OnForwardMessage(hwnd, uMsg, wParam, lParam);
 }
 
-
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#ifdef DEAD_CODE
     // Use the same colors as the listview itself.
     HDC hdc = GET_WM_CTLCOLOR_HDC(wParam, lParam, uMsg);
     SetTextColor(hdc, ListView_GetTextColor(_hwndList));
@@ -355,8 +569,8 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
                     // to create a brush for the background of the flashlight animation
                     RECT rcClient;
                     GetClientRect(hwnd, &rcClient);
-                    int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH)/2;     // IDA_SEARCH is ANIWND_WIDTH pix wide
-                    int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT)/2;    // IDA_SEARCH is ANIWND_HEIGHT pix tall
+                    int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH) / 2;     // IDA_SEARCH is ANIWND_WIDTH pix wide
+                    int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT) / 2;    // IDA_SEARCH is ANIWND_HEIGHT pix tall
                     RECT rc;
                     rc.top = y;
                     rc.bottom = y + ANIWND_HEIGHT;
@@ -364,7 +578,7 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
                     rc.right = x + ANIWND_WIDTH;
                     HDC hdcBMP = CreateCompatibleDC(hdc);
                     HBITMAP hbmp = CreateCompatibleBitmap(hdc, ANIWND_WIDTH, ANIWND_HEIGHT);
-                    POINT pt = {0, 0};
+                    POINT pt = { 0, 0 };
 
                     // Offset the viewport so that DrawThemeBackground draws the part that we care about
                     // at the right place
@@ -395,28 +609,85 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     {
         return (LRESULT)GetSysColorBrush(COLOR_MENU);
     }
+#else
+    HDC hdc = GET_WM_CTLCOLOR_HDC(wParam, lParam, uMsg);
+
+
+    SetTextColor(hdc, SendMessageW(_hwndList, LVM_GETTEXTCOLOR, 0, 0));
+
+	COLORREF clrBk = SendMessageW(_hwndList, LVM_GETTEXTBKCOLOR, 0, 0);
+    if (clrBk == -1)
+    {
+        if (GET_WM_CTLCOLOR_HWND(wParam, lParam, uMsg) != _hwndAni)
+        {
+            SetBkMode(hdc, 1);
+            return (LRESULT)GetStockBrush(5);
+        }
+
+        if (_hTheme)
+        {
+            if (!_hBrushAni)
+            {
+                RECT rcClient;
+                GetClientRect(hwnd, &rcClient);
+                int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH) / 2;
+                int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT) / 2;
+                HDC hdcBMP = CreateCompatibleDC(hdc);
+                if (hdcBMP)
+                {
+                    HBITMAP hbmp = CreateCompatibleBitmap(hdc, ANIWND_WIDTH, ANIWND_HEIGHT);
+                    if (hbmp)
+                    {
+                        POINT pt = { 0, 0 };
+                        OffsetViewportOrgEx(hdcBMP, -x, -y, &pt);
+                        HGDIOBJ v9 = SelectObject(hdcBMP, hbmp);
+                        DrawThemeBackground(_hTheme, hdcBMP, _iThemePart, 0, &rcClient, NULL);
+                        _hBrushAni = CreatePatternBrush(hbmp);
+                        
+                        SelectObject(hdcBMP, v9);
+                        DeleteObject(hbmp);
+                    }
+                    DeleteDC(hdcBMP);
+                }
+            }
+            return (LRESULT)_hBrushAni;
+        }
+        else
+        {
+            return (LRESULT)GetSysColorBrush(COLOR_MENU);   
+        }
+    }
+    else
+    {
+        return (LRESULT)GetSysColorBrush(COLOR_MENU);   
+    }
+#endif
 }
 
 //
 //  Appends the PaneItem to _dpaEnum, or deletes it (and nulls it out)
 //  if unable to append.
-//
+// 
+// EXEX-VISTA(allison): Validated.
 int SFTBarHost::_AppendEnumPaneItem(PaneItem *pitem)
 {
     int iItem = _dpaEnumNew.AppendPtr(pitem);
     if (iItem < 0)
     {
-        delete pitem;
+		pitem->Release();
         iItem = -1;
     }
     return iItem;
 }
 
-BOOL SFTBarHost::AddItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlChild)
+// EXEX-VISTA(allison): Validated.
+BOOL SFTBarHost::AddItem(PaneItem *pitem)
 {
     BOOL fSuccess = FALSE;
 
     ASSERT(_fEnumerating);
+
+    pitem->AddRef();
     if (_AppendEnumPaneItem(pitem) >= 0)
     {
         fSuccess = TRUE;
@@ -424,6 +695,7 @@ BOOL SFTBarHost::AddItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlC
     return fSuccess;
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_RepositionItems()
 {
 
@@ -436,18 +708,9 @@ void SFTBarHost::_RepositionItems()
             POINT pt;
             _ComputeListViewItemPosition(pitem->_iPos, &pt);
             ListView_SetItemPosition(_hwndList, iItem, pt.x, pt.y);
+            pitem->Release();
         }
     }
-}
-
-int SFTBarHost::AddImage(HICON hIcon)
-{
-    int iIcon = -1;
-    if (_IsPrivateImageList())
-    {
-        iIcon = ImageList_AddIcon(_himl, hIcon);
-    }
-    return iIcon;
 }
 
 //
@@ -455,12 +718,28 @@ int SFTBarHost::AddImage(HICON hIcon)
 //  pvHint = pitem whose icon we just extracted
 //  iIconIndex = the icon we got
 //
-void SFTBarHost::SetIconAsync(LPCITEMIDLIST pidl, LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex)
+// EXEX-VISTA(allison): Validated.
+void SFTBarHost::SetIconAsync(LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex)
 {
     HWND hwnd = (HWND)pvData;
     if (IsWindow(hwnd))
     {
-        PostMessage(hwnd, SFTBM_ICONUPDATE, iIconIndex, (LPARAM)pvHint);
+        SFTBarHost *self = reinterpret_cast<SFTBarHost *>(GetWindowLongPtr(hwnd, 0));
+        if (self)
+        {
+            IImageList2 *piml = NULL;
+            if (SUCCEEDED(HIMAGELIST_QueryInterface(self->_himl, IID_PPV_ARGS(&piml))))
+            {
+                piml->ForceImagePresent(iIconIndex, ILFIP_ALWAYS);
+            }
+
+            PostMessage(hwnd, SFTBM_ICONUPDATE, iIconIndex, (LPARAM)pvHint);
+
+            if (piml)
+            {
+                piml->Release();
+            }
+        }
     }
 }
 
@@ -468,6 +747,7 @@ void SFTBarHost::SetIconAsync(LPCITEMIDLIST pidl, LPVOID pvData, LPVOID pvHint, 
 //  wParam = icon index
 //  lParam = pitem to update
 //
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnIconUpdate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     //
@@ -488,62 +768,158 @@ LRESULT SFTBarHost::_OnIconUpdate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         ListView_SetItem(_hwndList, &lvi);
         // Now, we need to go update our cached bitmap version of the start menu.
         _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
+
+        RECT rc;
+        if (ListView_GetItemRect(_hwndList, lvi.iItem, &rc, LVIR_ICON))
+        {
+            InvalidateRect(_hwndList, &rc, TRUE);
+		}
     }
     return 0;
 }
 
-// An over-ridable method to let client direct an item at a particular image
-int SFTBarHost::AddImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl, int iPos)
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
+BOOL SFTBarHost::_OnTextUpdate(int iItem)
 {
-    if (_IsPrivateImageList())
+    BOOL bRet = TRUE;
+    WCHAR szText[260];
+
+    LVITEM lvi;
+    lvi.iSubItem = 0;
+    lvi.pszText = szText;
+    lvi.iItem = iItem;
+    lvi.mask = 5;
+    lvi.cchTextMax = ARRAYSIZE(szText);
+    if (ListView_GetItem(_hwndList, &lvi))
     {
-        return _ExtractImageForItem(pitem, psf, pidl);
+        PaneItem* pitem = _GetItemFromLVLParam(lvi.lParam);
+        if (pitem)
+        {
+            lvi.iSubItem = 0;
+            lvi.iItem = iItem;
+            lvi.mask = 1;
+            lvi.pszText = _DisplayNameOfItem(pitem, 0);
+            if (lvi.pszText)
+            {
+                if (StrCmpN(szText, lvi.pszText, ARRAYSIZE(szText)))
+                {
+                    ListView_SetItem(_hwndList, &lvi);
+                    _SendNotify(_hwnd, SMN_SHOWNEWAPPSTIP, 0);
+                }
+                CoTaskMemFree(lvi.pszText);
+            }
+            pitem->Release();
+        }
+        else
+        {
+            bRet = 0;
+        }
     }
-    else
-    {
-        // system image list: Make the shell do the work.
-        int iIndex = 0;
-        //SHMapIDListToSystemImageListIndexAsync(_psched, psf, pidl, SetIconAsync, _hwnd, pitem, &iIndex, NULL);
-        SHMapIDListToSystemImageListIndex(psf, pidl, &iIndex, NULL);
-		if (IsWindow(_hwnd))
-		{
-			PostMessage(_hwnd, SFTBM_ICONUPDATE, iIndex, (LPARAM)pitem);
-		}
-        return iIndex;
-    }
+    return bRet;
 }
 
-HICON _IconOf(IShellFolder *psf, LPCITEMIDLIST pidl, int cxIcon)
+// EXEX-VISTA(allison): Validated.
+LRESULT SFTBarHost::_OnItemUpdate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    HRESULT hr;
-    HICON hicoLarge = NULL, hicoSmall = NULL;
-    IExtractIcon *pxi;
+    for (int i = 0; i < ListView_GetItemCount(_hwndList); ++i)
+    {
+        PaneItem *pitem = _GetItemFromLV(i);
+        if (pitem)
+        {
+            if (OnItemUpdate(pitem, wParam, lParam) == S_OK)
+            {
+                _OnTextUpdate(i);
+                if (_IsPrivateImageList())
+                {
+                    if (pitem->GetPrivateIcon() != -1)
+                    {
+                        _OnIconUpdate(_hwnd, 0x40Cu, pitem->GetPrivateIcon(), (LPARAM)pitem);
+                    }
+                }
+                else
+                {
+                    IShellFolder *psf;
+                    LPCITEMIDLIST pidl;
+                    if (SUCCEEDED(GetFolderAndPidl(pitem, &psf, &pidl)))
+                    {
+                        int iImage = AddImageForItem(pitem, psf, pidl, 0);
+                        if (iImage != -1)
+                        {
+                            _OnIconUpdate(_hwnd, 0x40C, iImage, (LPARAM)pitem);
+                        }
+                        psf->Release();
+                    }
+                }
+            }
+            pitem->Release();
+        }
+    }
+    OnItemUpdateComplete(wParam, lParam);
+    return 0;
+}
 
-    hr = psf->GetUIObjectOf(NULL, 1, &pidl, IID_IExtractIcon, nullptr, (void**)&pxi);
+// EXEX-VISTA(allison): Validated.
+int SFTBarHost::AddImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl, int iPos)
+{
+    int iIndex = pitem->GetPrivateIcon();
+    printf("AddImageForItem: Private icon index = %d\n", iIndex);
+    if (iIndex == -1)
+    {
+        if (NeedBackgroundEnum())
+        {
+            if (_psched
+                && SUCCEEDED(SHMapIDListToSystemImageListIndexAsync(_psched, psf, pidl, SetIconAsync, _hwnd, pitem, &iIndex, NULL)))
+            {
+                IImageList2 *piml = NULL;
+                if (SUCCEEDED(HIMAGELIST_QueryInterface(_himl, IID_PPV_ARGS(&piml)))
+                    && FAILED(piml->ForceImagePresent(iIndex, ILFIP_FROMSTANDBY)))
+                {
+                    CLoadIconTask *pTask = new CLoadIconTask(_hwnd, pitem, iIndex);
+                    _psched->AddTask(pTask, TOID_SFTBarHostBackgroundEnum, (DWORD_PTR)this, 0x10001000);
+                    pTask->Release();
+                }
+
+                if (piml)
+                {
+                    piml->Release();
+                }
+            }
+        }
+        else
+        {
+            SHMapIDListToSystemImageListIndex(psf, pidl, &iIndex, NULL);
+        }
+    }
+    return iIndex;
+}
+
+HICON _IconOf(IShellFolder *psf, PCUITEMID_CHILD pidl, int cxIcon, LPCWSTR pszPath, int a5)
+{
+    HICON hicoLarge = NULL;
+    HICON hicoSmall = NULL;
+
+    IExtractIcon *pxi;
+    HRESULT hr = psf->GetUIObjectOf(NULL, 1, &pidl, IID_IExtractIcon, NULL, (void **)&pxi);
     if (SUCCEEDED(hr))
     {
-        TCHAR szPath[MAX_PATH];
+        WCHAR szPath[MAX_PATH];
         int iIndex;
         UINT uiFlags;
-
         hr = pxi->GetIconLocation(0, szPath, ARRAYSIZE(szPath), &iIndex, &uiFlags);
-
-        // S_FALSE means "Please use the generic document icon"
         if (hr == S_FALSE)
         {
-            StrCpyN(szPath, TEXT("shell32.dll"), ARRAYSIZE(szPath));
+            StringCchCopy(szPath, ARRAYSIZE(szPath), TEXT("shell32.dll"));
             iIndex = II_DOCNOASSOC;
             hr = S_OK;
         }
 
-        if (SUCCEEDED(hr))
+        if (a5 == iIndex && a5 != -1 && pszPath && !StrCmpI(pszPath, szPath))
         {
-            // Even though we don't care about the small icon, we have to
-            // ask for it anyway because some people fault on NULL.
+            hr = S_OK;
+        }
+        else if (SUCCEEDED(hr))
+        {
             hr = pxi->Extract(szPath, iIndex, &hicoLarge, &hicoSmall, cxIcon);
-
-            // S_FALSE means "I am too lazy to extract the icon myself.
-            // You do it for me."
             if (hr == S_FALSE)
             {
                 hr = SHDefExtractIcon(szPath, iIndex, uiFlags, &hicoLarge, &hicoSmall, cxIcon);
@@ -551,17 +927,14 @@ HICON _IconOf(IShellFolder *psf, LPCITEMIDLIST pidl, int cxIcon)
         }
 
         pxi->Release();
-
     }
 
-    // If we can't get an icon (e.g., object is on a slow link),
-    // then use a generic folder or generic document, as appropriate.
     if (FAILED(hr))
     {
         SFGAOF attr = SFGAO_FOLDER;
         int iIndex;
-        if (SUCCEEDED(psf->GetAttributesOf(1, &pidl, &attr)) &&
-            (attr & SFGAO_FOLDER))
+        if (SUCCEEDED(psf->GetAttributesOf(1, &pidl, &attr))
+            && (attr & SFGAO_FOLDER))
         {
             iIndex = II_FOLDER;
         }
@@ -569,29 +942,13 @@ HICON _IconOf(IShellFolder *psf, LPCITEMIDLIST pidl, int cxIcon)
         {
             iIndex = II_DOCNOASSOC;
         }
-        hr = SHDefExtractIcon(TEXT("shell32.dll"), iIndex, 0, &hicoLarge, &hicoSmall, cxIcon);
+        SHDefExtractIcon(TEXT("shell32.dll"), iIndex, 0, &hicoLarge, &hicoSmall, cxIcon);
     }
 
-    // Finally! we have an icon or have exhausted all attempts at getting
-    // one.  If we got one, go add it and clean up.
     if (hicoSmall)
         DestroyIcon(hicoSmall);
 
     return hicoLarge;
-}
-
-int SFTBarHost::_ExtractImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl)
-{
-    int iIcon = -1;     // assume no icon
-    HICON hIcon = _IconOf(psf, pidl, _cxIcon);
-
-    if (hIcon)
-    {
-        iIcon = AddImage(hIcon);
-        DestroyIcon(hIcon);
-    }
-
-    return iIcon;
 }
 
 //
@@ -638,8 +995,10 @@ int SFTBarHost::_ItemNoToPos(int iItem)
     return iPos;
 }
 
-void SFTBarHost::_ComputeListViewItemPosition(int iItem, POINT *pptOut)
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
+void SFTBarHost::_ComputeListViewItemPosition(int iItem, POINT* pptOut)
 {
+#ifdef DEAD_CODE
     // WARNING!  _InternalRepopulateList uses an incremental version of this
     // algorithm.  Keep the two in sync!
 
@@ -658,10 +1017,34 @@ void SFTBarHost::_ComputeListViewItemPosition(int iItem, POINT *pptOut)
 
     pptOut->x = _cxMargin;
     pptOut->y = y;
+#else
+
+    int y = iItem * _cyTile;
+
+    if (_cSep > 0)
+    {
+        int* rgiSep = this->_rgiSep;
+        int iItema = this->_cSep;
+        while (iItema)
+        {
+            if (*rgiSep < iItem)
+            {
+                y += this->_cySepTile - this->_cyTile;
+            }
+            ++rgiSep;
+            --iItema;
+        }
+    }
+
+    pptOut->x = _cxMargin;
+    pptOut->y = y;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 int SFTBarHost::_InsertListViewItem(int iPos, PaneItem *pitem)
 {
+#ifdef DEAD_CODE
     ASSERT(pitem);
 
     int iItem = -1;
@@ -735,13 +1118,73 @@ exit:
     ATOMICRELEASE(psf);
     SHFree(lvi.pszText);
     return iItem;
+#else
+	ASSERT(pitem); // 687
+
+    int iItem = -1;
+    IShellFolder* psf = NULL;
+    PITEMID_CHILD pidl = NULL;
+    LVITEM lvi;
+    lvi.pszText = NULL;
+
+    lvi.mask = 0;
+
+    if (_iconsize == ICONSIZE_LARGE && pitem->HasSubtitle())
+    {
+		const static UINT One = 1;
+        lvi.mask = LVIF_COLUMNS;
+        lvi.cColumns = 1;
+        lvi.puColumns = const_cast<UINT*>(&One);
+    }
+
+    ASSERT(!pitem->IsSeparator()); // 707
+
+    lvi.mask |= 7u;
+    if (GetFolderAndPidl(pitem, &psf, (LPCITEMIDLIST*)&pidl) >= 0)
+    {
+        if ((lvi.mask & 2) != 0)
+            lvi.iImage = AddImageForItem(pitem, psf, pidl, 0);
+
+		WCHAR* v4;
+        if ((lvi.mask & 1) == 0
+            || (this->_iconsize || (pitem->_dwFlags & 2) == 0
+                ? (v4 = this->DisplayNameOfItem(pitem, psf, pidl, 0))
+                : (v4 = this->SubtitleOfItem(pitem, psf, pidl)),
+                (lvi.pszText = v4) != NULL))
+        {
+            lvi.iItem = iPos;
+            lvi.iSubItem = 0;
+            lvi.lParam = reinterpret_cast<LPARAM>(pitem);;
+			iItem = ListView_InsertItem(_hwndList, &lvi);
+
+            if (iItem >= 0 && (lvi.mask & 0x200) != 0)
+            {
+                lvi.iItem = iItem;
+                lvi.iSubItem = 1;
+                lvi.mask = LVIF_TEXT;
+                CoTaskMemFree(lvi.pszText);
+                lvi.pszText = SubtitleOfItem(pitem, psf, (LPCITEMIDLIST)pidl);
+                if (lvi.pszText)
+                {
+                    ListView_SetItem(_hwndList, &lvi);
+                }
+            }
+        }
+    }
+
+    IUnknown_SafeReleaseAndNullPtr(&psf);
+    CoTaskMemFree(lvi.pszText);
+    return iItem;
+#endif
 }
 
 
 // Add items to our view, or at least as many as will fit
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 void SFTBarHost::_RepopulateList()
 {
+#ifdef DEAD_CODE
     //
     //  Kill the async enum animation now that we're ready
     //
@@ -772,7 +1215,7 @@ void SFTBarHost::_RepopulateList()
     {
         int iMax = _dpaEnum.GetPtrCount();
         int i;
-        for (i=0; i<iMax; i++)
+        for (i = 0; i < iMax; i++)
         {
             if (!_dpaEnum.FastGetPtr(i)->IsEqual(_dpaEnumNew.FastGetPtr(i)))
             {
@@ -793,31 +1236,111 @@ void SFTBarHost::_RepopulateList()
         // Now move the _dpaEnumNew to _dpaEnum
         // Clear out the old DPA, we don't need it anymore
         _dpaEnum.EnumCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
-        _dpaEnum.DeleteAllPtrs();
+        if (_dpaEnum)
+        {
+            _dpaEnum.DeleteAllPtrs();
+        }
 
         // switch DPAs now
-        CDPA<PaneItem> dpaTemp = _dpaEnum;
+        CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>> dpaTemp = _dpaEnum;
         _dpaEnum = _dpaEnumNew;
         _dpaEnumNew = dpaTemp;
 
-        _InternalRepopulateList();
+        _InternalRepopulateList(0);
     }
     else
     {
         // Clear out the new DPA, we don't need it anymore
         _dpaEnumNew.EnumCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
-        _dpaEnumNew.DeleteAllPtrs();
+        if (_dpaEnumNew)
+        {
+            _dpaEnumNew.DeleteAllPtrs();
+        }
     }
 
     _fNeedsRepopulate = FALSE;
+#else
+    int cp; // ecx
+    int v8; // eax
+    int i; // edi
+    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>> dpaTemp; // [esp+Ch] [ebp-4h] SPLIT BYREF
+    int iMax; // [esp+Ch] [ebp-4h]
+
+    if (_idtAni)
+    {
+        KillTimer(_hwnd, _idtAni);
+        _idtAni = 0;
+    }
+
+    if (_hwndAni)
+    {
+        if (_hBrushAni)
+        {
+            DeleteObject(_hBrushAni);
+            _hBrushAni = 0;
+        }
+        NotifyWinEvent(0x8001u, _hwndAni, 0, 0);
+        DestroyWindow(_hwndAni);
+        _hwndAni = 0;
+    }
+
+    if (_fForceChange)
+    {
+        _fForceChange = 0;
+        goto LABEL_9;
+    }
+
+    cp = _dpaEnum.GetPtrCount();
+    v8 = _dpaEnumNew.GetPtrCount();
+
+    if (cp != v8)
+    {
+    LABEL_9:
+        _dpaEnum.EnumCallback(PaneItem::DPAEnumCallback);
+        if (_dpaEnum)
+        {
+            _dpaEnum.DeleteAllPtrs();
+        }
+
+        dpaTemp.Attach(_dpaEnum.Detach());
+        _dpaEnum.Attach(_dpaEnumNew.Detach());
+        _dpaEnumNew.Attach(dpaTemp.Detach());
+
+        _InternalRepopulateList(0);
+    }
+    else
+    {
+        iMax = _dpaEnum.GetPtrCount();
+        i = 0;
+        if (iMax > 0)
+        {
+            do
+            {
+                if (!_dpaEnum.FastGetPtr(i)->IsEqual(_dpaEnumNew.FastGetPtr(i)))
+                {
+                    goto LABEL_9;
+                }
+            } while (++i < iMax);
+        }
+
+        _dpaEnumNew.EnumCallback(PaneItem::DPAEnumCallback);
+        if (_dpaEnumNew)
+        {
+            _dpaEnumNew.DeleteAllPtrs();
+        }
+    }
+    _fNeedsRepopulate = 0;
+#endif
 }
 
 // The internal version is when we decide to repopulate on our own,
 // not at the prompting of the background thread.  (Therefore, we
 // don't nuke the animation.)
 
-void SFTBarHost::_InternalRepopulateList()
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
+void SFTBarHost::_InternalRepopulateList(BOOL a2)
 {
+#ifdef DEAD_CODE
 
     //
     //  Start with a clean slate.
@@ -939,7 +1462,7 @@ void SFTBarHost::_InternalRepopulateList()
     //  If the last item was a separator, then delete it
     //  since it's not actually separating anything.
     //
-    if (_cSep && _rgiSep[_cSep-1] == iPos - 1)
+    if (_cSep && _rgiSep[_cSep - 1] == iPos - 1)
     {
         _cSep--;
     }
@@ -959,12 +1482,79 @@ void SFTBarHost::_InternalRepopulateList()
     _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
 
     _DebugConsistencyCheck();
+#else
+    SetWindowRedraw(_hwndList, FALSE);
+	ListView_DeleteAllItems(this->_hwndList);
+
+    int cPinned = 0;
+    int cNormal = 0;
+    //++this->_fPopulating;
+    int y = 0;
+    int fSepSeen = 0;
+    _cSep = 0;
+
+    RECT rc;
+    GetClientRect(this->_hwndList, &rc);
+    if (this->_iThemePart == SPP_PROGLIST)
+        rc.bottom -= this->_cySep;
+
+    int fCheckMaxLength = this->HasDynamicContent();
+
+    if (a2)
+        a2 = this->_cNormalDesired > this->_cSep + this->field_6C;
+
+    int iEnum = 0;
+    int iPos = 0;
+    while (1)
+    {
+        PaneItem *pitem = _dpaEnum.GetPtr(iEnum);
+        if (!pitem || fCheckMaxLength && y + this->_cyTile > rc.bottom)
+            break;
+        if (fSepSeen && cNormal >= this->_cNormalDesired)
+            break;
+
+        POINT pt;
+        _ComputeListViewItemPosition(iPos, &pt);
+
+        ASSERT(pt.x == _cxMargin); // 941
+        ASSERT(pt.y == y); // 942
+
+        if (pitem->_iPinPos == -2)
+        {
+            fSepSeen = 1;
+            if (iPos > 0 && this->_cSep < 3 && EVAL(_cSep < ARRAYSIZE(_rgiSep))) // 951
+            {
+                _rgiSep[_cSep++] = iPos++;
+                y += _cySepTile;
+            }
+        }
+        else if ((!a2 || !pitem->IsHiddenInSafeMode()) && _InsertListViewItem(iPos, pitem) >= 0)
+        {
+            pitem->_iPos = iPos++;
+            y += this->_cyTile;
+            if (pitem->_iPinPos < 0)
+                ++cNormal;
+            else
+                ++cPinned;
+        }
+        ++iEnum;
+    }
+
+    if (_cSep && _rgiSep[_cSep - 1] == iPos - 1)
+        _cSep--;
+
+    this->_cPinned = cPinned;
+
+    SFTBarHost::_RepositionItems();
+    //--this->_fPopulating;
+    SetWindowRedraw(_hwndList, TRUE);
+    _SendNotify(_hwnd, SMN_NEEDREPAINT, 0);
+#endif
 }
 
-#define NTDDI_VERSION NTDDI_VISTA
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-#include <commoncontrols.h>
+void SHLogicalToPhysicalDPI(int *a1, int *a2);
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     RECT rc;
@@ -987,12 +1577,12 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     //
 
     DWORD dwStyle = WS_CHILD | WS_VISIBLE |
-              WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
-              // Do not set WS_TABSTOP; SFTBarHost handles tabbing
-              LVS_LIST |
-              LVS_SINGLESEL |
-              LVS_NOSCROLL |
-              LVS_SHAREIMAGELISTS;
+        WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
+        // Do not set WS_TABSTOP; SFTBarHost handles tabbing
+        LVS_LIST |
+        LVS_SINGLESEL |
+        LVS_NOSCROLL |
+        LVS_SHAREIMAGELISTS;
 
     if (_dwFlags & HOSTF_CANRENAME)
     {
@@ -1001,21 +1591,24 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     DWORD dwExStyle = 0;
 
-    _hwndList = CreateWindowEx(dwExStyle, WC_LISTVIEW, NULL, dwStyle,
-                               _margins.cxLeftWidth, _margins.cyTopHeight, rc.right, rc.bottom,     // no point in being too exact, we'll be resized later
-                               _hwnd, NULL,
-                               _AtlBaseModule.GetModuleInstance(), NULL);
-    if (!_hwndList) 
+    _hwndList = SHFusionCreateWindowEx(dwExStyle, WC_LISTVIEW, NULL, dwStyle,
+        _margins.cxLeftWidth, _margins.cyTopHeight, rc.right, rc.bottom, // no point in being too exact, we'll be resized later
+        _hwnd, NULL,
+        _AtlBaseModule.GetModuleInstance(), NULL);
+    if (!_hwndList)
         return -1;
 
-    LPCWSTR v11 = L"StartMenuComposited";
-    if (this->_iThemePart == 6)
-        v11 = L"StartMenuPlaceListComposited";
-    BOOL v12 = !IsCompositionActive();
-    LPCWSTR v13 = v11;
-    if (v12)
-        v13 = L"StartMenu";
-    SetWindowTheme(this->_hwndList, v13, 0);
+    LPCWSTR pszTheme;
+    if (IsCompositionActive())
+    {
+        pszTheme = _iThemePart == SPP_PLACESLIST ? L"StartMenuPlaceListComposited" : L"StartMenuComposited";
+    }
+    else
+    {
+        pszTheme = L"StartMenu";
+    }
+
+    SetWindowTheme(_hwndList, pszTheme, NULL);
 
     //
     //  Don't freak out if this fails.  It just means that the accessibility
@@ -1030,36 +1623,31 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     LVCOLUMN lvc;
     lvc.mask = LVCF_WIDTH;
     lvc.cx = 1;
-    ListView_InsertColumn(_hwndList, 0, &lvc);
-    ListView_InsertColumn(_hwndList, 1, &lvc);
+    if (ListView_InsertColumn(_hwndList, 0, &lvc) < 0 || ListView_InsertColumn(_hwndList, 1, &lvc) < 0)
+        return -1;
 
-    //
-    //  If we are topmost, then force the tooltip topmost, too.
-    //  Otherwise we end up covering our own tooltip!
-    //
-    if (GetWindowExStyle(GetAncestor(_hwnd, GA_ROOT)) & WS_EX_TOPMOST)
+
+    HWND hwndTT = ListView_GetToolTips(_hwndList);
+    if (hwndTT)
     {
-        HWND hwndTT = ListView_GetToolTips(_hwndList);
-        if (hwndTT)
-        {
-            SetWindowPos(hwndTT, HWND_TOPMOST, 0, 0, 0, 0,
-                         SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
-        }
+        SetWindowPos(hwndTT, HWND_TOPMOST, 0, 0, 0, 0,
+            SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
     }
+
 
     // Must do Marlett after doing the listview font, because we base the
     // Marlett font metrics on the listview font metrics (so they match)
     if (_dwFlags & HOSTF_CASCADEMENU)
     {
-        if (!_CreateMarlett()) 
+        if (!_CreateMarlett())
             return -1;
     }
 
     // We can survive if these objects fail to be created
     CoCreateInstanceHook(CLSID_DragDropHelper, NULL, CLSCTX_INPROC_SERVER,
-                     IID_PPV_ARGS(&_pdth));
+        IID_PPV_ARGS(&_pdth));
     CoCreateInstanceHook(CLSID_DragDropHelper, NULL, CLSCTX_INPROC_SERVER,
-                     IID_PPV_ARGS(&_pdsh));
+        IID_PPV_ARGS(&_pdsh));
 
     //
     // If this fails, no big whoop - you just don't get
@@ -1070,120 +1658,57 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     //  If this fails, then disable "fancy droptarget" since we won't be
     //  able to manage it properly.
     if (!SetWindowSubclass(_hwndList, s_DropTargetSubclassProc, 0,
-                           reinterpret_cast<DWORD_PTR>(this)))
+        reinterpret_cast<DWORD_PTR>(this)))
     {
-        ATOMICRELEASE(_pdth);
+        IUnknown_SafeReleaseAndNullPtr(&_pdth);
     }
 
-    if (!_dpaEnum.Create(4)) 
+    if (!_dpaEnum.Create(4))
         return -1;
 
-    if (!_dpaEnumNew.Create(4)) 
+    if (!_dpaEnumNew.Create(4))
         return -1;
 
     //-------------------------
     // Imagelist goo
-#ifdef DEAD_CODE
-    int iIconSize = ReadIconSize();
-
-    Shell_GetImageLists(iIconSize ? &_himl : NULL, iIconSize ? NULL : &_himl);
-
-    if (!_himl) 
-        return -1;
-
-    // Preload values in case GetIconSize barfs
-    _cxIcon = GetSystemMetrics(iIconSize ? SM_CXICON : SM_CXSMICON);
-    _cyIcon = GetSystemMetrics(iIconSize ? SM_CYICON : SM_CYSMICON);
-    ImageList_GetIconSize(_himl, &_cxIcon, &_cyIcon);
-
-    //
-    //  If we asked for the MEDIUM-sized icons, then create the real
-    //  image list based on the system image list.
-    //
-    _iconsize = (ICONSIZE)iIconSize;
-    if (_iconsize == ICONSIZE_MEDIUM)
-    {
-        // These upcoming computations rely on the fact that ICONSIZE_LARGE
-        // and ICONSIZE_MEDIUM are both nonzero so when we fetched the icon
-        // sizes for ICONSIZE_MEDIUM, we got SM_CXICON (large).
-        COMPILETIME_ASSERT(ICONSIZE_LARGE && ICONSIZE_MEDIUM);
-
-        // SM_CXICON is the size of shell large icons.  SM_CXSMICON is *not*
-        // the size of shell small icons!  It is the size of caption small
-        // icons.  Shell small icons are always 50% of shell large icons.
-        // We want to be halfway between shell small (50%) and shell
-        // large (100%); i.e., we want 75%.
-        _cxIcon = _cxIcon * 3 / 4;
-        _cyIcon = _cyIcon * 3 / 4;
-
-        //
-        //  When the user is in Large Icon mode, we end up choosing 36x36
-        //  (halfway between 24x24 and 48x48), but there is no 36x36 icon
-        //  in the icon resource.  But we do have a 32, which is close
-        //  enough.  (If we didn't do this, then the 36x36 icon would be
-        //  the 32x32 icon stretched, which looks ugly.)
-        //
-        //  So any square icon in the range 28..36 we round to 32.
-        //
-        if (_cxIcon == _cyIcon && _cxIcon >= 28 && _cxIcon <= 36)
-        {
-            _cxIcon = _cyIcon = 32;
-        }
-
-        // It is critical that we overwrite _himl even on failure, so our
-        // destructor doesn't try to destroy a system image list!
-        _himl = ImageList_Create(_cxIcon, _cyIcon, ImageList_GetFlags(_himl), 8, 2);
-        if (!_himl)
-        {
-            return -1;
-        }
-    }
-
-    ListView_SetImageList(_hwndList, _himl, LVSIL_NORMAL);
-#else
     int iImageList = -1;
     int iIconSize = ReadIconSize();
-    this->_iconsize = (ICONSIZE)iIconSize;
-    if (iIconSize == 2)
+
+    _iconsize = (ICONSIZE)iIconSize;
+    if (iIconSize == ICONSIZE_MEDIUM)
     {
-        this->_cyIcon = 64;
-        this->_cxIcon = 64;
-        // SHLogicalToPhysicalDPI(&this->_cxIcon, &this->_cyIcon);
+        _cyIcon = 64;
+        _cxIcon = 64;
+        SHLogicalToPhysicalDPI(&_cxIcon, &_cyIcon);
     }
     else
     {
-        int SystemMetrics;
-        if (iIconSize)
-            SystemMetrics = GetSystemMetrics(SM_CXICON);
-        else
-            SystemMetrics = GetSystemMetrics(SM_CXSMICON);
-        this->_cyIcon = SystemMetrics;
-        this->_cxIcon = SystemMetrics;
-        iImageList = this->_iconsize != 0 ? SHIL_LARGE : SHIL_SYSSMALL;
+        _cyIcon = GetSystemMetrics(iIconSize ? SM_CXICON : SM_CXSMICON);
+        _cxIcon = GetSystemMetrics(iIconSize ? SM_CXICON : SM_CXSMICON);
+        iImageList = _iconsize == ICONSIZE_SMALL ? SHIL_SYSSMALL : SHIL_LARGE;
     }
 
-    IImageList2* piml;
-    if (SHGetImageList(iImageList, IID_PPV_ARGS(&piml)) >= 0)
+    IImageList2 *piml;
+    if (SUCCEEDED(SHGetImageList(iImageList, IID_PPV_ARGS(&piml))))
     {
-        if (piml->Resize(this->_cxIcon, this->_cyIcon) < 0)
+        if (SUCCEEDED(piml->Resize(_cxIcon, _cyIcon)))
+            _himl = (HIMAGELIST)piml;
+        else
             piml->Release();
-        else
-            this->_himl = (HIMAGELIST)piml;
     }
 
-    if (SFTBarHost::_IsPrivateImageList())
+    if (_IsPrivateImageList())
     {
-        UINT flags = ImageList_GetFlags(this->_himl);
-        ImageList_Destroy(this->_himl);
-        this->_himl = ImageList_Create(this->_cxIcon, this->_cyIcon, flags, 8, 2);
+        UINT flags = ImageList_GetFlags(_himl);
+        ImageList_Destroy(_himl);
+        _himl = ImageList_Create(_cxIcon, _cyIcon, flags, 8, 2);
     }
 
-    if (!this->_himl)
+    if (!_himl)
         return -1;
 
-    if (_iconsize != 2)
-        SendMessageW(this->_hwndList, LVM_SETIMAGELIST, 0, (LPARAM)this->_himl);
-#endif
+    if (_iconsize != ICONSIZE_MEDIUM)
+        ListView_SetImageList(_hwndList, _himl, LVSIL_NORMAL);
 
     // Register for SHCNE_UPDATEIMAGE so we know when to reload our icons
     _RegisterNotify(SFTHOST_HOSTNOTIFY_UPDATEIMAGE, SHCNE_UPDATEIMAGE, NULL, FALSE);
@@ -1192,8 +1717,6 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     _cxMargin = GetSystemMetrics(SM_CXEDGE);
     _cyMargin = GetSystemMetrics(SM_CYEDGE);
-
-    _cyTilePadding = 0;
 
     _ComputeTileMetrics();
 
@@ -1204,7 +1727,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     //
     if (_hTheme)
     {
-        SIZE siz={0};
+        SIZE siz = { 0, 0 };
         HDC hdc = GetDC(_hwndList);
         if (hdc)
         {
@@ -1223,9 +1746,9 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     ASSERT(rc.left == 0 && rc.top == 0); // Should still be a client rectangle
     _SetTileWidth(rc.right);             // so rc.right = RCWIDTH and rc.bottom = RCHEIGHT
 
-    // In tile view, full-row-select really means full-tile-select
-    DWORD dwLvExStyle = LVS_EX_INFOTIP |
-                        LVS_EX_FULLROWSELECT;
+    DWORD dwLvExStyle = LVS_EX_COLUMNSNAPPOINTS |
+        LVS_EX_INFOTIP |
+        LVS_EX_FULLROWSELECT;
 
     if (!GetSystemMetrics(SM_REMOTESESSION) && !GetSystemMetrics(SM_REMOTECONTROL))
     {
@@ -1233,11 +1756,11 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     }
 
     ListView_SetExtendedListViewStyleEx(_hwndList, dwLvExStyle,
-                                                   dwLvExStyle);
+        dwLvExStyle);
     if (!_hTheme)
     {
         ListView_SetTextColor(_hwndList, GetSysColor(COLOR_MENUTEXT));
-        _clrHot = GetSysColor(COLOR_MENUTEXT);
+        _clrHot = GetSysColor(COLOR_HIGHLIGHTTEXT);
         _clrBG = GetSysColor(COLOR_MENU);       // default color for no theme case
         _clrSubtitle = CLR_NONE;
 
@@ -1248,8 +1771,8 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
         GetThemeColor(_hTheme, _iThemePart, 0, TMT_HOTTRACKING, &_clrHot);  // todo - use state
         GetThemeColor(_hTheme, _iThemePart, 0, TMT_CAPTIONTEXT, &_clrSubtitle);
-        _clrBG = CLR_NONE; 
-    
+        _clrBG = CLR_NONE;
+
         GetThemeColor(_hTheme, _iThemePart, 0, TMT_TEXTCOLOR, &clrText);
         ListView_SetTextColor(_hwndList, clrText);
         ListView_SetOutlineColor(_hwndList, _clrHot);
@@ -1261,6 +1784,8 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     ListView_SetView(_hwndList, LV_VIEW_TILE);
 
+    field_170 = GetSystemMetrics(SM_CYSCREEN) <= 480;
+
     // USER will send us a WM_SIZE after the WM_CREATE, which will cause
     // the listview to repopulate, if we chose to repopulate in the
     // foreground.
@@ -1269,6 +1794,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 }
 
+// EXEX-VISTA(allison): Validated.
 BOOL SFTBarHost::_CreateMarlett()
 {
     HDC hdc = GetDC(_hwndList);
@@ -1297,7 +1823,7 @@ BOOL SFTBarHost::_CreateMarlett()
                         SIZE siz;
                         if (GetTextExtentPoint(hdc, TEXT("8"), 1, &siz))
                         {
-                            _cxMarlett = siz.cx;
+                            _cxMarlett = siz.cx + 4;
                         }
                     }
                 }
@@ -1311,6 +1837,7 @@ BOOL SFTBarHost::_CreateMarlett()
     return _cxMarlett;
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_CreateBoldFont()
 {
     if (!_hfBold)
@@ -1329,69 +1856,43 @@ void SFTBarHost::_CreateBoldFont()
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_ReloadText()
 {
     int iItem;
     for (iItem = ListView_GetItemCount(_hwndList) - 1; iItem >= 0; iItem--)
     {
-        TCHAR szText[MAX_PATH];
-        LVITEM lvi;
-        lvi.iItem = iItem;
-        lvi.iSubItem = 0;
-        lvi.mask = LVIF_PARAM | LVIF_TEXT;
-        lvi.pszText = szText;
-        lvi.cchTextMax = ARRAYSIZE(szText);
-        if (ListView_GetItem(_hwndList, &lvi))
+        if (!_OnTextUpdate(iItem))
         {
-            PaneItem *pitem = _GetItemFromLVLParam(lvi.lParam);
-            if (!pitem)
-            {
-                break;
-            }
-
-
-            // Update the display name in case it changed behind our back.
-            // Note that this is not redundant with the creation of the items
-            // in _InsertListViewItem because this is done only on the second
-            // and subsequent enumeration.  (We assume the first enumeration
-            // is just peachy.)
-            lvi.iItem = iItem;
-            lvi.iSubItem = 0;
-            lvi.mask = LVIF_TEXT;
-            lvi.pszText = _DisplayNameOfItem(pitem, SHGDN_NORMAL);
-            if (lvi.pszText)
-            {
-                if (StrCmpN(szText, lvi.pszText, ARRAYSIZE(szText)) != 0)
-                {
-                    ListView_SetItem(_hwndList, &lvi);
-                    _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
-                }
-                SHFree(lvi.pszText);
-            }
+            break;
         }
     }
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 void SFTBarHost::_RevalidateItems()
 {
-    // If client does not require revalidation, then assume still valid
     if (!(_dwFlags & HOSTF_REVALIDATE))
     {
         return;
     }
 
     int iItem;
-    for (iItem = ListView_GetItemCount(_hwndList) - 1; iItem >= 0; iItem--)
+    for (iItem = ListView_GetItemCount(_hwndList) - 1; iItem >= 0 && _fEnumValid; iItem--)
     {
         PaneItem *pitem = _GetItemFromLV(iItem);
-        if (!pitem || !IsItemStillValid(pitem))
+        if (pitem)
         {
-            _fEnumValid = FALSE;
-            break;
+            pitem->Release();
+        }
+        else
+        {
+            _fEnumValid = 0;
         }
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_RevalidatePostPopup()
 {
     _RevalidateItems();
@@ -1407,8 +1908,10 @@ void SFTBarHost::_RevalidatePostPopup()
     }
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 void SFTBarHost::_EnumerateContents(BOOL fUrgent)
 {
+#ifdef DEAD_CODE
     // If we have deferred refreshes until the window closes, then
     // leave it alone.
     if (!fUrgent && _fNeedsRepopulate)
@@ -1500,9 +2003,61 @@ void SFTBarHost::_EnumerateContents(BOOL fUrgent)
         _EnumerateContentsBackground();
         _RepopulateList();
     }
+#else
+    if (!fUrgent && _fNeedsRepopulate)
+        return;
+    
+    if (_fBGTask)
+    {
+        _fRestartUrgent |= fUrgent;
+        _fRestartEnum = 1;
+    }
+    else
+    {
+        _fRestartEnum = 0;
+        _fRestartUrgent = 0;
+        if (!_fEnumValid || fUrgent)
+        {
+            _fEnumValid = 1;
+
+            _dpaEnumNew.EnumCallback(PaneItem::DPAEnumCallback, 0);
+            if (_dpaEnumNew)
+            {
+                _dpaEnumNew.DeleteAllPtrs();
+            }
+
+            PrePopulate();
+            if (NeedBackgroundEnum() && (_psched || CoCreateInstance(CLSID_ShellTaskScheduler, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psched)) >= 0))
+            {
+                CBGEnum *penum = new CBGEnum(this, fUrgent);
+                if (penum)
+                {
+                    if (_psched->AddTask(penum, TOID_SFTBarHostBackgroundEnum, (DWORD_PTR)this, 0x10001000u) >= 0)
+                    {
+                        _fBGTask = 1;
+
+                        if (ListView_GetItemCount(_hwndList) == 0)
+                        {
+                            _idtAni = IDT_ASYNCENUM;
+                            SetTimer(_hwnd, _idtAni, 1000, NULL);
+                        }
+                    }
+                    penum->Release();
+                }
+            }
+
+            if (!this->_fBGTask)
+            {
+                _EnumerateContentsBackground();
+                _RepopulateList();
+            }
+        }
+    }
+#endif
 }
 
 
+// EXEX-VISTA(allison): Partially validated. Figure out the CDPA sort call.
 void SFTBarHost::_EnumerateContentsBackground()
 {
     // Start over
@@ -1515,11 +2070,15 @@ void SFTBarHost::_EnumerateContentsBackground()
 #else
     _dpaEnumNew.SortEx(_SortItemsAfterEnum, this);
 #endif
+
+	// PostEnum(); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 int CALLBACK SFTBarHost::_SortItemsAfterEnum(PaneItem *p1, PaneItem *p2, SFTBarHost *self)
 {
 
+#ifdef DEAD_CODE
     //
     //  Put all pinned items (sorted by pin position) ahead of unpinned items.
     //
@@ -1540,34 +2099,57 @@ int CALLBACK SFTBarHost::_SortItemsAfterEnum(PaneItem *p1, PaneItem *p2, SFTBarH
     //  Both unpinned - let the client decide.
     //
     return self->CompareItems(p1, p2);
+#else
+    int iPinPos; // eax
+    int v4; // ecx
+
+    iPinPos = p1->_iPinPos;
+    if (iPinPos < 0)
+    {
+        if (p2->_iPinPos < 0)
+            return self->CompareItems(p1, p2);
+        else
+            return 1;
+    }
+    else
+    {
+        v4 = p2->_iPinPos;
+        if (v4 < 0)
+            return -1;
+        else
+            return iPinPos - v4;
+    }
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 SFTBarHost::~SFTBarHost()
 {
     // We shouldn't be destroyed while in these temporary states.
     // If this fires, it's possible that somebody incremented
     // _fListUnstable/_fPopulating and forgot to decrement it.
-    //ASSERT(!_fListUnstable);
-    //ASSERT(!_fPopulating);
+    ASSERT(!_fListUnstable);
+    ASSERT(!_fPopulating);
 
     ATOMICRELEASE(_pdth);
     ATOMICRELEASE(_pdsh);
     ATOMICRELEASE(_psched);
-    //ASSERT(_pdtoDragOut == NULL);
+    ASSERT(_pdtoDragOut == NULL);
 
-    if (_dpaEnum)
-    {
-        _dpaEnum.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
-    }
+    _dpaEnum.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
 
-    if (_dpaEnumNew)
-    {
-        _dpaEnumNew.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
-    }
+    _dpaEnumNew.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
 
-    if (_IsPrivateImageList() && _himl)
+    if (_himl)
     {
+        if (_IsPrivateImageList())
+        {
+            VARIANT vt = {0};
+            vt.vt = VT_BYREF;
+            IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 314, 0, &vt, 0);
+        }
         ImageList_Destroy(_himl);
+		_himl = NULL;
     }
 
     if (_hfList)
@@ -1591,6 +2173,7 @@ SFTBarHost::~SFTBarHost()
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     UINT id;
@@ -1606,12 +2189,14 @@ LRESULT SFTBarHost::_OnDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnNcDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     // WARNING!  "this" might be NULL (if WM_NCCREATE failed).
     LRESULT lres = DefWindowProc(hwnd, uMsg, wParam, lParam);
     SetWindowLongPtr(hwnd, 0, 0);
-    if (this) {
+    if (this)
+    {
         _hwndList = NULL;
         _hwnd = NULL;
         if (_psched)
@@ -1625,8 +2210,27 @@ LRESULT SFTBarHost::_OnNcDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     return lres;
 }
 
+// EXEX-VISTA(allison): Validated.
+void SFTBarHost::_UpdateHotTrackRect()
+{
+    if (!_hTheme)
+    {
+        int iHotItem = ListView_GetHotItem(_hwndList);
+        if (iHotItem >= 0)
+        {
+            RECT rc;
+            if (ListView_GetItemRect(_hwndList, iHotItem, &rc, LVIR_SELECTBOUNDS))
+            {
+                InvalidateRect(_hwndList, &rc, TRUE);
+            }
+        }
+    }
+}
+
+// EXEX-VISTA(allison): Validated. Still needs major cleanup.
 LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#ifdef DEAD_CODE
     LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
     if (pnm->hwndFrom == _hwndList)
     {
@@ -1697,8 +2301,132 @@ LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     // Give derived class a chance to respond
     return OnWndProc(hwnd, uMsg, wParam, lParam);
+#else
+    LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
+    if (pnm->hwndFrom == this->_hwndList)
+    {
+        if (pnm->code <= 0xFFFFFF91)
+        {
+            if (pnm->code != -111)
+            {
+                switch (pnm->code)
+                {
+                case 0xFFFFFF46:
+                    return _OnLVNAsyncDrawn(CONTAINING_RECORD(pnm, NMLVASYNCDRAWN, hdr));
+                case 0xFFFFFF50:
+                    return _OnLVNEndLabelEdit(CONTAINING_RECORD(pnm, NMLVDISPINFO, hdr));
+                case 0xFFFFFF51:
+                    return _OnLVNBeginLabelEdit(CONTAINING_RECORD(pnm, NMLVDISPINFO, hdr));
+                case 0xFFFFFF62:
+                    return _OnLVNGetInfoTip(CONTAINING_RECORD(pnm, NMLVGETINFOTIP, hdr));
+                case 0xFFFFFF65:
+                    return _OnLVNKeyDown(CONTAINING_RECORD(pnm, NMLVKEYDOWN, hdr));
+                case 0xFFFFFF87:
+                    _UpdateHotTrackRect();
+                    return 0;
+                }
+                return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+            }
+            return _OnLVNBeginDrag(CONTAINING_RECORD(pnm, NMLISTVIEW, hdr));
+        }
+        if (pnm->code == -109)
+        {
+            return _OnLVNBeginDrag(CONTAINING_RECORD(pnm, NMLISTVIEW, hdr));
+        }
+        if (pnm->code == NM_CUSTOMDRAW)
+        {
+            return _OnLVCustomDraw(CONTAINING_RECORD(CONTAINING_RECORD(pnm, NMCUSTOMDRAW, hdr), NMLVCUSTOMDRAW, nmcd));
+        }
+        if (pnm->code == NM_KILLFOCUS)
+        {
+            this->_NotifyHoverImage(-1);
+            goto L_DESELECT_ALL;
+        }
+        if (pnm->code == -4)
+        {
+            return _ActivateItem(_GetLVCurSel(), AIF_KEYBOARD);
+        }
+        if (pnm->code == -2)
+        {
+            return _OnLVNItemActivate(CONTAINING_RECORD(pnm, NMITEMACTIVATE, hdr));
+        }
+        return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+    }
+    if (pnm->code <= 214)
+    {
+        if (pnm->code == 214)
+        {
+            if (this->_hwndList == GetFocus())
+            {
+                NotifyWinEvent(0x8005u, this->_hwndList, -4, this->_iCascading + 1);
+            }
+            this->_iCascading = -1;
+            return 0;
+        }
+        if (pnm->code == 200) // SMN_INITIALUPDATE
+        {
+            _EnumerateContents(0);
+        }
+        else
+        {
+            if (pnm->code == 201) // SMN_APPLYREGION
+            {
+                if (this->_iThemePart != 6)
+                {
+                    return HandleApplyRegion(this->_hwnd, this->_hTheme, (SMNMAPPLYREGION *)lParam, this->_iThemePart, 0);
+                }
+            }
+            else
+            {
+                if (pnm->code == 206) // SMN_GETMINSIZE
+                {
+                    return _OnSMNGetMinSize(CONTAINING_RECORD(pnm, SMNGETMINSIZE, hdr));
+                }
+                if (pnm->code == 208) // SMN_POSTPOPUP
+                {
+                    _RevalidatePostPopup();
+                }
+                else if (pnm->code == 210) // SMN_DISMISS
+                {
+                    return _OnSMNDismiss();
+                }
+            }
+        }
+        return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+    }
+    if (pnm->code == 215)
+    {
+        return _OnSMNFindItem((SMNDIALOGMESSAGE *)lParam);
+    }
+    if (pnm->code == 223)
+    {
+        return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
+    }
+    if (pnm->code == 224)
+    {
+        if (_iCascading != -1)
+        {
+            NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndList, -4, _iCascading + 1);
+        }
+        return OnWndProc(hwnd, uMsg, wParam, lParam);
+    }
+    if (pnm->code == 225)
+    {
+        _NotifyHoverImage(-1);
+        return OnWndProc(hwnd, uMsg, wParam, lParam);
+    }
+    if (pnm->code == -8)
+    {
+    L_DESELECT_ALL:
+        _UpdateHotTrackRect();
+        ListView_SetItemState(_hwndList, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+        return OnWndProc(hwnd, uMsg, wParam, lParam);
+    }
+    return OnWndProc(hwnd, uMsg, wParam, lParam);
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (wParam)
@@ -1722,12 +2450,14 @@ LRESULT SFTBarHost::_OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH)/2;     // IDA_SEARCH is ANIWND_WIDTH pix wide
                 int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT)/2;    // IDA_SEARCH is ANIWND_HEIGHT pix tall
 
-                _hwndAni = CreateWindow(ANIMATE_CLASS, NULL, dwStyle,
-                                        x, y, 0, 0,
-                                        _hwnd, NULL,
-                                        _AtlBaseModule.GetModuleInstance(), NULL);
+                _hwndAni = SHFusionCreateWindow(ANIMATE_CLASS, NULL, dwStyle,
+                                                x, y, 0, 0,
+                                                _hwnd, NULL,
+                                                _AtlBaseModule.GetModuleInstance(), NULL);
                 if (_hwndAni)
                 {
+                    NotifyWinEvent(EVENT_OBJECT_SHOW, _hwndAni, 0, 0);
+
                     SetWindowPos(_hwndAni, HWND_TOP, 0, 0, 0, 0,
                                  SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
                     #define IDA_SEARCH 150 // from shell32
@@ -1751,6 +2481,7 @@ LRESULT SFTBarHost::_OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return OnWndProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnSetFocus(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (_hwndList)
@@ -1760,46 +2491,47 @@ LRESULT SFTBarHost::_OnSetFocus(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     return 0;
 }
 
-int __stdcall DrawPlacesListBackground(HTHEME hTheme, HWND hWnd, HDC hdc)
+// EXEX-VISTA(allison): Validated.
+HRESULT DrawPlacesListBackground(HTHEME hTheme, HWND hwnd, HDC hdc)
 {
-    int v3; // edi
-    struct tagRECT rcParent; // [esp+Ch] [ebp-24h] BYREF
-    RECT rc; // [esp+1Ch] [ebp-14h] BYREF
-    POINT pt; // [esp+24h] [ebp-Ch] SPLIT BYREF
-    HWND hwndParent; // [esp+2Ch] [ebp-4h]
-
-    hwndParent = GetParent(hWnd);
+    HWND hwndParent = GetParent(hwnd);
+    RECT rcParent;
     GetClientRect(hwndParent, &rcParent);
-    v3 = 0;
+
+    HRESULT hr = S_OK;
+
     if (IsCompositionActive())
     {
-        memset(&rc, 0, sizeof(rc));
+        RECT rc;
         GetClipBox(hdc, &rc);
         SHFillRectClr(hdc, &rc, 0);
-        v3 = 1;
+        hr = S_FALSE;
     }
 
     if (hwndParent)
     {
-        pt.x = 0;
-        pt.y = 0;
-        SetBkMode(hdc, 1);
-        MapWindowPoints(hWnd, hwndParent, &pt, 1u);
+        POINT pt = { 0, 0 };
+        SetBkMode(hdc, TRANSPARENT);
+
+        MapWindowPoints(hwnd, hwndParent, &pt, 1);
         rcParent.right -= pt.x;
         OffsetWindowOrgEx(hdc, 0, pt.y, &pt);
-        DrawThemeBackground(hTheme, hdc, 6, 0, &rcParent, 0);
-        SetWindowOrgEx(hdc, pt.x, pt.y, 0);
+
+        DrawThemeBackground(hTheme, hdc, SPP_PLACESLIST, 0, &rcParent, NULL);
+
+        SetWindowOrgEx(hdc, pt.x, pt.y, NULL);
     }
-    return v3;
+    return hr;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnEraseBackground(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     RECT rc;
     GetClientRect(hwnd, &rc);
     if (_hTheme)
     {
-        if (_iThemePart == 6)
+        if (_iThemePart == SPP_PLACESLIST)
         {
             DrawPlacesListBackground(_hTheme, hwnd, (HDC)wParam);
         }
@@ -1809,7 +2541,7 @@ LRESULT SFTBarHost::_OnEraseBackground(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
             {
                 SHFillRectClr((HDC)wParam, &rc, 0);
             }
-            DrawThemeBackground(_hTheme, (HDC)wParam, _iThemePart, 0, &rc, 0);
+            DrawThemeBackground(_hTheme, (HDC)wParam, _iThemePart, 0, &rc, NULL);
         }
     }
     else
@@ -1822,6 +2554,7 @@ LRESULT SFTBarHost::_OnEraseBackground(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     return TRUE;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVCustomDraw(LPNMLVCUSTOMDRAW plvcd)
 {
     _DebugConsistencyCheck();
@@ -1852,6 +2585,7 @@ LRESULT SFTBarHost::_OnLVCustomDraw(LPNMLVCUSTOMDRAW plvcd)
 //  so it doesn't interfere with painting.  WM_PAINT messages might nest
 //  under extreme conditions, so do this only at outer level.
 //
+// EXEX-VISTA(allison): Validated.
 LRESULT CALLBACK SFTBarHost::s_DropTargetSubclassProc(
                              HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
                              UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
@@ -1906,21 +2640,25 @@ LRESULT CALLBACK SFTBarHost::s_DropTargetSubclassProc(
 //  can get re-entered with a sub-paint cycle, so we have to maintain
 //  a stack of "is the current customdraw cycle real or fake?" bits.
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_CustomDrawPush(BOOL fReal)
 {
     _dwCustomDrawState = (_dwCustomDrawState << 1) | fReal;
 }
 
+// EXEX-VISTA(allison): Validated.
 BOOL SFTBarHost::_IsRealCustomDraw()
 {
     return _dwCustomDrawState & 1;
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_CustomDrawPop()
 {
     _dwCustomDrawState >>= 1;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVPrePaint(LPNMLVCUSTOMDRAW plvcd)
 {
     LRESULT lResult;
@@ -1940,8 +2678,10 @@ LRESULT SFTBarHost::_OnLVPrePaint(LPNMLVCUSTOMDRAW plvcd)
 //
 #define CDIS_WASSELECTED        CDIS_CHECKED
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnLVItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
 {
+#ifdef DEAD_CODE
     LRESULT lResult = CDRF_DODEFAULT;
 
     plvcd->nmcd.uItemState &= ~CDIS_WASSELECTED;
@@ -2013,10 +2753,69 @@ LRESULT SFTBarHost::_OnLVItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
         }
     }
     return lResult;
+#else
+    COLORREF SysColor; // eax
+    COLORREF v4; // eax
+
+    LRESULT lResult = CDRF_DODEFAULT;
+
+    plvcd->nmcd.uItemState &= ~8u;
+
+    if ((plvcd->nmcd.uItemState & 0x41) != 0 || plvcd->nmcd.dwItemSpec == ListView_GetHotItem(_hwndList))
+    {
+        plvcd->nmcd.uItemState |= 8u;
+        if (_hTheme)
+        {
+            SysColor = GetSysColor(COLOR_MENUHILIGHT);
+        }
+        else
+        {
+            plvcd->clrText = GetSysColor(COLOR_HIGHLIGHTTEXT);
+            SysColor = GetSysColor(COLOR_HIGHLIGHT);
+        }
+        plvcd->clrFace = SysColor;
+        plvcd->clrTextBk = SysColor;
+    }
+
+    plvcd->nmcd.uItemState &= 0xFFFFFFEE;
+    if ((plvcd->nmcd.uItemState & 0x40) != 0 && this->_clrHot != -1
+        || plvcd->nmcd.dwItemSpec == SendMessageW(this->_hwndList, 0x103Du, 0, 0))
+    {
+        v4 = GetSysColor(COLOR_HIGHLIGHT);
+        plvcd->clrTextBk = v4;
+        plvcd->clrFace = v4;
+        plvcd->clrText = this->_clrHot;
+    }
+
+    if (plvcd->nmcd.dwItemSpec != this->_iDragOver || !this->_pdtDragOver)
+        lResult = 0x10000;
+
+    PaneItem* pitem = _GetItemFromLVLParam(plvcd->nmcd.lItemlParam);
+    if (pitem || (pitem = _GetItemFromLV(plvcd->nmcd.dwItemSpec)) != 0)
+    {
+        if (IsBold(pitem))
+        {
+            _CreateBoldFont();
+            SelectObject(plvcd->nmcd.hdc, _hfBold);
+            lResult |= 2;
+        }
+
+        if ((pitem->_dwFlags & 1) != 0)
+            lResult |= 0x30u;
+        if (pitem->_pszAccelerator)
+            lResult |= 0x30u;
+        if ((pitem->_dwFlags & 2) != 0)
+            lResult |= 0x20u;
+        pitem->Release();
+    }
+    return lResult;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnLVSubItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
 {
+#ifdef DEAD_CODE
     LRESULT lResult = CDRF_DODEFAULT;
     if (plvcd->iSubItem == 1)
     {
@@ -2041,7 +2840,41 @@ LRESULT SFTBarHost::_OnLVSubItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
         }
     }
     return lResult;
+#else
+    LRESULT lResult = CDRF_DODEFAULT;
+    if (plvcd->iSubItem == 1)
+    {
+        SelectFont(plvcd->nmcd.hdc, GetWindowFont(_hwndList));
+        lResult |= CDRF_NEWFONT;
+        
+        if (!_hTheme && (plvcd->nmcd.uItemState & CDIS_WASSELECTED))
+        {
+            plvcd->clrText = GetSysColor(COLOR_HIGHLIGHTTEXT);
+        }
+        else if (_clrSubtitle != CLR_NONE)
+        {
+            plvcd->clrText = _clrSubtitle;
+        }
+        else
+        {
+            plvcd->clrText = GetSysColor(COLOR_MENUTEXT);
+        }
+    }
+    return lResult;
+#endif
 }
+
+BOOL
+WINAPI
+SHExtTextOutW(
+    HDC hdc,
+    int x,
+    int y,
+    UINT options,
+    CONST RECT *lprect,
+    LPCWSTR lpString,
+    UINT c,
+    CONST INT *lpDx);
 
 // QUIRK!  Listview often sends item postpaint messages even though we
 // didn't ask for one.  It does this because we set NOTIFYPOSTPAINT on
@@ -2049,8 +2882,10 @@ LRESULT SFTBarHost::_OnLVSubItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
 // listview is finished painting") and it thinks that that flag also
 // turns on postpaint notifications for each item...
 
+// EXEX-VISTA(allison): Validated. Still needs major cleanup.
 LRESULT SFTBarHost::_OnLVItemPostPaint(LPNMLVCUSTOMDRAW plvcd)
 {
+#ifdef DEAD_CODE
     PaneItem *pitem = _GetItemFromLVLParam(plvcd->nmcd.lItemlParam);
     if (_IsRealCustomDraw() && pitem)
     {
@@ -2109,8 +2944,127 @@ LRESULT SFTBarHost::_OnLVItemPostPaint(LPNMLVCUSTOMDRAW plvcd)
     }
 
     return CDRF_DODEFAULT;
+#else
+    int fRTL; // edi MAPDST
+    UINT fuOptions; // eax
+    DTTOPTS opts; // [esp+10h] [ebp-9Ch] BYREF
+    COLORREF clrBkPrev; // [esp+50h] [ebp-5Ch]
+    COLORREF clrTextPrev; // [esp+54h] [ebp-58h]
+    int iModePrev; // [esp+58h] [ebp-54h]
+    HFONT hfPrev; // [esp+5Ch] [ebp-50h]
+    RECT pRect; // [esp+60h] [ebp-4Ch] BYREF
+    DWORD dwTextFlags; // [esp+74h] [ebp-38h]
+    PaneItem *pitem; // [esp+80h] [ebp-2Ch] MAPDST
+    RECT rc; // [esp+84h] [ebp-28h] BYREF
+    //CPPEH_RECORD ms_exc; // [esp+94h] [ebp-18h]
+    UINT uFormat; // [esp+B4h] [ebp+8h]
+
+    pitem = SFTBarHost::_GetItemFromLVLParam(plvcd->nmcd.lItemlParam);
+    if (pitem)
+    {
+        if ((this->_dwCustomDrawState & 1) != 0)
+        {
+            if (ListView_GetItemRect(_hwndList, plvcd->nmcd.dwItemSpec, &rc, LVIR_LABEL))
+            {
+                clrBkPrev = SetBkColor(plvcd->nmcd.hdc, plvcd->clrFace);
+                clrTextPrev = SetTextColor(plvcd->nmcd.hdc, plvcd->clrText);
+                iModePrev = SetBkMode(plvcd->nmcd.hdc, 1);
+                fRTL = GetLayout(plvcd->nmcd.hdc) & 1;
+                if ((pitem->_dwFlags & 1) != 0)
+                {
+                    hfPrev = (HFONT)SelectObject(plvcd->nmcd.hdc, this->_hfMarlett);
+                    if (hfPrev)
+                    {
+                        WCHAR chOut[2] = { fRTL ? TEXT('w') : TEXT('8') };
+                        dwTextFlags = 0;
+                        fuOptions = 0;
+                        if (fRTL)
+                        {
+                            fuOptions = 128;
+                            dwTextFlags = 0x20000;
+                        }
+
+                        if (this->_hTheme)
+                        {
+                            opts.dwSize = 64;
+                            memset(&opts.dwFlags, 0, 0x3Cu);
+                            opts.dwFlags = IsCompositionActive() ? 0x2000 : 0;
+                            pRect.left = rc.right - this->_cxMarlett;
+                            pRect.top = rc.top + (rc.bottom - this->_tmAscentMarlett - rc.top) / 2;
+                            pRect.right = rc.right;
+                            pRect.bottom = rc.bottom;
+                            DrawThemeTextEx(
+                                this->_hTheme,
+                                plvcd->nmcd.hdc,
+                                this->_iThemePart,
+                                plvcd->iStateId,
+                                chOut,
+                                1,
+                                dwTextFlags,
+                                &pRect,
+                                &opts);
+                        }
+                        else
+                        {
+                            SHExtTextOutW(
+                                plvcd->nmcd.hdc,
+                                rc.right - this->_cxMarlett,
+                                rc.top + (rc.bottom - this->_tmAscentMarlett - rc.top) / 2,
+                                fuOptions,
+                                &rc,
+                                chOut,
+                                1u,
+                                0);
+                        }
+                        SelectObject(plvcd->nmcd.hdc, hfPrev);
+                    }
+                }
+                if (pitem->_pszAccelerator && (plvcd->nmcd.uItemState & 0x200) != 0)
+                {
+                    ASSERT(!pitem->HasSubtitle()); // 2159
+                    rc.right -= this->_cxMarlett;
+                    rc.left += 2;
+
+                    uFormat = 0x42010;
+                    if (fRTL)
+                        uFormat = 0x62010;
+                    pRect = rc;
+                    DrawTextW(plvcd->nmcd.hdc, pitem->_pszAccelerator, -1, &pRect, uFormat | 0x400);
+                    rc.top += (rc.bottom + pRect.top - pRect.bottom - rc.top) / 2;
+                    if (this->_hTheme)
+                    {
+                        opts.dwSize = 0x40;
+                        memset(&opts.dwFlags, 0, 0x3Cu);
+                        opts.dwFlags = IsCompositionActive() ? DTT_COMPOSITED : 0;
+                        DrawThemeTextEx(
+                            this->_hTheme,
+                            plvcd->nmcd.hdc,
+                            this->_iThemePart,
+                            plvcd->iStateId,
+                            pitem->_pszAccelerator,
+                            -1,
+                            uFormat | 0x200000,
+                            &rc,
+                            &opts);
+                    }
+                    else
+                    {
+                        DrawTextW(plvcd->nmcd.hdc, pitem->_pszAccelerator, -1, &rc, uFormat | 0x200000);
+                    }
+                    rc.right += this->_cxMarlett;
+                }
+                SetBkMode(plvcd->nmcd.hdc, iModePrev);
+                SetTextColor(plvcd->nmcd.hdc, clrTextPrev);
+                SetBkColor(plvcd->nmcd.hdc, clrBkPrev);
+            }
+        }
+        pitem->Release();
+    }
+    return 0;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVPostPaint(LPNMLVCUSTOMDRAW plvcd)
 {
     if (_IsRealCustomDraw())
@@ -2122,6 +3076,7 @@ LRESULT SFTBarHost::_OnLVPostPaint(LPNMLVCUSTOMDRAW plvcd)
     return CDRF_DODEFAULT;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnUpdateUIState(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     // Only need to do this when the Start Menu is visible; if not visible, then
@@ -2159,11 +3114,13 @@ LRESULT SFTBarHost::_OnUpdateUIState(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
                     InvalidateRect(_hwndList, &rc, TRUE);
                 }
             }
+			pitem->Release();
         }
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 PaneItem *SFTBarHost::_GetItemFromLV(int iItem)
 {
     LVITEM lvi;
@@ -2178,6 +3135,7 @@ PaneItem *SFTBarHost::_GetItemFromLV(int iItem)
     return NULL;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnMenuMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT lres;
@@ -2194,6 +3152,7 @@ LRESULT SFTBarHost::_OnMenuMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnForwardMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
@@ -2201,6 +3160,7 @@ LRESULT SFTBarHost::_OnForwardMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return OnWndProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 BOOL SFTBarHost::UnregisterNotify(UINT id)
 {
     ASSERT(id < SFTHOST_MAXNOTIFY);
@@ -2214,7 +3174,8 @@ BOOL SFTBarHost::UnregisterNotify(UINT id)
     return FALSE;
 }
 
-BOOL SFTBarHost::_RegisterNotify(UINT id, LONG lEvents, LPCITEMIDLIST pidl, BOOL fRecursive)
+// EXEX-VISTA(allison): Validated.
+BOOL SFTBarHost::_RegisterNotify(UINT id, LONG lEvents, PCIDLIST_ABSOLUTE pidl, BOOL fRecursive)
 {
     ASSERT(id < SFTHOST_MAXNOTIFY);
 
@@ -2243,6 +3204,8 @@ BOOL SFTBarHost::_RegisterNotify(UINT id, LONG lEvents, LPCITEMIDLIST pidl, BOOL
 //  wParam = 0 if this is not an urgent refresh (can be postponed)
 //  wParam = 1 if this is urgent (must refresh even if menu is open)
 //
+
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnRepopulate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     // Don't update the list now if we are visible, except if the list was empty
@@ -2265,7 +3228,7 @@ LRESULT SFTBarHost::_OnRepopulate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     return 0;
 }
 
-
+// EXEX-VISTA(allison): Partially validated. Recheck flow.
 LRESULT SFTBarHost::_OnChangeNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LPITEMIDLIST *ppidl;
@@ -2295,14 +3258,14 @@ LRESULT SFTBarHost::_OnChangeNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_OnUpdateImage(LPCITEMIDLIST pidl, LPCITEMIDLIST pidlExtra)
 {
     // Must use pidl and not pidlExtra because pidlExtra is sometimes NULL
     SHChangeDWORDAsIDList *pdwidl = (SHChangeDWORDAsIDList *)pidl;
     if (pdwidl->dwItem1 == 0xFFFFFFFF)
     {
-        // Wholesale icon rebuild; just pitch everything and start over
-        ::PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
+        _SendNotify(_hwnd, 225, 0);
     }
     else
     {
@@ -2317,22 +3280,26 @@ void SFTBarHost::_OnUpdateImage(LPCITEMIDLIST pidl, LPCITEMIDLIST pidlExtra)
 //
 //  See if anybody is using this image; if so, invalidate the cached bitmap.
 //
+
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::UpdateImage(int iImage)
 {
-    ASSERT(!_IsPrivateImageList());
-
-    int iItem;
-    for (iItem = ListView_GetItemCount(_hwndList) - 1; iItem >= 0; iItem--)
+	// Only cache bitmaps for small or large icons
+    if (_iconsize != ICONSIZE_MEDIUM)
     {
-        LVITEM lvi;
-        lvi.iItem = iItem;
-        lvi.iSubItem = 0;
-        lvi.mask = LVIF_IMAGE;
-        if (ListView_GetItem(_hwndList, &lvi) && lvi.iImage == iImage)
+        int iItem;
+        for (iItem = ListView_GetItemCount(_hwndList) - 1; iItem >= 0; iItem--)
         {
-            // The cached bitmap is no good; an icon changed
-            _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
-            break;
+            LVITEM lvi;
+            lvi.iItem = iItem;
+            lvi.iSubItem = 0;
+            lvi.mask = LVIF_IMAGE;
+            if (ListView_GetItem(_hwndList, &lvi) && lvi.iImage == iImage)
+            {
+                // The cached bitmap is no good; an icon changed
+                _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
+                break;
+            }
         }
     }
 }
@@ -2347,13 +3314,22 @@ LRESULT SFTBarHost::_OnRefresh(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated.
 LPTSTR _DisplayNameOf(IShellFolder *psf, LPCITEMIDLIST pidl, UINT shgno)
 {
-    LPTSTR pszOut;
-    DisplayNameOfAsOLESTR(psf, pidl, shgno, &pszOut);
+    LPWSTR pszOut = 0;
+
+    LPITEMIDLIST pidlOut;
+    IShellFolder *psfOut;
+    if (SHBindToFolderIDListParent(psf, pidl, IID_PPV_ARGS(&psfOut), (LPCITEMIDLIST *)&pidlOut) >= 0)
+    {
+        DisplayNameOfAsString(psfOut, pidlOut, shgno, &pszOut);
+        psfOut->Release();
+    }
     return pszOut;
 }
 
+// EXEX-VISTA(allison): Validated.
 LPTSTR SFTBarHost::_DisplayNameOfItem(PaneItem *pitem, UINT shgno)
 {
     IShellFolder *psf;
@@ -2368,6 +3344,7 @@ LPTSTR SFTBarHost::_DisplayNameOfItem(PaneItem *pitem, UINT shgno)
     return pszOut;
 }
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::_GetUIObjectOfItem(PaneItem *pitem, REFIID riid, void * *ppv)
 {
     *ppv = NULL;
@@ -2395,11 +3372,19 @@ HRESULT SFTBarHost::_GetUIObjectOfItem(int iItem, REFIID riid, void * *ppv)
     return E_FAIL;
 }
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::_GetFolderAndPidl(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut)
 {
     *ppsfOut = NULL;
     *ppidlOut = NULL;
     return pitem->IsSeparator() ? E_FAIL : GetFolderAndPidl(pitem, ppsfOut, ppidlOut);
+}
+
+HRESULT SFTBarHost::_GetFolderAndPidlForActivate(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut)
+{
+    *ppsfOut = NULL;
+    *ppidlOut = NULL;
+    return pitem->IsSeparator() ? E_FAIL : GetFolderAndPidlForActivate(pitem, ppsfOut, ppidlOut);
 }
 
 //
@@ -2410,6 +3395,8 @@ HRESULT SFTBarHost::_GetFolderAndPidl(PaneItem *pitem, IShellFolder **ppsfOut, L
 //  Also, returns on success in *ppt the coordinates at which the
 //  context menu should be displayed.
 //
+
+// EXEX-VISTA(allison): Validated.
 int SFTBarHost::_ContextMenuCoordsToItem(LPARAM lParam, POINT *ppt)
 {
     int iItem;
@@ -2604,6 +3591,7 @@ LRESULT SFTBarHost::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     return fSuccess ? 0 : DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_EditLabel(int iItem)
 {
     _fAllowEditLabel = TRUE;
@@ -2611,7 +3599,7 @@ void SFTBarHost::_EditLabel(int iItem)
     _fAllowEditLabel = FALSE;
 }
 
-
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::ContextMenuInvokeItem(PaneItem *pitem, IContextMenu *pcm, CMINVOKECOMMANDINFOEX *pici, LPCTSTR pszVerb)
 {
     // Make sure none of our private menu items leaked through
@@ -2624,7 +3612,11 @@ HRESULT SFTBarHost::ContextMenuInvokeItem(PaneItem *pitem, IContextMenu *pcm, CM
     ULONG_PTR cookie = 0;
     ActivateActCtx(NULL, &cookie); 
 
+	// SetICIKeyModifiers(&pici->fMask); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
+
+    IUnknown_SetSite(pcm, SAFECAST(this, IServiceProvider *));
     HRESULT hr = pcm->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(pici));
+	IUnknown_SetSite(pcm, NULL);
     
     if (cookie != 0)
     {
@@ -2634,13 +3626,16 @@ HRESULT SFTBarHost::ContextMenuInvokeItem(PaneItem *pitem, IContextMenu *pcm, CM
     return hr;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVNItemActivate(LPNMITEMACTIVATE pnmia)
 {
     return _ActivateItem(pnmia->iItem, 0);
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
 {
+#ifdef DEAD_CODE
     PaneItem *pitem;
     IShellFolder *psf;
     LPCITEMIDLIST pidl;
@@ -2656,32 +3651,88 @@ LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
         // We did the cascade thing; all finished!
     }
     else
-    if ((pitem = _GetItemFromLV(iItem)) &&
-        SUCCEEDED(_GetFolderAndPidl(pitem, &psf, &pidl)))
-    {
-        // See if the item is still valid.
-        // Do this only for SFGAO_FILESYSTEM objects because
-        // we can't be sure that other folders support SFGAO_VALIDATE,
-        // and besides, you can't resolve any other types of objects
-        // anyway...
-
-        DWORD dwAttr = SFGAO_FILESYSTEM | SFGAO_VALIDATE;
-        if (FAILED(psf->GetAttributesOf(1, &pidl, &dwAttr)) ||
-            (dwAttr & SFGAO_FILESYSTEM | SFGAO_VALIDATE) == SFGAO_FILESYSTEM ||
-            FAILED(_InvokeDefaultCommand(iItem, psf, pidl)))
+        if ((pitem = _GetItemFromLV(iItem)) &&
+            SUCCEEDED(_GetFolderAndPidl(pitem, &psf, &pidl)))
         {
-            // Object is bogus - offer to delete it
-            if ((_dwFlags & HOSTF_CANDELETE) && pitem->IsPinned())
-            {
-                _OfferDeleteBrokenItem(pitem, psf, pidl);
-            }
-        }
+            // See if the item is still valid.
+            // Do this only for SFGAO_FILESYSTEM objects because
+            // we can't be sure that other folders support SFGAO_VALIDATE,
+            // and besides, you can't resolve any other types of objects
+            // anyway...
 
-        psf->Release();
+            DWORD dwAttr = SFGAO_FILESYSTEM | SFGAO_VALIDATE;
+            if (FAILED(psf->GetAttributesOf(1, &pidl, &dwAttr)) ||
+                (dwAttr & SFGAO_FILESYSTEM | SFGAO_VALIDATE) == SFGAO_FILESYSTEM ||
+                FAILED(_InvokeDefaultCommand(iItem, psf, pidl)))
+            {
+                // Object is bogus - offer to delete it
+                if ((_dwFlags & HOSTF_CANDELETE) && pitem->IsPinned())
+                {
+                    _OfferDeleteBrokenItem(pitem, psf, pidl);
+                }
+            }
+
+            psf->Release();
+        }
+    return 0;
+#else
+    // eax
+    PaneItem *pitem; // edi
+    HRESULT hr; // eax
+    SMNGETISTARTBUTTON nm; // [esp+4h] [ebp-18h] BYREF
+    const ITEMID_CHILD *pidl; // [esp+14h] [ebp-8h] BYREF
+    IShellFolder *psf; // [esp+18h] [ebp-4h] BYREF
+    DWORD dwAttr; // [esp+28h] [ebp+Ch] SPLIT BYREF
+
+    nm.pstb = 0;
+    _SendNotify(this->_hwnd, 218u, &nm.hdr);
+    if (nm.pstb)
+    {
+		nm.pstb->LockStartPane();
+        nm.pstb->Release();
+    }
+
+    DWORD dwCascadeFlags = 0;
+    if ((dwFlags & 1) != 0)
+        dwCascadeFlags = 0x12;
+    
+    if (!_OnCascade(iItem, dwCascadeFlags))
+    {
+        pitem = _GetItemFromLV(iItem);
+        if (pitem)
+        {
+            this->_NotifyInvoke(pitem);
+            if (_GetFolderAndPidlForActivate(pitem, &psf, &pidl) >= 0)
+            {
+                dwAttr = 0x1000000;
+                if (psf->GetAttributesOf(1u, &pidl, &dwAttr) < 0)
+                {
+                    goto LABEL_14;
+                }
+                hr = _InvokeDefaultCommand(iItem, psf, pidl);
+                if (hr >= 0 || hr == 0x800704C7)
+                {
+                    hr = 0;
+                }
+                
+                if (hr < 0) 
+                {
+                LABEL_14:
+                    if ((this->_dwFlags & 2) != 0 && pitem->_iPinPos >= 0)
+                    {
+                        _OfferDeleteBrokenItem(pitem, psf, pidl);
+                    }
+                }
+                psf->Release();
+            }
+            pitem->Release();
+        }
     }
     return 0;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::_InvokeDefaultCommand(int iItem, IShellFolder *psf, LPCITEMIDLIST pidl)
 {
     HRESULT hr = SHInvokeDefaultCommand(GetShellWindow(), psf, pidl);
@@ -2689,6 +3740,7 @@ HRESULT SFTBarHost::_InvokeDefaultCommand(int iItem, IShellFolder *psf, LPCITEMI
     {
         if (_dwFlags & HOSTF_FIREUEMEVENTS)
         {
+			// UAFireEventByFolderAndIDList(&UAIID_AUTOMATIC, 0, psf, pidl, 0); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
             _FireUEMPidlEvent(psf, pidl);
         }
         SMNMCOMMANDINVOKED ci;
@@ -2818,6 +3870,7 @@ BOOL ShowInfoTip()
 }
 
 // over-ridable method for getting the infotip on an item
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::GetItemInfoTip(PaneItem *pitem, LPTSTR pszText, DWORD cch)
 {
     IShellFolder *psf;
@@ -2835,9 +3888,12 @@ void SFTBarHost::GetItemInfoTip(PaneItem *pitem, LPTSTR pszText, DWORD cch)
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVNGetInfoTip(LPNMLVGETINFOTIP plvn)
 {
     _DebugConsistencyCheck();
+
+	*plvn->pszText = 0;
 
     PaneItem *pitem;
 
@@ -2849,7 +3905,7 @@ LRESULT SFTBarHost::_OnLVNGetInfoTip(LPNMLVGETINFOTIP plvn)
 
         if (cchName)
         {
-            StrCatBuff(plvn->pszText, TEXT("\r\n"), plvn->cchTextMax);
+            StringCchCat(plvn->pszText, plvn->cchTextMax, TEXT("\r\n"));
             cchName = lstrlen(plvn->pszText);
         }
 
@@ -2858,13 +3914,16 @@ LRESULT SFTBarHost::_OnLVNGetInfoTip(LPNMLVGETINFOTIP plvn)
 
         if (cchName < plvn->cchTextMax)
         {
-            GetItemInfoTip(pitem, plvn->pszText + cchName, plvn->cchTextMax - cchName);
+            GetItemInfoTip(pitem, &plvn->pszText[cchName], plvn->cchTextMax - cchName);
         }
+
+		pitem->Release();
     }
 
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT _SendNotify(HWND hwndFrom, UINT code, OPTIONAL NMHDR *pnm)
 {
     NMHDR nm;
@@ -2885,6 +3944,7 @@ LRESULT _SendNotify(HWND hwndFrom, UINT code, OPTIONAL NMHDR *pnm)
 
 // *** IDropSource::GiveFeedback ***
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::GiveFeedback(DWORD dwEffect)
 {
     if (_fForceArrowCursor)
@@ -2912,8 +3972,34 @@ HRESULT SFTBarHost::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState)
     return S_OK;
 }
 
+// *** IServiceProvider::QueryService ***
+HRESULT SFTBarHost::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
+{
+    HRESULT hr = E_FAIL;
+    if (IsEqualGUID(guidService, IID_IFolderView) || IsEqualGUID(guidService, SID_SM_MFU))
+    {
+		hr = QueryInterface(riid, ppvObject);
+    }
+    return hr;
+}
+
+// *** IOleCommandTarget::QueryStatus ***
+HRESULT SFTBarHost::QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds,
+                                OLECMD prgCmds[], OLECMDTEXT *pCmdText)
+{
+    return E_NOTIMPL;
+}
+
+// *** IOleCommandTarget::Exec ***
+HRESULT SFTBarHost::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
+{
+    return E_NOTIMPL;
+}
+
+// EXEX-VISTA(allison): Validated. Might still need cleanup.
 LRESULT SFTBarHost::_OnLVNBeginDrag(LPNMLISTVIEW plv)
 {
+#ifdef DEAD_CODE
     //If changes are restricted, don't allow drag and drop!
     if(_AreChangesRestricted())
         return 0;
@@ -2977,6 +4063,107 @@ LRESULT SFTBarHost::_OnLVNBeginDrag(LPNMLISTVIEW plv)
         pdto->Release();
     }
     return 0;
+#else
+    if (_AreChangesRestricted())
+    {
+        return 0;   
+    }
+    
+    ASSERT(_pdtoDragOut == NULL); // 3115
+    _pdtoDragOut = 0;
+
+    PaneItem* pitem = _GetItemFromLV(plv->iItem);
+	ASSERT(pitem); // 3119
+
+    if (pitem)
+    {
+        IDataObject *pdto;
+        if (SUCCEEDED(_GetUIObjectOfItem(pitem, IID_PPV_ARGS(&pdto))))
+        {
+            POINT pt;
+
+            pt = plv->ptAction;
+            ClientToScreen(_hwndList, &pt);
+
+            if (_pdsh)
+            {
+                _pdsh->InitializeFromWindow(NULL, &pt, pdto);
+            }
+
+            CLIPFORMAT cfOFFSETS = (CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLISTOFFSET);
+
+            POINT *apts = (POINT *)GlobalAlloc(GPTR, sizeof(POINT) * 2);
+            if (NULL != apts)
+            {
+                POINT ptOrigin = {0};
+                POINT ptItem = {0};
+
+                ListView_GetOrigin(_hwndList, &ptOrigin);
+                apts[0].x = ptOrigin.x + plv->ptAction.x;
+                apts[0].y = ptOrigin.y + plv->ptAction.y;
+
+                ListView_GetItemPosition(_hwndList, plv->iItem, &ptItem);
+                apts[1].x = ptItem.x - apts[0].x;
+                apts[1].y = ptItem.y - apts[0].y;
+
+                HRESULT hr = DataObj_SetGlobal(pdto, cfOFFSETS, apts);
+                if (FAILED(hr))
+                {
+                    GlobalFree(apts);
+                }
+            }
+
+            _pdtoDragOut = pdto;
+            _iDragOut = plv->iItem;
+            _iPosDragOut = pitem->_iPos;
+
+            DWORD dwEffect = DROPEFFECT_LINK;
+            DoDragDrop(pdto, this, dwEffect, &dwEffect);
+            
+            _pdtoDragOut = NULL;
+            pdto->Release();
+        }
+        pitem->Release();
+    }
+    return 0;
+#endif
+}
+
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
+HRESULT SHBeginLabelEdit(IShellFolder *psf, LPCITEMIDLIST pidl, HWND hwndEdit, int cchLimit)
+{
+    HRESULT hr = 1;
+
+    SFGAOF dwAttribs = SHGetAttributes(psf, pidl, 0x20400010u);
+    if ((dwAttribs & 0x10) != 0)
+    {
+        hr = 0;
+
+        WCHAR szName[260];
+        WCHAR szNameNew[260];
+        if (DisplayNameOf(psf, pidl, 0x1001, szName, 260u) >= 0 && DisplayNameOf(psf, pidl, 0x8001, szNameNew, 260u) >= 0)
+        {
+            SetWindowText(hwndEdit, szName);
+            if ((dwAttribs & 0x20400000) != 0x20000000 && !StrCmpW(szNameNew, szName))
+            {
+                SendMessage(hwndEdit, EM_SETSEL, 0, PathFindExtension(szNameNew) - szNameNew);
+            }
+
+            IItemNameLimits *pinl;
+            if (psf->QueryInterface(IID_PPV_ARGS(&pinl)) >= 0)
+            {
+                pinl->GetMaxLength(szNameNew, &cchLimit);
+                pinl->Release();
+            }
+            SHLimitInputEdit(hwndEdit, psf);
+        }
+
+        if (!cchLimit)
+            cchLimit = 128;
+
+        SendMessage(hwndEdit, EM_LIMITTEXT, cchLimit, 0);
+    }
+    return hr;
 }
 
 //
@@ -2986,8 +4173,10 @@ LRESULT SFTBarHost::_OnLVNBeginDrag(LPNMLISTVIEW plv)
 //  we get to reject things that aren't renamable...
 //
 
+// EXEX-VISTA(allison): Validated. Might still need cleanup.
 LRESULT SFTBarHost::_OnLVNBeginLabelEdit(NMLVDISPINFO *plvdi)
 {
+#ifdef DEAD_CODE
     LRESULT lres = 1;
 
     PaneItem *pitem = _GetItemFromLVLParam(plvdi->item.lParam);
@@ -3039,6 +4228,33 @@ LRESULT SFTBarHost::_OnLVNBeginLabelEdit(NMLVDISPINFO *plvdi)
     }
 
     return lres;
+#else
+    LRESULT lres = 1;
+    
+    PaneItem* pitem = _GetItemFromLVLParam(plvdi->item.lParam);
+    if (_fAllowEditLabel && pitem)
+    {
+        IShellFolder *psf;
+        LPCITEMIDLIST pidl;
+        if (_GetFolderAndPidl(pitem, &psf, &pidl) >= 0)
+        {
+            HWND hwndEdit = ListView_GetEditControl(this->_hwndList);
+            if (hwndEdit)
+            {
+                lres = SHBeginLabelEdit(psf, pidl, hwndEdit, 0);
+                if (!lres)
+                {
+                    SMNMBOOL nmb;
+                    nmb.f = TRUE;
+                    _SendNotify(_hwnd, SMN_BLOCKMENUMODE, &nmb.hdr);
+                }
+            }
+            psf->Release();
+        }
+        pitem->Release();
+    }
+    return lres;
+#endif
 }
 
 LRESULT SFTBarHost::_OnLVNEndLabelEdit(NMLVDISPINFO *plvdi)
@@ -3099,8 +4315,30 @@ LRESULT SFTBarHost::_OnLVNKeyDown(LPNMLVKEYDOWN pkd)
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
+LRESULT SFTBarHost::_OnLVNAsyncDrawn(NMLVASYNCDRAWN *plvad)
+{
+    plvad->dwRetFlags = 0x1;
+
+    PaneItem *pitem = _GetItemFromLV(plvad->iItem);
+    if (pitem)
+    {
+        IShellFolder *psf = NULL;
+        LPCITEMIDLIST pidl = NULL;
+        if (SUCCEEDED(GetFolderAndPidl(pitem, &psf, &pidl)))
+        {
+            AddImageForItem(pitem, psf, pidl, 0);
+            psf->Release();
+        }
+        pitem->Release();
+    }
+    return 1;
+}
+
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 LRESULT SFTBarHost::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
 {
+#ifdef DEAD_CODE
     // We need to synchronize here to get the proper size
     if (_fBGTask && !HasDynamicContent())
     {
@@ -3143,10 +4381,42 @@ LRESULT SFTBarHost::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
     pgms->siz.cy = cy;
 
     return 0;
+#else
+    if (this->_fBGTask && !this->HasDynamicContent())
+    {
+        MSG msg;
+        while (!PeekMessage(&msg, 0, 0, 0, 0) || !PeekMessage(&msg, this->_hwnd, 0x400u, 0x400u, 1u))
+        {
+            WaitMessage();
+        }
+        DispatchMessage(&msg);
+    }
+
+    int cPinnedDesired = this->_cPinnedDesired;
+    int cSep = this->_cSep;
+    if (!cSep)
+        cSep = cPinnedDesired > 0;
+    LONG v5 = this->_margins.cyTopHeight
+        + this->_margins.cyBottomHeight
+        + (cPinnedDesired + this->_cNormalDesired) * this->_cyTile
+        + cSep * this->_cySepTile;
+    if (this->_iThemePart == 4)
+        v5 += this->_cySep;
+    pgms->field_14.cy = -1;
+    pgms->siz.cy = v5;
+    int v6 = this->field_6C;
+    int cNormalDesired = this->_cNormalDesired;
+    if (v6 < cNormalDesired)
+        pgms->field_14.cy = v5 - this->_cyTile * (cNormalDesired - v6);
+    pgms->field_14.cx = this->_cxIndent + this->GetMinTextWidth();
+    return 0;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 {
+#ifdef DEAD_CODE
     LRESULT lres = _OnSMNFindItemWorker(pdm);
 
     if (lres)
@@ -3189,8 +4459,51 @@ LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 
     }
     return lres;
+#else
+    LRESULT lres = _OnSMNFindItemWorker(pdm);
+
+    if (lres)
+    {
+        if ((pdm->flags & 0x100 | 0x800))
+        {
+            UINT state = LVIS_SELECTED;
+            if ((pdm->flags & SMNDM_SELECT))
+                state |= LVIS_FOCUSED;
+            ListView_SetItemState(_hwndList, pdm->itemID, state, state);
+
+            if ((pdm->flags & SMNDM_FINDMASK) != SMNDM_HITTEST)
+            {
+                ListView_KeyboardSelected(_hwndList, pdm->itemID);
+            }
+
+			LVITEM lvi = {0};
+            lvi.iItem = (int)pdm->itemID;
+            lvi.mask = LVIF_IMAGE;
+            ListView_GetItem(_hwndList, &lvi);
+            _NotifyHoverImage(lvi.iImage);
+        }
+    }
+    else
+    {
+        pdm->flags |= 0x4000u;
+        int iItem = _GetLVCurSel();
+        RECT rc;
+        if (iItem >= 0 && ListView_GetItemRect(_hwndList, iItem, &rc, LVIR_BOUNDS))
+        {
+            pdm->pt.x = (rc.left + rc.right) / 2;
+            pdm->pt.y = (rc.top + rc.bottom) / 2;
+        }
+        else
+        {
+            pdm->pt.x = 0;
+            pdm->pt.y = 0;
+        }
+    }
+    return lres;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 TCHAR SFTBarHost::GetItemAccelerator(PaneItem *pitem, int iItemStart)
 {
     TCHAR sz[2];
@@ -3198,46 +4511,48 @@ TCHAR SFTBarHost::GetItemAccelerator(PaneItem *pitem, int iItemStart)
     return CharUpperCharA(sz[0]);
 }
 
+// EXEX-VISTA(allison): Validated. Still needs major cleanup.
 LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 {
+#ifdef DEAD_CODE
     LVFINDINFO lvfi;
     LVHITTESTINFO lvhti;
 
     switch (pdm->flags & SMNDM_FINDMASK)
     {
-    case SMNDM_FINDFIRST:
-    L_SMNDM_FINDFIRST:
-        // Note: We can't just return item 0 because drag/drop pinning
-        // may have gotten the physical locations out of sync with the
-        // item numbers.
-        lvfi.vkDirection = VK_HOME;
-        lvfi.flags = LVFI_NEARESTXY;
-        pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
-        return pdm->itemID >= 0;
+        case SMNDM_FINDFIRST:
+        L_SMNDM_FINDFIRST:
+            // Note: We can't just return item 0 because drag/drop pinning
+            // may have gotten the physical locations out of sync with the
+            // item numbers.
+            lvfi.vkDirection = VK_HOME;
+            lvfi.flags = LVFI_NEARESTXY;
+            pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+            return pdm->itemID >= 0;
 
-    case SMNDM_FINDLAST:
-        // Note: We can't just return cItems-1 because drag/drop pinning
-        // may have gotten the physical locations out of sync with the
-        // item numbers.
-        lvfi.vkDirection = VK_END;
-        lvfi.flags = LVFI_NEARESTXY;
-        pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
-        return pdm->itemID >= 0;
+        case SMNDM_FINDLAST:
+            // Note: We can't just return cItems-1 because drag/drop pinning
+            // may have gotten the physical locations out of sync with the
+            // item numbers.
+            lvfi.vkDirection = VK_END;
+            lvfi.flags = LVFI_NEARESTXY;
+            pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+            return pdm->itemID >= 0;
 
-    case SMNDM_FINDNEAREST:
-        lvfi.pt = pdm->pt;
-        lvfi.vkDirection = VK_UP;
-        lvfi.flags = LVFI_NEARESTXY;
-        pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
-        return pdm->itemID >= 0;
+        case SMNDM_FINDNEAREST:
+            lvfi.pt = pdm->pt;
+            lvfi.vkDirection = VK_UP;
+            lvfi.flags = LVFI_NEARESTXY;
+            pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+            return pdm->itemID >= 0;
 
-    case SMNDM_HITTEST:
-        lvhti.pt = pdm->pt;
-        pdm->itemID = ListView_HitTest(_hwndList, &lvhti);
-        return pdm->itemID >= 0;
+        case SMNDM_HITTEST:
+            lvhti.pt = pdm->pt;
+            pdm->itemID = ListView_HitTest(_hwndList, &lvhti);
+            return pdm->itemID >= 0;
 
-    case SMNDM_FINDFIRSTMATCH:
-    case SMNDM_FINDNEXTMATCH:
+        case SMNDM_FINDFIRSTMATCH:
+        case SMNDM_FINDNEXTMATCH:
         {
             int iItemStart;
             if ((pdm->flags & SMNDM_FINDMASK) == SMNDM_FINDFIRSTMATCH)
@@ -3263,36 +4578,36 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
         }
         break;
 
-    case SMNDM_FINDNEXTARROW:
-        if (pdm->pmsg->wParam == VK_UP)
-        {
-            pdm->itemID = ListView_GetNextItem(_hwndList, _GetLVCurSel(), LVNI_ABOVE);
-            return pdm->itemID >= 0;
-        }
-
-        if (pdm->pmsg->wParam == VK_DOWN)
-        {
-            // HACK! ListView_GetNextItem explicitly fails to find a "next item"
-            // if you tell it to start at -1 (no current item), so if there is no
-            // focus item, we have to change it to a SMNDM_FINDFIRST.
-            int iItem = _GetLVCurSel();
-            if (iItem == -1)
+        case SMNDM_FINDNEXTARROW:
+            if (pdm->pmsg->wParam == VK_UP)
             {
-                goto L_SMNDM_FINDFIRST;
+                pdm->itemID = ListView_GetNextItem(_hwndList, _GetLVCurSel(), LVNI_ABOVE);
+                return pdm->itemID >= 0;
             }
-            pdm->itemID = ListView_GetNextItem(_hwndList, iItem, LVNI_BELOW);
-            return pdm->itemID >= 0;
-        }
 
-        if (pdm->flags & SMNDM_TRYCASCADE)
-        {
-            pdm->itemID = _GetLVCurSel();
-            return _OnCascade((int)pdm->itemID, MPPF_KEYBOARD | MPPF_INITIALSELECT);
-        }
+            if (pdm->pmsg->wParam == VK_DOWN)
+            {
+                // HACK! ListView_GetNextItem explicitly fails to find a "next item"
+                // if you tell it to start at -1 (no current item), so if there is no
+                // focus item, we have to change it to a SMNDM_FINDFIRST.
+                int iItem = _GetLVCurSel();
+                if (iItem == -1)
+                {
+                    goto L_SMNDM_FINDFIRST;
+                }
+                pdm->itemID = ListView_GetNextItem(_hwndList, iItem, LVNI_BELOW);
+                return pdm->itemID >= 0;
+            }
 
-        return FALSE;
+            if (pdm->flags & SMNDM_TRYCASCADE)
+            {
+                pdm->itemID = _GetLVCurSel();
+                return _OnCascade((int)pdm->itemID, MPPF_KEYBOARD | MPPF_INITIALSELECT);
+            }
 
-    case SMNDM_INVOKECURRENTITEM:
+            return FALSE;
+
+        case SMNDM_INVOKECURRENTITEM:
         {
             int iItem = _GetLVCurSel();
             if (iItem >= 0)
@@ -3308,7 +4623,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
         }
         return FALSE;
 
-    case SMNDM_OPENCASCADE:
+        case SMNDM_OPENCASCADE:
         {
             DWORD mppf = 0;
             if (pdm->flags & SMNDM_KEYBOARD)
@@ -3319,17 +4634,150 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             return _OnCascade((int)pdm->itemID, mppf);
         }
 
-    case SMNDM_FINDITEMID:
-        return TRUE;
+        case SMNDM_FINDITEMID:
+            return TRUE;
 
-    default:
-        ASSERT(!"Unknown SMNDM command");
-        break;
+        default:
+            ASSERT(!"Unknown SMNDM command");
+            break;
     }
 
     return FALSE;
+#else
+    UINT flags; // ecx
+    LRESULT v5; // eax
+    int iItemStart; // ebx
+    int wParam; // eax
+    LRESULT LVCurSel; // ebx
+    LRESULT v11; // eax
+    LRESULT v12; // eax
+    LRESULT iItem; // eax
+    DWORD mppf; // ebx
+    DWORD v15; // [esp-4h] [ebp-64h]
+    LVHITTESTINFO lvhti; // [esp+10h] [ebp-50h] BYREF
+    LVFINDINFOW lvfi; // [esp+28h] [ebp-38h] BYREF
+    int iItems; // [esp+40h] [ebp-20h]
+    WCHAR tch; // [esp+44h] [ebp-1Ch]
+    //CPPEH_RECORD ms_exc; // [esp+48h] [ebp-18h]
+    PaneItem *pitem; // [esp+68h] [ebp+8h] MAPDST
+
+    flags = pdm->flags;
+    switch (flags & 0xF)
+    {
+        case 0u:                                    // SMNDM_FINDFIRSTMATCH
+        case 1u:                                    // SMNDM_FINDNEXTMATCH
+            if ((flags & 0xF) != 0)
+                iItemStart = SFTBarHost::_GetLVCurSel() + 1;
+            else
+                iItemStart = 0;
+            tch = (unsigned __int16)CharUpperW((LPWSTR)LOWORD(pdm->pmsg->wParam));
+            iItems = SendMessageW(this->_hwndList, LVM_GETITEMCOUNT, 0, 0);
+            if (iItemStart >= iItems)
+                return 0;
+            while (1)
+            {
+                pitem = SFTBarHost::_GetItemFromLV(iItemStart);
+                if (pitem)
+                {
+                    if (this->GetItemAccelerator(pitem, iItemStart) == tch)
+                    {
+                        pdm->itemID = iItemStart;
+                        pitem->Release();
+                        return 1;
+                    }
+                    pitem->Release();
+                }
+                if (++iItemStart >= iItems)
+                    return 0;
+            }
+        case 2u:                                    // SMNDM_FINDNEAREST
+            lvfi.pt = pdm->pt;
+            lvfi.vkDirection = 38;
+            goto LABEL_24;
+        case 3u:                                    // SMNDM_FINDFIRST
+            goto LABEL_23;
+        case 4u:                                    // SMNDM_FINDLAST
+            lvfi.vkDirection = 35;
+            goto LABEL_24;
+        case 5u:                                    // SMNDM_FINDNEXTARROW
+            wParam = pdm->pmsg->wParam;
+            if (wParam == 38)
+            {
+                LVCurSel = SFTBarHost::_GetLVCurSel();
+                v11 = SendMessageW(this->_hwndList, LVM_GETNEXTITEM, LVCurSel, 256);
+            LABEL_18:
+                pdm->itemID = v11;
+                return v11 != LVCurSel && v11 >= 0;
+            }
+            if (wParam == VK_DOWN)
+            {
+                LVCurSel = SFTBarHost::_GetLVCurSel();
+                if (LVCurSel != -1)
+                {
+                    v11 = SendMessageW(this->_hwndList, LVM_GETNEXTITEM, LVCurSel, 512);
+                    goto LABEL_18;
+                }
+            LABEL_23:
+                lvfi.vkDirection = VK_HOME;
+            LABEL_24:
+                lvfi.flags = LVFI_NEARESTXY;
+                v5 = SendMessageW(this->_hwndList, LVM_FINDITEMW, -1, (LPARAM)&lvfi);
+            LABEL_25:
+                pdm->itemID = v5;
+                return v5 >= 0;
+            }
+            else
+            {
+                if ((flags & 0x200) == 0)
+                    return 0;
+                v12 = SFTBarHost::_GetLVCurSel();
+                v15 = 0x12;
+            LABEL_29:
+                pdm->itemID = v12;
+                return SFTBarHost::_OnCascade(v12, v15);
+            }
+        case 6u:                                    // SMNDM_INVOKECURRENTITEM
+            iItem = SFTBarHost::_GetLVCurSel();
+            if (iItem < 0)
+                return 0;
+            SFTBarHost::_ActivateItem(iItem, (pdm->flags & 0x400) != 0);
+            return 1;
+        case 7u:                                    // SMNDM_HITTEST
+            lvhti.pt = pdm->pt;
+            v5 = SendMessageW(this->_hwndList, LVM_HITTEST, 0, (LPARAM)&lvhti);
+            goto LABEL_25;
+        case 8u:                                    // SMNDM_OPENCASCADE
+            mppf = 0;
+            if ((flags & 0x400) != 0)
+                mppf = 0x12;
+            v12 = SFTBarHost::_GetLVCurSel();
+            v15 = mppf;
+            goto LABEL_29;
+        case 9u:                                    // SMNDM_FINDITEMID
+        case 0xAu:
+            return 1;
+        case 0xBu:
+            return 0;
+        default:
+            //if (CcshellAssertFailedW(
+            //    L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp",
+            //    3570,
+            //    L"!\"Unknown SMNDM command\"",
+            //    0))
+            //{
+            //    AttachUserModeDebugger();
+            //    do
+            //    {
+            //        __debugbreak();
+            //        ms_exc.registration.TryLevel = -2;
+            //    } while (dword_108B97C);
+            //}
+            return 0;
+    }
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnSMNDismiss()
 {
     if (_fNeedsRepopulate)
@@ -3339,13 +4787,16 @@ LRESULT SFTBarHost::_OnSMNDismiss()
     return 0;
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnCascade(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     return _OnCascade((int)wParam, (DWORD)lParam);
 }
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 BOOL SFTBarHost::_OnCascade(int iItem, DWORD dwFlags)
 {
+#ifdef DEAD_CODE
     BOOL fSuccess = FALSE;
     SMNTRACKSHELLMENU tsm;
     tsm.dwFlags = dwFlags;
@@ -3369,6 +4820,34 @@ BOOL SFTBarHost::_OnCascade(int iItem, DWORD dwFlags)
         }
     }
     return fSuccess;
+#else
+    BOOL fSuccess = FALSE;
+    SMNTRACKSHELLMENU tsm;
+    tsm.dwFlags = dwFlags;
+    tsm.itemID = iItem;
+    if (iItem >= 0 &&
+        ListView_GetItemRect(_hwndList, iItem, &tsm.rcExclude, LVIR_BOUNDS))
+    {
+        PaneItem *pitem = _GetItemFromLV(iItem);
+        if (pitem && pitem->IsCascade())
+        {
+            if (SUCCEEDED(GetCascadeMenu(pitem, &tsm.psm)))
+            {
+                MapWindowRect(this->_hwndList, 0, &tsm.rcExclude);
+                HWND hwnd = _hwnd;
+                _iCascading = iItem;
+                _SendNotify(_hwnd, 216, &tsm.hdr);
+                tsm.psm->Release();
+                fSuccess = TRUE;
+                //SHTracePerf(&ShellTraceId_Explorer_StartPane_Cascade_Show_Start);
+                _NotifyCascade(pitem);
+            }
+            pitem->Release();
+        }
+
+    }
+    return fSuccess;
+#endif
 }
 
 HRESULT SFTBarHost::QueryInterface(REFIID riid, void * *ppvOut)
@@ -3376,6 +4855,9 @@ HRESULT SFTBarHost::QueryInterface(REFIID riid, void * *ppvOut)
     static const QITAB qit[] = {
         QITABENT(SFTBarHost, IDropTarget),
         QITABENT(SFTBarHost, IDropSource),
+        QITABENT(SFTBarHost, IServiceProvider),
+        QITABENT(SFTBarHost, IOleCommandTarget),
+        QITABENT(SFTBarHost, IObjectWithSite),
         QITABENT(SFTBarHost, IAccessible),
         QITABENT(SFTBarHost, IDispatch), // IAccessible derives from IDispatch
         { 0 },
@@ -3399,6 +4881,7 @@ ULONG SFTBarHost::Release()
     return cRef;
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_SetDragOver(int iItem)
 {
     if (_iDragOver >= 0)
@@ -3420,6 +4903,7 @@ void SFTBarHost::_SetDragOver(int iItem)
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_ClearInnerDropTarget()
 {
     if (_pdtDragOver)
@@ -3428,12 +4912,20 @@ void SFTBarHost::_ClearInnerDropTarget()
         _pdtDragOver->DragLeave();
         _pdtDragOver->Release();
         _pdtDragOver = NULL;
+#ifdef DEBUG
+        _iDragState = DRAGSTATE_UNINITIALIZED;
+#endif
     }
+
+    ASSERT(_iDragState == DRAGSTATE_UNINITIALIZED); // 3668
+
     _SetDragOver(-1);
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 HRESULT SFTBarHost::_TryInnerDropTarget(int iItem, DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 {
+#ifdef DEAD_CODE
     HRESULT hr;
 
     if (_iDragOver != iItem)
@@ -3478,8 +4970,93 @@ HRESULT SFTBarHost::_TryInnerDropTarget(int iItem, DWORD grfKeyState, POINTL ptl
     }
 
     return hr;
+#else
+    IDropTarget **p_pdtDragOver; // edi
+    PaneItem *pitem; // [esp+10h] [ebp-20h] MAPDST
+
+    if (this->_iDragOver != iItem)
+    {
+        _ClearInnerDropTarget();
+        _SetDragOver(iItem);
+
+        //if (this->_pdtDragOver
+        //    && CcshellAssertFailedW(L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp", 3704, L"_pdtDragOver == NULL", 0))
+        //{
+        //    AttachUserModeDebugger();
+        //    do
+        //        __debugbreak();
+        //    while (dword_108B944);
+        //}
+
+        //if (this->_iDragState
+        //    && CcshellAssertFailedW(
+        //        L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp",
+        //        3705,
+        //        L"_iDragState == DRAGSTATE_UNINITIALIZED",
+        //        0))
+        //{
+        //    AttachUserModeDebugger();
+        //    do
+        //        __debugbreak();
+        //    while (dword_108B940);
+        //}
+
+        pitem = _GetItemFromLV(iItem);
+        if (pitem)
+        {
+            if ((pitem->_dwFlags & 4) == 0)
+                goto LABEL_18;
+            p_pdtDragOver = &this->_pdtDragOver;
+            if (SFTBarHost::_GetUIObjectOfItem(
+                pitem,
+                IID_IDropTarget,
+                (void **)&this->_pdtDragOver) < 0)
+                goto LABEL_18;
+            if ((*p_pdtDragOver)->DragEnter(this->_pdtoDragIn, grfKeyState, ptl, pdwEffect) >= 0)
+            {
+                if (*pdwEffect)
+                {
+                    //this->_iDragState = 1;
+                LABEL_18:
+                    pitem->Release();
+                    goto LABEL_19;
+                }
+                (*p_pdtDragOver)->DragLeave();
+            }
+            //this->_iDragState = 0;
+            IUnknown_SafeReleaseAndNullPtr(&this->_pdtDragOver);
+            goto LABEL_18;
+        }
+    }
+LABEL_19:
+    //if (this->_iDragOver != iItem
+    //    && CcshellAssertFailedW(L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp", 3739, L"_iDragOver == iItem", 0))
+    //{
+    //    AttachUserModeDebugger();
+    //    do
+    //        __debugbreak();
+    //    while (dword_108B93C);
+    //}
+    if (!this->_pdtDragOver)
+        return 0x80004005;
+
+    //if (this->_iDragState != 1
+    //    && CcshellAssertFailedW(
+    //        L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp",
+    //        3743,
+    //        L"_iDragState == DRAGSTATE_ENTERED",
+    //        0))
+    //{
+    //    AttachUserModeDebugger();
+    //    do
+    //        __debugbreak();
+    //    while (dword_108B938);
+    //}
+    return this->_pdtDragOver->DragOver(grfKeyState, ptl, pdwEffect);
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_PurgeDragDropData()
 {
     _SetInsertMarkPosition(-1);
@@ -3490,6 +5067,7 @@ void SFTBarHost::_PurgeDragDropData()
 
 // *** IDropTarget::DragEnter ***
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::DragEnter(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 {
     if(_AreChangesRestricted())
@@ -3506,6 +5084,7 @@ HRESULT SFTBarHost::DragEnter(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, 
     return _DragEnter(pdto, grfKeyState, ptl, pdwEffect);
 }
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::_DragEnter(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 {
     _PurgeDragDropData();
@@ -3741,6 +5320,7 @@ HRESULT SFTBarHost::DragOver(DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 
 // *** IDropTarget::DragLeave ***
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::DragLeave()
 {
     if(_AreChangesRestricted())
@@ -3758,14 +5338,16 @@ HRESULT SFTBarHost::DragLeave()
 
 // *** IDropTarget::Drop ***
 
+// EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 HRESULT SFTBarHost::Drop(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 {
-    if(_AreChangesRestricted())
+#ifdef DEAD_CODE
+    if (_AreChangesRestricted())
     {
         *pdwEffect = DROPEFFECT_NONE;
         return S_OK;
     }
-    
+
     _DebugConsistencyCheck();
 
     // Use the key state from the last DragOver call
@@ -3839,8 +5421,73 @@ HRESULT SFTBarHost::Drop(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, DWORD
     _DebugConsistencyCheck();
 
     return S_OK;
+#else
+    if (_AreChangesRestricted())
+    {
+        *pdwEffect = 0;
+        return S_OK;
+    }
+
+    grfKeyState = _grfKeyStateLast;
+    _DragEnter(pdto, grfKeyState, ptl, pdwEffect);
+
+    POINT pt = { ptl.x, ptl.y };
+    if (_pdth)
+    {
+        _pdth->Drop(pdto, &pt, *pdwEffect);
+    }
+
+    int iInsert = _iInsert;
+    _SetInsertMarkPosition(-1);
+
+    if (*pdwEffect)
+    {
+        ASSERT(_pdtoDragIn); // 4087
+
+        if (iInsert >= 0)
+        {
+            BOOL fTriedMove = 0;
+
+            if (_fDragToSelf)
+            {
+                PaneItem *pitem = _GetItemFromLV(_iDragOut);
+                if (pitem)
+                {
+                    if (pitem->_iPinPos >= 0)
+                    {
+                        if (MovePinnedItem(pitem, iInsert) >= 0)
+                        {
+                            PostMessage(_hwnd, 0x40Au, 1, 0);
+                        }
+
+                        fTriedMove = 1;
+                    }
+                    pitem->Release();
+                }
+            }
+
+            if (!fTriedMove && InsertPinnedItem(_pdtoDragIn, iInsert) >= 0)
+            {
+                PostMessage(_hwnd, 0x40Au, 1, 0);
+            }
+        }
+        else if (_pdtDragOver)
+        {
+            ASSERT(_iDragState == DRAGSTATE_ENTERED); // 4131
+            _pdtDragOver->Drop(_pdtoDragIn, grfKeyState, ptl, pdwEffect);
+            IUnknown_SafeReleaseAndNullPtr(&_pdtDragOver);
+#ifdef DEBUG
+            _iDragState = DRAGSTATE_UNINITIALIZED;
+#endif
+        }
+    }
+
+    _PurgeDragDropData();
+    return S_OK;
+#endif
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_SetInsertMarkPosition(int iInsert)
 {
     if (_iInsert != iInsert)
@@ -3851,6 +5498,7 @@ void SFTBarHost::_SetInsertMarkPosition(int iInsert)
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 BOOL SFTBarHost::_GetInsertMarkRect(LPRECT prc)
 {
     if (_iInsert >= 0)
@@ -3858,17 +5506,16 @@ BOOL SFTBarHost::_GetInsertMarkRect(LPRECT prc)
         GetClientRect(_hwndList, prc);
         POINT pt;
         _ComputeListViewItemPosition(_iInsert, &pt);
-        int iBottom = pt.y;
-        int cyEdge = GetSystemMetrics(SM_CYEDGE);
-        prc->top = iBottom - cyEdge;
-        prc->bottom = iBottom + cyEdge;
+        int cyEdge = SHGetSystemMetricsScaled(SM_CYEDGE);
+        prc->bottom = pt.y + cyEdge;
+        prc->top = pt.y - cyEdge;
         return TRUE;
     }
-
+    
     return FALSE;
-
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_InvalidateInsertMark()
 {
     RECT rc;
@@ -3878,6 +5525,7 @@ void SFTBarHost::_InvalidateInsertMark()
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_DrawInsertionMark(LPNMLVCUSTOMDRAW plvcd)
 {
     RECT rc;
@@ -3887,8 +5535,73 @@ void SFTBarHost::_DrawInsertionMark(LPNMLVCUSTOMDRAW plvcd)
     }
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
+int SFTBarHost::_CalcMaxTextWith()
+{
+    WCHAR chText[64]; // [esp+6Ch] [ebp-84h] BYREF
+
+    HWND hwndList = this->_hwndList;
+    int v20 = 0;
+    HDC WindowDC = GetWindowDC(hwndList);
+    HDC hdc = WindowDC;
+    void* v3 = (void*)SendMessageW(this->_hwndList, WM_GETFONT, 0, 0);
+    HGDIOBJ v4 = SelectObject(hdc, v3);
+    HGDIOBJ h = v4;
+    LRESULT v5 = SendMessageW(this->_hwndList, LVM_GETITEMCOUNT, 0, 0);
+    while (--v5 >= 0)
+    {
+        if (hdc)
+        {
+            RECT rc;
+            if (ListView_GetItemRect(this->_hwndList, v5, &rc, LVIR_LABEL))
+            {
+                PaneItem* pitem = _GetItemFromLV(v5);
+                if (!pitem->CanItemWrap())
+                {
+                    LVITEMW lvi; // [esp+Ch] [ebp-E4h] BYREF
+                    lvi.iSubItem = 0;
+                    int v18 = this->_cxMarlett + rc.left + 4;
+                    lvi.pszText = chText;
+                    lvi.cchTextMax = 64;
+                    SendMessageW(this->_hwndList, LVM_GETITEMTEXTW, v5, (LPARAM)&lvi);
+                    DrawTextW(hdc, chText, -1, &rc, 0x400u);
+                    if (v20 <= v18 + rc.right)
+                    {
+                        v20 = v18 + rc.right;
+                    }
+                }
+                pitem->Release();
+            }
+        }
+    }
+
+    SelectObject(hdc, h);
+    ReleaseDC(this->_hwndList, hdc);
+    return v20;
+}
+
+// EXEX-VISTA(allison): Validated.
+LRESULT SFTBarHost::GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch)
+{
+    HRESULT hr = E_FAIL;
+
+    LVFINDINFO lvfi;
+    lvfi.lParam = reinterpret_cast<LPARAM>(const_cast<PaneItem *>(pitem));
+    lvfi.flags = LVIF_TEXT;
+
+    int iItem = ListView_FindItem(_hwndList, -1, &lvfi);
+    if (iItem >= 0)
+    {
+        ListView_GetItemText(_hwndList, iItem, 0, pszText, cch);
+        return iItem;
+    }
+    return hr;
+}
+
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 void SFTBarHost::_DrawSeparator(HDC hdc, int x, int y)
 {
+#ifdef DEAD_CODE
     RECT rc;
     rc.left = x;
     rc.top = y;
@@ -3903,10 +5616,24 @@ void SFTBarHost::_DrawSeparator(HDC hdc, int x, int y)
     {
         DrawThemeBackground(_hTheme, hdc, _iThemePartSep, 0, &rc, 0);
     }
+#else
+    RECT rc; // [esp+4h] [ebp-10h] BYREF
+    LONG v4 = x + this->_cxTile;
+    rc.left = x;
+    rc.bottom = y + this->_cySep;
+    rc.right = v4;
+    rc.top = y;
+    if (_hTheme)
+        DrawThemeBackground(_hTheme, hdc, this->_iThemePartSep, 0, &rc, 0);
+    else
+        DrawEdge(hdc, &rc, EDGE_ETCHED, BF_TOPLEFT);
+#endif
 }
 
+// EXEX-VISTA(allison): Validated. Still needs cleanup.
 void SFTBarHost::_DrawSeparators(LPNMLVCUSTOMDRAW plvcd)
 {
+#ifdef DEAD_CODE
     POINT pt;
     RECT rc;
 
@@ -3928,6 +5655,33 @@ void SFTBarHost::_DrawSeparators(LPNMLVCUSTOMDRAW plvcd)
         _DrawSeparator(plvcd->nmcd.hdc, pt.x, rc.bottom);
 
     }
+#else
+    int v3; // ebx
+    int* rgiSep; // edi
+    struct tagRECT rc; // [esp+8h] [ebp-18h] BYREF
+    struct tagPOINT pt; // [esp+18h] [ebp-8h] BYREF
+
+    v3 = 0;
+    if (this->_cSep > 0)
+    {
+        rgiSep = this->_rgiSep;
+        do
+        {
+            SFTBarHost::_ComputeListViewItemPosition(*rgiSep, &pt);
+            pt.y += (this->_cySepTile - this->_cySep) / 2;
+            SFTBarHost::_DrawSeparator(plvcd->nmcd.hdc, pt.x, pt.y);
+            ++v3;
+            ++rgiSep;
+        } while (v3 < this->_cSep);
+    }
+
+    if (this->_iThemePart == 4)
+    {
+        SFTBarHost::_ComputeListViewItemPosition(0, &pt);
+        GetClientRect(this->_hwndList, &rc);
+        SFTBarHost::_DrawSeparator(plvcd->nmcd.hdc, pt.x, rc.bottom - this->_cySep);
+    }
+#endif
 }
 
 //****************************************************************************
@@ -3935,6 +5689,7 @@ void SFTBarHost::_DrawSeparators(LPNMLVCUSTOMDRAW plvcd)
 //  Accessibility
 //
 
+// EXEX-VISTA(allison): Validated.
 PaneItem *SFTBarHost::_GetItemFromAccessibility(const VARIANT& varChild)
 {
     if (varChild.lVal)
@@ -3950,6 +5705,8 @@ PaneItem *SFTBarHost::_GetItemFromAccessibility(const VARIANT& varChild)
 //
 //  Our items are either ROLE_SYSTEM_MENUITEM or ROLE_SYSTEM_MENUPOPUP.
 //
+
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::get_accRole(VARIANT varChild, VARIANT *pvarRole)
 {
     HRESULT hr = _paccInner->get_accRole(varChild, pvarRole);
@@ -4007,31 +5764,53 @@ HRESULT SFTBarHost::get_accKeyboardShortcut(VARIANT varChild, BSTR *pszKeyboardS
 HRESULT SFTBarHost::get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction)
 {
     *pszDefAction = NULL;
+
+    ASSERT(pszDefAction); // 4365
+
+    HRESULT hr = E_NOT_APPLICABLE;
+
     if (varChild.lVal)
     {
         PaneItem *pitem = _GetItemFromAccessibility(varChild);
-        if (pitem && pitem->IsCascade())
+        if (pitem)
         {
-            DWORD dwRole = varChild.lVal - 1 == _iCascading ? ACCSTR_CLOSE : ACCSTR_OPEN;
-            return GetRoleString(dwRole, pszDefAction);
+            if (pitem->IsCascade())
+            {
+                DWORD dwRole = varChild.lVal - 1 == _iCascading ? ACCSTR_CLOSE : ACCSTR_OPEN;
+                hr = GetRoleString(dwRole, pszDefAction);
+            }
+            pitem->Release();
         }
 
-        return GetRoleString(ACCSTR_EXECUTE, pszDefAction);
+        if (FAILED(hr))
+        {
+            hr = GetRoleString(ACCSTR_EXECUTE, pszDefAction);
+        }
     }
-    return E_NOT_APPLICABLE;
+    return hr;
 }
 
+// EXEX-VISTA(allison): Validated.
 HRESULT SFTBarHost::accDoDefaultAction(VARIANT varChild)
 {
+    HRESULT hr = E_FAIL;
+    
     if (varChild.lVal)
     {
-        PaneItem *pitem = _GetItemFromAccessibility(varChild);
-        if (pitem && pitem->IsCascade())
+        PaneItem* pitem = _GetItemFromAccessibility(varChild);
+        if (pitem)
         {
-            if (varChild.lVal - 1 == _iCascading)
+            if (pitem->IsCascade() && varChild.lVal - 1 == _iCascading)
             {
                 _SendNotify(_hwnd, SMN_CANCELSHELLMENU);
-                return S_OK;
+                hr = S_OK;
+            }
+
+            pitem->Release();
+
+            if (SUCCEEDED(hr))
+            {
+                return hr;
             }
         }
     }

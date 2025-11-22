@@ -3,6 +3,8 @@
 #define STRSAFE_NO_CB_FUNCTIONS
 #define STRSAFE_NO_DEPRECATE
 
+//#define STRICT_TYPED_ITEMIDS
+
 // C/C++ headers
 #include <malloc.h>
 #include <iostream>

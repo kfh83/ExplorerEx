@@ -138,7 +138,7 @@ LRESULT CALLBACK TaskbarSizingBarSubclassProc(
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
-// @NOTE (Olivia): Partially taken from ep_taskbar
+// @NOTE (allison): Partially taken from ep_taskbar
 void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOOL bSomething)
 {
     IDeskBand* pdb;
@@ -161,7 +161,7 @@ void BandSite_AccountBandForTaskbarSizingBar(IBandSite* pbs, DWORD dwBandID, BOO
     }
 }
 
-// @NOTE (Olivia): Partially taken from ep_taskbar but using a while loop instead of a for loop
+// @NOTE (allison): Partially taken from ep_taskbar but using a while loop instead of a for loop
 void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething)
 {
     UINT iBand = 0;
@@ -203,7 +203,7 @@ BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown *punk)
     return bRet;
 }
 
-// @NOTE (Olivia): Thanks to amr for this solution
+// @NOTE (allison): Thanks to amr for this solution
 void WINAPI BandSite_FixUpComposition(IBandSite *pbs)
 {
     BOOL fFixed = FALSE;

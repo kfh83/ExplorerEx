@@ -256,6 +256,7 @@ public:
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
         ptvo->fHideClock = _fHideClock;
+        ptvo->fNoTaskbarThumbnailsPolicyEnabled = _fNoThumbnails;
         ptvo->fNoTrayItemsDisplayPolicyEnabled = _trayNotify.GetIsNoTrayItemsDisplayPolicyEnabled();
         ptvo->fNoAutoTrayPolicyEnabled = _trayNotify.GetIsNoAutoTrayPolicyEnabled();
         ptvo->fAutoTrayEnabledByUser = _trayNotify.GetIsAutoTrayEnabledByUser();

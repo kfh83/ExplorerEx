@@ -324,7 +324,7 @@ private:
     ULONG           _uInfoTipTimer;
     
     TNINFOITEM      *_pinfo;    // current balloon being shown
-    CDPA<TNINFOITEM> _dpaInfo;
+    CDPA_Base<TNINFOITEM, CTContainer_PolicyUnOwned<TNINFOITEM>> _dpaInfo;
 
     BOOL            _fInfoTipShowing;
     BOOL            _fItemClicked;

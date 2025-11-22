@@ -21,7 +21,7 @@ __inline HBRUSH SelectBrush(HDC hdc, HBRUSH hbr) { return (HBRUSH)SelectObject(h
 //////////////////////////////////////////////////////////////////////////
 
 
-ULONG _RegisterNotify(HWND hwnd, UINT nMsg, LPITEMIDLIST pidl, BOOL fRecursive)
+ULONG _RegisterNotify(HWND hwnd, UINT nMsg, PCIDLIST_ABSOLUTE pidl, BOOL fRecursive)
 {
     SHChangeNotifyEntry fsne;
 
@@ -153,7 +153,7 @@ HMENU LoadMenuPopup(LPCTSTR id)
 // to interrogate it.  if you have access to the item's IShellFolder, call this
 // one, especially in a loop.
 //
-WORD _GetHotkeyFromFolderItem(IShellFolder *psf, LPCITEMIDLIST pidl)
+WORD _GetHotkeyFromFolderItem(IShellFolder *psf, PCITEMID_CHILD pidl)
 {
     WORD wHotkey = 0;
     DWORD dwAttrs = SFGAO_LINK;
@@ -374,11 +374,11 @@ void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore)
     if (shei.lpIDList)
     {
         ShellExecuteEx(&shei);
-        ILFree((LPITEMIDLIST)shei.lpIDList);
+        ILFree((PIDLIST_RELATIVE)shei.lpIDList);
     }
 }
 
-EXTERN_C IShellFolder* BindToFolder(LPCITEMIDLIST pidl)
+EXTERN_C IShellFolder* BindToFolder(PCIDLIST_RELATIVE pidl)
 {
     IShellFolder *psfDesktop;
     if (SUCCEEDED(SHGetDesktopFolder(&psfDesktop)))

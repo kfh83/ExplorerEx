@@ -97,12 +97,16 @@ class CDesktopHost
 
         HWND            _hwndChildFocus;   // which child last had focus?
 
+        HWND            field_48;           // Vista - New
+
         IMenuPopup *    _pmpTracking;       // The popup menu we are tracking
         IMenuBand *     _pmbTracking;       // The menuband we are tracking
         LPARAM          _itemTracking;      // The item that owns the current popup menu
         HWND            _hwndTracking;      // The child window that owns _itemTracking
         LPARAM          _itemAltTracking;   // The item the user has hot-tracked to while viewing a different item's popup menu
         HWND            _hwndAltTracking;   // The child window that owns _itemAltTracking
+
+		HWND            field_64;		    // Vista - New
 
         CPopupMenu *    _ppmPrograms;       // Cached Programs menu
         CPopupMenu *    _ppmTracking;       // The one that is currently popped up
@@ -111,6 +115,8 @@ class CDesktopHost
 
         RECT            _rcDesired;         // The layout gets to specify a desired size
         RECT            _rcActual;          // And then the components can request additional resizing
+
+		RECT            field_94;           // Vista - New   
 
         int             _iOfferNewApps;     // number of times we should suggest to the
                                             // user that they look at the app that was installed
@@ -121,15 +127,16 @@ class CDesktopHost
         BOOL            _fMouseEntered;     // Is the mouse inside our window?
         BOOL            _fAutoCascade;      // Should we auto-open on hover?
         BOOL            _fClipped;          // Did we have to pitch some items to fit on screen?
+		int             field_C4;           // Vista - New
         BOOL            _fWarnedClipped;    // Has the user been warned that it's been clipped?
         BOOL            _fDismissOnlyPopup; // Are we only dismissing the popup?
+
+        int             field_D0;           // Vista - New
 
         HWND            _hwndLastMouse;     // HWND that received last mousemove message
         LPARAM          _lParamLastMouse;   // LPARAM of last mousemove message
 
         HWND            _hwndClipBalloon;   // HWND of "you've been clipped!" balloon tip
-
-        // IFadeTask *     _ptFader;           // For cool selection fading
 
         SIZE            _sizWindowPrev;     // previous size of window when we popped up
 
@@ -213,6 +220,7 @@ class CDesktopHost
         LRESULT OnTrackShellMenu(NMHDR *pnm);
         void OnSeenNewItems();
         LRESULT OnNeedRepaint();
+        LRESULT OnNeedRebuild();
         HRESULT TranslatePopupMenuMessage(MSG *pmsg, LRESULT *plres);
 
         // Other helpers
@@ -234,10 +242,10 @@ class CDesktopHost
         void _EnableKeyboardCues();
         void _MaybeOfferNewApps();
         BOOL _ShouldIgnoreFocusChange(HWND hwndFocusRecipient);
-        void _FilterMouseMove(MSG *pmsg, HWND hwndTarget);
+		int _FilterMouseMove(MSG *pmsg, HWND hwndTarget);
         void _FilterMouseLeave(MSG *pmsg, HWND hwndTarget);
         void _FilterMouseHover(MSG *pmsg, HWND hwndTarget);
-        void _RemoveSelection();
+        void _RemoveSelection(HWND hwnd);
         void _SubclassTrackShellMenu(IShellMenu *psm);
         HRESULT _MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg);
 
@@ -250,7 +258,7 @@ class CDesktopHost
         void _ReadPaneSizeFromTheme(SMPANEDATA *psmpd);
 
         void _ComputeActualSize(MONITORINFO *pminfo, LPCRECT prcExclude);
-        void _ChoosePopupPosition(POINT *ppt, LPCRECT prcExclude, LPRECT prcWindow);
+        void _ChoosePopupPosition(POINT *ppt, LPCRECT prcExclude, LPRECT prcWindow, DWORD dwFlags);
         void _ReapplyRegion();
         void _SaveChildFocus();
         HWND _RestoreChildFocus();
@@ -264,7 +272,19 @@ class CDesktopHost
         void _SetFocusToStartButton();
 
         HTHEME _GetStartMenuTheme();
-        void _RegisterForGlass(BOOL a2, HRGN a3);
+        void _RegisterForGlass(BOOL a2, HRGN hrgn);
+        void _SetFocusToOpenBox();
+        BOOL _DoesOpenBoxHaveFocus();
+        void _OnGetIStartButton(NMHDR* pnm)
+        {
+            ((SMNGETISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
+        }
+        void OnThemeChanged(UINT a2);
+		BOOL _FilterMouseWheel(MSG *pmsg, HWND hwndTarget);
+		BOOL _FilterMouseButtonDown(MSG *pmsg, HWND hwndTarget);
+		BOOL _FilterLMouseButtonUp(MSG *pmsg, HWND hwndTarget);
+		BOOL _DlgNavigateTab(HWND hwndStart, MSG *pmsg);
+		void _RemoveKeyboardCues();
 };
 
 

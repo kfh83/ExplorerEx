@@ -13,6 +13,7 @@
 #include "hostutil.h"
 #include "shundoc.h"
 #include "cabinet.h"
+#include "COWSite.h"
 
 #define FT_ONEHOUR             ((unsigned __int64)10000000 * 3600)
 
@@ -36,9 +37,11 @@ BOOL GetFileCreationTime(LPCTSTR pszFile, LPFILETIME pftCreate);
 /* Simple wrapper - the string needs to be freed with SHFree */
 LPTSTR _DisplayNameOf(IShellFolder *psf, LPCITEMIDLIST pidl, UINT shgno);
 
-HICON _IconOf(IShellFolder *psf, LPCITEMIDLIST pidl, int cxIcon);
+HICON _IconOf(IShellFolder *psf, PCITEMID_CHILD pidl, int cxIcon, LPCWSTR pszPath, int a5);
 
 BOOL ShowInfoTip();
+
+HRESULT DrawPlacesListBackground(HTHEME hTheme, HWND hWnd, HDC hdc);
 
 //****************************************************************************
 
@@ -57,10 +60,38 @@ class PaneItem;
 class PaneItem
 {
 public:
-    PaneItem() : _iPos(-1), _iPinPos(PINPOS_UNPINNED) {}
-    virtual ~PaneItem() { SHFree(_pszAccelerator); }
+    PaneItem()
+        : _iPos(-1)
+        , _cRef(1)
+        , _iPinPos(PINPOS_UNPINNED)
+    {
+    }
+
+    virtual ~PaneItem()
+    {
+        CoTaskMemFree(_pszAccelerator);
+    }
+
+	ULONG AddRef()
+    {
+        return InterlockedIncrement(&_cRef);
+    }
+
+    ULONG Release()
+    {
+        LONG cRef = InterlockedDecrement(&_cRef);
+        if (cRef == 0 )
+        {
+            delete this;
+        }
+        return cRef;
+    }
+
     static int CALLBACK DPAEnumCallback(PaneItem *self, LPVOID pData)
-        { delete self; return TRUE; }
+    {
+        self->Release();
+        return TRUE;
+    }
 
     BOOL IsPinned() const { return _iPinPos >= 0; }
     BOOL IsSeparator() const { return _iPinPos == PINPOS_SEPARATOR; }
@@ -73,6 +104,9 @@ public:
     void EnableDropTarget() { _dwFlags |= ITEMFLAG_DROPTARGET; }
     BOOL HasAccelerator() { return _pszAccelerator != NULL; }
 
+    virtual BOOL CanItemWrap() const { return FALSE; }
+    virtual BOOL IsHiddenInSafeMode() const { return FALSE; }
+	virtual int GetPrivateIcon() { return -1; }
     virtual BOOL IsEqual(PaneItem *pItem) const { return FALSE; }
 
     enum {
@@ -89,11 +123,36 @@ public:
 private:
     friend class SFTBarHost;
     int             _iPos;          /* Position on screen (or garbage if not on screen) */
+	LONG            _cRef;          /* Reference count */
+
 public:
     int             _iPinPos;       /* Pin position (or special PINPOS value) */
     DWORD           _dwFlags;       /* ITEMFLAG_* values */
     LPTSTR          _pszAccelerator;/* Text with ampersand (for keyboard accelerator) */
 };
+
+// **************************************************************************************************************
+// The following was taken from CommCtrl.h in the Windows Longhorn build 4074 SDK
+// https://github.com/MasonLeeBack/Longhorn_SDK_And_DDK_4074/blob/master/SDK/Include/CommCtrl.h#L5012
+typedef struct tagNMLVASYNCDRAWN
+{
+    NMHDR hdr;
+    IMAGELISTDRAWPARAMS *pimldp;    // the draw that failed
+    HRESULT   hr;                   // why it failed
+    int       iPart;                // LVADPART_*
+    int       iItem;                // meaning depends on iPart
+    int       iSubItem;             // meaning depends on iPart
+    LPARAM    lParam;               // meaning depends on iPart
+    // Out Params
+    DWORD     dwRetFlags;           // What listview should do on return
+    int       iRetImageIndex;       // used if ADRF_DRAWIMAGE is returned
+} NMLVASYNCDRAWN;
+
+#define LVN_ASYNCDRAWN          (LVN_FIRST-86)
+// **************************************************************************************************************
+
+
+HRESULT DisplayNameOfAsString(IShellFolder *psf, const ITEMIDLIST_RELATIVE *pidl, SHGDNF flags, WCHAR **ppsz);
 
 //
 //  Note: Since this is a base class, we can't use ATL because the base
@@ -102,7 +161,11 @@ public:
 class SFTBarHost
     : public IDropTarget
     , public IDropSource
+    //, public INewItemAdvisor
+    , public IServiceProvider
+    , public IOleCommandTarget
     , public CAccessible
+    , public CObjectWithSite
 {
 public:
     static BOOL Register();
@@ -138,8 +201,15 @@ public:
      */
     virtual HRESULT GetFolderAndPidl(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut) PURE;
 
+
+   /*
+	* Given a PaneItem for activation, produce the pidl and IShellFolder associated with it.
+	* The IShellFolder will be Release()d when no longer needed.
+    */
+    virtual HRESULT GetFolderAndPidlForActivate(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut) PURE;
+
     // An over-ridable method to add an image to our private imagelist for an item (virtual but not pure)
-    virtual int AddImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl, int iPos);
+    int AddImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl, int iPos);
 
     /*
      *  Dispatch a shell notification.  Default handler ignores.
@@ -195,7 +265,10 @@ public:
      */
     virtual LPTSTR DisplayNameOfItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlItem, SHGDNF shgno)
     {
-        return _DisplayNameOf(psf, pidlItem, shgno);
+        LPWSTR pszOut;
+        DisplayNameOfAsString(psf, pidlItem, shgno, &pszOut);
+        return pszOut;
+        //return _DisplayNameOf(psf, pidlItem, shgno);
     }
 
     /*
@@ -272,6 +345,18 @@ public:
      */
     virtual UINT AdjustDeleteMenuItem(PaneItem *pitem, UINT *puiFlags) { return 0; }
 
+    virtual void _NotifyInvoke(const PaneItem *pitem) { }
+
+    virtual void _NotifyCascade(const PaneItem *pitem) { }
+
+	virtual void _NotifyHoverImage(int iImage) { }
+
+	virtual int GetMinTextWidth() { return 0; }
+
+    virtual HRESULT OnItemUpdate(PaneItem *pitem, WPARAM wParam, LPARAM lParam) { return S_OK; }
+
+    virtual void OnItemUpdateComplete(WPARAM wParam, LPARAM lParam) { }
+
     /*
      *  Allow client to reject/over-ride the IContextMenu on a per-item basis
      */
@@ -286,25 +371,18 @@ protected:
 
     /*
      * Add a PaneItem to the list - if add fails, item will be delete'd.
-     *
-     * CLEANUP psf must be NULL; pidl must be the absolute pidl to the item
-     * being added.  Leftover from dead HOSTF_PINITEMSBYFOLDER feature.
-     * Needs to be cleaned up.
-     *
-     * Passing psf and pidlChild are for perf.
      */
-    BOOL AddItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidlChild);
-
-    /* 
-     * Use AddImage when you already have a HICON that needs to go to the private image list.
-     */
-    int AddImage(HICON hIcon);
+    BOOL AddItem(PaneItem *pitem);
 
     /*
      * Hooking into change notifications
      */
     enum {
+#ifdef DEAD_CODE
         SFTHOST_MAXCLIENTNOTIFY = 7,        // Clients get this many notifications
+#else
+        SFTHOST_MAXCLIENTNOTIFY = 8,        // Clients get this many notifications
+#endif
         SFTHOST_MAXHOSTNOTIFY = 1,          // We use this many ourselves
         SFTHOST_HOSTNOTIFY_UPDATEIMAGE = SFTHOST_MAXCLIENTNOTIFY,
         SFTHOST_MAXNOTIFY = SFTHOST_MAXCLIENTNOTIFY + SFTHOST_MAXHOSTNOTIFY,
@@ -358,6 +436,8 @@ protected:
 
     SFTBarHost(DWORD dwFlags = 0)
                 : _dwFlags(dwFlags)
+		        , _dpaEnum(NULL)
+		        , _dpaEnumNew(NULL)
                 , _lRef(1)
                 , _iInsert(-1)
                 , _clrBG(CLR_INVALID)
@@ -393,6 +473,13 @@ public:
     STDMETHODIMP GiveFeedback(DWORD dwEffect);
     STDMETHODIMP QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState);
 
+	// *** IServiceProvider ***
+	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, LPVOID *ppvObject);
+
+	// *** IOleCommandTarget ***
+	STDMETHODIMP QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT *pCmdText);
+	STDMETHODIMP Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut);
+
     // *** IAccessible overridden methods ***
     STDMETHODIMP get_accRole(VARIANT varChild, VARIANT *pvarRole);
     STDMETHODIMP get_accState(VARIANT varChild, VARIANT *pvarState);
@@ -425,6 +512,10 @@ public:
     BOOL _IsInsertionMarkActive() { return _iInsert >= 0; }
     void _DrawInsertionMark(LPNMLVCUSTOMDRAW plvcd);
 
+    int _CalcMaxTextWith();
+
+    LRESULT GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch);
+
     /*
      *  End of drag/drop stuff...
      */
@@ -439,7 +530,11 @@ private:
         CBGEnum(SFTBarHost *phost, BOOL fUrgent)
             : CRunnableTask(RTF_DEFAULT)
             , _fUrgent(fUrgent)
-            , _phost(phost) { phost->AddRef(); }
+            , _phost(phost)
+        { 
+            phost->AddRef();
+        }
+
         ~CBGEnum() 
         {
             // We should not be the last release or else we are going to deadlock here, when _phost
@@ -447,18 +542,43 @@ private:
             //ASSERT(_phost->_lRef > 1);
             _phost->Release(); 
         }
-        STDMETHODIMP RunInitRT()
+
+        STDMETHODIMP InternalResumeRT()
         {
             _phost->_EnumerateContentsBackground();
             if (_phost->_hwnd) PostMessage(_phost->_hwnd, SFTBM_REPOPULATE, _fUrgent, 0);
             return S_OK;
         }
+
     private:
         SFTBarHost *_phost;
         BOOL _fUrgent;
     };
 
     friend class SFTBarHost::CBGEnum;
+
+    class CLoadIconTask : public CRunnableTask
+    {
+    public:
+        CLoadIconTask(HWND a2, void* a3, int a4)
+            : CRunnableTask(RTF_DEFAULT)
+            , _iIndex(a4)
+            , _hwnd(a2)
+            , field_2C(a3)
+        {
+        }
+
+        STDMETHODIMP InternalResumeRT()
+        {
+            SetIconAsync(_hwnd, field_2C, _iIndex, _iIndex);
+            return S_OK;
+        }
+
+    private:
+        int _iIndex;
+        HWND _hwnd;
+        void* field_2C;
+    };
 
 private:
     /* Window procedure helpers */
@@ -486,6 +606,7 @@ private:
     LRESULT _OnRefresh(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnCascade(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnIconUpdate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _OnItemUpdate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     LRESULT _OnLVCustomDraw(LPNMLVCUSTOMDRAW plvcd);
     LRESULT _OnLVNItemActivate(LPNMITEMACTIVATE pnmia);
@@ -495,6 +616,7 @@ private:
     LRESULT _OnLVNBeginLabelEdit(NMLVDISPINFO *pldvi);
     LRESULT _OnLVNEndLabelEdit(NMLVDISPINFO *pldvi);
     LRESULT _OnLVNKeyDown(LPNMLVKEYDOWN pkd);
+    LRESULT _OnLVNAsyncDrawn(NMLVASYNCDRAWN *plvad);
     LRESULT _OnSMNGetMinSize(PSMNGETMINSIZE pgms);
     LRESULT _OnSMNFindItem(PSMNDIALOGMESSAGE pdm);
     LRESULT _OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm);
@@ -525,7 +647,7 @@ private:
     void _ReloadText();
     static int CALLBACK _SortItemsAfterEnum(PaneItem *p1, PaneItem *p2, SFTBarHost *self);
     void _RepopulateList();
-    void _InternalRepopulateList();
+    void _InternalRepopulateList(BOOL a2);
     int _InsertListViewItem(int iPos, PaneItem *pitem);
     void _ComputeListViewItemPosition(int iItem, POINT *pptOut);
     int _AppendEnumPaneItem(PaneItem *pitem);
@@ -534,28 +656,57 @@ private:
     void _SetTileWidth(int cxTile);
     BOOL _CreateMarlett();
     void _CreateBoldFont();
+
     int  _GetLVCurSel()
     {
-            return ListView_GetNextItem(_hwndList, -1, LVNI_FOCUSED);
+#ifdef DEAD_CODE
+        return ListView_GetNextItem(_hwndList, -1, LVNI_FOCUSED);
+#else
+        VARIANT vt;
+        vt.vt = VT_BOOL;
+        if (IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 309, 0, 0, &vt) >= 0
+            && vt.iVal)
+        {
+            return SendMessageW(this->_hwndList, 0x103Du, 0, 0);
+        }
+        else
+        {
+            return SendMessageW(this->_hwndList, 0x100Cu, 0xFFFFFFFF, 1);
+        }
+#endif
     }
+
     BOOL _OnCascade(int iItem, DWORD dwFlags);
-    BOOL _IsPrivateImageList() const { return _iconsize == ICONSIZE_MEDIUM; }
+	BOOL  _OnTextUpdate(int iItem);
+
+protected:
+    BOOL _IsPrivateImageList() const { return _iconsize == ICONSIZE_MEDIUM && !IsHighDPI(); }
+
+private:
     BOOL _CanHaveSubtitles() const { return _iconsize == ICONSIZE_LARGE; }
-    int _ExtractImageForItem(PaneItem *pitem, IShellFolder *psf, LPCITEMIDLIST pidl);
     void _ClearListView();
     void _EditLabel(int iItem);
-    BOOL _RegisterNotify(UINT id, LONG lEvents, LPCITEMIDLIST pidl, BOOL fRecursive);
+    BOOL _RegisterNotify(UINT id, LONG lEvents, PCIDLIST_ABSOLUTE  pidl, BOOL fRecursive);
     void _OnUpdateImage(LPCITEMIDLIST pidl, LPCITEMIDLIST pidlExtra);
 
     /* Returns E_FAIL for separators; otherwise calls client */
     HRESULT _GetFolderAndPidl(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut);
+    HRESULT _GetFolderAndPidlForActivate(PaneItem *pitem, IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut);
 
     /* Simple wrappers - the string needs to be freed with SHFree */
     LPTSTR _DisplayNameOfItem(PaneItem *pitem, UINT shgno);
     HRESULT _GetUIObjectOfItem(int iItem, REFIID riid, LPVOID *ppv);
 
     inline PaneItem *_GetItemFromLVLParam(LPARAM lParam)
-        { return reinterpret_cast<PaneItem*>(lParam); }
+    {
+		PaneItem* pitem = reinterpret_cast<PaneItem*>(lParam);
+        if (pitem)
+        {
+			pitem->AddRef();
+        }
+        return pitem;
+    }
+
     PaneItem *_GetItemFromLV(int iItem);
 
     enum {
@@ -572,7 +723,7 @@ private:
     // menus.
     DWORD _GetCascadeHoverTime() { return GetDoubleClickTime() * 4 / 5; }
 
-    static void CALLBACK SetIconAsync(LPCITEMIDLIST pidl, LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex);
+    static void CALLBACK SetIconAsync(LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex);
 
     /*
      *  Custom commands we add to the context menu.
@@ -635,6 +786,9 @@ private:
         return (IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOCHANGESTARMENU, TEXT("Advanced"), TEXT("Start_EnableDragDrop"), ROUS_DEFAULTALLOW | ROUS_KEYALLOWS));
     }
 
+    void _CalculateSize(int a2);
+    void _UpdateHotTrackRect();
+
 protected:
     HTHEME                  _hTheme;        // theme handle, can be NULL
     int                     _iThemePart;    // SPP_PROGLIST SPP_PLACESLIST
@@ -652,13 +806,15 @@ private:
 
     int                     _cPinned;       /* Number of those items that are pinned */
 
+    int                     field_6C;       // Vista - NEW
+
     DWORD                   _dwFlags;       /* Misc flags that derived classes can set */
 
     //  _dpaEnum is the DPA of enumerated items, sorted in the
     //  _SortItemsAfterEnum sense, which prepares them for _RepopulateList.
     //  When _dpaEnum is destroyed, its pointers must be delete'd.
-    CDPA<PaneItem>          _dpaEnum;
-    CDPA<PaneItem>          _dpaEnumNew; // Used during background enumerations
+    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>>          _dpaEnum;
+    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>>          _dpaEnumNew; // Used during background enumerations
 
     int                     _rgiSep[MAX_SEPARATORS];    /* Only _cSep elements are meaningful */
     int                     _cSep;          /* Number of separators */
@@ -675,8 +831,10 @@ private:
     IDataObject *           _pdtoDragIn;    /* Data object being dragged in */
     IDropTarget *           _pdtDragOver;   /* Object being dragged over (if any) */
 
+protected:
     IShellTaskScheduler *   _psched;        /* Task scheduler */
 
+private:
     int                     _iDragOut;      /* The item being dragged out (-1 if none) */
     int                     _iPosDragOut;   /* The position of item _iDragOut */
     int                     _iDragOver;     /* The item being dragged over (-1 if none) */
@@ -730,6 +888,9 @@ private:
     int                     _iCascading;    /* Which item is the cascade menu appearing over? */
     DWORD                   _dwCustomDrawState; /* Keeps track of whether customdraw is real or fake */
     int                     _cPaint;        /* How many (nested) paint messages are we handling? */
+
+    int                     field_16C; // Vista - NEW
+	int                     field_170; // Vista - NEW
 #ifdef DEBUG
     BOOL                    _fEnumerating;  /* Are we enumerating client items? */
     BOOL                    _fPopulating;   /* Are we populating the listview? */
@@ -788,6 +949,8 @@ void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, U
                 reinterpret_cast<WPARAM>(psf),              \
                 reinterpret_cast<LPARAM>(pidl))
 
+
+void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut);
 
 //****************************************************************************
 //

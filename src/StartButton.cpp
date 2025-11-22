@@ -7,7 +7,7 @@
 
 CStartButton::CStartButton(IStartButtonSite *pStartButtonSite)
     : _nSettingsChangeType(true)
-    , _pStartButtonSite(pStartButtonSite)
+    , _pSite(pStartButtonSite)
 {
 }
 
@@ -42,7 +42,7 @@ HRESULT CStartButton::SetFocusToStartButton()
 HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
 {
     _nIsOnContextMenu = TRUE;
-    _pStartButtonSite->HandleFullScreenApp2(hWnd);
+    _pSite->HandleFullScreenApp2(hWnd);
     SetForegroundWindow(hWnd);
 
     LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
@@ -74,14 +74,14 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
                 }
                 else
                 {
-                    _pStartButtonSite->EnableTooltips(FALSE);
+                    _pSite->EnableTooltips(FALSE);
                     UINT uFlag = TPM_RETURNCMD | TPM_RIGHTBUTTON;
                     if (IsBiDiLocalizedSystem())
                     {
                         uFlag |= TPM_LAYOUTRTL;
                     }
                     bResult = TrackPopupMenu(hMenu, uFlag,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) , 0, hWnd, 0);
-                    _pStartButtonSite->EnableTooltips(TRUE);
+                    _pSite->EnableTooltips(TRUE);
                 }
 
                 if (bResult)
@@ -258,7 +258,7 @@ HRESULT CStartButton::SetStartPaneActive(BOOL fActive)
 
 HRESULT CStartButton::OnStartMenuDismissed()
 {
-    _pStartButtonSite->OnStartMenuDismissed();
+    _pSite->OnStartMenuDismissed();
     return S_OK;
 }
 
@@ -284,10 +284,10 @@ HRESULT CStartButton::LockStartPane()
 
 HRESULT CStartButton::GetPopupPosition(DWORD* out)  // taken from ep_taskbar 7-stuff
 {
-    if (!_pStartButtonSite)
+    if (!_pSite)
         return E_FAIL;
 
-    UINT stuckPlace = _pStartButtonSite->GetStartMenuStuckPlace();
+    UINT stuckPlace = _pSite->GetStartMenuStuckPlace();
     switch (stuckPlace)
     {
         case 0: *out = MPPF_LEFT; break;
@@ -320,14 +320,15 @@ HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvO
 
 void CStartButton::BuildStartMenu() // from xp
 {
+#ifdef DEAD_CODE
     CloseStartMenu();
-    _pStartButtonSite->PurgeRebuildRequests();
+    _pSite->PurgeRebuildRequests();
     DestroyStartMenu();
     if (Tray_StartPanelEnabled())
     {
         LPVOID pvStartPane;
-        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_pUnk1, v_hwndTray);
-        IUnknown_SetSite(_pUnk1, static_cast<IServiceProvider *>(this));
+        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_punkSite, v_hwndTray);
+        IUnknown_SetSite(_punkSite, static_cast<IServiceProvider *>(this));
         DesktopV2_Build(pvStartPane);
     }
     else
@@ -335,19 +336,19 @@ void CStartButton::BuildStartMenu() // from xp
         HRESULT hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu);
         if (SUCCEEDED(hr))
         {
-            IUnknown_SetSite(_pUnk1, static_cast<IServiceProvider *>(this));
+            IUnknown_SetSite(_punkSite, static_cast<IServiceProvider *>(this));
             HWND hwnd;
             if (SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)))
             {
                 SetWindowSubclass(hwnd, s_StartMenuSubclassProc, 0, (DWORD_PTR)this);
             }
 
-            IBanneredBar* pbb;
+            IBanneredBar *pbb;
             hr = _pmpStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
             if (SUCCEEDED(hr))
             {
                 pbb->SetBitmap(_hbmpStartBkg);
-                if (_pStartButtonSite->ShouldUseSmallIcons())
+                if (_pSite->ShouldUseSmallIcons())
                     pbb->SetIconSize(BMICON_SMALL);
                 else
                     pbb->SetIconSize(BMICON_LARGE);
@@ -356,6 +357,59 @@ void CStartButton::BuildStartMenu() // from xp
             }
         }
     }
+#else
+    HRESULT hr; // ebx
+
+    CStartButton::CloseStartMenu();
+    _pSite->PurgeRebuildRequests();
+    CStartButton::DestroyStartMenu();
+    if (Tray_StartPanelEnabled())
+    {
+        CDesktopHost *v7; // [esp+10h] [ebp-4h] BYREF
+        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 0);
+        hr = DesktopV2_Create(&this->_pmpStartPane, &this->_pmbStartPane, (void **)&v7, &this->_punkSite, v_hwndTray);
+        IUnknown_SetSite(this->_punkSite, (IServiceProvider *)this);
+        DesktopV2_Build(v7);
+        goto LABEL_13;
+    }
+    //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 1);
+    if (StartMenuHost_Create(&this->_pmpStartMenu, &this->_pmbStartMenu/*, &this->_punkSite*/) >= 0)
+    {
+        IUnknown_SetSite(this->_punkSite, (IServiceProvider *)this);
+
+        HWND hwnd;
+        if (IUnknown_GetWindow(_pmpStartMenu, &hwnd) >= 0)
+        {
+            SetWindowSubclass(hwnd, CStartButton::s_StartMenuSubclassProc, 0, (DWORD_PTR)this);
+        }
+
+        IBanneredBar *pbb;
+        hr = _pmpStartMenu->QueryInterface(IID_PPV_ARGS(&pbb));
+        if (hr >= 0)
+        {
+            if (this->_hbmpStartBkg)
+            {
+                pbb->SetBitmap(this->_hbmpStartBkg);
+            }
+
+            if (_pSite->ShouldUseSmallIcons())
+            {
+                pbb->SetIconSize(BMICON_SMALL);
+            }
+            else
+            {
+                pbb->SetIconSize(BMICON_LARGE);
+            }
+            pbb->Release();
+        LABEL_13:
+            if (hr >= 0)
+            {
+                return;
+            }
+        }
+    }
+    //CcshellDebugMsgW(2, "Could not create StartMenu");
+#endif
 }
 
 void CStartButton::CloseStartMenu()
@@ -373,8 +427,8 @@ void CStartButton::CloseStartMenu()
 
 void CStartButton::DestroyStartMenu()
 {
-    IUnknown_SetSite(_pUnk1, NULL);
-    ATOMICRELEASE(_pUnk1);
+    IUnknown_SetSite(_punkSite, NULL);
+    ATOMICRELEASE(_punkSite);
 
     IUnknown_SetSite(_pmpStartMenu, NULL);
     ATOMICRELEASE(_pmpStartMenu);
@@ -419,7 +473,9 @@ void CStartButton::DisplayStartMenu()
 
     // Recalculate the position of the taskbar and start button:
     bool fMoveTaskbar = false;
-    if ((GetWindowLongPtr(_hwndStart, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0
+
+	DWORD_PTR exStyle = GetWindowLongPtr(v_hwndTray, GWL_EXSTYLE);
+    if ((exStyle & WS_EX_TOPMOST) == 0
         && _pszCurrentThemeName == TEXT("StartBottom")
         || _pszCurrentThemeName == TEXT("StartTop"))
     {
@@ -702,8 +758,6 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
     LONG cyFrameHalf = g_cyFrame / 2;
 
-    wprintf(L"CStartButton::_CalcStartButtonPos zero\n");
-
     if (_pszCurrentThemeName == L"StartTop")
     {
         pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
@@ -818,9 +872,6 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
             }
         }
     }
-
-    wprintf(L"CStartButton::_CalcStartButtonPos one\n");
-
     return fRes;
 }
 
@@ -838,7 +889,7 @@ void CStartButton::RecalcSize()
 
         SetWindowTextW(_hwndStart, pszWindowName);
 
-        int height = _pStartButtonSite->GetStartButtonMinHeight();
+        int height = _pSite->GetStartButtonMinHeight();
         if (!height && _sizeStart.cy >= 0)
         {
             height = _sizeStart.cy;
@@ -886,9 +937,9 @@ int CStartButton::TrackMenu(HMENU hMenu)
         uFlag |= TPM_LAYOUTRTL;
     }
 
-    _pStartButtonSite->EnableTooltips(FALSE);
+    _pSite->EnableTooltips(FALSE);
     iRet = TrackPopupMenuEx(hMenu, uFlag, tpm.rcExclude.left, tpm.rcExclude.bottom, _hwndStart, &tpm);
-    _pStartButtonSite->EnableTooltips(TRUE);
+    _pSite->EnableTooltips(TRUE);
 
     return iRet;
 }
@@ -1146,13 +1197,13 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 _uDown = 1;
 
                 _fAllowUp = FALSE;
-                _pStartButtonSite->EnableTooltips(FALSE);
+                _pSite->EnableTooltips(FALSE);
 
                 // Show the button down.
                 _fDisableVisualUpdateFromMouse = TRUE;
                 LRESULT lRet = DefSubclassProc(hWnd, BM_SETSTATE, wParam, lParam);
                 DrawStartButton(PBS_PRESSED, true);
-                _pStartButtonSite->StartButtonClicked();
+                _pSite->StartButtonClicked();
                 _tmOpen = GetTickCount();
                 return lRet;
             }
@@ -1179,7 +1230,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 _fDisableVisualUpdateFromMouse = FALSE;
                 LRESULT lr = DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
                 DrawStartButton(PBS_NORMAL, true);
-                _pStartButtonSite->EnableTooltips(TRUE);
+                _pSite->EnableTooltips(TRUE);
                 _uDown = 0;
                 return lr;
             }
@@ -1236,7 +1287,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_CLOSE:
             {
-                _pStartButtonSite->OnStartButtonClosing();
+                _pSite->OnStartButtonClosing();
                 return 0;
             }
 
@@ -1366,7 +1417,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                     return 0;
                 }
 
-                _pStartButtonSite->SetUnhideTimer(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                _pSite->SetUnhideTimer(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                 break;
             }
 

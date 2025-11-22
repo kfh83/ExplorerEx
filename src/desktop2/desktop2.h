@@ -9,6 +9,17 @@
 #define WC_SFTBARHOST   TEXT("DesktopSFTBarHost")
 #define WC_MOREPROGRAMS TEXT("Desktop More Programs Pane")
 
+DEFINE_GUID(SID_SM_DV2ControlHost, 0x39D63FD3, 0x04C3, 0x400D, 0xB3, 0x94, 0xF7, 0xD9, 0x9C, 0x0E, 0xFE, 0x61); // {39D63FD3-04C3-400D-B394-F7D99C0EFE61}
+
+DEFINE_GUID(SID_SM_MFU, 0x0B3DC173, 0xAE5A, 0x44F1, 0xA5, 0x36, 0x32, 0x2C, 0xED, 0x8F, 0x62, 0x3A);			// {0B3DC173-AE5A-44F1-A536-322CED8F623A}
+DEFINE_GUID(SID_SM_NSCHOST, 0x3919AEF5, 0xE6CC, 0x4882, 0xA8, 0xA8, 0xFA, 0xBC, 0x83, 0x76, 0x25, 0x8E);		// {3919AEF5-E6CC-4882-A8A8-FABC8376258E}
+DEFINE_GUID(SID_SM_OpenBox, 0x7DEC4B0E, 0xB17B, 0x4A07, 0xAD, 0x90, 0xAF, 0x8A, 0x44, 0xD2, 0x04, 0x05);		// {7DEC4B0E-B17B-4A07-AD90-AF8A44D20405}
+DEFINE_GUID(SID_SM_OpenHost, 0x30DFB5F9, 0xC289, 0x419A, 0xB0, 0x4C, 0xF6, 0x4E, 0xD1, 0xA0, 0x8B, 0xED);		// {30DFB5F9-C289-419A-B04C-F64ED1A08BED}
+DEFINE_GUID(SID_SM_OpenView, 0x54004849, 0x2FFA, 0x4BF6, 0x8A, 0x8A, 0x9E, 0x97, 0x24, 0x2D, 0xA5, 0xA1);		// {54004849-2FFA-4BF6-8A8A-9E97242DA5A1}
+DEFINE_GUID(SID_SM_TopMatch, 0x43969745, 0xA0DF, 0x4338, 0xA0, 0x43, 0xB1, 0xF6, 0xBF, 0xF0, 0x1F, 0xE4);		// {43969745-A0DF-4338-A043-B1F6BFF01FE4}
+DEFINE_GUID(SID_SM_UserPane, 0xB2B65246, 0xDC1B, 0x4EA7, 0x99, 0x06, 0xA4, 0x84, 0xF6, 0x1D, 0x94, 0xCC);		// {B2B65246-DC1B-4EA7-9906-A484F61D94CC}
+DEFINE_GUID(SID_SM_ViewControl, 0xD574C1A4, 0xC703, 0x405E, 0x8C, 0xAC, 0x5E, 0x03, 0x60, 0x2C, 0xA2, 0xB4);	// {D574C1A4-C703-405E-8CAC-5E03602CA2B4}
+
 /*
  
    This is the new Start Panel layout model.  
@@ -36,12 +47,13 @@
 
 */
 
-#define SMPANETYPE_USER     0
-#define SMPANETYPE_MFU      1
-#define SMPANETYPE_MOREPROG 2
-#define SMPANETYPE_PLACES   3
-#define SMPANETYPE_LOGOFF   4
-#define SMPANE_MAX SMPANETYPE_LOGOFF+1
+#define SMPANETYPE_USER                 0
+#define SMPANETYPE_OPENVIEWHOST         1
+#define SMPANETYPE_OPENBOX              2
+#define SMPANETYPE_KNOWNFOLDER          3
+#define SMPANETYPE_LOGOFF               4
+
+#define SMPANE_MAX SMPANETYPE_LOGOFF  + 1
 
 // Common data which every pane will specify
 typedef struct {
@@ -169,7 +181,9 @@ typedef struct SMNDIALOGMESSAGE {
     MSG *pmsg;                  // IN
     LPARAM itemID;              // IN OUT
     POINT pt;                   // IN OUT
+    HWND hwnd;                  // Vista - New
     UINT flags;                 // IN
+	HWND field_24;              // Vista - New
 } SMNDIALOGMESSAGE, *PSMNDIALOGMESSAGE;
 
 // Values for "flags" in SMNDIALOGMESSAGE
@@ -201,6 +215,20 @@ typedef struct SMNTRACKSHELLMENU {
     LPARAM itemID;                  // Which item is being tracked?
     DWORD dwFlags;                  // MPPF_* values
 } SMNTRACKSHELLMENU, *PSMNTRACKSHELLMENU;
+
+typedef struct SMNSETSITE
+{
+    NMHDR hdr;
+    IUnknown *punkSite;
+} SMNSETSITE, *PSMNSETSITE;
+
+#include "StartButton.h"
+
+struct SMNGETISTARTBUTTON
+{
+    NMHDR hdr;
+    IStartButton *pstb;
+};
 
 #define REGSTR_PATH_STARTPANE \
         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPageXP")

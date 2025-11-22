@@ -112,12 +112,12 @@ public:
     UINT _uStartButtonState;
     DWORD _tmOpen;
     HIMAGELIST _himlStartFlag;
-    IStartButtonSite *_pStartButtonSite;
+    IStartButtonSite *_pSite;
     IMenuBand *_pmbStartMenu;
     IMenuPopup *_pmpStartMenu;
     IMenuBand *_pmbStartPane;
     IMenuPopup *_pmpStartPane;
-    IUnknown *_pUnk1;
+    IUnknown *_punkSite;
     char padding5[4];
     WCHAR _szWindowName[50];
 

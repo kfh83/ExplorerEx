@@ -20,6 +20,7 @@ HRESULT CConnectToShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
 LPTSTR _Static_LoadString(const struct SpecialFolderDesc *pdesc);
 BOOL ShouldShowWindowsSecurity();
 BOOL ShouldShowOEMLink();
+BOOL ShouldShowSPADLink();
 
 typedef HRESULT (CALLBACK *CREATESHELLMENUCALLBACK)(IShellMenuCallback **ppsmc);
 typedef BOOL (CALLBACK *SHOULDSHOWFOLDERCALLBACK)();
@@ -58,493 +59,880 @@ enum {
     SFD_USEBGTHREAD     = 0x0100,
 };
 
-struct SpecialFolderDesc {
-    typedef BOOL (SpecialFolderDesc::*CUSTOMFOLDERNAMECALLBACK)(LPTSTR *ppsz) const;
+#pragma region ResourceStringHelpers
 
-    LPCTSTR _pszTarget;         // or MAKEINTRESOURCE(csidl)
-    RESTRICTIONS _rest;         // optional restriction
-    LPCTSTR _pszShow;           // REGSTR_EXPLORER_ADVANCED!_pszShow
-    UINT _uFlags;               // SFD_* values
-    CREATESHELLMENUCALLBACK _CreateShellMenuCallback; // Which IShellMenuCallback do we want?
-    LPCTSTR _pszCustomizeKey;   // Optional location where customizations are saved
-    DWORD _dwShellFolderFlags;  // Optional restrictions for cascading folder
-    UINT _idsCustomName;        // Optional override (CUSTOMFOLDERNAMECALLBACK)
-    UINT _iToolTip;             // Optional resource ID for a custom tooltip
-    CUSTOMFOLDERNAMECALLBACK _CustomName; // Over-ride the filesys name
-    SHOULDSHOWFOLDERCALLBACK _ShowFolder;
-    LPCTSTR _pszCanHideOnDesktop; // Optional {guid} that controls desktop visibility
-
-    DWORD GetDisplayMode(BOOL *pbIgnoreRule) const;
-
-    void AdjustForSKU();
-
-    void SetDefaultDisplayMode(UINT iNewMode)
+template <typename T>
+HRESULT TCoTaskMemAllocCb(SIZE_T cb, T **out)
+{
+    T *p = (T *)CoTaskMemAlloc(cb);
+    HRESULT hr = p ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
     {
-        _uFlags = (_uFlags & ~SFD_MODEMASK) | iNewMode;
+        *out = p;
     }
+    return S_OK;
+}
+
+HRESULT CALLBACK _ResourceStringAllocCopyExCoAlloc(HANDLE hHeap, SIZE_T cb, WCHAR **ppsz)
+{
+    return TCoTaskMemAllocCb(cb, ppsz);
+}
+
+template <typename T>
+HRESULT TResourceStringAllocCopyEx(HMODULE hInstance,
+    UINT uId,
+    WORD wLanguage,
+    HRESULT(CALLBACK *pfnAlloc)(HANDLE, SIZE_T, T *),
+    HANDLE hHeap,
+    T *pt);
+
+HRESULT ResourceStringCoAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz)
+{
+    return TResourceStringAllocCopyEx(hModule, uId, wLanguage, _ResourceStringAllocCopyExCoAlloc, nullptr, ppsz);
+}
+
+HRESULT ResourceStringCoAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
+{
+    return ResourceStringCoAllocCopyEx(hModule, uId, LANG_NEUTRAL, ppsz);
+}
+
+#pragma endregion
+
+signed int ResultFromLastError()
+{
+    signed int result; // eax
+
+    result = GetLastError();
+    if (result > 0)
+        return (unsigned __int16)result | 0x80070000;
+    return result;
+}
+
+HRESULT SHFormatMessageArg(
+    DWORD dwFlags,
+    LPCVOID lpSource,
+    DWORD dwMessageId,
+    DWORD dwLanguageId,
+    LPWSTR lpBuffer,
+    DWORD nSize,
+    ...)
+{
+    va_list Arguments; // [esp+0h] [ebp-4h] BYREF
+    va_list va; // [esp+24h] [ebp+20h] BYREF
+
+    va_start(va, nSize);
+    va_copy(Arguments, va);
+    if (FormatMessage(dwFlags, lpSource, dwMessageId, dwLanguageId, lpBuffer, nSize, &Arguments))
+        return 0;
+    else
+        return ResultFromLastError();
+}
+
+DEFINE_GUID(POLID_NoUserFolderInStartMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMMyDocs, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMMyPictures, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuMyMusic, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuHomegroup, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuVideos, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuDownloads, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuRecordedTV, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuMyGames, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoFavoritesMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoRecentDocsMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoMyComputerIcon, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuNetworkPlaces, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoNetworkConnections, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSetFolders, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoControlPanel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMConfigurePrograms, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMHelp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoRun, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_ForceRunOnStartMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoNTSecurity, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+#include <evntprov.h>
+
+class SpecialFolderListItem;
+
+class CMenuDescriptor
+{
+public:
+    typedef int(CMenuDescriptor::* CUSTOMTOOLTIPCALLBACK)(SpecialFolderList*, const SpecialFolderListItem*, LPWSTR, DWORD) const;
+
+    LPCWSTR _pszTarget;
+    const KNOWNFOLDERID _kfId;
+    LPCWSTR _pszPath;
+    const KNOWNFOLDERID _kfMenuId;
+    LPCWSTR _pszIconPath;
+    LPCGUID _pguidPolicyHide;
+    LPCGUID _pguidPolicyRestrict;
+    LPCGUID _pguidPolicyForceShow;
+    LPCWSTR _pszShow;
+    UINT _uFlags;
+    CREATESHELLMENUCALLBACK _CreateShellMenuCallback;
+    LPCWSTR _pszCustomizeKey;
+    DWORD _dwShellFolderFlags;
+    DWORD _dwShellMenuSetFlags;
+    UINT _idsCustomName;
+    UINT _iToolTip;
+    CUSTOMTOOLTIPCALLBACK _CustomTooltipCallback;
+    SHOULDSHOWFOLDERCALLBACK _ShowFolder;
+    LPCWSTR _pszCanHideOnDesktop;
+    PCEVENT_DESCRIPTOR _field_64;
+    int _field_68;
+    int _field_6C;
+
+    REFKNOWNFOLDERID GetFolderID() const
+    {
+        return _kfId;
+    }
+
+    REFKNOWNFOLDERID GetMenuFolderID() const
+    {
+        return _kfMenuId;
+    }
+
 
     BOOL IsDropTarget() const { return _uFlags & SFD_DROPTARGET; }
     BOOL IsCacheable() const { return _uFlags & SFD_USEBGTHREAD; }
 
-    int IsCSIDL() const { return IS_INTRESOURCE(_pszTarget); }
     BOOL IsBold() const { return _uFlags & SFD_BOLD; }
     int IsSeparator() const { return _pszTarget == SFD_SEPARATOR; }
 
-    int GetCSIDL() const {
-        ASSERT(IsCSIDL());
-        return (short)PtrToLong(_pszTarget);
-    }
-
-    HRESULT CreateShellMenuCallback(IShellMenuCallback **ppsmc) const {
+    HRESULT CreateShellMenuCallback(IShellMenuCallback **ppsmc) const
+    {
         return _CreateShellMenuCallback ? _CreateShellMenuCallback(ppsmc) : S_OK;
     }
 
-    BOOL GetCustomName(LPTSTR *ppsz) const {
-        if (_CustomName)
-            return (this->*_CustomName)(ppsz);
-        else
-            return FALSE;
+    BOOL GetCustomName(LPTSTR *ppsz) const
+    {
+        return _idsCustomName && SUCCEEDED(ResourceStringCoAllocCopy(g_hinstCabinet, _idsCustomName, ppsz));
     }
 
-    LPWSTR GetShowCacheRegName() const;
-    BOOL LoadStringAsOLESTR(LPTSTR *ppsz) const;
-    BOOL ConnectToName(LPTSTR *ppsz) const;
-};
+	// Taken from ep_taskbar by @amrsatrio
+    LPCWSTR GetItemName() const
+    { 
+        return _pszPath == SFD_SEPARATOR ? NULL : _pszPath;
+    }
 
-static SpecialFolderDesc s_rgsfd[] = {
-
-    /* My Documents */
+    // Taken from ep_taskbar by @amrsatrio
+    LPWSTR GetShowCacheRegName() const
     {
-        MAKEINTRESOURCE(CSIDL_PERSONAL),    // pszTarget
-        REST_NOSMMYDOCS,                    // restriction
-        REGSTR_VAL_DV2_SHOWMYDOCS,
-        SFD_SHOW | SFD_DROPTARGET | SFD_CANCASCADE | SFD_BOLD,
-                                            // show by default, is drop target
-        NULL,                               // no custom cascade 
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        IDS_CUSTOMTIP_MYDOCS,
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        TEXT("{450D8FBA-AD25-11D0-98A8-0800361B1103}"), // desktop visibility control
-    },
-
-    /* Recent */
-    {
-        MAKEINTRESOURCE(CSIDL_RECENT),      // pszTarget
-        REST_NORECENTDOCSMENU,              // restriction
-        REGSTR_VAL_DV2_SHOWRECDOCS,         // customize show
-        SFD_HIDE | SFD_CANCASCADE | SFD_BOLD | SFD_PREFIX, // hide by default
-        CRecentShellMenuCallback_CreateInstance, // custom callback
-        NULL,                               // no drag/drop customization
-        SMINIT_RESTRICT_DRAGDROP,           // disallow drag/drop in cascaded menu
-        IDS_STARTPANE_RECENT,               // override filesys name
-        IDS_CUSTOMTIP_RECENT,
-        &SpecialFolderDesc::LoadStringAsOLESTR, // override filesys name with _idsCustomName
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* My Pictures */
-    {
-        MAKEINTRESOURCE(CSIDL_MYPICTURES),  // pszTarget
-        REST_NOSMMYPICS,                    // restriction
-        REGSTR_VAL_DV2_SHOWMYPICS,
-        SFD_SHOW | SFD_DROPTARGET | SFD_CANCASCADE | SFD_BOLD,
-                                            // show by default, is drop target
-        NULL,                               // no custom cascade 
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        IDS_CUSTOMTIP_MYPICS,
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-
-    },
-
-    /* My Music */
-    {
-        MAKEINTRESOURCE(CSIDL_MYMUSIC),     // pszTarget
-        REST_NOSMMYMUSIC,                   // restriction
-        REGSTR_VAL_DV2_SHOWMYMUSIC,
-        SFD_SHOW | SFD_DROPTARGET | SFD_CANCASCADE | SFD_BOLD,
-                                            // show by default, is drop target
-        NULL,                               // no custom cascade 
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        IDS_CUSTOMTIP_MYMUSIC,
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Favorites */
-    {
-        MAKEINTRESOURCE(CSIDL_FAVORITES),   // pszTarget
-        REST_NOFAVORITESMENU,               // restriction
-        REGSTR_VAL_DV2_FAVORITES,           // customize show (shared w/classic)
-        SFD_HIDE | SFD_DROPTARGET |
-        SFD_CANCASCADE | SFD_FORCECASCADE | SFD_BOLD | SFD_PREFIX,
-                                            // hide by default, is drop target
-        NULL,                               // unrestricted cascading
-        STRREG_FAVORITES,                   // drag/drop customization key
-        0,                                  // no special flags for cascaded menu
-        IDS_STARTPANE_FAVORITES,            // override filesys name
-        0,                                  // no custom tip
-        &SpecialFolderDesc::LoadStringAsOLESTR, // override filesys name with _idsCustomName
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* My Computer */
-    {
-        MAKEINTRESOURCE(CSIDL_DRIVES),      // pszTarget
-        REST_NOMYCOMPUTERICON,              // restriction
-        REGSTR_VAL_DV2_SHOWMC,              // customize show
-        SFD_SHOW | SFD_CANCASCADE | SFD_BOLD, // show by default
-        CMyComputerShellMenuCallback_CreateInstance, // custom callback
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        IDS_CUSTOMTIP_MYCOMP,
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        TEXT("{20D04FE0-3AEA-1069-A2D8-08002B30309D}"), // desktop visibility control
-    },
-
-    /* My Network Places */
-    {
-        MAKEINTRESOURCE(CSIDL_NETWORK),     // pszTarget
-        REST_NOSMNETWORKPLACES,             // restriction
-        REGSTR_VAL_DV2_SHOWNETPL,           // customize show
-        SFD_SHOW | SFD_CANCASCADE | SFD_BOLD | SFD_USEBGTHREAD, // show by default
-        CNoSubdirShellMenuCallback_CreateInstance, // only cascade one level
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        IDS_CUSTOMTIP_MYNETPLACES,
-        NULL,                               // (no custom name)
-        ShouldShowNetPlaces,
-        TEXT("{208D2C60-3AEA-1069-A2D7-08002B30309D}"), // desktop visibility control
-    },
-
-    /* Separator line */
-    {
-        SFD_SEPARATOR,                      // separator
-        REST_NONE,                          // no restriction
-        NULL,                               // no customize show
-        SFD_SHOW,                           // show by default
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Control Panel */
-    {
-        TEXT("shell:::{26ee0668-a00a-44d7-9371-beb064c98683}"),    // pszTarget
-        REST_NOCONTROLPANEL,                // restriction
-        REGSTR_VAL_DV2_SHOWCPL,
-        SFD_SHOW | SFD_CANCASCADE | SFD_PREFIX, // show by default
-        CNoFontsShellMenuCallback_CreateInstance, // custom callback
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        IDS_STARTPANE_CONTROLPANEL,         // override filesys name
-        IDS_CUSTOMTIP_CTRLPANEL,            // no custom tip
-        &SpecialFolderDesc::LoadStringAsOLESTR, // override filesys name with _idsCustomName
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Admin Tools */
-    {
-        // Using the ::{guid} gets the icon right
-        TEXT("shell:::{D20EA4E1-3957-11d2-A40B-0C5020524153}"), // pszTarget
-        REST_NONE,                          // no restriction
-        REGSTR_VAL_DV2_ADMINTOOLSROOT,
-        SFD_HIDE | SFD_CANCASCADE | SFD_FORCECASCADE,        // hide by default, force to cascade
-        NULL,                               // no custom callback
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        NULL,                               // no custom name
-        NULL,                               // no custom tip
-        NULL,                               // no custom name
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Set Program Access and Defaults */
-    {
-        // Using the ::{guid} gets the icon right
-        TEXT("shell:::{2559a1f7-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NONE,                          // no restriction
-        REGSTR_VAL_DV2_SHOWDEFPROG,         // customize show
-        SFD_SHOW,                           // show by default
-        NULL,                               // no custom callback
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        NULL,                               // no custom name
-        NULL,                               // no custom tip
-        NULL,                               // no custom name
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Network Connections */
-    {
-        MAKEINTRESOURCE(CSIDL_CONNECTIONS), // pszTarget
-        REST_NONETWORKCONNECTIONS,          // restriction
-        REGSTR_VAL_DV2_SHOWNETCONN,         // customize show
-        SFD_CASCADE | SFD_CANCASCADE | SFD_PREFIX | SFD_USEBGTHREAD, // cascade by default
-        CConnectToShellMenuCallback_CreateInstance, // do special Connect To filtering
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        IDS_STARTPANE_CONNECTTO,            // override filesys name
-        IDS_CUSTOMTIP_CONNECTTO,
-        &SpecialFolderDesc::ConnectToName,  // override filesys name with _idsCustomName
-        ShouldShowConnectTo,                // see if we should be shown
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Printers */
-    {
-        MAKEINTRESOURCE(CSIDL_PRINTERS),    // pszTarget
-        REST_NONE,                          // no restriction
-        REGSTR_VAL_DV2_SHOWPRINTERS,        // customize show
-        SFD_HIDE,                           // hide by default, can't cascade
-        NULL,                               // (not cascadable)
-        NULL,                               // no drag/drop customization
-        0,                                  // no special flags for cascaded menu
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Separator line */
-    {
-        SFD_SEPARATOR,                      // separator
-        REST_NONE,                          // no restriction
-        NULL,                               // no customize show
-        SFD_SHOW,                           // show by default
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Help */
-    {
-        TEXT("shell:::{2559a1f1-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NOSMHELP,                      // restriction
-        REGSTR_VAL_DV2_SHOWHELP,            // customize show
-        SFD_SHOW | SFD_PREFIX,              // show by default, use & prefix
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Search */
-    {
-        TEXT("shell:::{2559a1f0-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NOFIND,                        // restriction
-        REGSTR_VAL_DV2_SHOWSEARCH,          // customize show
-        SFD_SHOW | SFD_PREFIX,              // show by default, use & prefix
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Run */
-    {
-        TEXT("shell:::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NORUN,                         // restriction
-        REGSTR_VAL_DV2_SHOWRUN,             // customize show
-        SFD_SHOW | SFD_PREFIX,              // show by default, use & prefix
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Separator line */
-    {
-        SFD_SEPARATOR,                      // separator
-        REST_NONE,                          // no restriction
-        NULL,                               // no customize show
-        SFD_SHOW,                           // show by default
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        NULL,                               // (no custom display rule)
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* Windows Security */
-    {
-        TEXT("shell:::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NOSECURITY,                    // restriction
-        NULL,                               // not customizable
-        SFD_SHOW | SFD_PREFIX,              // show by default, use & prefix
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        ShouldShowWindowsSecurity,          // custom display rule
-        NULL,                               // (no desktop visibility control)
-    },
-
-    /* OEM Command */
-    {
-        TEXT("shell:::{2559a1f6-21d7-11d4-bdaf-00c04f60b9f0}"), // pszTarget
-        REST_NONE,                          // no restriction
-        REGSTR_VAL_DV2_SHOWOEM,             // customizable
-        SFD_SHOW | SFD_PREFIX,              // show by default, use & prefix
-        NULL,                               // (not cascadable)
-        NULL,                               // (not cascadable)
-        0,                                  // (not cascadable)
-        0,                                  // (no custom name)
-        0,                                  // no custom tip
-        NULL,                               // (no custom name)
-        ShouldShowOEMLink,                  // custom display rule
-        NULL,                               // (no desktop visibility control)
-    },
-
-};
-
-//
-//  These are the items whose defaults change depending on the SKU.
-//  Changing the defaults for the SKU means chasing down all the
-//  places defaults are computed (here, the property sheets,
-//  the regtreeop) and updating them all.  Someday, they should
-//  be reduced down to one.
-//
-void SpecialFolderDesc::AdjustForSKU()
-{
-    if (IsCSIDL())
-    {
-        switch (GetCSIDL())
+        WCHAR szCached[] = TEXT("_ShouldShow");
+        SIZE_T cch = lstrlen(_pszShow) + ARRAYSIZE(szCached) + 1;
+        WCHAR *pszShowCache = (WCHAR *)LocalAlloc(LPTR, sizeof(WCHAR) * cch);
+        if (pszShowCache)
         {
-            case CSIDL_MYPICTURES:
-            case CSIDL_MYMUSIC:
-                SetDefaultDisplayMode(IsOS(OS_ANYSERVER) ? SFD_HIDE : SFD_SHOW);
-                break;
-
-            case CSIDL_RECENT:
-                SetDefaultDisplayMode(IsOS(OS_PERSONAL) ? SFD_HIDE : SFD_CASCADE);
-                break;
-
-            case CSIDL_PRINTERS:
-                SetDefaultDisplayMode(IsOS(OS_PERSONAL) ? SFD_HIDE : SFD_SHOW);
-                break;
+            StringCchCopy(pszShowCache, cch, _pszShow);
+            StringCchCat(pszShowCache, cch, szCached);
         }
-    }
-}
-
-LPWSTR SpecialFolderDesc::GetShowCacheRegName() const
-{
-    const WCHAR szCached[] = L"_ShouldShow";
-    WCHAR *pszShowCache = (WCHAR *)LocalAlloc(LPTR, ((lstrlenW(_pszShow)+1) * sizeof (WCHAR)) + sizeof(szCached));
-    if (pszShowCache)
-    {
-        StrCpy(pszShowCache, _pszShow);
-        StrCat(pszShowCache, szCached);
-    }
-    return pszShowCache;
-}
-
-
-//
-//  First try to read the display mode from the registry.
-//  Failing that, use the default value.
-//  Also fill in whether to ignore the custom display rule or not
-//
-DWORD SpecialFolderDesc::GetDisplayMode(BOOL *pbIgnoreRule) const
-{
-    *pbIgnoreRule = FALSE;
-
-    // Restrictions always take top priority
-    if (SHRestricted(_rest))
-    {
-        return SFD_HIDE;
+        return pszShowCache;
     }
 
-    DWORD dwMode = _uFlags & SFD_MODEMASK;
-
-    // See if there is a user setting to override
-
-    if (_pszShow)
+    // Taken from ep_taskbar by @amrsatrio
+    DWORD GetDisplayMode(int *bOutIgnoreRule)
     {
-        DWORD dwNewMode, cb = sizeof(DWORD);
-        if (SHRegGetUSValue(REGSTR_EXPLORER_ADVANCED, _pszShow, NULL, &dwNewMode, &cb, FALSE, NULL, 0) == ERROR_SUCCESS)
+       
+        *bOutIgnoreRule = FALSE;
+
+        if (_pguidPolicyHide && SHWindowsPolicy(*_pguidPolicyHide)
+            || _pguidPolicyRestrict && SHWindowsPolicy(*_pguidPolicyRestrict))
         {
-            // User has forced show or forced no-show
-            // Do not call the custom show logic
-            dwMode = dwNewMode;
-            *pbIgnoreRule = TRUE;
+            return SFD_HIDE;
         }
-        else
+
+        DWORD dwMode = _uFlags & SFD_MODEMASK;
+
+        if (_pszShow)
         {
-            WCHAR *pszShowCache = GetShowCacheRegName();
-            if (pszShowCache)
+            DWORD dwNewMode;
+            DWORD cb = sizeof(dwNewMode);
+            if (_SHRegGetValueFromHKCUHKLM(L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", _pszShow, SRRF_RT_DWORD, NULL, &dwNewMode, &cb) == ERROR_SUCCESS)
             {
-                if (SHGetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED, pszShowCache, NULL, &dwNewMode, &cb) == ERROR_SUCCESS)
+                dwMode = dwNewMode;
+                *bOutIgnoreRule = TRUE;
+            }
+            else
+            {
+                WCHAR *pszShowCache = GetShowCacheRegName();
+                if (pszShowCache)
                 {
-                    dwMode = dwNewMode;
+                    cb = sizeof(dwNewMode);
+                    if (SHGetValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", pszShowCache, NULL, &dwNewMode, &cb) == ERROR_SUCCESS)
+                    {
+                        dwMode = dwNewMode;
+                    }
+                    LocalFree(pszShowCache);
                 }
-                LocalFree(pszShowCache);
+            }
+        }
+
+        if (_pguidPolicyForceShow && SHWindowsPolicy(*_pguidPolicyForceShow))
+        {
+            dwMode = SFD_SHOW;
+        }
+
+        dwMode &= SFD_MODEMASK;
+
+        if (dwMode == SFD_CASCADE && (_uFlags & SFD_CANCASCADE) == 0)
+        {
+            dwMode = SFD_SHOW;
+        }
+        else if (dwMode == SFD_SHOW && (_uFlags & SFD_FORCECASCADE) != 0)
+        {
+            dwMode = SFD_CASCADE;
+        }
+
+        return dwMode;
+    }
+
+    void AdjustForSKU(DWORD dwProductType)
+    {
+        LSTATUS Value; // eax
+        DWORD v5; // [esp+10h] [ebp-28h] SPLIT BYREF
+        int v6; // [esp+14h] [ebp-24h]
+        BOOL bIsServer; // [esp+18h] [ebp-20h]
+        int v8; // [esp+1Ch] [ebp-1Ch]
+        //CPPEH_RECORD ms_exc; // [esp+20h] [ebp-18h]
+
+        v6 = 1;
+        bIsServer = IsOS(OS_ANYSERVER);
+        v8 = 0;
+        if (dwProductType == 4 || dwProductType == 6 || dwProductType == 16 || dwProductType == 27)
+            v6 = 0;
+        if (bIsServer)
+            v6 = 0;
+        if (IsEqualGUID(_kfId, GUID_NULL))
+        {
+            if (_pszTarget == (LPCWSTR)-1 || !_pszTarget)// -1 = SFD_SEPARATOR
+            {
+                if (_pszPath && !StrCmpICW(L"Microsoft.AdministrativeTools", _pszPath) && bIsServer)
+                {
+                    _uFlags = _uFlags & 0xFFFFFFFC | 2;
+                    goto LABEL_33;
+                }
+                goto LABEL_34;
+            }
+            //if (memcmp(&_kfId, &GUID_NULL, 0x10u)
+            //    && CcshellAssertFailedW(
+            //        L"d:\\longhorn\\shell\\explorer\\desktop2\\specfldr.cpp",
+            //        673,
+            //        L"!IsSeparator() && !HasFolderID()",
+            //        0))
+            //{
+            //    AttachUserModeDebugger();
+            //    do
+            //    {
+            //        __debugbreak();
+            //        ms_exc.registration.TryLevel = -2;
+            //    } while (dword_108BAD4);
+            //}
+            if (!StrCmpIC(TEXT("::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}"), _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget))
+            {
+                if (bIsServer)
+                {
+                    _uFlags = _uFlags & 0xFFFFFFFC | 1;
+                    v8 = 1;
+                }
+                goto LABEL_34;
+            }
+            if (StrCmp(
+                TEXT("::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}"),
+                _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget))
+            {
+                goto LABEL_34;
+            }
+        }
+        else if (!IsEqualGUID(GetFolderID(), FOLDERID_Profile)
+            && !IsEqualGUID(GetFolderID(), FOLDERID_Pictures)
+            && !IsEqualGUID(GetFolderID(), FOLDERID_Music)
+            && !IsEqualGUID(GetFolderID(), FOLDERID_Recent))
+        {
+            if (IsEqualGUID(GetFolderID(), FOLDERID_Games) && !v6)
+                goto LABEL_15;
+            goto LABEL_34;
+        }
+        if (bIsServer)
+        {
+        LABEL_15:
+            _uFlags &= 0xFFFFFFFC;
+        LABEL_33:
+            v8 = 1;
+        }
+    LABEL_34:
+        if (v8)
+        {
+            v5 = 4;
+            Value = SHRegGetValue(
+                HKEY_CURRENT_USER,
+                L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                _pszShow,
+                24,
+                NULL,
+                &dwProductType,
+                &v5);
+            if (Value == 2 || Value == 3)
+            {
+                dwProductType = _uFlags & 3;
+                _SHRegSetValue(
+                    HKEY_CURRENT_USER,
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                    _pszShow,
+                    24,
+                    4u,
+                    &dwProductType,
+                    4u);
             }
         }
     }
 
-    //
-    //  Some items are cascade-only (Favorites).
-    //  Others never cascade (Run).
-    //
-    //  Enforce those rules here.
-    //
-
-    if (dwMode == SFD_CASCADE && !(_uFlags & SFD_CANCASCADE))
+    BOOL UserTooltip(SpecialFolderList* a2, const SpecialFolderListItem* pitem, LPWSTR pszText, DWORD cch) const
     {
-        dwMode = SFD_SHOW;
+        BOOL bRet = FALSE;
+
+        WCHAR szText[256];
+        if (a2->GetLVText((PaneItem*)pitem, szText, 0x100u) >= 0)
+        {
+            WCHAR szBuf[256];
+            LoadString(g_hinstCabinet, 317, szBuf, 256);
+            bRet = SUCCEEDED(SHFormatMessageArg(0x400u, szBuf, 0, 0, pszText, cch, szText)) ? TRUE : FALSE;
+        }
+        return bRet;
     }
-    else if (dwMode == SFD_SHOW && (_uFlags & SFD_FORCECASCADE))
+};
+
+static CMenuDescriptor s_rgsfd[] =
+{
+    { // 00
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_UsersFiles,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoUserFolderInStartMenu,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowUser"),
+        /* _uFlags */                       0x609,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        &CMenuDescriptor::UserTooltip,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          TEXT("{59031a47-3f72-44a7-89c5-5595fe6b30ee}"),
+        /* _field_64 */                     NULL, /*ExplorerFrame_OpenProfile*/
+        /* _field_68 */                     582,
+        /* _field_6C */                     NULL
+    },
+    { // 01
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Documents,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoSMMyDocs,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowMyDocs"),
+        /* _uFlags */                       0x1E09,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     IDS_CUSTOMTIP_MYDOCS,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*ExplorerFrame_OpenDocuments*/
+        /* _field_68 */                     129,
+        /* _field_6C */                     0x10
+    },
+    { // 02
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Pictures,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoSMMyPictures,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowMyPics"),
+        /* _uFlags */                       0x1E09,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     IDS_CUSTOMTIP_MYPICS,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*ExplorerFrame_OpenPictures*/
+        /* _field_68 */                     525,
+        /* _field_6C */                     0x40
+    },
+    { // 03
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Music,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoStartMenuMyMusic,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowMyMusic"),
+        /* _uFlags */                       0x1E09,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     IDS_CUSTOMTIP_MYMUSIC,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*ExplorerFrame_OpenMusic*/
+        /* _field_68 */                     524,
+        /* _field_6C */                     0x20
+    },
+    { // 04
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Games,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoStartMenuMyGames,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowMyGames"),
+        /* _uFlags */                       0x0E09,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     312,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Games_Launch*/
+        /* _field_68 */                     856,
+        /* _field_6C */                     0x8000
+    },
+    { // 05
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Favorites,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoFavoritesMenu,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("StartMenuFavorites"),
+        /* _uFlags */                       0x1A98,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Favorites"),
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                IDS_STARTPANE_FAVORITES,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Favorites_Launch*/
+        /* _field_68 */                     143,
+        /* _field_6C */                     0x4
+    },
+	{ // 06
+        /* _pszTarget */                    SFD_SEPARATOR,
+        /* _kfId */                         {0},
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL,
+        /* _field_68 */                     0,
+        /* _field_6C */                     0
+    },
+    { // 07
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_Recent,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  TEXT("::{0c39a5cf-1a7a-40c8-ba74-8900e6df5fcd}"),
+        /* _pguidPolicyHide */              &POLID_NoRecentDocsMenu,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_TrackDocs"),
+        /* _uFlags */                       0x9A,
+        /* _CreateShellMenuCallback */      CRecentShellMenuCallback_CreateInstance,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x2,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                IDS_STARTPANE_RECENT,
+        /* _iToolTip */                     IDS_CUSTOMTIP_RECENT,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_RecentItems_Launch*/
+        /* _field_68 */                     523,
+        /* _field_6C */                     0x4000
+    },
+    { // 08
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_ComputerFolder,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoMyComputerIcon,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowMyComputer"),
+        /* _uFlags */                       0x409,
+        /* _CreateShellMenuCallback */      CMyComputerShellMenuCallback_CreateInstance,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x0,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     IDS_CUSTOMTIP_MYCOMP,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          TEXT("{20D04FE0-3AEA-1069-A2D8-08002B30309D}"),
+        /* _field_64 */                     NULL, /*ExplorerFrame_OpenComputer*/
+        /* _field_68 */                     522,
+        /* _field_6C */                     0x1
+    },
+    { // 09
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         FOLDERID_NetworkFolder,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoStartMenuNetworkPlaces,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowNetPlaces"),
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x0,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                IDS_STARTPANE_CONNECTTO,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Network_Launch*/
+        /* _field_68 */                     563,
+        /* _field_6C */                     0x100
+    },
+    { // 10
+        /* _pszTarget */                    TEXT("::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoNetworkConnections,
+        /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowNetConn"),
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x0,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     318,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_ConnectTo_Launch*/
+        /* _field_68 */                     564,
+        /* _field_6C */                     0x80
+    },
+    { // 11
+        /* _pszTarget */                    SFD_SEPARATOR,
+        /* _kfId */                         {0},
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                NULL,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL,
+        /* _field_68 */                     0,
+        /* _field_6C */                     0
+    },
+    { // 12
+        /* _pszTarget */                    TEXT("::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     FOLDERID_ControlPanelFolder,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoControlPanel,
+        /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowControlPanel"),
+        /* _uFlags */                       0x89,
+        /* _CreateShellMenuCallback */      NULL, //CNoSubMenuShellMenuCallback_CreateInstance,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x0,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                IDS_STARTPANE_CONTROLPANEL,
+        /* _iToolTip */                     IDS_CUSTOMTIP_CTRLPANEL,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          TEXT("{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"),
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_ControlPanel_Launch*/
+        /* _field_68 */                     128,
+        /* _field_6C */                     0x2
+    },
+    { // 13
+        /* _pszTarget */                    TEXT("::{E44E5D18-0652-4508-A4E2-8A090067BCB0}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoSMConfigurePrograms,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowSetProgramAccessAndDefaults"),
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     316,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   ShouldShowSPADLink,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_SPAD_Launch*/
+        /* _field_68 */                     133,
+        /* _field_6C */                     0x1000
+    },
+    { // 14
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      TEXT("Microsoft.AdministrativeTools"),
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_AdminToolsRoot"),
+        /* _uFlags */                       0x18,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_AdminTools_Launch*/
+        /* _field_68 */                     140,
+        /* _field_6C */                     0x2000
+    },
+    { // 15
+        /* _pszTarget */                    NULL,
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      TEXT("Microsoft.Printers"),
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowPrinters"),
+        /* _uFlags */                       0x0,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0x0,
+        /* _dwShellMenuSetFlags */          0x0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     319,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Printers_Launch*/
+        /* _field_68 */                     138,
+        /* _field_6C */                     0x400
+    },
+    { // 16
+        /* _pszTarget */                    TEXT("::{2559a1f1-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoSMHelp,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      TEXT("Start_ShowHelp"),
+        /* _uFlags */                       0x81,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                /*0*/IDS_STARTPANE_TITLE_HELP, // @MOD: Use string directly in binary instead of reading from registry which points to normal explorer.exe
+        /* _iToolTip */                     /*0*/IDS_STARTPANE_INFOTIP_HELP, // @MOD: Use string directly in binary instead of reading from registry which points to normal explorer.exe
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Help_Launch*/
+        /* _field_68 */                     131,
+        /* _field_6C */                     0x8
+    },
+    { // 17
+        /* _pszTarget */                    TEXT("::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoRun,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         &POLID_ForceRunOnStartMenu,
+        /* _pszShow */                      TEXT("Start_ShowRun"),
+        /* _uFlags */                       0x80,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL, /*Explorer_StartMenu_Run_Launch*/
+        /* _field_68 */                     139,
+        /* _field_6C */                     0
+    },
+    { // 18
+        /* _pszTarget */                    SFD_SEPARATOR,
+        /* _kfId */                         NULL,
+        /* _pszPath */                      0,
+        /* _kfMenuId */                     0,
+        /* _pszIconPath */                  0,
+        /* _pguidPolicyHide */              0,
+        /* _pguidPolicyRestrict */          0,
+        /* _pguidPolicyForceShow */         0,
+        /* _pszShow */                      0,
+        /* _uFlags */                       SFD_SHOW,
+        /* _CreateShellMenuCallback */      0,
+        /* _pszCustomizeKey */              0,
+        /* _dwShellFolderFlags */           NULL,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        0,
+        /* _ShowFolder */                   0,
+        /* _pszCanHideOnDesktop */          0,
+        /* _field_64 */                     0,
+        /* _field_68 */                     0,
+        /* _field_6C */                     0
+    },
+    { // 19
+        /* _pszTarget */                    TEXT("::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
+        /* _kfMenuId */                     GUID_NULL,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              &POLID_NoNTSecurity,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
+        /* _uFlags */                       0x81,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           0,
+        /* _dwShellMenuSetFlags */          0,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   ShouldShowWindowsSecurity,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _field_64 */                     NULL,
+        /* _field_68 */                     0,
+        /* _field_6C */                     0,
+    }
+};
+
+// d:\\longhorn\\Shell\\inc\\idllib.h
+PCIDLIST_ABSOLUTE _SHILMakeFull(const void *pv)
+{
+    PCIDLIST_ABSOLUTE pidl = reinterpret_cast<PCIDLIST_ABSOLUTE>(pv);
+    //RIP(ILIsAligned(reinterpret_cast<PCUIDLIST_RELATIVE>(pidl))); // 183
+    return pidl;
+}
+
+STDAPI BindCtx_SetMode(IBindCtx *pbcIn, DWORD grfMode, IBindCtx **ppbcOut)
+{
+    HRESULT hr = S_OK;
+
+    *ppbcOut = pbcIn;
+    if (pbcIn)
     {
-        dwMode = SFD_CASCADE;
+        pbcIn->AddRef();
+    }
+    else
+    {
+        hr = CreateBindCtx(0, ppbcOut);
     }
 
-    return dwMode;
+    if (SUCCEEDED(hr))
+    {
+        BIND_OPTS bo;
+        bo.cbStruct = sizeof(bo);
+        bo.grfFlags = 0;
+        bo.grfMode = grfMode;
+        bo.dwTickCountDeadline = 0;
+        if (pbcIn)
+        {
+            hr = pbcIn->GetBindOptions(&bo);
+            bo.grfMode = grfMode;
+        }
+
+        if (SUCCEEDED(hr)) // @Note: This check is new in Windows 10
+            hr = (*ppbcOut)->SetBindOptions(&bo);
+
+        if (FAILED(hr))
+			IUnknown_SafeReleaseAndNullPtr(ppbcOut);
+    }
+
+    return hr;
+}
+
+HRESULT BindCtx_CreateWithMode(DWORD grfMode, IBindCtx **ppbc)
+{
+    return BindCtx_SetMode(0, grfMode, ppbc);
 }
 
 //****************************************************************************
@@ -558,52 +946,92 @@ class SpecialFolderListItem : public PaneItem
 {
 
 public:
-    LPITEMIDLIST _pidl;             //  Full Pidl to each item
-    const SpecialFolderDesc *_psfd; //  Describes this item
+	ITEMIDLIST_ABSOLUTE *_pidl;         // Full Pidl to each item
+	ITEMIDLIST_ABSOLUTE *_pidlCascade;  // Pidl for cascade menu
+	ITEMIDLIST_ABSOLUTE *_pidlSimple;   // Pidl for "simple" items with a KNOWNFOLDERID
+	const CMenuDescriptor *_psfd;       // Describes this item
+	int _iImageIndex;                   // Index of private icon
+	WCHAR _chMnem;                      // Keyboard accelerator
+	LPWSTR _pszDispName;                // Display name
 
-    TCHAR   _chMnem;                // Keyboard accelerator
-    LPTSTR  _pszDispName;            // Display name
-    HICON   _hIcon;                 // Icon
-
-    SpecialFolderListItem(const SpecialFolderDesc *psfd) : _pidl(NULL), _psfd(psfd)
+    SpecialFolderListItem(const CMenuDescriptor *psfd)
+        : _psfd(psfd)
+        , _pidl(NULL)
     {
         if (_psfd->IsSeparator())
         {
-            // Make sure that SFD_SEPARATOR isn't accidentally recognized
-            // as a separator.
-            //ASSERT(!_psfd->IsCSIDL());
-
             _iPinPos = PINPOS_SEPARATOR;
         }
-        else if (_psfd->IsCSIDL())
+        else if (IsEqualGUID(_psfd->GetFolderID(), GUID_NULL))
         {
-            SHGetFolderLocation(NULL, _psfd->GetCSIDL(), NULL, NULL, &_pidl);
+            if (_psfd->_pszTarget)
+            {
+                IBindCtx *pbc;
+                if (SUCCEEDED(BindCtx_CreateWithMode(STGM_CREATE, &pbc)))
+                {
+                    SHParseDisplayName(_psfd->GetItemName(), pbc, &_pidl, 0, NULL);
+                    pbc->Release();
+                }
+            }
+
+            IOpenControlPanel *pocp = NULL;
+            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, NULL,
+                CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_LOCAL_SERVER | CLSCTX_REMOTE_SERVER, IID_PPV_ARGS(&pocp))))
+            {
+                WCHAR szPath[MAX_PATH];
+                if (SUCCEEDED(pocp->GetPath(_psfd->_pszPath, szPath, ARRAYSIZE(szPath))))
+                {
+                    SHParseDisplayName(szPath, NULL, &_pidl, 0, NULL);
+                }
+            }
+
+            if (pocp)
+            {
+                pocp->Release();
+            }
+        }
+        else if ((_psfd->_uFlags & 0x1000) != 0) // Probably something like "_psfd->IsSimple()"
+        {
+            SHGetKnownFolderIDList(_psfd->GetFolderID(), KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_VERIFY, NULL, &_pidlSimple);
         }
         else
         {
-            SHILCreateFromPath(_psfd->_pszTarget, &_pidl, NULL);
+            SHGetKnownFolderIDList(_psfd->GetFolderID(), 0, NULL, &_pidl);
         }
-    };
 
-    ~SpecialFolderListItem() 
-    {
-        ILFree(_pidl);
-        if (_hIcon)
+        if (!IsEqualGUID(_psfd->GetMenuFolderID(), GUID_NULL))
         {
-            DestroyIcon(_hIcon);
+            SHGetKnownFolderIDList(_psfd->GetMenuFolderID(), 0, NULL, &_pidlCascade);
         }
-        SHFree(_pszDispName);
-    };
 
-    void ReplaceLastPidlElement(LPITEMIDLIST pidlNew)
-    { 
-        ASSERT(ILFindLastID(pidlNew) == pidlNew);   // the ILAppend below won't work otherwise
-        ILRemoveLastID(_pidl);
-        LPITEMIDLIST pidlCombined = ILAppendID(_pidl, &pidlNew->mkid, TRUE);
-        if (pidlCombined)
-            _pidl = pidlCombined;
+        _iImageIndex = -1;
     }
 
+    ~SpecialFolderListItem()
+    {
+        ILFree(_pidl);
+        ILFree(_pidlCascade);
+        ILFree(_pidlSimple);
+        CoTaskMemFree(_pszDispName);
+    }
+
+    int GetPrivateIcon()
+    {
+        return _iImageIndex;
+    }
+
+    void ReplaceLastPidlElement(LPCITEMIDLIST pidlNew)
+    {
+        ASSERT(ILIsChild(pidlNew)); // 873
+        ILRemoveLastID(_pidl);
+        PIDLIST_ABSOLUTE pidlCombined = (PIDLIST_ABSOLUTE)_SHILMakeFull(ILAppendID(_pidl, &pidlNew->mkid, TRUE));
+        if (pidlCombined)
+        {
+            _pidl = pidlCombined;
+        }
+}
+
+#ifdef DEAD_CODE
     //
     //  Values that are derived from CSIDL values need to be revalidated
     //  because the user can rename a special folder, and we need to track
@@ -628,7 +1056,137 @@ public:
         }
         return fValid;
     }
+#endif
 };
+
+HRESULT DisplayNameOfAsString(IShellFolder *psf, const ITEMIDLIST_RELATIVE *pidl, SHGDNF flags, WCHAR **ppsz);
+
+HRESULT SpecialFolderList::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
+{
+    HRESULT hr = E_INVALIDARG;
+
+    if (pguidCmdGroup)
+    {
+        if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup) && nCmdID == 329)
+        {
+            CKnownFolderInformation *pkfi = new CKnownFolderInformation();
+            if (pkfi)
+            {
+                hr = SHGetKnownFolderIDList(FOLDERID_UsersFiles, 0, 0, &pkfi->_pidl);
+                if (SUCCEEDED(hr))
+                {
+                    IShellFolder *psf;
+                    LPCITEMIDLIST pidl;
+                    hr = SHBindToParent(pkfi->_pidl, IID_PPV_ARGS(&psf), &pidl);
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = DisplayNameOfAsString(psf, pidl, 0, &pkfi->_pszDispName);
+                        if (SUCCEEDED(hr))
+                        {
+                            PostMessage(_hwnd, 0x40D, (WPARAM)pkfi, 0);
+                            pkfi = 0;
+                        }
+                        psf->Release();
+                    }
+                }
+
+                if (pkfi)
+                {
+                    delete pkfi;
+                }
+            }
+        }
+    }
+    return hr;
+}
+
+typedef DWORD(*SHExpandEnvironmentStringsW_t)(const WCHAR *pszIn, WCHAR *pszOut, DWORD cchOut);
+DWORD SHExpandEnvironmentStringsW(const WCHAR *pszIn, WCHAR *pszOut, DWORD cchOut)
+{
+    static SHExpandEnvironmentStringsW_t fn = nullptr;
+    if (!fn)
+    {
+        HMODULE h = GetModuleHandleW(L"shlwapi.dll");
+        if (h)
+            fn = (SHExpandEnvironmentStringsW_t)GetProcAddress(h, MAKEINTRESOURCEA(460));
+    }
+    return fn ? fn(pszIn, pszOut, cchOut) : 0;
+}
+
+HRESULT SpecialFolderList::CLoadFullPidlTask::InternalResumeRT()
+{
+    CKnownFolderInformation *pkfi = new CKnownFolderInformation();
+    if (pkfi)
+    {
+        const CMenuDescriptor *pdesc = &s_rgsfd[this->_dwIndex];
+        if (SHGetKnownFolderIDList(pdesc->GetFolderID(), 0, 0, &pkfi->_pidl) >= 0)
+        {
+            IShellFolder *psf;
+            LPCITEMIDLIST ppidlLast;
+            if (SUCCEEDED(SHBindToParent(pkfi->_pidl, IID_PPV_ARGS(&psf), &ppidlLast)))
+            {
+                HRESULT hr = DisplayNameOfAsString(psf, ppidlLast, 0, &pkfi->_pszDispName);
+                if (hr >= 0)
+                {
+                    IKnownFolderManager *pkfm = 0;
+                    hr = CoCreateInstance(CLSID_KnownFolderManager, 0, 1u, IID_PPV_ARGS(&pkfm));
+                    if (hr >= 0)
+                    {
+                        IKnownFolder *pkf = 0;
+                        hr = pkfm->GetFolder(pdesc->GetFolderID(), &pkf);
+                        if (hr >= 0)
+                        {
+                            KNOWNFOLDER_DEFINITION kfd;
+                            hr = pkf->GetFolderDefinition(&kfd);
+                            if (hr >= 0)
+                            {
+                                if (kfd.pszLocalizedName)
+                                {
+                                    WCHAR pszOutBuf[260];
+                                    hr = SHLoadIndirectString(kfd.pszLocalizedName, pszOutBuf, 0x104u, 0);
+                                    if (hr >= 0)
+                                    {
+                                        if (!StrCmp(pkfi->_pszDispName, pszOutBuf))
+                                        {
+                                            CoTaskMemFree(pkfi->_pszDispName);
+                                            pkfi->_pszDispName = 0;
+                                        }
+                                    }
+                                }
+
+                                WCHAR szIconPath[260];
+                                int iIndex = PathParseIconLocation(kfd.pszIcon);
+                                if (SHExpandEnvironmentStringsW(kfd.pszIcon, szIconPath, ARRAYSIZE(szIconPath)))
+                                {
+                                    pkfi->_hIcon = _IconOf(psf, ppidlLast, _iIconSize, szIconPath, iIndex);
+                                }
+                                FreeKnownFolderDefinitionFields(&kfd);
+                            }
+                        }
+
+                        if (pkf)
+                            pkf->Release();
+                    }
+
+                    if (pkfm)
+                        pkfm->Release();
+                }
+
+                psf->Release();
+
+                if (hr >= 0 && IsWindow(_hwnd))
+                {
+                    PostMessage(_hwnd, 0x40Du, (WPARAM)pkfi, _dwIndex);
+                    pkfi = 0;
+                }
+            }
+        }
+
+        if (pkfi)
+            delete pkfi;
+    }
+    return 0;
+}
 
 SpecialFolderList::~SpecialFolderList()
 {
@@ -636,11 +1194,26 @@ SpecialFolderList::~SpecialFolderList()
 
 HRESULT SpecialFolderList::Initialize()
 {
+#ifdef DEAD_CODE
     for(int i=0;i < ARRAYSIZE(s_rgsfd); i++)
         s_rgsfd[i].AdjustForSKU();
 
     return S_OK;
+#else
+    DWORD dwProductType;
+    if (RtlGetProductInfo(6, 0, 0, 0, &dwProductType) && dwProductType != 0xABCDABCD)
+    {
+        for (int i = 0; i < ARRAYSIZE(s_rgsfd); i++)
+        {
+            s_rgsfd[i].AdjustForSKU(dwProductType);
+		}
+    }
+    return S_OK;
+#endif
 }
+
+
+#ifdef DEAD_CODE
 
 // return TRUE if there are the requisite number of kids
 BOOL MinKidsHelper(UINT csidl, BOOL bOnlyRASCON, DWORD dwMinKids)
@@ -693,10 +1266,19 @@ BOOL ShouldShowConnectTo()
     return MinKidsHelper(CSIDL_CONNECTIONS, TRUE, 1); // see bug 226855 (and the associated spec) for when to show Connect To
 }
 
+#endif
+
 BOOL ShouldShowWindowsSecurity()
 {
     return SHGetMachineInfo(GMI_TSCLIENT);
 }
+
+BOOL ShouldShowSPADLink()
+{
+    return !IsOS(OS_ANYSERVER);
+}
+
+#ifdef DEAD_CODE
 
 BOOL ShouldShowOEMLink()
 {
@@ -718,9 +1300,12 @@ BOOL ShouldShowOEMLink()
     return bRet;
 }
 
+#endif
+
 
 DWORD WINAPI SpecialFolderList::_HasEnoughChildrenThreadProc(void *pvData)
 {
+#ifdef DEAD_CODE
     SpecialFolderList *pThis = reinterpret_cast<SpecialFolderList *>(pvData);
 
     HRESULT hr = SHCoInitialize();
@@ -767,7 +1352,7 @@ DWORD WINAPI SpecialFolderList::_HasEnoughChildrenThreadProc(void *pvData)
                     // items.
                     //ASSERT(pThis->_cNotify < SFTHOST_MAXNOTIFY);
                     if (pThis->RegisterNotify(pThis->_cNotify, SHCNE_CREATE | SHCNE_MKDIR | SHCNE_UPDATEDIR,
-                                       pitem->_pidl, FALSE))
+                        pitem->_pidl, FALSE))
                     {
                         pThis->_cNotify++;
                     }
@@ -792,15 +1377,83 @@ DWORD WINAPI SpecialFolderList::_HasEnoughChildrenThreadProc(void *pvData)
     }
     SHCoUninitialize(hr);
     return 0;
+#else
+    SpecialFolderList *pThis = reinterpret_cast<SpecialFolderList *>(pvData);
+    
+    HRESULT hr = SHCoInitialize();
+    if (SUCCEEDED(hr))
+    {
+        for (DWORD dwIndex = 0; dwIndex < ARRAYSIZE(s_rgsfd); dwIndex++)
+        {
+            CMenuDescriptor *pdesc = &s_rgsfd[dwIndex];
+
+            BOOL bIgnoreRule;
+            DWORD dwMode = pdesc->GetDisplayMode(&bIgnoreRule);
+            if (pdesc->IsCacheable() && pdesc->_ShowFolder)
+            {
+                ASSERT(pdesc->_pszShow); // 943
+
+                if (!bIgnoreRule && pdesc->_ShowFolder())
+                {
+                    if (!(dwMode & SFD_WASSHOWN))
+                    {
+                        WCHAR* pszShowCache = pdesc->GetShowCacheRegName();
+                        if (pszShowCache)
+                        {
+                            dwMode |= SFD_WASSHOWN;
+                            SHSetValue(HKEY_CURRENT_USER,REGSTR_EXPLORER_ADVANCED, pszShowCache, REG_DWORD, &dwMode, sizeof(dwMode));
+                            pThis->Invalidate();
+                            LocalFree(pszShowCache);
+                        }
+                    }
+                }
+                else
+                {
+                    SpecialFolderListItem* pitem = new SpecialFolderListItem(pdesc);
+                    
+                    if (pitem)
+                    {
+                        if (pitem->_pidl)
+                        {
+                            ASSERT(pThis->_cNotify < SFTHOST_MAXNOTIFY); // 973
+                            if (pThis->RegisterNotify(pThis->_cNotify, 4106, pitem->_pidl, FALSE))
+                            {
+                                pThis->_cNotify++;
+                            }
+                        }
+                        pitem->Release();
+                    }
+
+                    if (dwMode & SFD_WASSHOWN)
+                    {
+                        WCHAR* pszShowCache = pdesc->GetShowCacheRegName();
+                        if (pszShowCache)
+                        {
+                            SHDeleteValue(HKEY_CURRENT_USER,REGSTR_EXPLORER_ADVANCED, pszShowCache);
+                            pThis->Invalidate();
+                            LocalFree(pszShowCache);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    SHCoUninitialize(hr);
+    pThis->field_188 = 0;
+    pThis->Release();
+    return 0;
+#endif
 }
 
-BOOL ShouldShowItem(const SpecialFolderDesc *pdesc, BOOL bIgnoreRule, DWORD dwMode)
+BOOL ShouldShowItem(const CMenuDescriptor *pdesc, BOOL bIgnoreRule, DWORD dwMode)
 {
+#ifdef DEAD_CODE
     if (bIgnoreRule)
         return TRUE;        // registry is over-riding whatever special rules exist...
 
     // if we've got a special rule, then the background thread will check it, so return false for now unless we showed it last time
-    if (pdesc->_ShowFolder) 
+    if (pdesc->_ShowFolder)
     {
         if (pdesc->IsCacheable())
         {
@@ -819,11 +1472,26 @@ BOOL ShouldShowItem(const SpecialFolderDesc *pdesc, BOOL bIgnoreRule, DWORD dwMo
     }
 
     return TRUE;
+#else
+    if (bIgnoreRule)
+        return TRUE;
+    
+    if (pdesc->_ShowFolder)
+    {
+        if (pdesc->IsCacheable())
+        {
+            return (dwMode & SFD_WASSHOWN) != 0;
+        }
+        return pdesc->_ShowFolder();
+    }
+    
+    return TRUE;
+#endif
 }
 
 void SpecialFolderList::EnumItems()
 {
-
+#ifdef DEAD_CODE
     // Clean out any previous register notifies.
     UINT id;
     for (id = 0; id < _cNotify; id++)
@@ -845,7 +1513,7 @@ void SpecialFolderList::EnumItems()
     // so don't create two separators in a row.  Preinitialize to TRUE
     // so we don't get separators at the top of the list.
     BOOL fIgnoreSeparators = TRUE;
-    int  iItems=0;
+    int  iItems = 0;
 
     for (dwIndex = 0; dwIndex < ARRAYSIZE(s_rgsfd); dwIndex++)
     {
@@ -860,7 +1528,7 @@ void SpecialFolderList::EnumItems()
             if (pitem)
             {
                 if ((pitem->IsSeparator() && !fIgnoreSeparators) ||
-                    (pitem->_pidl && ShouldShowItem(pdesc, bIgnoreRule, dwMode))) 
+                    (pitem->_pidl && ShouldShowItem(pdesc, bIgnoreRule, dwMode)))
                 {
                     if ((dwMode & SFD_MODEMASK) == SFD_CASCADE)
                     {
@@ -899,20 +1567,144 @@ void SpecialFolderList::EnumItems()
         }
     }
     SetDesiredSize(0, iItems);
-}
-
-int SpecialFolderList::AddImageForItem(PaneItem *p, IShellFolder *psf, LPCITEMIDLIST pidl, int iPos)
-{
-    int iIcon = -1;     // assume no icon
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
-
-    if (pitem->_hIcon)
+#else
+    UINT id = 0;
+    if (!this->field_188)
     {
-        iIcon = AddImage(pitem->_hIcon);
-        DestroyIcon(pitem->_hIcon);
-        pitem->_hIcon = NULL;
+        this->field_188 = 1;
+        UINT *p_cNotify = &this->_cNotify;
+        if (this->_cNotify)
+        {
+            do
+                UnregisterNotify(id++);
+            while (id < *p_cNotify);
+        }
+        *p_cNotify = 0;
+        AddRef();
+        if (!QueueUserWorkItem(_HasEnoughChildrenThreadProc, this, 0))
+        {
+            Release();
+        }
     }
-    return iIcon;
+
+    this->field_190 = 0;
+    BOOL fIgnoreSeparators = TRUE;
+    int iItems = 0;
+    DWORD v11 = 0;
+    DWORD v10 = 0;
+
+    if (_IsPrivateImageList())
+    {
+        ImageList_Remove(_himl, -1);
+    }
+
+    IKnownFolderManager *pkfm = NULL;
+
+    for (DWORD dwIndex = 0; dwIndex < ARRAYSIZE(s_rgsfd); ++dwIndex)
+    {
+        CMenuDescriptor *pdesc = &s_rgsfd[dwIndex];
+
+        BOOL bIgnoreRule;
+        DWORD dwMode = pdesc->GetDisplayMode(&bIgnoreRule);
+
+        if (dwMode != SFD_HIDE)
+        {
+            SpecialFolderListItem *pitem = new SpecialFolderListItem(pdesc);
+            if (pitem)
+            {
+                if (pitem->IsSeparator() && !fIgnoreSeparators
+                    || (pitem->_pidl || pitem->_pidlSimple)
+                    && ShouldShowItem(pdesc, bIgnoreRule, dwMode))
+                {
+                    WCHAR szBuffer[512];
+                    const WCHAR *pszTarget = pdesc->_pszTarget;
+                    if (!pszTarget || pszTarget == SFD_SEPARATOR)
+                        pszTarget = L"(null)";
+
+                    // Format as a neat table row
+                    swprintf_s(szBuffer, ARRAYSIZE(szBuffer),
+                        L"[FolderList] | Index: %2d | Target: %-60ls | CustomName: %5u | Flags: 0x%04X\r\n",
+                        dwIndex, pszTarget, pdesc->_idsCustomName, pdesc->_uFlags);
+                    OutputDebugStringW(szBuffer);
+
+                    if ((dwMode & SFD_MODEMASK) == SFD_CASCADE)
+                    {
+                        pitem->EnableCascade();
+                    }
+
+                    if (pdesc->IsDropTarget())
+                    {
+                        pitem->EnableDropTarget();
+                    }
+
+                    if (!pitem->IsSeparator())
+                    {
+                        if (pitem->_pidl)
+                        {
+#if 1
+                            wprintf(L"Creating full list item for %ls with a dwIndex of %d\n", pdesc->_pszTarget, dwIndex);
+                            if (pdesc->IsSeparator())
+                            {
+                                wprintf(L"Creating SFD_SEPARATOR at dwIndex: %d\n", dwIndex);
+                            }
+#endif
+                            _CreateFullListItem(pitem);
+                        }
+                        else
+                        {
+                            ASSERT(pitem->_pidlSimple != NULL); // 1422
+                            ASSERT(pitem->_psfd->HasFolderID()); // 1423
+
+                            if (!pkfm)
+                            {
+                                CoCreateInstance(CLSID_KnownFolderManager, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pkfm));
+                            }
+
+                            if (pkfm)
+                            {
+#if 1
+                                wprintf(L"Creating simple list item for %ls with a dwIndex of %d\n", pdesc->_pszTarget, dwIndex);
+                                if (pdesc->IsSeparator())
+                                {
+                                    wprintf(L"Creating SFD_SEPARATOR at dwIndex: %d\n", dwIndex);
+                                }
+#endif
+                                _CreateSimpleListItem(pkfm, pitem, dwIndex);
+                            }
+                        }
+                    }
+
+                    fIgnoreSeparators = pitem->IsSeparator();
+                    if (AddItem(pitem) && !fIgnoreSeparators)
+                    {
+                        ++iItems;
+                        int field_6C = pitem->_psfd->_field_6C;
+                        v11 |= field_6C;
+                        if ((dwMode & 3) == 2)
+                        {
+                            v10 |= field_6C;
+                        }
+                    }
+                }
+
+                pitem->Release();
+            }
+        }
+    }
+    if (!this->field_18C)
+    {
+        this->field_18C = 1;
+        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Visible_Menu_Items, 53, v11);
+        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Cascading_Menu_Items, 162, v10);
+    }
+
+    SetDesiredSize(0, iItems);
+
+    if (pkfm)
+    {
+        pkfm->Release();
+    }
+#endif
 }
 
 /*----------------------------------------------------------
@@ -986,6 +1778,7 @@ STDAPI_(WCHAR) SHStripMneumonicXP(LPWSTR pszMenu)
 
 LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCITEMIDLIST pidlItem, SHGDNF shgno)
 {
+#ifdef DEAD_CODE
     LPTSTR psz = NULL;
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
     if (shgno == SHGDN_NORMAL && pitem->_pszDispName)
@@ -1011,6 +1804,36 @@ LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem *p, IShellFolder *psf, LPCI
     }
 
     return psz;
+#else
+    WCHAR *pszDispName; // eax
+    LPWSTR psz = 0;
+    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
+    if (!shgno)
+    {
+        pszDispName = pitem->_pszDispName;
+        if (pszDispName)
+        {
+            pitem->_pszDispName = 0;
+        LABEL_6:
+            psz = pszDispName;
+            goto LABEL_7;
+        }
+    }
+    if (!pitem->_psfd->GetCustomName(&psz))
+    {
+        pszDispName = SFTBarHost::DisplayNameOfItem(p, psf, pidlItem, shgno);
+        goto LABEL_6;
+    }
+LABEL_7:
+    if ((pitem->_psfd->_uFlags & SFD_PREFIX) && psz)
+    {
+        CoTaskMemFree(pitem->_pszAccelerator);
+        pitem->_pszAccelerator = 0;
+        SHStrDupW(psz, &pitem->_pszAccelerator);
+        pitem->_chMnem = (unsigned __int16)CharUpperW((LPWSTR)SHStripMneumonicW(psz));
+    }
+    return psz;
+#endif
 }
 
 int SpecialFolderList::CompareItems(PaneItem *p1, PaneItem *p2)
@@ -1022,23 +1845,61 @@ int SpecialFolderList::CompareItems(PaneItem *p1, PaneItem *p2)
 }
 
 HRESULT SpecialFolderList::GetFolderAndPidl(PaneItem *p,
-        IShellFolder **ppsfOut, LPCITEMIDLIST *ppidlOut)
+        IShellFolder **ppsfOut, PCITEMID_CHILD *ppidlOut)
 {
+#ifdef DEAD_CODE
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
     return SHBindToIDListParent(pitem->_pidl, IID_PPV_ARGS(ppsfOut), ppidlOut);
+#else
+    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
+    if (pitem->_pidl)
+    {
+        return SHBindToParent(pitem->_pidl, IID_PPV_ARGS(ppsfOut), ppidlOut);
+    }
+
+    if (!pitem->_pidlSimple)
+    {
+        return SHBindToParent(pitem->_pidl, IID_PPV_ARGS(ppsfOut), ppidlOut);
+    }
+    else
+    {
+        return SHBindToParent(pitem->_pidlSimple, IID_PPV_ARGS(ppsfOut), ppidlOut);
+    }
+#endif
 }
 
 void SpecialFolderList::GetItemInfoTip(PaneItem *p, LPTSTR pszText, DWORD cch)
 {
+#ifdef DEAD_CODE
     SpecialFolderListItem *pitem = (SpecialFolderListItem*)p;
     if (pitem->_psfd->_iToolTip)
         LoadString(_AtlBaseModule.GetResourceInstance(), pitem->_psfd->_iToolTip, pszText, cch);
     else
         SFTBarHost::GetItemInfoTip(p, pszText, cch);    // call the base class
+#else
+    SpecialFolderListItem* pitem = (SpecialFolderListItem*)p;
+
+    int v6;
+    if (pitem->_psfd->_CustomTooltipCallback)
+        //v6 = pitem->_psfd->_CustomTooltipCallback(this, pitem, pszText, cch);
+		v6 = (pitem->_psfd->*(pitem->_psfd->_CustomTooltipCallback))(this, pitem, pszText, cch);
+    else
+        v6 = 0;
+
+    if (!v6)
+    {
+        UINT _iToolTip = pitem->_psfd->_iToolTip;
+        if (_iToolTip)
+            LoadString(g_hinstCabinet, _iToolTip, pszText, cch);
+        else
+            SFTBarHost::GetItemInfoTip(p, pszText, cch);
+    }
+#endif
 }
 
 HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewName)
 {
+#ifdef DEAD_CODE
     SpecialFolderListItem *pitem = (SpecialFolderListItem*)p;
     IShellFolder *psf;
     LPCITEMIDLIST pidlItem;
@@ -1055,6 +1916,24 @@ HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewNam
     }
 
     return hr;
+#else
+    SpecialFolderListItem *pitem = (SpecialFolderListItem *)p;
+    IShellFolder *psf;
+    LPCITEMIDLIST pidlItem;
+    HRESULT hr = GetFolderAndPidl(pitem, &psf, &pidlItem);
+    if (SUCCEEDED(hr))
+    {
+        LPITEMIDLIST pidlNew;
+        hr = psf->SetNameOf(_hwnd, pidlItem, ptszNewName, SHGDN_INFOLDER, &pidlNew);
+        if (SUCCEEDED(hr) && pidlNew)
+        {
+            pitem->ReplaceLastPidlElement(pidlNew);
+            ILFree(pidlNew);
+        }
+        psf->Release();
+    }
+    return hr;
+#endif
 }
 
 //
@@ -1064,6 +1943,7 @@ HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewNam
 //
 void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
 {
+#ifdef DEAD_CODE
     Invalidate();
     for (id = 0; id < _cNotify; id++)
     {
@@ -1071,14 +1951,30 @@ void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1
     }
     _cNotify = 0;
     PostMessage(_hwnd, SFTBM_REFRESH, TRUE, 0);
+#else
+    UINT v6 = 0;
+    UINT* p_cNotify = &this->_cNotify;
+    bool v8 = this->_cNotify == 0;
+    Invalidate();
+    if (!v8)
+    {
+        do
+            SFTBarHost::UnregisterNotify(v6++);
+        while (v6 < *p_cNotify);
+    }
+    *p_cNotify = 0;
+    PostMessageW(this->_hwnd, 0x40Au, 1u, 0);
+#endif
 }
 
 
+#ifdef DEAD_CODE
 BOOL SpecialFolderList::IsItemStillValid(PaneItem *p)
 {
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
     return pitem->IsStillValid();
 }
+#endif
 
 BOOL SpecialFolderList::IsBold(PaneItem *p)
 {
@@ -1088,6 +1984,7 @@ BOOL SpecialFolderList::IsBold(PaneItem *p)
 
 HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
 {
+#ifdef DEAD_CODE
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
     IShellFolder *psf;
     HRESULT hr = SHBindToObjectEx(NULL, pitem->_pidl, NULL, IID_PPV_ARGS(&psf));
@@ -1095,7 +1992,7 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
     {
         IShellMenu *psm;
         hr = CoCreateInstanceHook(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER,
-                              IID_PPV_ARGS(&psm));
+            IID_PPV_ARGS(&psm));
         if (SUCCEEDED(hr))
         {
 
@@ -1109,8 +2006,8 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
             {
                 DWORD dwFlags = SMINIT_TOPLEVEL | SMINIT_VERTICAL | pitem->_psfd->_dwShellFolderFlags;
                 if (IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOCHANGESTARMENU,
-                                              TEXT("Advanced"), TEXT("Start_EnableDragDrop"),
-                                              ROUS_DEFAULTALLOW | ROUS_KEYALLOWS))
+                    TEXT("Advanced"), TEXT("Start_EnableDragDrop"),
+                    ROUS_DEFAULTALLOW | ROUS_KEYALLOWS))
                 {
                     dwFlags |= SMINIT_RESTRICT_DRAGDROP | SMINIT_RESTRICT_CONTEXTMENU;
                 }
@@ -1120,8 +2017,8 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
                 if (pitem->_psfd->_pszCustomizeKey)
                 {
                     RegCreateKeyEx(HKEY_CURRENT_USER, pitem->_psfd->_pszCustomizeKey,
-                                   NULL, NULL, REG_OPTION_NON_VOLATILE,
-                                   KEY_READ | KEY_WRITE, NULL, &hkCustom, NULL);
+                        NULL, NULL, REG_OPTION_NON_VOLATILE,
+                        KEY_READ | KEY_WRITE, NULL, &hkCustom, NULL);
                 }
 
                 dwFlags = SMSET_USEBKICONEXTRACTION;
@@ -1150,6 +2047,67 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
     }
 
     return hr;
+#else
+    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
+    PIDLIST_RELATIVE pidl = pitem->_pidlCascade;
+    if (!pidl)
+    {
+        pidl = pitem->_pidl;
+    }
+
+    IShellFolder *psf = 0;
+    HRESULT hr = pidl ? SHBindToObject(0, pidl, 0, IID_IShellFolder, (void **)&psf) : E_FAIL;
+    if (hr >= 0)
+    {
+        IShellMenu *psm;
+        hr = CoCreateInstance(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_IShellMenu, (LPVOID *)&psm);
+        if (hr >= 0)
+        {
+            IShellMenuCallback *psmc = NULL;
+            hr = pitem->_psfd->CreateShellMenuCallback(&psmc);
+            if (hr >= 0)
+            {
+                DWORD dwFlags = pitem->_psfd->_dwShellFolderFlags | 0x10000004;
+                if (IsRestrictedOrUserSetting(
+                    HKEY_CURRENT_USER,
+                    REST_NOCHANGESTARMENU,
+                    TEXT("Advanced"),
+                    TEXT("Start_EnableDragDrop"),
+                    0))
+                {
+                    dwFlags |= 3;
+                }
+                psm->Initialize(psmc, 0, 0, dwFlags);
+
+                HKEY hkCustom = 0;
+                if (pitem->_psfd->_pszCustomizeKey)
+                {
+                    RegCreateKeyEx(HKEY_CURRENT_USER, pitem->_psfd->_pszCustomizeKey, 0, 0, 0, 0x2001Fu, 0, &hkCustom, 0);
+                }
+
+                hr = psm->SetShellFolder(psf, (PIDLIST_ABSOLUTE)pidl, hkCustom, pitem->_psfd->_dwShellMenuSetFlags | 8);
+                if (hr < 0)
+                {
+                    if (hkCustom)
+                    {
+                        RegCloseKey(hkCustom);
+                    }
+                }
+                else
+                {
+                    *ppsm = psm;
+                    psm->AddRef();
+                }
+
+                IUnknown_SafeReleaseAndNullPtr(&psmc);
+            }
+            psm->Release();
+        }
+        psf->Release();
+    }
+
+    return hr;
+#endif
 }
 
 TCHAR SpecialFolderList::GetItemAccelerator(PaneItem *p, int iItemStart)
@@ -1188,8 +2146,9 @@ LRESULT SpecialFolderList::OnWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 BOOL _IsItemHiddenOnDesktop(LPCTSTR pszGuid)
 {
-    return SHRegGetBoolUSValue(REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL,
-                               pszGuid, FALSE, FALSE);
+    return _SHRegGetBoolValueFromHKCUHKLM(REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL, pszGuid, FALSE);
+    //return SHRegGetBoolUSValue(REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL,
+    //                           pszGuid, FALSE, FALSE);
 }
 
 UINT SpecialFolderList::AdjustDeleteMenuItem(PaneItem *p, UINT *puiFlags)
@@ -1245,6 +2204,8 @@ HRESULT SpecialFolderList::ContextMenuInvokeItem(PaneItem *p, IContextMenu *pcm,
     return hr;
 }
 
+#ifdef DEAD_CODE
+
 HRESULT SpecialFolderList::_GetUIObjectOfItem(PaneItem *p, REFIID riid, LPVOID *ppv)
 {
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
@@ -1256,7 +2217,223 @@ HRESULT SpecialFolderList::_GetUIObjectOfItem(PaneItem *p, REFIID riid, LPVOID *
     return SFTBarHost::_GetUIObjectOfItem(p, riid, ppv);
 }
 
+#endif
 
+HRESULT SpecialFolderList::OnItemUpdate(PaneItem *p, WPARAM wParam, LPARAM lParam)
+{
+    SpecialFolderListItem *pitem = reinterpret_cast<SpecialFolderListItem *>(p);
+    CKnownFolderInformation *pkfi = reinterpret_cast<CKnownFolderInformation *>(wParam);
+
+    HRESULT hr = S_FALSE;
+
+    if ((DWORD)lParam == (pitem->_psfd - s_rgsfd))
+    {
+        ILFree(pitem->_pidl);
+        pitem->_pidl = pkfi->_pidl;
+        pkfi->_pidl = NULL;
+
+        if (pkfi->_pszDispName)
+        {
+            CoTaskMemFree(pitem->_pszDispName);
+            pitem->_pszDispName = pkfi->_pszDispName;
+            pkfi->_pszDispName = 0;
+            hr = S_OK;
+        }
+
+        if (pkfi->_hIcon)
+        {
+            int iImageCount = ImageList_GetImageCount(_himl);
+            printf("SpecialFolderList::OnItemUpdate: ImageList_GetImageCount returned %d images\n", iImageCount);
+
+            pitem->_iImageIndex = ImageList_ReplaceIcon(_himl, -1, pkfi->_hIcon);
+
+            int iNewImageCount = ImageList_GetImageCount(_himl);
+            printf("SpecialFolderList::OnItemUpdate: ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
+
+            DestroyIcon(pkfi->_hIcon);
+            pkfi->_hIcon = NULL;
+            hr = S_OK;
+        }
+    }
+    return hr;
+}
+
+int SpecialFolderList::GetMinTextWidth()
+{
+    if (!this->field_190)
+    {
+        field_190 = _CalcMaxTextWith();
+    }
+    return field_190;
+}
+
+HRESULT DisplayNameOfAsString(IShellFolder *psf, const ITEMIDLIST_RELATIVE *pidl, SHGDNF flags, WCHAR **ppsz)
+{
+    *ppsz = nullptr;
+
+    IShellFolder *psfParent;
+    const ITEMID_CHILD *pidlChild;
+    HRESULT hr = SHBindToFolderIDListParent(psf, pidl, IID_PPV_ARGS(&psfParent), &pidlChild);
+    if (SUCCEEDED(hr))
+    {
+        STRRET sr;
+        hr = psfParent->GetDisplayNameOf(pidlChild, flags, &sr);
+        if (SUCCEEDED(hr))
+            hr = StrRetToStrW(&sr, pidlChild, ppsz);
+
+        psfParent->Release();
+    }
+
+    return hr;
+}
+
+HRESULT SpecialFolderList::_CreateFullListItem(SpecialFolderListItem *pitem)
+{
+    HRESULT hr = E_FAIL;
+
+    if (pitem->_pidl)
+    {
+        IShellFolder *psf;
+        LPCITEMIDLIST pidlLast;
+        hr = SHBindToParent(pitem->_pidl, IID_PPV_ARGS(&psf), &pidlLast);
+        if (SUCCEEDED(hr))
+        {
+            if (!pitem->_psfd->GetCustomName(&pitem->_pszDispName))
+            {
+                hr = DisplayNameOfAsString(psf, pidlLast, 0, &pitem->_pszDispName);
+            }
+
+            if (_IsPrivateImageList())
+            {
+                if (pitem->_psfd->_pszIconPath)
+                {
+					printf("SpecialFolderList::_CreateFullListItem (Private): Loading icon from path: %ls\n", pitem->_psfd->_pszIconPath);
+                    IBindCtx *pbc;
+                    if (SUCCEEDED(BindCtx_CreateWithMode(0x1000u, &pbc)))
+                    {
+                        LPITEMIDLIST pidl;
+                        if (SHParseDisplayName(pitem->_psfd->_pszIconPath, pbc, &pidl, 0, 0) >= 0)
+                        {
+                            IShellFolder *psf;
+                            LPCITEMIDLIST v8;
+                            if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARGS(&psf), &v8)))
+                            {
+                                HICON hIcon = _IconOf(psf, v8, _cxIcon, 0, -1);
+								int iImageCount = ImageList_GetImageCount(_himl);
+								printf("SpecialFolderList::_CreateFullListItem (Private): ImageList_GetImageCount returned %d images\n", iImageCount);
+                                pitem->_iImageIndex = ImageList_ReplaceIcon(_himl, -1, hIcon);
+								int iNewImageCount = ImageList_GetImageCount(_himl);
+								printf("SpecialFolderList::_CreateFullListItem (Private): ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
+                                psf->Release();
+                                DestroyIcon(hIcon);
+                            }
+                            ILFree(pidl);
+                        }
+                        pbc->Release();
+                    }
+                }
+                else
+                {
+                    HICON hIcon = _IconOf(psf, pidlLast, _cxIcon, 0, -1);
+					int iImageCount = ImageList_GetImageCount(_himl);
+					printf("SpecialFolderList::_CreateFullListItem: ImageList_GetImageCount returned %d images\n", iImageCount);
+                    pitem->_iImageIndex = ImageList_ReplaceIcon(_himl, -1, hIcon);
+					int iNewImageCount = ImageList_GetImageCount(_himl);
+					printf("SpecialFolderList::_CreateFullListItem: ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
+                    DestroyIcon(hIcon);
+                }
+            }
+            psf->Release();
+        }
+    }
+    return hr;
+}
+
+TASKOWNERID stru_1017900 = { 156425175u, 57748u, 17760u, { 176u, 158u, 222u, 109u, 45u, 227u, 102u, 62u } };
+
+HRESULT SpecialFolderList::_CreateSimpleListItem(IKnownFolderManager *pkfm, SpecialFolderListItem *pitem, DWORD a4)
+{
+    // eax
+    // esi
+    int v7; // eax
+    IRunnableTask *pclfpt; // ebx
+    IKnownFolder *pkf; // [esp+Ch] [ebp-260h] BYREF
+    int v14; // [esp+10h] [ebp-25Ch] SPLIT
+    HICON hIcon; // [esp+10h] [ebp-25Ch] MAPDST SPLIT BYREF
+    KNOWNFOLDER_DEFINITION kfd; // [esp+14h] [ebp-258h] BYREF
+    WCHAR szOutBuf[260]; // [esp+60h] [ebp-20Ch] BYREF
+
+    pkf = 0;
+
+    HRESULT hr = pkfm->GetFolder(pitem->_psfd->GetFolderID(), &pkf);
+    if (hr >= 0)
+    {
+        hr = pkf->GetFolderDefinition(&kfd);
+
+        WCHAR guidStr[64];
+        StringFromGUID2(pitem->_psfd->GetFolderID(), guidStr, ARRAYSIZE(guidStr));
+        if (kfd.pszIcon == NULL)
+        {
+            wprintf(L"[DEBUG] s_rgsfdNEW[%d] (KNOWNFOLDERID: %ls) has kfd.pszIcon == NULL\n", a4, guidStr);
+        }
+
+        if (hr >= 0)
+        {
+            if (!kfd.pszLocalizedName)
+            {
+                goto LABEL_6;
+            }
+
+            hr = SHLoadIndirectString(kfd.pszLocalizedName, szOutBuf, 260u, 0);
+            if (hr >= 0)
+            {
+                hr = SHStrDup(szOutBuf, &pitem->_pszDispName);
+            LABEL_6:
+                if (hr >= 0)
+                {
+                    v14 = PathParseIconLocationW(kfd.pszIcon);
+                    if (_IsPrivateImageList())
+                    {
+						printf("SpecialFolderList::_CreateSimpleListItem (Private): Loading icon from path: %ls\n", kfd.pszIcon);
+                        hr = SHDefExtractIcon(kfd.pszIcon, v14, 2u, &hIcon, 0, _cxIcon);
+                        if (hr >= 0)
+                        {
+							printf("SpecialFolderList::_CreateSimpleListItem: hIcon: 0x%p\n", hIcon);
+                            int iImageCount = ImageList_GetImageCount(this->_himl);
+                            printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount returned %d images\n", iImageCount);
+                            v7 = ImageList_ReplaceIcon(this->_himl, -1, hIcon);
+                            int iNewImageCount = ImageList_GetImageCount(this->_himl);
+                            printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
+                            pitem->_iImageIndex = v7;
+                            DestroyIcon(hIcon);
+                        }
+                    }
+                    else
+                    {
+                        pitem->_iImageIndex = Shell_GetCachedImageIndexW(kfd.pszIcon, v14, 2u);
+                    }
+                }
+            }
+
+            FreeKnownFolderDefinitionFields(&kfd);
+            if (hr >= 0 && _psched)
+            {
+                pclfpt = new CLoadFullPidlTask(_hwnd, a4, _cxIcon);
+                if (pclfpt)
+                {
+                    hr = _psched->AddTask(pclfpt, stru_1017900, (DWORD_PTR)this, 0x10000000);
+                    pclfpt->Release();
+                }
+            }
+        }
+    }
+
+    if (pkf)
+    {
+        pkf->Release();
+    }
+    return hr;
+}
 
 //****************************************************************************
 //
@@ -1728,32 +2905,6 @@ HRESULT CConnectToShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc)
     *ppsmc = new CConnectToShellMenuCallback;
     return *ppsmc ? S_OK : E_OUTOFMEMORY;
 }
-
-BOOL SpecialFolderDesc::LoadStringAsOLESTR(LPTSTR *ppsz) const
-{
-    BOOL bRet = FALSE;
-    TCHAR szTmp[MAX_PATH];
-    if (_idsCustomName && LoadString(_AtlBaseModule.GetResourceInstance(), _idsCustomName, szTmp, ARRAYSIZE(szTmp)))
-    {
-        if (ppsz)
-            SHStrDup(szTmp, ppsz);
-        bRet = TRUE;
-    }
-    return bRet;
-}
-
-BOOL SpecialFolderDesc::ConnectToName(LPTSTR *ppsz) const
-{
-    BOOL bIgnoreRule;
-    DWORD dwMode = GetDisplayMode(&bIgnoreRule);
-
-    // if Connect To is displayed as a link, then don't over-ride the name (i.e. use Network Connections)
-    if ((dwMode & SFD_MODEMASK) == SFD_SHOW)
-        return FALSE;
-    else
-        return LoadStringAsOLESTR(ppsz);
-}
-
 
 void ShowFolder(UINT csidl)
 {

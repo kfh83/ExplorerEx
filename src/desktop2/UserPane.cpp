@@ -1,469 +1,798 @@
 #include "pch.h"
+
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"
 #include "userpane.h"
 
-
-//
-//  Unfortunately, WTL #undef's SelectFont, so we have to define it again.
-//
-
-inline HFONT SelectFont(HDC hdc, HFONT hf)
-{
-    return (HFONT)SelectObject(hdc, hf);
-}
+#define REGSTR_VAL_DV2_STARTPANEL_FADEIN TEXT("StartPanel_FadeIn")
+#define REGSTR_VAL_DV2_STARTPANEL_FADEOUT TEXT("StartPanel_FadeOut")
+#define REGSTR_VAL_DV2_STARTPANEL_FADEDELAY TEXT("StartPanel_FadeDelay")
 
 CUserPane::CUserPane()
+    : _fadeA(-1)
+    , _fadeB(-1)
+    , _lRef(1)
 {
-    ASSERT(_hwnd == NULL);
-    ASSERT(*_szUserName == 0);
-    ASSERT(_crColor == 0);
-    ASSERT(_hFont == NULL);
-    ASSERT(_hbmUserPicture== NULL);
+    ASSERT(_hwnd == NULL); // 19
+    ASSERT(_hbmUserPicture == NULL); // 20
 
-    //Initialize the _rcColor to an invalid color
-    _crColor = CLR_INVALID;
+    DWORD cbData = sizeof(DWORD);
+    _dwFadeIn = 350;
+    _SHRegGetValueFromHKCUHKLM(
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEIN, SRRF_RT_ANY, NULL, &_dwFadeIn, &cbData);
+
+    cbData = sizeof(DWORD);
+    _dwFadeOut = 250;
+    _SHRegGetValueFromHKCUHKLM(
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEOUT, SRRF_RT_ANY, NULL, &_dwFadeOut, &cbData);
+
+    cbData = sizeof(DWORD);
+    _dwFadeDelay = 400;
+    _SHRegGetValueFromHKCUHKLM(
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEDELAY, SRRF_RT_ANY, NULL, &_dwFadeDelay, &cbData);
 }
 
 CUserPane::~CUserPane()
 {
-    if (_uidChangeRegister)
-        SHChangeNotifyDeregister(_uidChangeRegister);
-
-    if (_hFont)
-      DeleteObject(_hFont);
-
     if (_hbmUserPicture)
         DeleteObject(_hbmUserPicture);
+
+    if (_pgdipImage)
+        delete _pgdipImage;
 }
 
-LRESULT CALLBACK CUserPane::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+HRESULT CUserPane::QueryInterface(REFIID riid, void **ppvObj)
+{
+    static const QITAB qit[] = {
+        QITABENT(CUserPane, IServiceProvider),
+        QITABENT(CUserPane, IOleCommandTarget),
+        QITABENT(CUserPane, IObjectWithSite),
+        { 0 },
+    };
+    return QISearch(this, qit, riid, ppvObj);
+}
+
+ULONG CUserPane::AddRef()
+{
+    return InterlockedIncrement(&_lRef);
+}
+
+ULONG CUserPane::Release()
+{
+    ASSERT(0 != _lRef); // 261
+    LONG lRef = InterlockedDecrement(&_lRef);
+    if (lRef == 0 && this)
+    {
+        delete this;
+    }
+    return lRef;
+}
+
+HRESULT CUserPane::SetSite(IUnknown *punkSite)
+{
+    return CObjectWithSite::SetSite(punkSite);
+}
+
+HRESULT CUserPane::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
+{
+    if (IsEqualGUID(guidService, SID_SM_UserPane))
+    {
+        HRESULT hr = QueryInterface(riid, ppvObject);
+        if (SUCCEEDED(hr))
+        {
+            return hr;
+        }
+    }
+    return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
+}
+
+HRESULT CUserPane::QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT *pCmdText)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut)
+{
+    HRESULT hr = E_INVALIDARG;
+
+    if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    {
+        switch (nCmdID)
+        {
+            case 313:
+            {
+                ASSERT(V_VT(pvarargIn) == VT_I4); // 298
+
+                LONG lVal = pvarargIn->lVal;
+                if (_fadeC != lVal)
+                {
+                    _fadeC = lVal;
+                    KillTimer(_hwndStatic, 1);
+                    SetTimer(_hwndStatic, 1, _dwFadeDelay, 0);
+                }
+                break;
+            }
+            case 314:
+                ASSERT(V_VT(pvarargIn) == VT_BYREF); // 310
+                _himl = (HIMAGELIST)pvarargIn->byref;
+                break;
+            case 323u:
+                _HidePictureWindow();
+                break;
+            default:
+                return hr;
+        }
+        return 0;
+    }
+    return hr;
+}
+
+LRESULT CALLBACK CUserPane::s_WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     CUserPane *pThis = reinterpret_cast<CUserPane *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
-    if (!pThis && (WM_NCDESTROY != uMsg))
-    {
-        pThis = new CUserPane;
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
-    }
-
     if (pThis)
-        return pThis->WndProc(hwnd, uMsg, wParam, lParam);
+        return pThis->WndProcPane(hwnd, uMsg, wParam, lParam);
+
+    if (uMsg != WM_NCDESTROY)
+    {
+        pThis = new CUserPane();
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+        if (pThis)
+        {
+            return pThis->WndProcPane(hwnd, uMsg, wParam, lParam);
+        }
+    }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-BOOL CUserPane::_IsCursorInPicture()
+void CUserPane::_UpdatePictureWindow(BYTE a2, BYTE a3)
 {
-    if (!_hbmUserPicture)
-        return FALSE;
-
-    RECT rc;
-    POINT p;
-
-    GetCursorPos(&p);
-    MapWindowPoints(NULL, _hwnd, &p, 1);
-
-    GetClientRect(_hwnd, &rc);
-    int iOffset = (RECTHEIGHT(rc) - _iFramedPicHeight) / 2;
-
-    return ((p.x > iOffset && p.x < iOffset + _iFramedPicWidth) &&
-            (p.y > iOffset && p.y < iOffset + _iFramedPicHeight));
+    if (IsWindowVisible(_hwndStatic) || _fadeB == -1)
+    {
+        HDC hdc = GetDC(_hwndStatic);
+        _PaintPictureWindow(hdc, a2, a3);
+        ReleaseDC(_hwndStatic, hdc);
+    }
 }
 
-void CUserPane::OnDrawItem(DRAWITEMSTRUCT *pdis)
+void CUserPane::_UpdateDC(HDC hdc, int iIndex, BYTE a4)
 {
-    HFONT hfPrev = SelectFont(pdis->hDC, _hFont);
-    int cchName = lstrlen(_szUserName);
+    HDC hDC = GetDC(_hwndStatic);
+    HDC hMemDC = CreateCompatibleDC(hDC);
 
-    int iOldMode = SetBkMode(pdis->hDC, TRANSPARENT);
+    HGDIOBJ hOldObj = 0;
+    HGDIOBJ hbmTemp = 0;
 
-    // display the text centered
-    SIZE siz;
-    RECT rc;
-    int iOffset=0;
-    int iOffsetX = 0;
-    GetTextExtentPoint32(pdis->hDC, _szUserName, cchName, &siz);
-    GetClientRect(_hwnd, &rc);
-
-    iOffset = (RECTHEIGHT(rc) - siz.cy)/2;
-    if (!_hbmUserPicture)
-        iOffsetX = iOffset;
-
-    if (iOffset < 0)
-        iOffset = 0;
-
-    // later - read more precise offsets from theme file
-    if (_hTheme)
+    if (hMemDC)
     {
-        RECT rcUser;
-        rcUser.left = pdis->rcItem.left+ iOffsetX;
-        rcUser.top = pdis->rcItem.top+iOffset;
-        rcUser.bottom = pdis->rcItem.bottom + iOffset;
-        rcUser.right = pdis->rcItem.right + iOffsetX;
+        if (_himl && iIndex != -1)
+        {
+            RECT rc;
+            GetClientRect(_hwndStatic, &rc);
 
-        // First calculate the bounding rectangle to reduce the cost of DrawShadowText
-        //DrawText(pdis->hDC, _szUserName, cchName, &rcUser, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS | DT_CALCRECT);
+            BITMAPINFO bmi = { 0 };
+            bmi.bmiHeader.biWidth = rc.right;
+            bmi.bmiHeader.biHeight = rc.bottom;
+            bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 32;
+            bmi.bmiHeader.biCompression = 0;
 
-        //DrawThemeText(_hTheme, pdis->hDC, SPP_USERPANE, 0, _szUserName, cchName, DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS, 0, &rcUser);
+            void *pvBits;
+            hbmTemp = CreateDIBSection(hMemDC, &bmi, 0, &pvBits, 0, 0);
+            if (hbmTemp)
+            {
+                hOldObj = SelectObject(hMemDC, hbmTemp);
+            }
+
+            int imageCount = ImageList_GetImageCount(_himl);
+            printf("ImageList count: %d, drawing index: %d\n", imageCount, iIndex);
+            BOOL result = ImageList_DrawEx(_himl, iIndex, hMemDC, 0, 0, RECTWIDTH(rc), RECTHEIGHT(rc), 0xFFFFFFFF, 0xFFFFFFFF, 0x12001u);
+            printf("ImageList_DrawEx result: %d\n", result);
+        }
+        else if (_hbmUserPicture)
+        {
+            RECT rc;
+            GetClientRect(_hwndStatic, &rc);
+
+            BITMAPINFO bmi = { 0 };
+            bmi.bmiHeader.biWidth = rc.right;
+            bmi.bmiHeader.biHeight = rc.bottom;
+            bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 32;
+            bmi.bmiHeader.biCompression = BI_RGB;
+
+            void *pvBits;
+            hbmTemp = CreateDIBSection(hMemDC, &bmi, 0, &pvBits, 0, 0);
+            if (hbmTemp)
+            {
+                hOldObj = SelectObject(hMemDC, hbmTemp);
+            }
+
+            int cxLeftWidth = field_1C;
+            int cyTopHeight = field_24;
+            int v9 = rc.right - _iFramedPicWidth - rc.left;
+            int v22 = (rc.bottom - rc.top - _iFramedPicHeight) / 2;
+            int v21 = v9 / 2;
+            int v10 = v9 / 2 + cxLeftWidth;
+            int v11 = v22 + cyTopHeight;
+
+            HDC hdcTemp = CreateCompatibleDC(hMemDC);
+            if (hdcTemp)
+            {
+                HGDIOBJ v24 = SelectObject(hdcTemp, _hbmUserPicture);
+                BitBlt(hMemDC, v10, v11, _iUnframedPicWidth, _iUnframedPicHeight, hdcTemp, 0, 0, SRCCOPY);
+                SelectObject(hdcTemp, v24);
+                DeleteDC(hdcTemp);
+            }
+
+            if ((_iFramedPicWidth != 48 || _iFramedPicHeight != 48) && _pgdipImage)
+            {
+                int v13 = rc.right - v21;
+                int v14 = rc.bottom - v22;
+
+                Gdiplus::Graphics graphics(hMemDC);
+                graphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver);
+                graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBilinear);
+                graphics.DrawImage(_pgdipImage, v21, v22, v13 - v21, v14 - v22);
+            }
+        }
+
+        BLENDFUNCTION bf;
+        bf.BlendOp = AC_SRC_OVER;
+        bf.BlendFlags = 0;
+        bf.SourceConstantAlpha = a4;
+        bf.AlphaFormat = 0;
+        GdiAlphaBlend(hdc, 0, 0, _iFramedPicWidth, _iFramedPicHeight, hMemDC, 0, 0, _iFramedPicWidth, _iFramedPicHeight, bf);
+
+        if (hOldObj)
+            SelectObject(hMemDC, hOldObj);
+
+        if (hbmTemp)
+            DeleteObject(hbmTemp);
+
+        DeleteDC(hMemDC);
     }
+    ReleaseDC(_hwndStatic, hDC);
+}
+
+void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a3, BYTE a4)
+{
+    HDC hMemDC = CreateCompatibleDC(hdc);
+    HGDIOBJ hOldObj = NULL;
+
+    if (hMemDC)
+    {
+        RECT rc;
+        GetClientRect(_hwndStatic, &rc);
+
+        BITMAPINFO bmi = { 0 };
+        bmi.bmiHeader.biWidth = rc.right;
+        bmi.bmiHeader.biHeight = rc.bottom;
+        bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        void *pvBits;
+        HBITMAP hbm = CreateDIBSection(hMemDC, &bmi, 0, &pvBits, NULL, 0);
+        if (hbm)
+            hOldObj = SelectObject(hMemDC, hbm);
+
+        if (a3)
+        {
+            _UpdateDC(hMemDC, _fadeB, a3);
+        }
+
+        if (a4)
+        {
+            _UpdateDC(hMemDC, _fadeA, a4);
+        }
+
+        POINT pt;
+        pt.x = 0;
+        pt.y = 0;
+
+        SIZE sizFramedPic;
+        sizFramedPic.cx = _iFramedPicWidth;
+        sizFramedPic.cy = _iFramedPicHeight;
+
+        BLENDFUNCTION bf;
+        bf.BlendOp = 0;
+        bf.BlendFlags = 0;
+        bf.SourceConstantAlpha = -1;
+        bf.AlphaFormat = AC_SRC_ALPHA;
+        UpdateLayeredWindow(_hwndStatic, hdc, NULL, &sizFramedPic, hMemDC, &pt, 0, &bf, LWA_ALPHA);
+
+        if (hOldObj)
+            SelectObject(hMemDC, hOldObj);
+
+        if (hbm)
+            DeleteObject(hbm);
+
+        DeleteDC(hMemDC);
+    }
+}
+
+void CUserPane::_HidePictureWindow()
+{
+    if (_fadeA != -1 || _fadeB != -1)
+    {
+        _fadeA = -1;
+        _fadeB = -1;
+        _UpdatePictureWindow(0xFF, 0);
+    }
+    
+    EnableWindow(_hwndStatic, FALSE);
+    SetWindowPos(_hwndStatic, 0, 0, 0, 0, 0, 0x497u);
+}
+
+LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    SMPANEDATA *psmpd = PaneDataFromCreateStruct(lParam);
+
+    _hwnd = hwnd;
+    _hTheme = psmpd->hTheme;
+    IUnknown_Set(&psmpd->punk, static_cast<IServiceProvider*>(this));
+    if (SUCCEEDED(_UpdateUserInfo(1)))
+    {
+        _UpdatePictureWindow(0xFF, 0);
+        return 1;
+    }
+    return -1;
+}
+
+HWND CUserPane::_GetPictureWindowPrevHnwd()
+{
+    HWND hwnd = NULL;
+
+    SMNGETISTARTBUTTON nm;
+    nm.pstb = NULL;
+    _SendNotify(_hwnd, 218, &nm.hdr);
+    if (nm.pstb)
+    {
+        nm.pstb->GetWindow(&hwnd);
+		nm.pstb->Release();
+    }
+
+    if (hwnd)
+        return 0;
     else
-    {
-        //ExtTextOut(pdis->hDC, pdis->rcItem.left+ iOffsetX, pdis->rcItem.top+iOffset, 0, NULL, _szUserName, cchName, NULL);
-    }
-
-    SetBkMode(pdis->hDC, iOldMode);
-
-    SelectFont(pdis->hDC, hfPrev);
+        return GetWindow(0, GW_HWNDPREV);
 }
 
-
-LRESULT CALLBACK CUserPane::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT lr = 0L;
-
     switch (uMsg)
     {
-        case WM_NCCREATE:
+        case WM_DESTROY:
         {
-            _hwnd = hwnd;
-
-            _hTheme = (PaneDataFromCreateStruct(lParam))->hTheme;
-
-            //Check for policy restrictions.
-            //If No Name policy is in place, the username will continue to be a NULL string!
-            ASSERT(*_szUserName == 0);
-
-            _UpdateUserInfo();
-            
-            if (_hTheme)
+            if (_uidChangeRegister)
             {
-                GetThemeColor(_hTheme, SPP_USERPANE, 0, TMT_TEXTCOLOR, &_crColor);
-                _hFont = LoadControlFont(_hTheme, SPP_USERPANE, FALSE, 150);
+                SHChangeNotifyDeregister(_uidChangeRegister);
+                _uidChangeRegister = 0;
             }
-            else
-            {
-                HFONT hfTemp = (HFONT) GetStockObject(DEFAULT_GUI_FONT);
-                LOGFONT lf = {0};
-                GetObject(hfTemp, sizeof(lf), &lf);
-                lf.lfItalic = TRUE;
-                lf.lfHeight = (lf.lfHeight * 175) / 100;
-                lf.lfWidth = 0; // get the closest based on aspect ratio
-                lf.lfWeight = FW_BOLD;
-                lf.lfQuality = DEFAULT_QUALITY;
-                SHAdjustLOGFONT(&lf); // apply locale-specific adjustments
-                _hFont = CreateFontIndirect(&lf);
-                _crColor = GetSysColor(COLOR_CAPTIONTEXT);
-                // no need to free hfTemp
-            }
-
-
-            return TRUE;
-        }
-
-
-        case WM_NCDESTROY:
-        {
-            lr = DefWindowProc(hwnd, uMsg, wParam, lParam);
-
-            SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-            delete this;
-
-            return lr;
-        }
-
-        case WM_CREATE:
-        {
-            // create the user name static control and set its font if specified
-            DWORD dwStyle = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE |
-                            SS_OWNERDRAW | SS_NOTIFY;
-
-            _hwndStatic = CreateWindowEx(0, TEXT("static"), NULL, dwStyle,
-                                         0, 0, 0, 0,                                        // we'll be sized properly on WM_SIZE
-                                         _hwnd, NULL, _AtlBaseModule.GetModuleInstance(), NULL);
             if (_hwndStatic)
             {
-                if (_hFont)
-                    SetWindowFont(_hwndStatic, _hFont, FALSE);
-
-                if (*_szUserName)
-                    SetWindowText(_hwndStatic, _szUserName);
-
-                return TRUE;
+                DestroyWindow(_hwndStatic);
+                _hwndStatic = NULL;
             }
-
-            return FALSE;
+            break;
         }
-
-        case WM_SIZE:
-        {
-            return OnSize();
-        }
-
-        case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc;
-
-            hdc = BeginPaint(_hwnd, &ps);
-            if (hdc)
-            {
-                Paint(hdc);
-                EndPaint(_hwnd, &ps);
-            }
-
-            return lr;
-        }
-
         case WM_ERASEBKGND:
         {
             RECT rc;
-            GetClientRect(_hwnd, &rc);
-            if (!_hTheme)
+            GetClientRect(this->_hwnd, &rc);
+            if (_hTheme)
             {
-                // DrawCaption will draw the caption in its gradient glory so we don't
-                // have to!  Since we don't want any text to be drawn (we'll draw it ourselves)
-                // we pass the handle of a window which has blank text.  And despite
-                // the documentation, you have to pass DC_TEXT or nothing draws!
-                UINT uFlags = DC_ACTIVE | DC_TEXT;
-                if (SHGetCurColorRes() > 8)
-                    uFlags |= DC_GRADIENT;
-
-                DrawCaption(hwnd, (HDC)wParam, &rc, uFlags);
+                DrawPlacesListBackground(_hTheme, hwnd, (HDC)wParam);
             }
             else
             {
-                DrawThemeBackground(_hTheme, (HDC)wParam, SPP_USERPANE, 0, &rc, 0);
+                SHFillRectClr((HDC)wParam, &rc, GetSysColor(4));
+                DrawEdge((HDC)wParam, &rc, EDGE_ETCHED, BF_LEFT);
             }
-            return TRUE;
+            return 1;
         }
-
-
-        case WM_PRINTCLIENT:
+        case WM_WINDOWPOSCHANGED:
         {
-            // paint user picture
-            Paint((HDC)wParam);
+            LPWINDOWPOS pwp = reinterpret_cast<LPWINDOWPOS>(lParam);
+            if (pwp)
+            {
+                if (pwp->flags & SWP_SHOWWINDOW)
+                {
+                    VARIANT vt;
+                    vt.vt = VT_BOOL;
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, NULL, &vt);
+                    if (vt.boolVal == VARIANT_FALSE)
+                    {
+                        EnableWindow(_hwndStatic, TRUE);
+                        SetWindowPos(_hwndStatic, NULL, 0, 0, 0, 0, 0x457u);
+                    }
+                }
+                else if (pwp->flags & SWP_HIDEWINDOW)
+                {
+                    EnableWindow(_hwndStatic, 0);
+                    SetWindowPos(_hwndStatic, 0, 0, 0, 0, 0, 0x497u);
+                }
 
-            // Then forward the message to the static child window.
-            lParam = lParam & ~PRF_ERASEBKGND;  //Strip out the erase bkgnd. We want transparency!
-            // We need to pass this message to the children, or else, they do not paint!
-            // This break will result in calling DefWindowProc below and that in turn passes
-            // this message to the children of this window.
+                if ((pwp->flags & (SWP_NOSIZE | SWP_NOMOVE)) != (SWP_NOSIZE | SWP_NOMOVE))
+                {
+                    OnSize();
+                }
+            }
             break;
         }
-
-        case WM_CTLCOLORSTATIC:
-            SetTextColor((HDC)wParam, _crColor);
-            return (LRESULT)(GetStockObject(HOLLOW_BRUSH));
-
-        case WM_DRAWITEM:
-            OnDrawItem((LPDRAWITEMSTRUCT)lParam);
-            return 0;
-
-        case WM_SETCURSOR:
-            // Change the cursor to a hand when its over the user picture
-            if (_IsCursorInPicture())
-            {
-                SetCursor(LoadCursor(NULL, IDC_HAND));
-                return TRUE;
-            }
-            break;
-
-        case WM_LBUTTONUP:
-            // Launch the cpl to change the picture, if the user clicks on it.
-            // note that this is not exposed to accessibility, as this is a secondary access point for changing the picture
-            // and we don't want to clutter the start panel's keyboard navigation for a minor fluff helper like this...
-            if (_IsCursorInPicture())
-            {
-                // wow this is slow, should we shellexec "mshta.exe res://nusrmgr.cpl/nusrmgr.hta" ourselves, 
-                // since this will only happen when we know we are not on a domain.
-                //SHRunControlPanelCustom(TEXT("nusrmgr.cpl ,initialTask=ChangePicture"), _hwnd);
-                return 0;
-            }
-            break;
-
-        case WM_SYSCOLORCHANGE:
-        case WM_DISPLAYCHANGE:
-        case WM_SETTINGCHANGE:
-            SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
-            break;
-
-
         case WM_NOTIFY:
+        {
+            LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
+            switch (pnm->code)
             {
-                NMHDR *pnm = (NMHDR*)lParam;
-                switch (pnm->code)
+                case 208:
                 {
-                case SMN_APPLYREGION:
-                    return HandleApplyRegion(_hwnd, _hTheme, (SMNMAPPLYREGION *)lParam, SPP_USERPANE, 0);
-                }
-            }
-            break;
-
-        case UPM_CHANGENOTIFY:
-            {
-                LPITEMIDLIST *ppidl;
-                LONG lEvent;
-                LPSHChangeNotificationLock pshcnl;
-                pshcnl = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidl, &lEvent);
-
-                if (pshcnl)
-                {
-                    if (lEvent == SHCNE_EXTENDED_EVENT && ppidl[0])
+                    VARIANT vt;
+                    vt.vt = VT_BOOL;
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, 0, &vt);
+                    if (vt.boolVal == VARIANT_FALSE)
                     {
-                        SHChangeDWORDAsIDList *pdwidl = (SHChangeDWORDAsIDList *)ppidl[0];
-                        if (pdwidl->dwItem1 == SHCNEE_USERINFOCHANGED)
-                        {
-                            _UpdateUserInfo();
-                        }
+                        EnableWindow(_hwndStatic, 1);
+                        SetWindowPos(_hwndStatic, _GetPictureWindowPrevHnwd(), 0, 0, 0, 0, 0x653u);
                     }
-                    SHChangeNotification_Unlock(pshcnl);
+                    break;
+                }
+                case 221:
+                {
+                    OnSize();
+                    break;
+                }
+                case 223:
+                {
+                    if (SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite)))
+                    {
+                        return 1;
+                    }
+                    break;
                 }
             }
             break;
+        }
+        case WM_NCCREATE:
+        {
+            return _OnNcCreate(hwnd, 0x81u, wParam, lParam);
+        }
 
+        case WM_NCDESTROY:
+        {
+            SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+            if (this)
+            {
+                this->Release();
+            }
+            break;
+        }
+        case UPM_CHANGENOTIFY:
+        {
+            LPITEMIDLIST *pppidl = 0;
+            LONG plEvent = 0;
+            HANDLE v5 = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &pppidl, &plEvent);
+            if (v5)
+            {
+                if (plEvent == 0x4000000 && *pppidl && *(DWORD *)((*pppidl)->mkid.abID) == 11)
+                {
+                    _UpdateUserInfo(0);
+                    _UpdatePictureWindow(0xFFu, 0);
+                }
+                SHChangeNotification_Unlock(v5);
+            }
+            break;
+        }
     }
-
     return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-void CUserPane::Paint(HDC hdc)
+LRESULT CUserPane::s_WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    // paint user picture if there is one
-    if (_hbmUserPicture)
+    CUserPane *pThis = reinterpret_cast<CUserPane *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (uMsg == 0x81)
     {
-        RECT rc;
-        int iOffset;
-        BITMAP bm;
-        HDC hdcTmp;
+        LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
+        pThis = (CUserPane *)lpcs->lpCreateParams;
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+    }
+    
+    if (pThis)
+        return pThis->WndProcPicture(hwnd, uMsg, wParam, lParam);
+    else
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
 
-        GetClientRect(_hwnd, &rc);
-        iOffset = (RECTHEIGHT(rc) - _iFramedPicHeight) / 2;
-        GetObject(_hbmUserPicture, sizeof(bm), &bm);
+void CUserPane::_DoFade()
+{
+    LARGE_INTEGER Frequency; // [esp+8h] [ebp-28h] BYREF
+    LARGE_INTEGER PerformanceCount; // [esp+10h] [ebp-20h] BYREF
+    LARGE_INTEGER v10; // [esp+18h] [ebp-18h] BYREF
+    BYTE v13; // [esp+28h] [ebp-8h]
+    BYTE a2; // [esp+2Ch] [ebp-4h]
 
-        hdcTmp = CreateCompatibleDC(hdc);
-        if (hdcTmp)
+    QueryPerformanceFrequency(&Frequency);
+    QueryPerformanceCounter(&PerformanceCount);
+    
+    LONG* p_fadeA = &this->_fadeA;
+    LONG fadeA = this->_fadeA;
+    LONG fadeB = this->_fadeB;
+    LONG v4 = this->_fadeA;
+    LONG v12 = fadeA;
+    if (fadeA == v4)
+    {
+        while (fadeB == this->_fadeB)
         {
-            // draw the frame behind the user picture
-            if (_hTheme && (_iFramedPicWidth != USERPICWIDTH || _iFramedPicHeight != USERPICHEIGHT))
+            QueryPerformanceCounter(&v10);
+            v10.QuadPart -= PerformanceCount.QuadPart;
+            LONGLONG v5 = 1000 * v10.QuadPart / Frequency.QuadPart;
+            if ((unsigned int)v5 >= this->_dwFadeOut && (unsigned int)v5 >= this->_dwFadeIn)
             {
-                RECT rcFrame;
-                rcFrame.left     = iOffset;
-                rcFrame.top      = iOffset;
-                rcFrame.right    = rcFrame.left + _iFramedPicWidth;
-                rcFrame.bottom   = rcFrame.top + _iFramedPicHeight;
-
-                DrawThemeBackground(_hTheme, hdc, SPP_USERPICTURE, 0, &rcFrame, 0);
+                CUserPane::_UpdatePictureWindow(0xFF, 0);
+                break;
             }
-
-            // draw the user picture
-            SelectObject(hdcTmp, _hbmUserPicture);
-            int iStretchMode = SetStretchBltMode(hdc, COLORONCOLOR);
-            StretchBlt(hdc, iOffset + _mrgnPictureFrame.cxLeftWidth + (USERPICWIDTH - _iUnframedPicWidth)/2, iOffset + _mrgnPictureFrame.cyTopHeight + (USERPICHEIGHT - _iUnframedPicHeight)/2, _iUnframedPicWidth, _iUnframedPicHeight, 
-                    hdcTmp, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-            SetStretchBltMode(hdc, iStretchMode);
-            DeleteDC(hdcTmp);
+            
+            DWORD dwFadeIn = this->_dwFadeIn;
+            if ((unsigned int)v5 >= dwFadeIn)
+                v13 = 0;
+            else
+                v13 = 255 * (int)v5 / dwFadeIn;
+            if ((unsigned int)v5 >= this->_dwFadeOut)
+                a2 = 0;
+            else
+                a2 = (unsigned int)(255 * (this->_dwFadeOut - v5)) / this->_dwFadeOut;
+            CUserPane::_UpdatePictureWindow(v13, a2);
+            Sleep(0xAu);
+            if (v12 != *p_fadeA)
+                break;
         }
     }
+    if (v12 == *p_fadeA)
+    {
+        LONG v7 = this->_fadeB;
+        if (fadeB == v7)
+        {
+            InterlockedExchange(p_fadeA, v7);
+        }
+    }
+}
+
+DWORD CUserPane::s_FadeThreadProc(LPVOID lpParameter)
+{
+    CUserPane *pThis = reinterpret_cast<CUserPane*>(lpParameter);
+    pThis->_DoFade();
+	pThis->Release();
+    return 0;
+}
+
+void CUserPane::_FadePictureWindow()
+{
+    if (_fadeA != _fadeB || _fadeA != _fadeC)
+    {
+        _fadeB = _fadeC;
+        if (GetSystemMetrics(SM_REMOTESESSION) || GetSystemMetrics(SM_REMOTECONTROL))
+        {
+            _UpdatePictureWindow(0xFF, 0);
+            InterlockedExchange(&_fadeA, _fadeB);
+        }
+        else
+        {
+            AddRef();
+            if (!SHCreateThread(CUserPane::s_FadeThreadProc, this, 0, NULL))
+            {
+                Release();
+            }
+        }
+    }
+}
+
+LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_SETCURSOR:
+        {
+            if (_fadeA == -1)
+            {
+                SetCursor(LoadCursor(NULL, IDC_HAND));
+                return 1;
+            }
+            break;
+        }
+        case WM_TIMER:
+        {
+            if (wParam == 1)
+            {
+                KillTimer(hwnd, 1);
+                _FadePictureWindow();
+            }
+            break;
+        }
+        case WM_LBUTTONUP:
+        {
+            IOpenControlPanel *pocp = NULL;
+            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, NULL, 0x17, IID_PPV_ARGS(&pocp))))
+            {
+                pocp->Open(L"Microsoft.UserAccounts", NULL, NULL);
+            }
+
+            //SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_UserTile_Clicked, 69);
+            if (pocp)
+            {
+                pocp->Release();
+            }
+            return 0;
+        }
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CUserPane::OnSize()
 {
     RECT rc;
     GetClientRect(_hwnd, &rc);
-
-    if (_hbmUserPicture)
-    {
-        // if we've got a picture, start the text 2 edges over from the right edge of the user picture
-        // note - temp code - we'll read margins from the theme file shortly
-        int iPicOffset = (RECTHEIGHT(rc) - _iFramedPicHeight) / 2;
-        if (iPicOffset < 0)
-            iPicOffset = 0;
-        rc.left += iPicOffset + _iFramedPicWidth + GetSystemMetrics(SM_CYEDGE) * 2;
-    }
-
+    
     if (_hwndStatic)
-        MoveWindow(_hwndStatic, rc.left, rc.top, RECTWIDTH(rc), RECTHEIGHT(rc), FALSE);
+    {
+        int iPicOffset = rc.bottom - field_28;
 
+        RECT rcFrame;
+        rcFrame.left = (rc.right - _iFramedPicWidth - rc.left) / 2;
+        rcFrame.top = iPicOffset - _iFramedPicHeight - rc.top;
+        rcFrame.right = rcFrame.left + _iFramedPicWidth;
+        rcFrame.bottom = iPicOffset - rc.top;
+        MapWindowRect(_hwnd, NULL, &rcFrame);
+        MoveWindow(_hwndStatic, rcFrame.left, rcFrame.top, RECTWIDTH(rcFrame), RECTHEIGHT(rcFrame), FALSE);
+    }
     return 0;
 }
 
+HRESULT CUserPane::_CreateUserPicture()
+{
+    _hwndStatic = SHFusionCreateWindowEx(
+        0x80088u,
+        L"Desktop User Picture",
+        L"user picture",
+        CW_USEDEFAULT,
+        0,
+        0,
+        _iFramedPicWidth,
+        _iFramedPicHeight,
+        _hwnd,
+        NULL,
+        g_hinstCabinet,
+        this);
 
-HRESULT CUserPane::_UpdateUserInfo()
+    if (!_hwndStatic)
+        return E_FAIL;
+
+    SetWindowPos(_hwndStatic, GetWindow(GetAncestor(_hwnd, GA_ROOT), GW_HWNDPREV), 0, 0, 0, 0, 0x413u);
+
+
+    IStream *pstm = NULL;
+    HRESULT hr = SHCreateStreamOnModuleResourceW(g_hinstCabinet, MAKEINTRESOURCE(7013), L"PNGFILE", &pstm);
+    if (hr >= 0)
+    {
+        _pgdipImage = Gdiplus::Bitmap::FromStream(pstm);
+        if (!_pgdipImage)
+        {
+            hr = E_OUTOFMEMORY;
+        }
+    }
+
+    if (pstm)
+    {
+        pstm->Release();
+    }
+
+    return hr;
+}
+
+void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
+{
+    ASSERT(pgdiImageUserPicture != NULL); // 672
+
+    HDC hdc = GetDC(_hwndStatic);
+    HDC hMemDC = CreateCompatibleDC(hdc);
+    if (hMemDC)
+    {
+        RECT rc;
+        GetClientRect(_hwndStatic, &rc);
+        if (_hbmUserPicture)
+            DeleteObject(_hbmUserPicture);
+
+        BITMAPINFO bmi = {0};
+        bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+        bmi.bmiHeader.biWidth = rc.right;
+        bmi.bmiHeader.biHeight = rc.bottom;
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        LPVOID pvBits;
+        _hbmUserPicture = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pvBits, 0, 0);
+        if (_hbmUserPicture)
+        {
+            HBITMAP hbmUserPicture = (HBITMAP)SelectObject(hMemDC, _hbmUserPicture);
+
+            Gdiplus::Graphics graphics(hMemDC);
+            graphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
+            graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBilinear);
+            graphics.DrawImage(pgdiImageUserPicture, 0, 0, _iUnframedPicWidth, _iUnframedPicHeight);
+
+            SelectObject(hMemDC, hbmUserPicture);
+        }
+        DeleteDC(hMemDC);
+    }
+    ReleaseDC(_hwndStatic, hdc);
+}
+
+void SHLogicalToPhysicalDPI(int *a1, int *a2);
+void RemapSizeForHighDPI(SIZE *psiz);
+
+HRESULT CUserPane::_UpdateUserInfo(int a2)
 {
     HRESULT hr = S_OK;
 
-    if(!SHRestricted(REST_NOUSERNAMEINSTARTPANEL))
-    {
-        //No restrictions!
-        //Try to get the fiendly name or if it fails get the login name.
-        ULONG uLen = ARRAYSIZE(_szUserName);
-        SHGetUserDisplayName(_szUserName, &uLen); // Ignore failure. The string will be empty by default
-    }
-
-    // see if we should load the picture
-    BOOL bShowPicture = FALSE;
-	if (_hTheme)
+    BOOL bShowPicture = TRUE;
+    if (_hTheme)
         GetThemeBool(_hTheme, SPP_USERPANE, 0, TMT_USERPICTURE, &bShowPicture);
 
-    // add FriendlyLogonUI check here, since SHGetUserPicturePath
-    BOOL fGina = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("GinaUI"), FALSE, FALSE);
-    if (bShowPicture && !fGina)
+    if (bShowPicture)
     {
-        TCHAR szUserPicturePath[MAX_PATH];
-        szUserPicturePath[0] = _T('0');
-
-        SHGetUserPicturePath(NULL, SHGUPP_FLAG_CREATE, szUserPicturePath);
-
+        WCHAR szUserPicturePath[260];
+        szUserPicturePath[0] = '0';
+        SHGetUserPicturePath(0, SHGUPP_FLAG_CREATE, szUserPicturePath, ARRAYSIZE(szUserPicturePath));
         if (szUserPicturePath[0])
         {
-            if (_hbmUserPicture)
+            Gdiplus::Image *pgdiImageUserPicture = Gdiplus::Image::FromFile(szUserPicturePath);
+            if (pgdiImageUserPicture)
             {
-                DeleteObject(_hbmUserPicture);
-                _hbmUserPicture = NULL;
-            }
-
-            _hbmUserPicture = (HBITMAP)LoadImage(NULL, szUserPicturePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE  | LR_CREATEDIBSECTION);
-            if (_hbmUserPicture)
-            {
-                BITMAP bm;
-
-                GetObject(_hbmUserPicture, sizeof(bm), &bm);
-
-                // Preferred dimensions
                 _iUnframedPicHeight = USERPICHEIGHT;
                 _iUnframedPicWidth = USERPICWIDTH;
 
-                // If it's not square, scale the smaller dimension
-                // to maintain the aspect ratio.
-                if (bm.bmWidth > bm.bmHeight)
+                if (pgdiImageUserPicture->GetWidth() > pgdiImageUserPicture->GetHeight())
                 {
-                    _iUnframedPicHeight = MulDiv(_iUnframedPicWidth, bm.bmHeight, bm.bmWidth);
+                    UINT iPicWidth = pgdiImageUserPicture->GetWidth();
+                    UINT iPicHeight = pgdiImageUserPicture->GetHeight();
+                    _iUnframedPicHeight = MulDiv(_iUnframedPicWidth, iPicHeight, iPicWidth);
                 }
-                else if (bm.bmHeight > bm.bmWidth)
+                else if (pgdiImageUserPicture->GetHeight() > pgdiImageUserPicture->GetWidth())
                 {
-                    _iUnframedPicWidth = MulDiv(_iUnframedPicHeight, bm.bmWidth, bm.bmHeight);
+                    UINT iPicHeight = pgdiImageUserPicture->GetHeight();
+                    UINT iPicWidth = pgdiImageUserPicture->GetWidth();
+                    _iUnframedPicWidth = MulDiv(_iUnframedPicHeight, iPicWidth, iPicHeight);
                 }
 
-                _iFramedPicHeight = USERPICHEIGHT;
-                _iFramedPicWidth = USERPICWIDTH;
+                field_1C = 8;
+                field_20 = 8;
+                field_28 = 8;
+                field_24 = 8;
 
-                if (_hTheme)
+                SIZE sizUserPic = { 64, 64 };
+                RemapSizeForHighDPI(&sizUserPic);
+
+                SHLogicalToPhysicalDPI(&_iUnframedPicWidth, &_iUnframedPicHeight);
+                SHLogicalToPhysicalDPI(&field_1C, &field_24);
+                SHLogicalToPhysicalDPI(&field_20, &field_28);
+
+                _iFramedPicHeight = sizUserPic.cy;
+                _iFramedPicWidth = sizUserPic.cx;
+
+                if (a2)
                 {
-                    if (SUCCEEDED(GetThemeMargins(_hTheme, NULL, SPP_USERPICTURE, 0, TMT_CONTENTMARGINS, NULL,
-                        &_mrgnPictureFrame)))
-                    {
-                        _iFramedPicHeight += _mrgnPictureFrame.cyTopHeight + _mrgnPictureFrame.cyBottomHeight;
-                        _iFramedPicWidth += _mrgnPictureFrame.cxLeftWidth + _mrgnPictureFrame.cxRightWidth;
-                    }
-                    else
-                    {
-                        // Sometimes GetThemeMargins gets confused and returns failure
-                        // *and* puts garbage data in _mrgnPictureFrame.
-                        ZeroMemory(&_mrgnPictureFrame, sizeof(_mrgnPictureFrame));
-                    }
+                    hr = _CreateUserPicture();
                 }
+
+                _UpdateUserImage(pgdiImageUserPicture);
+
+                delete pgdiImageUserPicture;
             }
         }
 
@@ -473,8 +802,17 @@ HRESULT CUserPane::_UpdateUserInfo()
             fsne.fRecursive = FALSE;
             fsne.pidl = NULL;
 
-            _uidChangeRegister = SHChangeNotifyRegister(_hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel, SHCNE_EXTENDED_EVENT, 
-                                    UPM_CHANGENOTIFY, 1, &fsne);
+            _uidChangeRegister = SHChangeNotifyRegister(_hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel, SHCNE_EXTENDED_EVENT,
+                UPM_CHANGENOTIFY, 1, &fsne);
+        }
+
+        ULONG cch = ARRAYSIZE(_szUserName);
+        SHGetUserDisplayName(_szUserName, &cch);
+        SetWindowText(_hwndStatic, _szUserName);
+
+        if (!a2)
+        {
+            IUnknown_QueryServiceExec(_punkSite, IID_IFolderView, &SID_SM_DV2ControlHost, 329, 0, NULL, NULL);
         }
     }
 
@@ -485,8 +823,22 @@ HRESULT CUserPane::_UpdateUserInfo()
     nm.code = SMN_NEEDREPAINT;
     SendMessage(GetParent(_hwnd), WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
 
-
     return hr;
+}
+
+BOOL WINAPI UserPicture_RegisterClass()
+{
+    WNDCLASSEX wc;
+    ZeroMemory(&wc, sizeof(wc));
+
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_GLOBALCLASS;
+    wc.lpfnWndProc = CUserPane::s_WndProcPicture;
+    wc.hInstance = g_hinstCabinet;
+    wc.hbrBackground = 0;
+    wc.hCursor = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
+    wc.lpszClassName = L"Desktop User Picture";
+    return RegisterClassExW(&wc);
 }
 
 BOOL WINAPI UserPane_RegisterClass()
@@ -496,7 +848,7 @@ BOOL WINAPI UserPane_RegisterClass()
     
     wc.cbSize        = sizeof(wc);
     wc.style         = CS_GLOBALCLASS;
-    wc.lpfnWndProc   = CUserPane::s_WndProc;
+    wc.lpfnWndProc   = CUserPane::s_WndProcPane;
     wc.hInstance     = GetModuleHandle(NULL);
     wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(NULL);

@@ -543,13 +543,14 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
         SetWindowTheme(hwnd, pszTheme, NULL);
     }
 
-    ATOMICRELEASE(_punkSite);
-    if (punk)
-    {
-        _punkSite = punk;
-        punk->AddRef();
-    }
+    //ATOMICRELEASE(_punkSite);
+    //if (punk)
+    //{
+    //    _punkSite = punk;
+    //    punk->AddRef();
+    //}
 
+    IUnknown_Set(&_punkSite, punk);
     return S_OK;
 }
 
@@ -737,19 +738,18 @@ HRESULT CTaskBand::OnWinEvent(HWND hwnd, UINT dwMsg, WPARAM wParam, LPARAM lPara
             _HideThumbnailWindows();
             if (IsCompositionActive())
             {
-                LRESULT v7 = SendMessage(_tb, 0x418u, 0, 0);
-                while (--v7 >= 0)
+                for (int i = _tb.GetButtonCount(); i >= 0; i--)
                 {
-                    PTASKITEM pti = _GetItem(v7);
+                    PTASKITEM pti = _GetItem(i);
                     if (pti && IsWindow(pti->hwnd))
                     {
-                    _RegisterThumbnail(pti->hwnd, &pti->hThumbnail);
+                        _RegisterThumbnail(pti->hwnd, &pti->hThumbnail);
                     }
                 }
             }
 
             CToolTipCtrl ttc = _tb.GetToolTips();
-            if (_hTheme && CTaskBand::_CanShowThumbnail())
+            if (_hTheme && _CanShowThumbnail())
             {
                 ttc.SetDelayTime(TTDT_INITIAL, (_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime));
                 ttc.SetDelayTime(TTDT_AUTOPOP, _dwAutoPopTooltipDelayTime);
@@ -4101,6 +4101,10 @@ void CTaskBand::_HandleCommand(WORD wCmd, WORD wID, HWND hwnd)
     }
     else if (wCmd == BN_CLICKED)
     {
+        _HideThumbnail();
+        KillTimer(_hwnd, 10);
+        _fShowThumbnail = FALSE;
+
         int iIndex = _tb.CommandToIndex(wID);
 
         if (GetKeyState(VK_CONTROL) < 0)
@@ -6068,6 +6072,7 @@ LRESULT CTaskBand::_HandleActivate(HWND hwndActive)
 //---------------------------------------------------------------------------
 void CTaskBand::_HandleOtherWindowDestroyed(HWND hwndDestroyed)
 {
+#ifdef DEAD_CODE
     int i;
 
     // Look for the destoyed window. 
@@ -6122,6 +6127,57 @@ NoDestroy:
         if (_ptray->_hwndLastActive == hwndDestroyed)
             _ptray->_hwndLastActive = NULL;
     }
+#else
+    bool v3; // zf
+    int i; // edi
+    struct TASKITEM *pti; // eax
+    HWND hwndRudeApp; // edi
+    CTray *ptray; // esi
+    LRESULT iItemIndex; // [esp+Ch] [ebp-4h]
+
+    iItemIndex = CTaskBand::_FindIndexByHwnd(hwndDestroyed);
+    if (iItemIndex < 0)
+    {
+        i = SendMessageW(this->_tb, 0x418u, 0, 0);
+        while (--i >= 0)
+        {
+            pti = CTaskBand::_GetItem(i, 0, 1);
+            if (pti && (pti->dwFlags & 8) != 0 && (HWND)GetWindowLongW(pti->hwnd, 0) == hwndDestroyed)
+                goto NoDestroy;
+        }
+    }
+    else
+    {
+        CTaskBand::_HideThumbnail();
+        KillTimer(_hwnd, 10);
+        v3 = this->_fAnimate == 0;
+        this->_fShowThumbnail = 0;
+        if (v3 || (this->_dwViewMode & 1) != 0 || !ToolBar_IsVisible(this->_tb, iItemIndex))
+        {
+            CTaskBand::_DeleteItem(hwndDestroyed, iItemIndex);
+            CTaskBand::_HideThumbnail();
+            KillTimer(_hwnd, 10u);
+            this->_fShowThumbnail = 0;
+        }
+        else
+        {
+            CTaskBand::_AnimateItems(iItemIndex, 0, 0);
+        }
+    }
+    _ptray->HandleWindowDestroyed(hwndDestroyed);
+NoDestroy:
+    hwndRudeApp = CTaskBand::_FindRudeApp(0);
+    _ptray->HandleFullScreenApp(hwndRudeApp);
+    if (hwndRudeApp && (GetWindowLongW(hwndRudeApp, -20) & 8) == 0 && !_IsRudeWindowActive(hwndRudeApp))
+    {
+        SwitchToThisWindow(hwndRudeApp, 1);
+    }
+
+    if (_ptray->_hwndLastActive == hwndDestroyed)
+    {
+        _ptray->_hwndLastActive = 0;
+    }
+#endif
 }
 
 void CTaskBand::_HandleGetMinRect(HWND hwndShell, POINTS * prc)
@@ -6761,6 +6817,7 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
 
     case HSHELL_TASKMAN:
 
+#ifdef DEAD_CODE
         // winlogon/user send a -1 lParam to indicate that the 
         // task list should be displayed (normally the lParam is the hwnd)
 
@@ -6805,6 +6862,33 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
             PostMessage(v_hwndTray, TM_ACTASTASKSW, 0, 0L);
         }
         return TRUE;
+#else
+        if (!this->_ptray->_fStuckRudeApp && GetAsyncKeyState(VK_CONTROL) >= 0)
+        {
+            HWND hwndForeground = GetForegroundWindow();
+            BOOL fIsTrayForeground = hwndForeground == v_hwndTray;
+            if (v_hwndStartPane && hwndForeground == v_hwndStartPane)
+                fIsTrayForeground = 1;
+            HWND hwndPrevFocus = this->_hwndPrevFocus;
+            if (hwndPrevFocus)
+            {
+                if (fIsTrayForeground)
+                {
+                    CTaskBand::_ClosePopupMenus();
+                    SHAllowSetForegroundWindow(hwndPrevFocus);
+                    SetForegroundWindow(hwndPrevFocus);
+                    this->_hwndPrevFocus = 0;
+                    return 1;
+                }
+            }
+            else if (!fIsTrayForeground)
+            {
+                this->_hwndPrevFocus = hwndForeground;
+            }
+        }
+        PostMessageW(v_hwndTray, TM_ACTASTASKSW, 0, 0);   // TM_ACTASTASKSW
+        return 1;
+#endif
 
     case HSHELL_REDRAW:
         {
@@ -7320,7 +7404,7 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
         case 10:
             {
-                wprintf(L"Hi\n");
+                wprintf(L"CTaskBand::V_WndProc : wParam = 10\n");
                 KillTimer(_hwnd, 10);
                 if (!field_128
                     && _thumbData.dwSomething == _dwTick
@@ -7566,7 +7650,7 @@ void CTaskBand::_RefreshSettings() // EXEX-VISTA TODO: Add new argument
 
     if ((fOldGlom != _fGlom) || (iOldGroupSize != _iGroupSize))
     {
-        CDPA<TASKITEM> dpa;
+        CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>> dpa;
         _BuildTaskList(&dpa);
 
         if (dpa)
@@ -7673,7 +7757,7 @@ BOOL CTaskBand::_CanMinimizeAll()
 
 typedef struct MINALLDATAtag
 {
-    CDPA<TASKITEM> dpa;
+    CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>> dpa;
     CTray* pTray;
     HWND hwndDesktop;
     HWND hwndTray;
@@ -7737,7 +7821,7 @@ DWORD WINAPI CTaskBand::MinimizeAllThreadProc(void* pv)
     return 0;
 }
 
-void CTaskBand::_BuildTaskList(CDPA<TASKITEM>* pdpa )
+void CTaskBand::_BuildTaskList(CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>>* pdpa )
 {
     if (pdpa && _tb)
     {

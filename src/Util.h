@@ -43,7 +43,7 @@ BOOL _CheckAssociations(void);
 
 void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore);
 
-STDAPI_(IShellFolder*) BindToFolder(LPCITEMIDLIST pidl);
+STDAPI_(IShellFolder*) BindToFolder(PCIDLIST_RELATIVE pidl);
 
 void RunSystemMonitor(void);
 

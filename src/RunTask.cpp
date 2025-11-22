@@ -17,17 +17,9 @@ CRunnableTask::CRunnableTask(DWORD dwFlags)
     _lState = IRTIR_TASK_NOT_RUNNING;
     _dwFlags = dwFlags;
 
-    ASSERT(NULL == _hDone);
-    _hDone = 0;
+    _fAbort = 0;
 
-    if (_dwFlags & RTF_SUPPORTKILLSUSPEND)
-    {
-        // we signal this on suspend or kill
-        // Explicitly call the ANSI version so we don't need to worry
-        // about whether we're being built UNICODE and have to switch
-        // to a wrapper function...
-        _hDone = CreateEventA(NULL, TRUE, FALSE, NULL);
-    }
+	_hklKeyboard = GetKeyboardLayout(0);
 
 #ifdef DEBUG
     _dwTaskID = GetTickCount();
@@ -43,52 +35,36 @@ CRunnableTask::CRunnableTask(DWORD dwFlags)
 CRunnableTask::~CRunnableTask()
 {
     //DEBUG_CODE(TraceMsg(TF_RUNTASK, "CRunnableTask (%#lx): deleting task", _dwTaskID); )
-
-        if (_hDone)
-            CloseHandle(_hDone);
 }
 
 
-STDMETHODIMP CRunnableTask::QueryInterface(REFIID riid, LPVOID* ppvObj)
+STDMETHODIMP CRunnableTask::QueryInterface(REFIID riid, LPVOID *ppvObj)
 {
-    if (ppvObj == NULL)
+    static const QITAB qit[] =
     {
-        return E_INVALIDARG;
-    }
-    if (riid == IID_IRunnableTask)
-    {
-        *ppvObj = SAFECAST(this, IRunnableTask*);
-        AddRef();
-    }
-    else
-        return E_NOINTERFACE;
-
-
-    return NOERROR;
+        QITABENT(CRunnableTask, IRunnableTask),         // IID_IRunnableTask
+        QITABENT(CRunnableTask, IQueryContinue),        // IID_IQueryContinue
+        QITABENT(CRunnableTask, IServiceProvider),      // IID_IServiceProvider
+        { 0 },
+    };
+    return QISearch(this, qit, riid, ppvObj);
 }
-
 
 STDMETHODIMP_(ULONG) CRunnableTask::AddRef()
 {
-    InterlockedIncrement(&_cRef);
-    return _cRef;
+    //_AssertMsgW(this->_cRef != 0, L"RefCount problem.");
+    return InterlockedIncrement(&_cRef);
 }
 
 
 STDMETHODIMP_(ULONG) CRunnableTask::Release()
 {
-    if (0 == _cRef)
-    {
-        //AssertMsg(0, TEXT("CRunnableTask::Release called too many times!"));
-        return 0;
-    }
-
-    if (InterlockedDecrement(&_cRef) == 0)
+	ULONG cRef = InterlockedDecrement(&_cRef);
+    if (0 == cRef)
     {
         delete this;
-        return 0;
-    }
-    return _cRef;
+	}
+	return cRef;
 }
 
 
@@ -101,6 +77,7 @@ Purpose: IRunnableTask::Run method
 */
 STDMETHODIMP CRunnableTask::Run(void)
 {
+#ifdef DEAD_CODE
     HRESULT hr = E_FAIL;
 
     // Are we already running?
@@ -128,7 +105,7 @@ STDMETHODIMP CRunnableTask::Run(void)
             // Prepare to run 
             //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): initialize to run", _dwTaskID); )
 
-                hr = RunInitRT();
+            hr = RunInitRT();
 
             ASSERT(E_PENDING != hr);
         }
@@ -165,6 +142,72 @@ STDMETHODIMP CRunnableTask::Run(void)
     }
 
     return hr;
+#else
+    HRESULT hr = E_FAIL;
+
+    if (_lState == IRTIR_TASK_RUNNING)
+        return S_FALSE;
+    
+    if (_lState == IRTIR_TASK_NOT_RUNNING)
+    {
+        LONG lRes = InterlockedExchange(&_lState, IRTIR_TASK_RUNNING);
+        if (lRes == IRTIR_TASK_PENDING)
+        {
+            _lState = IRTIR_TASK_FINISHED;
+            return 0;
+        }
+
+        if (_lState == IRTIR_TASK_RUNNING)
+        {
+            //CcshellDebugMsgW(0, "CRunnableTask (%#lx): initialize to run", _dwTaskID);
+            HKL hklKeyboard = 0;
+            if ((_dwFlags & 4) != 0)
+            {
+                hklKeyboard = GetKeyboardLayout(0);
+                ActivateKeyboardLayout(_hklKeyboard, 0);
+            }
+
+            hr = RunInitRT();
+
+            if ((_dwFlags & 4) != 0)
+                ActivateKeyboardLayout(hklKeyboard, 0);
+
+            ASSERT(E_PENDING != hr); // 118
+        }
+
+        if (hr >= 0)
+        {
+            if (_lState == IRTIR_TASK_RUNNING)
+            {
+                HKL hklKeyboard = 0;
+                if ((_dwFlags & 4) != 0)
+                {
+                    hklKeyboard = GetKeyboardLayout(0);
+                    ActivateKeyboardLayout(_hklKeyboard, 0);
+                }
+
+                hr = InternalResumeRT();
+
+                if ((_dwFlags & 4) != 0)
+                    ActivateKeyboardLayout(hklKeyboard, 0);
+            }
+            else if (_lState == IRTIR_TASK_SUSPENDED)
+            {
+                _fAbort = FALSE;
+                hr = E_PENDING;
+            }
+        }
+
+        //if (hr < 0 && hr != 0x8000000A)
+        //    CcshellDebugMsgW(1, "CRunnableTask (%#lx): task failed to run: %#lx", _dwTaskID, hr);
+
+        if (_lState != IRTIR_TASK_SUSPENDED || hr != E_PENDING)
+        {
+            _lState = IRTIR_TASK_FINISHED;
+        }
+    }
+    return hr;
+#endif
 }
 
 
@@ -174,6 +217,7 @@ Purpose: IRunnableTask::Kill method
 */
 STDMETHODIMP CRunnableTask::Kill(BOOL fWait)
 {
+#ifdef DEAD_CODE
     if (!(_dwFlags & RTF_SUPPORTKILLSUSPEND))
         return E_NOTIMPL;
 
@@ -182,20 +226,41 @@ STDMETHODIMP CRunnableTask::Kill(BOOL fWait)
 
     //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): killing task", _dwTaskID); )
 
-        LONG lRes = InterlockedExchange(&_lState, IRTIR_TASK_PENDING);
+    LONG lRes = InterlockedExchange(&_lState, IRTIR_TASK_PENDING);
     if (lRes == IRTIR_TASK_FINISHED)
     {
         //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): task already finished", _dwTaskID); )
 
-            _lState = lRes;
+        _lState = lRes;
     }
-    else if (_hDone)
+    else
     {
-        // signal the event it is likely to be waiting on
-        SetEvent(_hDone);
+		_fAbort = TRUE;
     }
 
     return KillRT(fWait);
+#else
+    if ((this->_dwFlags & 2) == 0)
+        return E_NOTIMPL;
+
+    HRESULT hr = S_FALSE;
+
+    if (_lState == 1)
+    {
+        //CcshellDebugMsgW(0, "CRunnableTask (%#lx): killing task", this->_dwTaskID);
+        if (InterlockedExchange(&_lState, 3) == 4)
+        {
+            //CcshellDebugMsgW(0, "CRunnableTask (%#lx): task already finished", this->_dwTaskID);
+            _lState = 4;
+        }
+        else
+        {
+            _fAbort = 1;
+        }
+        return KillRT(fWait);
+    }
+    return hr;
+#endif
 }
 
 
@@ -205,6 +270,7 @@ Purpose: IRunnableTask::Suspend method
 */
 STDMETHODIMP CRunnableTask::Suspend(void)
 {
+#ifdef DEAD_CODE
     if (!(_dwFlags & RTF_SUPPORTKILLSUSPEND))
         return E_NOTIMPL;
 
@@ -213,21 +279,40 @@ STDMETHODIMP CRunnableTask::Suspend(void)
 
     //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): suspending task", _dwTaskID); )
 
-        LONG lRes = InterlockedExchange(&_lState, IRTIR_TASK_SUSPENDED);
+    LONG lRes = InterlockedExchange(&_lState, IRTIR_TASK_SUSPENDED);
 
     if (IRTIR_TASK_FINISHED == lRes)
     {
         // we finished before we could suspend
         //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): task already finished", _dwTaskID); )
 
-            _lState = lRes;
-        return NOERROR;
+        _lState = lRes;
+        return S_OK;
     }
+    else
+    {
+        _fAbort = TRUE;
+        return SuspendRT();
+    }
+#else
+    if ((this->_dwFlags & 1) == 0)
+        return 0x80004001;
+    if (this->_lState != 1)
+        return 0x80004005;
 
-    if (_hDone)
-        SetEvent(_hDone);
-
-    return SuspendRT();
+    //CcshellDebugMsgW(0, "CRunnableTask (%#lx): suspending task", this->_dwTaskID);
+    if (InterlockedExchange(&this->_lState, 2) == 4)
+    {
+        //CcshellDebugMsgW(0, "CRunnableTask (%#lx): task already finished", this->_dwTaskID);
+        this->_lState = 4;
+        return 0;
+    }
+    else
+    {
+        this->_fAbort = 1;
+        return SuspendRT();
+    }
+#endif
 }
 
 
@@ -242,9 +327,9 @@ STDMETHODIMP CRunnableTask::Resume(void)
 
     //DEBUG_CODE(TraceMsg(TF_RUNTASKV, "CRunnableTask (%#lx): resuming task", _dwTaskID); )
 
-        _lState = IRTIR_TASK_RUNNING;
-    if (_hDone)
-        ResetEvent(_hDone);
+    _lState = IRTIR_TASK_RUNNING;
+
+	_fAbort = FALSE;
 
     return ResumeRT();
 }
@@ -257,4 +342,27 @@ Purpose: IRunnableTask::IsRunning method
 STDMETHODIMP_(ULONG) CRunnableTask::IsRunning(void)
 {
     return _lState;
+}
+
+/*----------------------------------------------------------
+Purpose: IServiceProvider::QueryService method
+*/
+STDMETHODIMP CRunnableTask::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
+{
+    *ppvObject = NULL;
+
+    HRESULT hr = E_FAIL;
+    if (IsEqualGUID(guidService, IID_IQueryContinue))
+    {
+        return QueryInterface(riid, ppvObject);
+    }
+    return hr;
+}
+
+/*----------------------------------------------------------
+Purpose: IQueryContinue::QueryContinue method
+*/
+STDMETHODIMP CRunnableTask::QueryContinue(void)
+{
+    return ShouldContinue();
 }

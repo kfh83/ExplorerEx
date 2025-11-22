@@ -154,4 +154,8 @@ protected:
     int field_10;               // Vista - New
 };
 
+int SHGetSystemMetricsScaled(int nIndex);
+BOOL IsHighDPI();
+HBITMAP CreateBitmap(HDC hdc, int cx, int cy);
+
 #endif // _HOSTUTIL_H_

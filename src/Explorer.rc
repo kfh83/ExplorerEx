@@ -139,7 +139,7 @@ IDB_STARTER_WATERMARK    BITMAP DISCARDABLE PURE "resources\\starter.bmp"
 //
 // PNG
 //
-IDR_FRAME PNG DISCARDABLE PURE "resources\\Frame.png"
+7013 PNGFILE DISCARDABLE PURE "resources\\Frame.png"
 
 
 #ifndef APSTUDIO_INVOKED

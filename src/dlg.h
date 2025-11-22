@@ -35,6 +35,9 @@
 #define IDC_STATIC_NOTIFY               1106
 #define IDC_QUICKLAUNCH                 1107
 
+
+#define IDC_SHOW_THUMBNAILS				1112
+
 #define IDC_STARTMENUSETTINGS           1123
 #define IDC_RESORT                      1124
 #define IDC_KILLDOCUMENTS               1125

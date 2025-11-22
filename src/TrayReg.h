@@ -214,7 +214,7 @@ class CTrayItemRegistry
         //
         // Persistent Icon information...
         //
-        CDPA<TNPersistStreamData> _dpaPersistentItemInfo;
+        CDPA<TNPersistStreamData, CTContainer_PolicyUnOwned<TNPersistStreamData>> _dpaPersistentItemInfo;
         DWORD           _dwTimesChevronInfoTipShown;
         BOOL            _bShowChevronInfoTip;
         ULONG           _uValidLastUseTimePeriod;
