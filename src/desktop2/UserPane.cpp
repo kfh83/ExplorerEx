@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "sfthost.h"
 #include "userpane.h"
+#include <wincodec.h>
 
 
 //
@@ -328,6 +329,105 @@ LRESULT CALLBACK CUserPane::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+static HRESULT ScaleImage(HBITMAP hbmSource, int width, int height, HBITMAP *phbmOut)
+{
+    CComPtr<IWICImagingFactory> spWicFactory;
+    
+    HRESULT hr = CoCreateInstance(
+        CLSID_WICImagingFactory,
+        nullptr,
+        CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(&spWicFactory)
+    );
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    CComPtr<IWICBitmap> spBitmap;
+    CComPtr<IWICBitmapSource> spConverterSource;
+    hr = spWicFactory->CreateBitmapFromHBITMAP(hbmSource, nullptr, WICBitmapIgnoreAlpha, &spBitmap);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    hr = WICConvertBitmapSource(GUID_WICPixelFormat32bppBGR, spBitmap, &spConverterSource);
+    if (FAILED(hr))
+    {
+        // Fail here because we'd rather get a low quality image than complete garbage data due to a mismatched
+        // pixel format.
+        return E_FAIL;
+    }
+    
+    CComPtr<IWICBitmapScaler> spScaler; // Only used for initialization.
+    hr = spWicFactory->CreateBitmapScaler(&spScaler);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    hr = spScaler->Initialize(
+        spConverterSource,
+        width,
+        height,
+        WICBitmapInterpolationModeHighQualityCubic
+    );
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    WICPixelFormatGUID pixelFormat;
+    hr = spBitmap->GetPixelFormat(&pixelFormat);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    unsigned int workingWidth, workingHeight;
+    hr = spScaler->GetSize(&workingWidth, &workingHeight);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    
+    // https://devblogs.microsoft.com/oldnewthing/20250528-00/?p=111225
+    BITMAPINFO bi{};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = workingWidth;
+    bi.bmiHeader.biHeight = -static_cast<LONG>(workingHeight); // top-down
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+    bi.bmiHeader.biSizeImage = workingWidth * workingHeight * 4;
+
+    void *bits;
+    HBITMAP hbmResult = CreateDIBSection(
+        nullptr,
+        &bi,
+        DIB_RGB_COLORS,
+        &bits,
+        nullptr,
+        0
+    );
+    
+    if (nullptr == hbmResult)
+    {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    
+    hr = spScaler->CopyPixels(nullptr, workingWidth * 4, bi.bmiHeader.biSizeImage, (BYTE *)bits);
+    if (FAILED(hr))
+    {
+        DeleteBitmap(hbmResult);
+        return hr;
+    }
+    
+    *phbmOut = hbmResult;
+    return S_OK;
+}
+
 void CUserPane::Paint(HDC hdc)
 {
     // paint user picture if there is one
@@ -356,14 +456,33 @@ void CUserPane::Paint(HDC hdc)
 
                 DrawThemeBackground(_hTheme, hdc, SPP_USERPICTURE, 0, &rcFrame, 0);
             }
-
-            // draw the user picture
-            SelectObject(hdcTmp, _hbmUserPicture);
-            int iStretchMode = SetStretchBltMode(hdc, COLORONCOLOR);
-            StretchBlt(hdc, iOffset + _mrgnPictureFrame.cxLeftWidth + (USERPICWIDTH - _iUnframedPicWidth)/2, iOffset + _mrgnPictureFrame.cyTopHeight + (USERPICHEIGHT - _iUnframedPicHeight)/2, _iUnframedPicWidth, _iUnframedPicHeight, 
-                    hdcTmp, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-            SetStretchBltMode(hdc, iStretchMode);
-            DeleteDC(hdcTmp);
+            
+            // Attempt to scale the image using WIC for a high quality result. If this fails, then the old XP path will
+            // be used and a low quality image will still be drawn.
+            HBITMAP hbmHqUserPicture = nullptr;
+            if (SUCCEEDED(ScaleImage(_hbmUserPicture, _iUnframedPicWidth, _iUnframedPicHeight, &hbmHqUserPicture)))
+            {
+                SelectObject(hdcTmp, hbmHqUserPicture);
+                BitBlt(
+                    hdc,
+                    iOffset + _mrgnPictureFrame.cxLeftWidth + (USERPICWIDTH - _iUnframedPicWidth)/2,
+                    iOffset + _mrgnPictureFrame.cyTopHeight + (USERPICHEIGHT - _iUnframedPicHeight)/2,
+                    _iUnframedPicWidth, _iUnframedPicHeight, 
+                    hdcTmp, 0, 0, SRCCOPY
+                );
+                DeleteDC(hdcTmp);
+                DeleteBitmap(hbmHqUserPicture);
+            }
+            else // Low quality XP path:
+            {
+                // draw the user picture
+                SelectObject(hdcTmp, _hbmUserPicture);
+                int iStretchMode = SetStretchBltMode(hdc, COLORONCOLOR);
+                StretchBlt(hdc, iOffset + _mrgnPictureFrame.cxLeftWidth + (USERPICWIDTH - _iUnframedPicWidth)/2, iOffset + _mrgnPictureFrame.cyTopHeight + (USERPICHEIGHT - _iUnframedPicHeight)/2, _iUnframedPicWidth, _iUnframedPicHeight, 
+                        hdcTmp, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+                SetStretchBltMode(hdc, iStretchMode);
+                DeleteDC(hdcTmp);
+            }
         }
     }
 }
