@@ -427,7 +427,7 @@ del "$(IntermediateOutputPath)temp.res"
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;Windowscodecs.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
       <EntryPointSymbol>ModuleEntry</EntryPointSymbol>
       <FixedBaseAddress>false</FixedBaseAddress>
       <StackCommitSize>36864</StackCommitSize>
@@ -491,7 +491,7 @@ del "$(IntermediateOutputPath)temp.res"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>ModuleEntry</EntryPointSymbol>
-      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shell32.lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shell32.lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;Windowscodecs.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
       <FixedBaseAddress>false</FixedBaseAddress>
       <StackCommitSize>57344</StackCommitSize>
       <ManifestFile>WindowsShell.manifest</ManifestFile>
@@ -554,7 +554,7 @@ del "$(IntermediateOutputPath)temp.res"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>ModuleEntry</EntryPointSymbol>
-      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;Windowscodecs.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
       <FixedBaseAddress>false</FixedBaseAddress>
       <StackCommitSize>57344</StackCommitSize>
       <ManifestFile>WindowsShell.manifest</ManifestFile>
@@ -620,7 +620,7 @@ del "$(IntermediateOutputPath)temp.res"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>ModuleEntry</EntryPointSymbol>
-      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Cfgmgr32.lib;oleacc.lib;winmm.lib;wininet.lib;mpr.lib;Userenv.lib;shell32.lib;ShLwApi.Lib;shcore.lib;user32.lib;msi.lib;wtsapi32.lib;comctl32.lib;Windowscodecs.lib;%(AdditionalDependencies);dwmapi.lib</AdditionalDependencies>
       <FixedBaseAddress>false</FixedBaseAddress>
       <StackCommitSize>36864</StackCommitSize>
       <ManifestFile>WindowsShell.manifest</ManifestFile>
