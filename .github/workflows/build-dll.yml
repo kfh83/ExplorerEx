@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: MSBuild
+name: MSBuildDLL
 
 on:
   push:
@@ -18,13 +18,13 @@ env:
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
   # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-  BUILD_CONFIGURATION: Release
+  BUILD_CONFIGURATION: ReleaseDLL
 
 permissions:
   contents: read
 
 jobs:
-  build-release:
+  build-releasedll:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
@@ -33,18 +33,18 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: amd64
-    - name: Compile ExplorerEx-Vista (explorer.exe)
+    - name: Compile ExplorerEx-Vista (explorer.dll)
       run: | 
-        msbuild explorer.sln /p:Configuration=Release /p:Platform=x64
+        msbuild explorer.sln /p:Configuration=ReleaseDLL /p:Platform=x64
     - name: Set short git commit SHA
       id: vars
       shell: bash
       run: |
         calculatedSha=$(git rev-parse --short ${{ github.sha }})
         echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
-    - name: Upload exe
+    - name: Upload dll
       uses: actions/upload-artifact@v4.4.0
       with:
         name: ExplorerEx-${{ env.COMMIT_SHORT_SHA }}
         path: |
-          .\src\\x64\Release\
+          .\src\\x64\ReleaseDLL\
