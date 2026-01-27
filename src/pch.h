@@ -31,7 +31,7 @@
 #include <ole2.h>
 #include <oleacc.h>
 #include <wininet.h>
-#include <uxtheme.h>
+//#include <uxtheme.h>
 #include <cfgmgr32.h>
 #include <exdisp.h>
 #include <mshtml.h>

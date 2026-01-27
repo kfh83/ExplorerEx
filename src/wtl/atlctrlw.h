@@ -3328,8 +3328,8 @@ public:
 		if(lRet == (LRESULT)-1)
 			return lRet;
 
-		T* pT = static_cast<T*>(this);
-		pT->_OpenThemeData();
+		//T* pT = static_cast<T*>(this);
+		//pT->_OpenThemeData();
 
 		return lRet;
 	}
@@ -3347,8 +3347,8 @@ public:
 	LRESULT OnThemeChanged(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		T* pT = static_cast<T*>(this);
-		pT->_CloseThemeData();
-		pT->_OpenThemeData();
+		//pT->_CloseThemeData();
+		//pT->_OpenThemeData();
 
 		return 0;
 	}
@@ -3401,17 +3401,10 @@ public:
 
 		// paint left side nonclient background and draw icon
 		::SetRect(&rect, 0, 0, m_cxLeft, cyHeight);
-		if(m_hTheme != NULL)
-		{
-			::DrawThemeParentBackground(this->m_hWnd, dc, &rect);
-		}
+		if((this->m_dwExtendedStyle & CBR_EX_TRANSPARENT) != 0)
+			dc.FillRect(&rect, COLOR_3DFACE);
 		else
-		{
-			if((this->m_dwExtendedStyle & CBR_EX_TRANSPARENT) != 0)
-				dc.FillRect(&rect, COLOR_3DFACE);
-			else
-				dc.FillRect(&rect, COLOR_MENU);
-		}
+			dc.FillRect(&rect, COLOR_MENU);
 
 		RECT rcIcon = {};
 		T* pT = static_cast<T*>(this);
@@ -3420,27 +3413,10 @@ public:
 
 		// paint right side nonclient background
 		::SetRect(&rect, cxWidth - m_cxRight, 0, cxWidth, cyHeight);
-		if(m_hTheme != NULL)
-		{
-			// this is to account for the left non-client area
-			POINT ptOrg = {};
-			dc.GetViewportOrg(&ptOrg);
-			dc.SetViewportOrg(ptOrg.x + m_cxLeft, ptOrg.y);
-			::OffsetRect(&rect, -m_cxLeft, 0);
-
-			::DrawThemeParentBackground(this->m_hWnd, dc, &rect);
-
-			// restore
-			dc.SetViewportOrg(ptOrg);
-			::OffsetRect(&rect, m_cxLeft, 0);
-		}
+		if((this->m_dwExtendedStyle & CBR_EX_TRANSPARENT) != 0)
+			dc.FillRect(&rect, COLOR_3DFACE);
 		else
-		{
-			if((this->m_dwExtendedStyle & CBR_EX_TRANSPARENT) != 0)
-				dc.FillRect(&rect, COLOR_3DFACE);
-			else
-				dc.FillRect(&rect, COLOR_MENU);
-		}
+			dc.FillRect(&rect, COLOR_MENU);
 
 		// draw buttons
 		RECT arrRect[3] = {};
@@ -3925,44 +3901,19 @@ public:
 
 	void _DrawMDIButton(CWindowDC& dc, LPRECT pRects, int nBtn)
 	{
-		if(m_hTheme != NULL)
-		{
-#ifndef __VSSYM32_H__
-			const int WP_MDICLOSEBUTTON = 20;
-			const int CBS_NORMAL = 1;
-			const int CBS_PUSHED = 3;
-			const int CBS_DISABLED = 4;
-			const int WP_MDIRESTOREBUTTON = 22;
-			const int RBS_NORMAL = 1;
-			const int RBS_PUSHED = 3;
-			const int RBS_DISABLED = 4;
-			const int WP_MDIMINBUTTON = 16;
-			const int MINBS_NORMAL = 1;
-			const int MINBS_PUSHED = 3;
-			const int MINBS_DISABLED = 4;
-#endif // __VSSYM32_H__
-			if((nBtn == -1) || (nBtn == 0))
-				::DrawThemeBackground(m_hTheme, dc, WP_MDICLOSEBUTTON, this->m_bParentActive ? ((m_nBtnPressed == 0) ? CBS_PUSHED : CBS_NORMAL) : CBS_DISABLED, &pRects[0], NULL);
-			if((nBtn == -1) || (nBtn == 1))
-				::DrawThemeBackground(m_hTheme, dc, WP_MDIRESTOREBUTTON, this->m_bParentActive ? ((m_nBtnPressed == 1) ? RBS_PUSHED : RBS_NORMAL) : RBS_DISABLED, &pRects[1], NULL);
-			if((nBtn == -1) || (nBtn == 2))
-				::DrawThemeBackground(m_hTheme, dc, WP_MDIMINBUTTON, this->m_bParentActive ? ((m_nBtnPressed == 2) ? MINBS_PUSHED : MINBS_NORMAL) : MINBS_DISABLED, &pRects[2], NULL);
-		}
-		else
-		{
-			if((nBtn == -1) || (nBtn == 0))
-				dc.DrawFrameControl(&pRects[0], DFC_CAPTION, DFCS_CAPTIONCLOSE | ((m_nBtnPressed == 0) ? DFCS_PUSHED : 0));
-			if((nBtn == -1) || (nBtn == 1))
-				dc.DrawFrameControl(&pRects[1], DFC_CAPTION, DFCS_CAPTIONRESTORE | ((m_nBtnPressed == 1) ? DFCS_PUSHED : 0));
-			if((nBtn == -1) || (nBtn == 2))
-				dc.DrawFrameControl(&pRects[2], DFC_CAPTION, DFCS_CAPTIONMIN | ((m_nBtnPressed == 2) ? DFCS_PUSHED : 0));
-		}
+		if((nBtn == -1) || (nBtn == 0))
+			dc.DrawFrameControl(&pRects[0], DFC_CAPTION, DFCS_CAPTIONCLOSE | ((m_nBtnPressed == 0) ? DFCS_PUSHED : 0));
+		if((nBtn == -1) || (nBtn == 1))
+			dc.DrawFrameControl(&pRects[1], DFC_CAPTION, DFCS_CAPTIONRESTORE | ((m_nBtnPressed == 1) ? DFCS_PUSHED : 0));
+		if((nBtn == -1) || (nBtn == 2))
+			dc.DrawFrameControl(&pRects[2], DFC_CAPTION, DFCS_CAPTIONMIN | ((m_nBtnPressed == 2) ? DFCS_PUSHED : 0));
 	}
 
 	void _OpenThemeData()
 	{
-		if(RunTimeHelper::IsThemeAvailable())
-			m_hTheme = ::OpenThemeData(this->m_hWnd, L"Window");
+		//if(RunTimeHelper::IsThemeAvailable())
+			//m_hTheme = ::OpenThemeData(this->m_hWnd, L"Window");
+		;
 	}
 
 	void _CloseThemeData()

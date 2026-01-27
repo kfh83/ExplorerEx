@@ -525,7 +525,7 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
                 WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
                 0, 0, 0, 0, hwndParent, NULL, hinstCabinet, (void*)(CImpWndProc*)this);
 
-        SetWindowTheme(hwnd, c_wzTaskBandTheme, NULL);
+        //SetWindowTheme(hwnd, c_wzTaskBandTheme, NULL);
     }
 
     ATOMICRELEASE(_punkSite);
@@ -4072,25 +4072,12 @@ void CTaskBand::_DrawNumber(HDC hdc, int iValue, BOOL fCalcRect, LPRECT prc)
 
     uiStyle |= fCalcRect ? DT_CALCRECT : 0;
 
-    if (_hTheme)
-    {
-        if (fCalcRect)
-        {
-            GetThemeTextExtent(_hTheme, hdc, TDP_GROUPCOUNT, 0, szCount, -1, uiStyle, NULL, prc);
-        }
-        else
-        {
-            DrawThemeText(_hTheme, hdc, TDP_GROUPCOUNT, 0, szCount, -1, uiStyle, 0, prc);
-        }
-    }
-    else
-    {
-        HFONT hfont = (HFONT)SelectObject(hdc, _hfontCapBold);
-        SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
-        SetBkMode(hdc, TRANSPARENT);
-        DrawText(hdc, (LPTSTR)szCount, -1, prc, uiStyle);
-        SelectObject(hdc, hfont);
-    }
+    HFONT hfont = (HFONT)SelectObject(hdc, _hfontCapBold);
+    SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
+    SetBkMode(hdc, TRANSPARENT);
+    DrawText(hdc, (LPTSTR)szCount, -1, prc, uiStyle);
+    SelectObject(hdc, hfont);
+    
 }
 
 LRESULT CTaskBand::_HandleCustomDraw(LPNMTBCUSTOMDRAW ptbcd, PTASKITEM pti)
@@ -4121,24 +4108,16 @@ LRESULT CTaskBand::_HandleCustomDraw(LPNMTBCUSTOMDRAW ptbcd, PTASKITEM pti)
 
             if (pti->dwFlags & TIF_RENDERFLASHED)
             {
-                if (_hTheme)
+                // set blue background
+                ptbcd->clrHighlightHotTrack = GetSysColor(COLOR_HIGHLIGHT);
+                ptbcd->clrBtnFace = GetSysColor(COLOR_HIGHLIGHT);
+                ptbcd->clrText = GetSysColor(COLOR_HIGHLIGHTTEXT);
+                if (!(ptbcd->nmcd.uItemState & CDIS_HOT))
                 {
-                    DrawThemeBackground(_hTheme, ptbcd->nmcd.hdc, (ptbcd->nmcd.hdr.hwndFrom == _tb) ? TDP_FLASHBUTTON : TDP_FLASHBUTTONGROUPMENU, 0, &(ptbcd->nmcd.rc), 0);
-                    lres |= TBCDRF_NOBACKGROUND;
+                    ptbcd->nmcd.uItemState |= CDIS_HOT;
+                    lres |= TBCDRF_NOEDGES;
                 }
-                else
-                {
-                    // set blue background
-                    ptbcd->clrHighlightHotTrack = GetSysColor(COLOR_HIGHLIGHT);
-                    ptbcd->clrBtnFace = GetSysColor(COLOR_HIGHLIGHT);
-                    ptbcd->clrText = GetSysColor(COLOR_HIGHLIGHTTEXT);
-                    if (!(ptbcd->nmcd.uItemState & CDIS_HOT))
-                    {
-                        ptbcd->nmcd.uItemState |= CDIS_HOT;
-                        lres |= TBCDRF_NOEDGES;
-                    }
-                    lres |= TBCDRF_HILITEHOTTRACK;
-                }
+                lres |= TBCDRF_HILITEHOTTRACK;
             }
 
             if (pti->hwnd)
@@ -4602,7 +4581,7 @@ LRESULT CTaskBand::_HandleCreate()
     {
         SendMessage(_tb, TB_ADDSTRING, (WPARAM)hinstCabinet, (LPARAM)IDS_BOGUSLABELS);
 
-        _OpenTheme();
+        //_OpenTheme();
         SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
         
         SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
@@ -4842,11 +4821,6 @@ LRESULT CTaskBand::_HandleDestroy()
 
     _hwnd = NULL;
 
-    if (_hTheme)
-    {
-        CloseThemeData(_hTheme);
-        _hTheme = NULL;
-    }
 
     if (_tb)
     {
@@ -6093,20 +6067,14 @@ void CTaskBand::_OnSetFocus()
 
 void CTaskBand::_OpenTheme()
 {
-    if (_hTheme)
-    {
-        CloseThemeData(_hTheme);
-        _hTheme = NULL;
-    }
-
-    _hTheme = OpenThemeData(_hwnd, c_wzTaskBandTheme);
+    //_hTheme = OpenThemeData(_hwnd, c_wzTaskBandTheme);
 
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
-    tbm.cxPad = _hTheme ? 20 : 8;
+    tbm.cxPad = 8;
     tbm.cyBarPad = 0;
-    tbm.cxButtonSpacing = _hTheme ? 0 : 3;
-    tbm.cyButtonSpacing = _hTheme ? 0 : 3;
+    tbm.cxButtonSpacing = 3;
+    tbm.cyButtonSpacing = 3;
     _tb.SendMessage(TB_SETMETRICS, 0, (LPARAM)&tbm);
 
     _CheckSize();
@@ -6147,16 +6115,9 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 hdc = ps.hdc;
             }
 
-            if (_hTheme)
-            {
-                DrawThemeParentBackground(hwnd, hdc, prc);
-            }
-            else
-            {
-                RECT rc;
-                GetClientRect(hwnd, &rc);
-                FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
-            }
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
 
             if (uMsg == WM_PAINT)
             {

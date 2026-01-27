@@ -300,22 +300,6 @@ HRESULT CTrayBandSite::_AddRequiredBands()
 
 HRESULT CTrayBandSite::_SetWindowTheme(LPWSTR pwzTheme)
 {
-    if (_pwzTheme)
-    {
-        delete[] _pwzTheme;
-        _pwzTheme = NULL;
-    }
-
-    if (pwzTheme)
-    {
-        int cchLen = lstrlen(pwzTheme) + 1;
-        _pwzTheme = new WCHAR[cchLen];
-        if (_pwzTheme)
-        {
-            StringCchCopy(_pwzTheme, cchLen, pwzTheme);
-        }
-    }
-
     return S_OK;
 }
 

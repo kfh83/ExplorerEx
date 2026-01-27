@@ -75,8 +75,8 @@
 	#error WTL10 requires WinSDK 6.0 ot higher
 #endif
 
-#include <uxtheme.h>
-#pragma comment(lib, "uxtheme.lib")
+//#include <uxtheme.h>
+//#pragma comment(lib, "uxtheme.lib")
 
 #if defined(_SYSINFOAPI_H_) && defined(NOT_BUILD_WINDOWS_DEPRECATE)
   #include <VersionHelpers.h>

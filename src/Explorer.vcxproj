@@ -679,7 +679,6 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="QSort.h" />
     <ClInclude Include="RunTask.h" />
     <ClInclude Include="SHFusion.h" />
-    <ClInclude Include="ThemeManager.h" />
     <ClInclude Include="UEMApp.h" />
     <ClInclude Include="Winter.h" />
     <ClInclude Include="wmiumkm.h" />
@@ -838,7 +837,6 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="StartMnu.cpp" />
     <ClCompile Include="TaskBand.cpp" />
     <ClCompile Include="TaskBar.cpp" />
-    <ClCompile Include="ThemeManager.cpp" />
     <ClCompile Include="Tray.cpp" />
     <ClCompile Include="TrayClok.cpp" />
     <ClCompile Include="TrayCmn.cpp" />

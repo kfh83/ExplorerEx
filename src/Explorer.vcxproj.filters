@@ -147,9 +147,6 @@
     <ClInclude Include="shfusion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="thememanager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="patternhelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -475,9 +472,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="shell32startmnu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="thememanager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pinnedlist.cpp">

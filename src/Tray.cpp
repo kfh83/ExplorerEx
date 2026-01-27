@@ -391,19 +391,6 @@ HFONT CTray::_CreateStartFont(HWND hwndTray)
 {
 	HFONT hfontStart = NULL;
 
-	HTHEME hthemeStart = OpenThemeData(hwndTray, L"Button");
-	if (hthemeStart)
-	{
-		LOGFONT lf;
-		HDC hdc = GetDC(hwndTray);
-		if (SUCCEEDED(GetThemeFont(hthemeStart, hdc, BP_PUSHBUTTON, PBS_NORMAL, TMT_FONT, &lf)))
-		{
-			hfontStart = CreateFontIndirect(&lf);
-		}
-		ReleaseDC(hwndTray, hdc);
-		CloseThemeData(hthemeStart);
-	}
-
 	// Fallback to classic font if we can't get the theme font somehow
 	if (!hfontStart)
 	{
@@ -844,7 +831,7 @@ HWND CTray::_CreateStartButton()
 	if (hwnd)
 	{
 		// taskbar windows are themed under Taskbar subapp name
-		SetWindowTheme(hwnd, L"Start", NULL);
+		//SetWindowTheme(hwnd, L"Start", NULL);
 
 		SendMessage(hwnd, CCM_DPISCALE, TRUE, 0);
 
@@ -1369,13 +1356,7 @@ LRESULT CTray::_OnCreate(HWND hwnd)
 
     _AdjustMinimizedMetrics();
 
-    _hTheme = OpenThemeData(hwnd, c_wzTaskbarTheme);
-
     _fShowSizingBarAlways = (_uAutoHide & AH_ON) ? TRUE : FALSE;
-    if (_hTheme)
-    {
-        GetThemeBool(_hTheme, 0, 0, TMT_ALWAYSSHOWSIZINGBAR, &_fShowSizingBarAlways);
-    }
 
     SetWindowStyle(_hwnd, WS_BORDER | WS_THICKFRAME, !_hTheme);
 
@@ -1664,12 +1645,6 @@ void CTray::_UpdateVertical(UINT uStuckPlace, BOOL fForce)
 
         SendMessage(_hwndNotify, TNM_UPDATEVERTICAL, 0, !STUCK_HORIZONTAL(uStuckPlace));
 
-        if (_hTheme)
-        {
-            HDC hdc = GetDC(_hwnd);
-            GetThemePartSize(_hTheme, hdc, _GetPart(TRUE, uStuckPlace), 0, NULL, TS_TRUE, &_sizeSizingBar);
-            ReleaseDC(_hwnd, hdc);
-        }
     }
 }
 
@@ -1755,12 +1730,8 @@ void CTray::_CreateTrayWindow()
         0, 0, 0, 0, NULL, NULL, hinstCabinet, (void*)this);
 
 
-    // Fix for DWM borders on classic theme
-    if (!IsAppThemed())
-    {
-        DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
-        DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
-    }
+    DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
+    DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
 }
 
 DWORD WINAPI CTray::SyncThreadProc(void* pv)
@@ -4137,12 +4108,6 @@ LRESULT CTray::_HandleDestroy()
     _DestroySavedWindowPositions(_pPositions);
     _pPositions = NULL;
 
-    if (_hTheme)
-    {
-        CloseThemeData(_hTheme);
-        _hTheme = NULL;
-    }
-
     _UnregisterGlobalHotkeys();
 
     if (_uNotify)
@@ -5955,7 +5920,7 @@ LRESULT CTray::_NCPaint(HRGN hrgn)
         OffsetRect(&rc, -rc.left, -rc.top);
 
         _AdjustRectForSizingBar(_uStuckPlace, &rc, 0);
-        DrawThemeBackground(_hTheme, hdc, _GetPart(TRUE, _uStuckPlace), 0, &rc, 0);
+        //DrawThemeBackground(_hTheme, hdc, _GetPart(TRUE, _uStuckPlace), 0, &rc, 0);
         ReleaseDC(_hwnd, hdc);
     }
 
@@ -6155,28 +6120,17 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         GetClientRect(hwnd, &rc);
 
+        FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
 
-        if (_hTheme)
-        {
-            RECT rcClip;
-            if (GetClipBox(hdc, &rcClip) == NULLREGION)
-                rcClip = rc;
-
-            DrawThemeBackground(_hTheme, hdc, _GetPart(FALSE, _uStuckPlace), 0, &rc, &rcClip);
-        }
-        else
-        {
-            FillRect(hdc, &rc, (HBRUSH)(COLOR_3DFACE + 1));
-
-            // draw etched line around on either side of the bandsite
-            GetWindowRect(_hwndRebar, &rc);
-            MapWindowPoints(HWND_DESKTOP, hwnd, (LPPOINT)&rc, 2);
-            InflateRect(&rc, g_cxEdge, g_cyEdge);
-            UINT grfFlags = BF_TOPLEFT;
-            if (_fWin98)
-                grfFlags |= BF_BOTTOMRIGHT;
-            DrawEdge(hdc, &rc, EDGE_ETCHED, grfFlags);
-        }
+        // draw etched line around on either side of the bandsite
+        GetWindowRect(_hwndRebar, &rc);
+        MapWindowPoints(HWND_DESKTOP, hwnd, (LPPOINT)&rc, 2);
+        InflateRect(&rc, g_cxEdge, g_cyEdge);
+        UINT grfFlags = BF_TOPLEFT;
+        if (_fWin98)
+            grfFlags |= BF_BOTTOMRIGHT;
+        DrawEdge(hdc, &rc, EDGE_ETCHED, grfFlags);
+        
 
         if (wParam == 0)
             EndPaint(hwnd, &ps);
@@ -6184,23 +6138,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_ERASEBKGND:
-        if (_hTheme)
-        {
-            if (!_fSkipErase)
-            {
-                RECT rc;
-                GetClientRect(hwnd, &rc);
-                DrawThemeBackground(_hTheme, (HDC)wParam, _GetPart(FALSE, _uStuckPlace), 0, &rc, NULL);
 
-                // Only draw the first time to prevent piece-mail taskbar painting
-                _fSkipErase = TRUE;
-            }
-            return 1;
-        }
-        else
-        {
-            goto DoDefault;
-        }
+        goto DoDefault;
         break;
 
     case WM_NCPAINT:
@@ -6803,19 +6742,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_THEMECHANGED:
     {
-        if (_hTheme)
-        {
-            CloseThemeData(_hTheme);
-            _hTheme = NULL;
-        }
         if (wParam)
         {
-            _hTheme = OpenThemeData(_hwnd, c_wzTaskbarTheme);
             _fShowSizingBarAlways = (_uAutoHide & AH_ON) ? TRUE : FALSE;
-            if (_hTheme)
-            {
-                GetThemeBool(_hTheme, 0, 0, TMT_ALWAYSSHOWSIZINGBAR, &_fShowSizingBarAlways);
-            }
             _UpdateVertical(_uStuckPlace, TRUE);
             // Force Refresh of frame
             SetWindowPos(_hwnd, NULL, 0, 0, 0, 0, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);

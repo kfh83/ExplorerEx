@@ -119,13 +119,6 @@ public:
 				return false;
 			}
 
-			if(m_nIsThemingSupported == -1)
-			{
-				HMODULE hThemeDLL = ::LoadLibrary(_T("uxtheme.dll"));
-				m_nIsThemingSupported = (hThemeDLL != NULL) ? 1 : 0;
-				if(hThemeDLL != NULL)
-					::FreeLibrary(hThemeDLL);
-			}
 
 			lock.Unlock();
 		}
@@ -135,6 +128,7 @@ public:
 	}
 
 // Operations and theme properties
+	/*
 	HTHEME OpenThemeData(HWND hWnd, LPCWSTR pszClassList)
 	{
 		if(!IsThemingSupported())
@@ -156,13 +150,13 @@ public:
 		}
 		return hRet;
 	}
-
+	
 	HRESULT DrawThemeBackground(HDC hDC, int nPartID, int nStateID, LPCRECT pRect, LPCRECT pClipRect = NULL)
 	{
 		ATLASSERT(m_hTheme != NULL);
 		return ::DrawThemeBackground(m_hTheme, hDC, nPartID, nStateID, pRect, pClipRect);
 	}
-
+	*/
 // Missing in original uxtheme.h
 #ifdef DTBG_CLIPRECT
 	HRESULT DrawThemeBackgroundEx(HDC hDC, int nPartID, int nStateID, LPCRECT pRect, const DTBGOPTS* pOptions = NULL)
@@ -171,7 +165,7 @@ public:
 		return ::DrawThemeBackgroundEx(m_hTheme, hDC, nPartID, nStateID, pRect, pOptions);
 	}
 #endif // DTBG_CLIPRECT
-
+	/*
 	HRESULT DrawThemeText(HDC hDC, int nPartID, int nStateID, LPCWSTR pszText, int nCharCount, DWORD dwTextFlags, DWORD dwTextFlags2, LPCRECT pRect)
 	{
 		ATLASSERT(m_hTheme != NULL);
@@ -380,7 +374,7 @@ public:
 		m_hTheme = ::OpenThemeDataEx(hWnd, pszClassList, dwFlags);
 		return m_hTheme;
 	}
-
+	*/
 #if (_WIN32_WINNT >= 0x0600)
 	HRESULT DrawThemeTextEx(HDC hDC, int nPartID, int nStateID, LPCWSTR pszText, int cchText, DWORD dwTextFlags, LPRECT lpRect, const DTTOPTS* pOptions)
 	{
