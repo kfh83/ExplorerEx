@@ -59,8 +59,10 @@ VOID EnsureUserAssist()
 {
 	if (!i10)
 	{
-		CoCreateInstance(CLSID_UserAssist, NULL, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IUserAssist10, (PVOID*)&i10);
-		i10->Enable(TRUE);
+		if (SUCCEEDED(CoCreateInstance(CLSID_UserAssist, NULL, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IUserAssist10, (PVOID*)&i10)))
+		{
+			i10->Enable(TRUE);
+		}
 	}
 }
 
@@ -80,8 +82,10 @@ HRESULT UEMFireEvent(const GUID* pguidGrp, int eCmd, DWORD dwFlags, WPARAM wPara
 		StrRetToStrW(&psn, pidl, &psz);
 
 		EnsureUserAssist();
-
-		i10->FireEvent(&UAIID_SHORTCUTS, (UAEVENT)eCmd, psz, GetTickCount64());
+		if (i10)
+		{
+			i10->FireEvent(&UAIID_SHORTCUTS, (UAEVENT)eCmd, psz, GetTickCount64());
+		}
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -104,8 +108,10 @@ HRESULT UEMQueryEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lPar
 		StrRetToStrW(&psn, pidl, &psz);
 
 		EnsureUserAssist();
-
-		i10->QueryEntry(&UAIID_SHORTCUTS, psz, pui);
+		if (i10)
+		{
+			i10->QueryEntry(&UAIID_SHORTCUTS, psz, pui);
+		}
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -131,8 +137,10 @@ HRESULT UEMSetEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam
 		StrRetToStrW(&psn, pidl, &psz);
 
 		EnsureUserAssist();
-
-		i10->SetEntry(&UAIID_SHORTCUTS, psz, pui);
+		if (i10)
+		{
+			i10->SetEntry(&UAIID_SHORTCUTS, psz, pui);
+		}
 		CoTaskMemFree(psz);
 		hr = S_OK;
 	}
@@ -144,7 +152,11 @@ HRESULT UEMRegisterNotify(UACallback pfnUEMCB, void* param)
 {
 	printf("UEMRegisterNotify\n");
 	EnsureUserAssist();
-	HRESULT hr = i10->RegisterNotify(pfnUEMCB, param, 1);
+	HRESULT hr = E_NOTIMPL;
+	if (i10)
+	{
+		hr = i10->RegisterNotify(pfnUEMCB, param, 1);
+	}
 	return hr;
 }
 
