@@ -8,7 +8,7 @@
 //
 //  History:    Oct-11-24   aubymori  Created
 //  History:    Jan-20-25   kfh83     Modify for Explorer
-//  History:    Jan-20-25   olive6841 Add COM Interaces
+//  History:    Jan-20-25   AllieTheFox Add COM Interaces
 //
 //--------------------------------------------------------------------------
 
@@ -1421,8 +1421,6 @@ DEFINE_GUID(IID_IPinnedList3, 0x0dd79ae2, 0xd156, 0x45d4, 0x9e, 0xeb, 0x3b, 0x54
 DEFINE_GUID(CLSID_WebCheck, 0xE6FB5E20, 0xDE35, 0x11CF, 0x9C, 0x87, 0x00, 0xAA, 0x00, 0x51, 0x27, 0xED);
 // {08165EA0-E946-11CF-9C87-00AA005127ED}
 DEFINE_GUID(CLSID_WebCheckNew, 0x08165EA0, 0xE946, 0x11CF, 0x9C, 0x87, 0x00, 0xAA, 0x00, 0x51, 0x27, 0xED);
-
-DEFINE_GUID(IID_IUserAssist10, 0x49B36D57, 0x5FD2, 0x45A7, 0x98, 0x1B, 0x6, 0x2, 0x8D, 0x57, 0x7A, 0x47);
 
 MIDL_INTERFACE("968edb91-8a70-4930-8332-5f15838a64f9")
 IShellReminderManager : IUnknown
