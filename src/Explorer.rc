@@ -306,6 +306,7 @@ BEGIN
     IDS_HIDEDEMOTEDTIP          "Hide"
     IDS_BANGICONINFOTITLE       "Hiding your inactive notification icons..."
     IDS_BANGICONINFOTIP1        "To see the hidden icons, click this button."
+    IDS_TRAYNOTIFYTITLESCA      "System Control Area"
     IDS_TRAYNOTIFYTITLE         "Notification Area"
     IDS_TASKBANDTITLE           "Running Applications"
     IDS_HIDEDESKTOP             "&Show Open Windows"

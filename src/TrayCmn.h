@@ -28,13 +28,12 @@ public:
     const CNotificationItem& operator=(const CNotificationItem& ni);
     BOOL operator==(CNotificationItem& ni) const;
 
-    void CopyNotifyItem(const NOTIFYITEM& no, BOOL bInsert = TRUE);    
+    void CopyNotifyItem(const NOTIFYITEM& no, BOOL bInsert = TRUE);
     void CopyPTNPD(const TNPersistStreamData* ptnpd);
 
-    inline void CopyBuffer(LPCTSTR lpszSrc, LPTSTR * plpszDest);
+    inline void CopyBuffer(LPCTSTR lpszSrc, LPTSTR* plpszDest);
     inline void SetExeName(LPCTSTR lpszExeName);
     inline void SetIconText(LPCTSTR lpszIconText);
 };
 
 #endif // _TRAYCMN_H
-

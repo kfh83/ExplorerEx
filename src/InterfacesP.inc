@@ -253,19 +253,21 @@ INotificationCB : IUnknown
 //    STDMETHOD(SetPreference)(LPNOTIFYITEM pNotifyItem) PURE;
 //    STDMETHOD(EnableAutoTray)(BOOL bTraySetting) PURE;
 //};
+
 #pragma optimize( "", off )
 //this is the Windows 8+ variant of ITrayNotify, probably not needed for now but might need it for later
 MIDL_INTERFACE("D133CE13-3537-48BA-93A7-AFCD5D2053B4")
 ITrayNotify : IUnknown
 {
-    STDMETHOD(RegisterCallback)(INotificationCB * callback, ULONG*) PURE;
-    STDMETHOD(UnregisterCallback)(ULONG*) PURE;
-    STDMETHOD(SetPreference)(NOTIFYITEM) PURE;
-    STDMETHOD(EnableAutoTray)(BOOL) PURE;
-    STDMETHOD(DoAction)(BOOL) PURE;
-    STDMETHOD(SetWindowingEnvironmentConfig)(IUnknown*) PURE;
+	STDMETHOD(RegisterCallback)(INotificationCB* callback, DWORD*) PURE;
+	STDMETHOD(UnregisterCallback)(ULONG*) PURE;
+	STDMETHOD(SetPreference)(NOTIFYITEM) PURE;
+	STDMETHOD(EnableAutoTray)(BOOL) PURE;
+	STDMETHOD(DoAction)(BOOL) PURE;
+	STDMETHOD(SetWindowingEnvironmentConfig)(IUnknown*) PURE;
 };
 #pragma optimize( "", on )
+
 MIDL_INTERFACE("2F711B17-773C-41D4-93FA-7F23EDCECB66")
 IAugmentedShellFolder : IShellFolder
 {

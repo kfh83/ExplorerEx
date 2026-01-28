@@ -892,7 +892,7 @@ void CTaskBand::_AsyncAnimateItems()
     UpdateWindow(_tb);
 
     if (_dsaAII.GetItemCount())
-    {             
+    {
         SetTimer(_hwnd, IDT_ASYNCANIMATION, _GetStepTime(iDistanceLeft), NULL);
     }
     else
@@ -924,9 +924,11 @@ void CTaskBand::_AsyncAnimateItems()
                 }
             }
         }
+
+        _HideThumbnail();
+        KillTimer(_hwnd, 10);
     }
 }
-
 
 //-----------------------------------------------------------------------------
 //  DESCRIPTION:  Adjusts the widths of the animating items by the animation 
@@ -3893,19 +3895,19 @@ void CALLBACK CTaskBand::FakeSystemMenuCB(HWND hwnd, UINT uMsg, ULONG_PTR dwData
 
 HWND CTaskBand::_CreateFakeWindow(HWND hwndOwner)
 {
-    WNDCLASSEX wc;
-
-    if (!GetClassInfoEx(g_hinstCabinet, TEXT("_ExplorerFakeWindow"), &wc))
+    WNDCLASSEXW wc;
+    if (!GetClassInfoExW(g_hinstCabinet, L"_ExplorerFakeWindow", &wc))
     {
-        ZeroMemory(&wc, sizeof(wc));
-        wc.cbSize = sizeof(wc);
-        wc.lpfnWndProc = DefWindowProc;
+        wc = {};
+        wc.lpfnWndProc = DefWindowProcW;
         wc.hInstance = g_hinstCabinet;
-        wc.lpszClassName = TEXT("_ExplorerFakeWindow");
-        RegisterClassEx(&wc);
+        wc.cbSize = sizeof(wc);
+        wc.lpszClassName = L"_ExplorerFakeWindow";
+        RegisterClassExW(&wc);
     }
-    return CreateWindow(TEXT("_ExplorerFakeWindow"), NULL, WS_POPUP | WS_SYSMENU, 
-            0, 0, 0, 0, hwndOwner, NULL, g_hinstCabinet, NULL);
+    return SHFusionCreateWindow(
+        L"_ExplorerFakeWindow", nullptr, WS_SYSMENU | WS_POPUP, 0, 0, 0, 0, hwndOwner, nullptr, g_hinstCabinet,
+        nullptr);
 }
 
 void CTaskBand::_HandleSysMenuTimeout()
@@ -4140,21 +4142,22 @@ BOOL _IsChineseLanguage()
 
 void CTaskBand::_DrawNumber(HDC hdc, int iValue, BOOL fCalcRect, LPRECT prc)
 {
-    DWORD uiStyle = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_CENTER;
-    WCHAR szCount[14];
-    _itow_s(iValue, szCount, 10);
+
+    WCHAR szCount[12];
+    StringCchPrintfW(szCount, ARRAYSIZE(szCount), L"%d", iValue);
     if (fCalcRect)
     {
-        StringCchCat(szCount, ARRAYSIZE(szCount), L"0");
+        StringCchCatW(szCount, ARRAYSIZE(szCount), L"0");
     }
 
+    DWORD uiStyle = DT_LEFT | DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
     uiStyle |= fCalcRect ? DT_CALCRECT : 0;
 
     if (_hTheme)
     {
         if (fCalcRect)
         {
-            GetThemeTextExtent(_hTheme, hdc, TDP_GROUPCOUNT, 0, szCount, -1, uiStyle, NULL, prc);
+            GetThemeTextExtent(_hTheme, hdc, TDP_GROUPCOUNT, 0, szCount, -1, uiStyle, nullptr, prc);
         }
         else
         {
@@ -4166,7 +4169,7 @@ void CTaskBand::_DrawNumber(HDC hdc, int iValue, BOOL fCalcRect, LPRECT prc)
         HFONT hfont = (HFONT)SelectObject(hdc, _hfontCapBold);
         SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
         SetBkMode(hdc, TRANSPARENT);
-        DrawText(hdc, (LPTSTR)szCount, -1, prc, uiStyle);
+        DrawText(hdc, szCount, -1, prc, uiStyle);
         SelectObject(hdc, hfont);
     }
 }
@@ -5540,19 +5543,18 @@ LRESULT CALLBACK CTaskBand::s_GlomMenuSiteSubclassProc(HWND hwnd, UINT uMsg, WPA
 
 int CTaskBand::_ShowTooltip(const HWND hWnd)
 {
-    DWORD TickCount; // eax
-    int v4; // ebx
-    int v5; // edi
-    int v6; // edi
-    HMONITOR v7; // eax
-    LONG v8; // ecx
+    // ebx
+    // edi
+    // edi
+    // eax
+    // ecx
     struct tagRECT rcDst; // [esp+Ch] [ebp-3Ch] BYREF
     struct tagRECT v11; // [esp+1Ch] [ebp-2Ch] BYREF
     struct tagRECT Rect; // [esp+2Ch] [ebp-1Ch] BYREF
-    int X; // [esp+3Ch] [ebp-Ch]
-    int v14; // [esp+44h] [ebp-4h]
+    // [esp+3Ch] [ebp-Ch]
+    // [esp+44h] [ebp-4h]
 
-    v14 = 1;
+    int v14 = 1;
     if (!this->_CanShowThumbnail())
         return 0;
 
@@ -5562,13 +5564,13 @@ int CTaskBand::_ShowTooltip(const HWND hWnd)
         {
             GetWindowRect(this->_hwndThumbStack[0], &Rect);
             GetWindowRect(hWnd, &v11);
-            v4 = v11.right - v11.left;
-            v5 = Rect.top - this->_sizeThumbnailTooltip.cy;
-            X = Rect.left + (Rect.right - Rect.left - (v11.right - v11.left)) / 2;
-            v6 = v5 - (v11.bottom - v11.top);
-            v7 = MonitorFromRect(&Rect, 0);
+            int v4 = v11.right - v11.left;
+            int v5 = Rect.top - this->_sizeThumbnailTooltip.cy;
+            int X = Rect.left + (Rect.right - Rect.left - (v11.right - v11.left)) / 2;
+            int v6 = v5 - (v11.bottom - v11.top);
+            HMONITOR v7 = MonitorFromRect(&Rect, 0);
             GetMonitorRects(v7, &rcDst, 0);
-            v8 = X;
+            LONG v8 = X;
             if (X >= rcDst.right - v4)
                 v8 = rcDst.right - v4;
             if (rcDst.left <= v8)
@@ -5588,10 +5590,7 @@ int CTaskBand::_ShowTooltip(const HWND hWnd)
         SetWindowPos(hWnd, 0, 0, 0, 0, 0, 0x16u);
         this->field_120 = hWnd;
         SetTimer(
-            _hwnd,
-            0xBu,
-            this->_dwInitialTooltipDelayTime + this->_dwTick + this->_dwInitialThumbDelayTime - GetTickCount(),
-            0);
+            _hwnd, 0xBu, this->_dwInitialTooltipDelayTime + this->_dwTick + this->_dwInitialThumbDelayTime - GetTickCount(), 0);
     }
     return v14;
 }

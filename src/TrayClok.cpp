@@ -6,17 +6,8 @@
 
 // I have ommited the AcessibleWrapper interface. Beware.
 
-// for w8+ IFlyout
-MIDL_INTERFACE("7a5fca8a-76b1-44c8-a97c-e7173cca5f4f") // @MOD taken from ep_taskbar, based on 8.x
-IFlyout8: IUnknown
-{
-    STDMETHOD(ShowFlyout)(HWND, const RECT*) PURE;
-    STDMETHOD(HideFlyout)() PURE;
-    STDMETHOD(ShowTooltip)(HWND , const RECT*) PURE;
-    STDMETHOD(HideTooltip)() PURE;
-};
-
-enum TRAYORIENTATION
+// Vista IFlyout interface
+/*enum TRAYORIENTATION
 {
     TO_BOTTOM = 0x0,
     TO_RIGHT = 0x1,
@@ -24,15 +15,24 @@ enum TRAYORIENTATION
     TO_TOP = 0x3,
 };
 
-// vista timedate.cpl guid
 // 4376df10-a662-420b-b30d-958881461ef9
 MIDL_INTERFACE("4376df10-a662-420b-b30d-958881461ef9")
 IFlyout : IUnknown
 {
-    STDMETHOD(ShowFlyout)(TRAYORIENTATION , const RECT*) PURE;
+    STDMETHOD(ShowFlyout)(TRAYORIENTATION, const RECT*) PURE;
     STDMETHOD(HideFlyout)() PURE;
     STDMETHOD(ShowTooltip)(TRAYORIENTATION, const RECT*) PURE;
     STDMETHOD(HideTooltip)() PURE;
+};*/
+
+// @MOD Windows 8+ IFlyout interface taken from ep_taskbar
+MIDL_INTERFACE("7a5fca8a-76b1-44c8-a97c-e7173cca5f4f")
+IFlyout : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE ShowFlyout(HWND, const RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE HideFlyout() = 0;
+    virtual HRESULT STDMETHODCALLTYPE ShowTooltip(HWND, const RECT*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE HideTooltip() = 0;
 };
 
 class CClockCtl : public CImpWndProc
@@ -79,10 +79,10 @@ protected:
 
     // New in vista, @MOD - These are referenced off amr's work which includes 8+ compatible variants. PLEEEEASE NOTE!
     void _EnsureFlyout();
-    HRESULT _ShowTooltip(BOOL bShow);
-    HRESULT _ShowFlyout(BOOL bShow);
-    IFlyout* _flyout;
-    IFlyout8* _flyout8;
+    HRESULT _ShowTooltip(BOOL fShow);
+    HRESULT _ShowFlyout(BOOL fShow);
+
+    IFlyout* m_pFlyout;
 
 private:
     ULONG           _cRef;
@@ -101,7 +101,7 @@ private:
     WORD            _wLastHour;       // wHour from local time of last clock tick
     WORD            _wLastMinute;     // wMinute from local time of last clock tick
     WORD            _wLastSecond;     // wSecond from local time of last clock tick
-    
+
     HTHEME          _hTheme;
     HFONT           _hfontCapNormal;
 
@@ -113,45 +113,30 @@ private:
     friend BOOL ClockCtl_Class(HINSTANCE hinst);
 };
 
-HRESULT CClockCtl::_ShowTooltip(BOOL bShow) // @MOD taken from ep_taskbar, based on8.x
+HRESULT CClockCtl::_ShowTooltip(BOOL fShow) // @MOD taken from ep_taskbar, based on8.x
 {
-    wprintf(L"ShowTooltip(%d)\n", bShow);
     HRESULT hr = E_FAIL;
 
-    if (bShow)
+    if (fShow)
     {
         _EnsureFlyout();
     }
 
-    // @MOD support both vista and 8+ interfaces
-    if (_flyout || _flyout8)
+    if (m_pFlyout)
     {
-        if (bShow)
+        if (fShow)
         {
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
-            if (_flyout)
+            if (m_pFlyout)
             {
-                // get proper stuck position
-                hr = _flyout->ShowTooltip(TO_BOTTOM, &rcExclude);
-            }
-            else if (_flyout8)
-            {
-                hr = _flyout8->ShowTooltip(_hwnd, &rcExclude);
+                hr = m_pFlyout->ShowTooltip(_hwnd, &rcExclude);
             }
         }
-        else
+        else if (m_pFlyout)
         {
-            if (_flyout)
-            {
-                hr = _flyout->HideTooltip();
-            }
-            else if (_flyout8)
-            {
-                hr = _flyout8->HideTooltip();
-            }
+            hr = m_pFlyout->HideTooltip();
         }
-        wprintf(L"ShowTooltip(%d)\n", bShow);
     }
 
     return hr;
@@ -304,11 +289,11 @@ void CClockCtl::_EnsureFontsInitialized(BOOL fForce)
             // Create the normal font
             ncm.lfCaptionFont.lfWeight = FW_NORMAL;
             hfont = CreateFontIndirect(&ncm.lfCaptionFont);
-            if (hfont) 
+            if (hfont)
             {
                 if (_hfontCapNormal)
                     DeleteFont(_hfontCapNormal);
-                
+
                 _hfontCapNormal = hfont;
             }
         }
@@ -685,6 +670,7 @@ void CClockCtl::_GetMaxDaySize(HDC hdc, LPSIZE pszTime)
 
 LRESULT CClockCtl::_CalcMinSize(int cxMax, int cyMax)
 {
+#ifdef DEAD_CODE
     RECT rc;
     HDC  hdc;
     HFONT hfontOld = 0;
@@ -761,20 +747,102 @@ LRESULT CClockCtl::_CalcMinSize(int cxMax, int cyMax)
     if (rc.bottom - rc.top <  g_cySize + g_cyEdge)
         rc.bottom = rc.top + g_cySize + g_cyEdge;
 
-    return MAKELRESULT((rc.right - rc.left),
-            (rc.bottom - rc.top));
+    return MAKELRESULT((rc.right - rc.left), (rc.bottom - rc.top));
+#endif
+    if ((GetWindowLongPtr(_hwnd, GWL_STYLE) & WS_VISIBLE) == 0)
+        return 0;
+
+    if (_szTimeFmt[0] == L'\0')
+    {
+        if (GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_STIMEFORMAT, _szTimeFmt, ARRAYSIZE(_szTimeFmt)) == 0)
+        {
+            // TraceMsg(TF_ERROR, "c.ccms: GetLocalInfo Failed %d.", GetLastError());
+        }
+        *_szCurTime = 0;
+    }
+
+    if (_szDateFmt[0] == L'\0')
+    {
+        if (GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_SSHORTDATE, _szDateFmt, ARRAYSIZE(_szDateFmt)) == 0)
+        {
+            // TraceMsg(TF_ERROR, "c.ccms: GetLocalInfo Failed %d.", GetLastError());
+        }
+        *_szCurDate = 0;
+    }
+
+    HDC hdc = GetDC(_hwnd);
+    if (!hdc)
+        return 0;
+
+    _EnsureFontsInitialized(FALSE);
+
+    HFONT hfontOld = nullptr;
+    if (_hfontCapNormal)
+        hfontOld = (HFONT)SelectObject(hdc, _hfontCapNormal);
+
+    SIZE size;
+    SIZE sizeTemp;
+    size.cx = 0;
+    size.cy = 0;
+    sizeTemp.cx = 0;
+    sizeTemp.cy = 0;
+    _GetMaxTimeSize(hdc, &sizeTemp);
+
+    int cy = sizeTemp.cy;
+    int cySpace = sizeTemp.cy / 2;
+    if (sizeTemp.cx > 0)
+    {
+        size.cx = sizeTemp.cx;
+    }
+
+    _GetMaxDaySize(hdc, &sizeTemp);
+    if (cySpace + cy + sizeTemp.cy < cyMax && sizeTemp.cx < cxMax)
+    {
+        cy += cySpace + sizeTemp.cy;
+        if (sizeTemp.cx > size.cx)
+        {
+            size.cx = sizeTemp.cx;
+        }
+
+        _GetMaxDateSize(hdc, &sizeTemp);
+        if (cySpace + cy + sizeTemp.cy < cyMax && sizeTemp.cx < cxMax)
+        {
+            cy += cySpace + sizeTemp.cy;
+            if (sizeTemp.cx > size.cx)
+            {
+                size.cx = sizeTemp.cx;
+            }
+        }
+    }
+
+    if (_hfontCapNormal)
+    {
+        SelectObject(hdc, hfontOld);
+    }
+    ReleaseDC(_hwnd, hdc);
+
+    RECT rc;
+    SetRect(&rc, 0, 0, size.cx, cy + 4 * GetSystemMetrics(6));
+
+    AdjustWindowRectEx(&rc, GetWindowLongW(_hwnd, -16), 0, GetWindowLongW(_hwnd, -20));
+
+    if (rc.bottom - rc.top < g_cyEdge + g_cySize)
+    {
+        rc.bottom = rc.top + g_cyEdge + g_cySize;
+    }
+    return MAKELRESULT(rc.right - rc.left, rc.bottom - rc.top);
 }
 
 LRESULT CClockCtl::_HandleIniChange(WPARAM wParam, LPTSTR pszSection)
 {
-    if ((pszSection == NULL) || (lstrcmpi(pszSection, TEXT("WindowMetrics")) == 0) ||
+    if ((pszSection == nullptr) || (lstrcmpi(pszSection, TEXT("WindowMetrics")) == 0) ||
         wParam == SPI_SETNONCLIENTMETRICS)
     {
         _EnsureFontsInitialized(TRUE);
     }
 
     // Only process certain sections...
-    if ((pszSection == NULL) || (lstrcmpi(pszSection, TEXT("intl")) == 0) ||
+    if ((pszSection == nullptr) || (lstrcmpi(pszSection, TEXT("intl")) == 0) ||
         (wParam == SPI_SETICONTITLELOGFONT))
     {
         TOOLINFO ti;
@@ -789,9 +857,9 @@ LRESULT CClockCtl::_HandleIniChange(WPARAM wParam, LPTSTR pszSection)
         // When the time/locale is changed, we get a WM_WININICHANGE.
         // But the WM_WININICHANGE comes *AFTER* the "sizing" messages. By the time
         // we are here, we have calculated the min. size of the clock window based
-        // on the *PREVIOUS* time. The tray sets the clock window size based on 
+        // on the *PREVIOUS* time. The tray sets the clock window size based on
         // this "previous" size, but NOW we get the WININICHANGE, and can calculate
-        // the new size of the clock. So we have to tell the tray to change our 
+        // the new size of the clock. So we have to tell the tray to change our
         // size now, and then redraw ourselves.
         c_tray.SizeWindows();
 
@@ -850,14 +918,14 @@ void CClockCtl::_HandleThemeChanged(WPARAM wParam)
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     if (wParam)
     {
         _hTheme = OpenThemeData(_hwnd, L"Clock");
     }
-    InvalidateRect(_hwnd, NULL, TRUE);
+    InvalidateRect(_hwnd, nullptr, TRUE);
 }
 
 // @NOTE: Needs more work for tray clock flyout. I only did 2 messages here
@@ -892,7 +960,7 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         //
         if (wParam != PWR_CRITICALRESUME)
             break;
-        // 
+        //
         // Fall through...
         //
     case WM_TIMECHANGE:
@@ -994,75 +1062,54 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 // @MOD taken from ep_taskbar, based on 8.x
 DEFINE_GUID(CLSID_TrayClock, 0xA323554A, 0x0FE1, 0x4E49, 0xAE, 0xE1, 0x67, 0x22, 0x46, 0x5D, 0x79, 0x9F);
+
 void CClockCtl::_EnsureFlyout()
 {
-    if (!_flyout || !_flyout8)
+    if (!m_pFlyout)
     {
-        HRESULT hr = CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout));
-        if (FAILED(hr))
-        {
-            hr = CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_flyout8));
-        }
+        CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pFlyout));
     }
 }
 
-HRESULT CClockCtl::_ShowFlyout(BOOL bShow)  // @MOD taken from ep_taskbar, based on 8.x
+HRESULT CClockCtl::_ShowFlyout(BOOL fShow) // @MOD taken from ep_taskbar, based on 8.x
 {
-    wprintf(L"ShowFlyout(%d)\n", bShow);
-
     HRESULT hr = E_FAIL;
 
-    if (bShow)
+    if (fShow)
     {
         _EnsureFlyout();
-        wprintf(L"EnsureFlyout(%d)\n", bShow);
     }
 
-    // @MOD support both vista and 8+ interfaces
-    if (_flyout || _flyout8)
+    if (m_pFlyout)
     {
-        if (bShow)
+        if (fShow)
         {
-            wprintf(L"Flyout and bShow(%d)\n", bShow);
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
 
-            if (_flyout)
+            if (m_pFlyout)
             {
-                // get proper stuck position
-                hr = _flyout->ShowFlyout(TO_BOTTOM, &rcExclude);
-            }
-            else if (_flyout8)
-            {
-                hr = _flyout8->ShowFlyout(_hwnd, &rcExclude);
+                hr = m_pFlyout->ShowFlyout(_hwnd, &rcExclude);
             }
         }
-        else
+        else if (m_pFlyout)
         {
-            if (_flyout)
-            {
-                hr = _flyout->HideFlyout();
-            }
-            else if (_flyout8)
-            {
-                hr = _flyout8->HideFlyout();
-            }
+            hr = m_pFlyout->HideFlyout();
         }
     }
-    wprintf(L"ShowFlyout(%d)\n", bShow);
     return hr;
 }
 
 // Register the clock class.
 BOOL ClockCtl_Class(HINSTANCE hinst)
 {
-    WNDCLASS wc = {0};
+    WNDCLASS wc = {};
 
     wc.lpszClassName = WC_TRAYCLOCK;
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = CClockCtl::s_WndProc;
     wc.hInstance = hinst;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
     wc.cbWndExtra = sizeof(CClockCtl*);
 
@@ -1072,15 +1119,14 @@ BOOL ClockCtl_Class(HINSTANCE hinst)
 
 HWND ClockCtl_Create(HWND hwndParent, UINT uID, HINSTANCE hInst)
 {
-    HWND hwnd = NULL;
+    HWND hwnd = nullptr;
 
     CClockCtl* pcc = new CClockCtl();
     if (pcc)
     {
-        hwnd = CreateWindowEx(0, WC_TRAYCLOCK,
-            NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE, 0, 0, 0, 0,
-            hwndParent, IntToPtr_(HMENU, uID), hInst, pcc);
-
+        hwnd = SHFusionCreateWindowEx(
+            0, WC_TRAYCLOCK, nullptr, WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD, 0, 0, 0, 0, hwndParent,
+            IntToPtr_(HMENU, uID), hInst, pcc);
         pcc->Release();
     }
     return hwnd;

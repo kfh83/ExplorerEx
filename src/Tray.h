@@ -41,14 +41,19 @@ typedef struct tagTRAYVIEWOPTS
     BOOL fAlwaysOnTop;
     BOOL fSMSmallIcons;
     BOOL fHideClock;
+    BOOL fNoThumbnails;
+
+#define SCA_VOLUME     0
+#define SCA_NETWORK    1
+#define SCA_POWER      2
+    BOOL fHideSCA[3]; // Volume, Network, Power
+
     BOOL fNoTrayItemsDisplayPolicyEnabled;
-	BOOL fNoTaskbarThumbnailsPolicyEnabled; // EXEX-VISTA TODO: Figure out new order of the struct members
     BOOL fNoAutoTrayPolicyEnabled;
     BOOL fAutoTrayEnabledByUser;
     BOOL fShowQuickLaunch;
-    UINT uAutoHide;     // AH_HIDING , AH_ON
-}
-TRAYVIEWOPTS;
+    UINT uAutoHide; // AH_HIDING , AH_ON
+} TRAYVIEWOPTS;
 
 // TVSD Flags.
 #define TVSD_NULL               0x0000
@@ -56,6 +61,10 @@ TRAYVIEWOPTS;
 #define TVSD_TOPMOST            0x0002
 #define TVSD_SMSMALLICONS       0x0004
 #define TVSD_HIDECLOCK          0x0008
+
+#define TVSD_HIDESCAVOLUME      0x10
+#define TVSD_HIDESCANETWORK     0x20
+#define TVSD_HIDESCAPOWER       0x40
 
 // old Win95 TVSD struct
 typedef struct _TVSD95
@@ -256,22 +265,32 @@ public:
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
         ptvo->fHideClock = _fHideClock;
-        ptvo->fNoTaskbarThumbnailsPolicyEnabled = _fNoThumbnails;
+        ptvo->fNoThumbnails = _fNoThumbnails;
         ptvo->fNoTrayItemsDisplayPolicyEnabled = _trayNotify.GetIsNoTrayItemsDisplayPolicyEnabled();
         ptvo->fNoAutoTrayPolicyEnabled = _trayNotify.GetIsNoAutoTrayPolicyEnabled();
         ptvo->fAutoTrayEnabledByUser = _trayNotify.GetIsAutoTrayEnabledByUser();
-        ptvo->uAutoHide = _uAutoHide;     // AH_HIDING , AH_ON
+        ptvo->uAutoHide = _uAutoHide; // AH_HIDING , AH_ON
         ptvo->fShowQuickLaunch = (-1 != SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)-1));
+
+        for (int i = 0; i < ARRAYSIZE(ptvo->fHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
+        {
+            ptvo->fHideSCA[i] = _fHideSCA[i];
+        }
     }
+
     void SetTrayViewOpts(const TRAYVIEWOPTS* ptvo)
     {
         _UpdateAlwaysOnTop(ptvo->fAlwaysOnTop);
         SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)ptvo->fShowQuickLaunch);
         _fSMSmallIcons = ptvo->fSMSmallIcons;
         _fHideClock = ptvo->fHideClock;
-		_fNoThumbnails = ptvo->fNoTaskbarThumbnailsPolicyEnabled;
-        _uAutoHide = ptvo->uAutoHide;     // AH_HIDING , AH_ON
+        _fNoThumbnails = ptvo->fNoThumbnails;
+        _uAutoHide = ptvo->uAutoHide; // AH_HIDING , AH_ON
 
+        for (int i = 0; i < ARRAYSIZE(_fHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
+        {
+            _fHideSCA[i] = ptvo->fHideSCA[i];
+        }
         // There is no necessity to save the fNoAutoTrayPolicyEnabled, 
         // fNoTrayItemsDisplayPolicyEnabled, fAutoTrayEnabledByUser settings...
     }
@@ -562,6 +581,11 @@ protected:
     HWND _hwndTrayTips;
     HWND _hwndTasks;
 
+public: // @TEMP
+    int _iSizingBarHeight;
+
+protected:
+    IOleCommandTarget* _pSysTray;
     SIZE _sizeSizingBar;
     int  _iAlpha;
 
@@ -582,7 +606,8 @@ protected:
     BOOL _fThreadTerminate;
     BOOL _fSysSizing;      // being sized by user; hold off on recalc
     BOOL _fHideClock;
-    BOOL _fNoThumbnails; // Vista - New
+    BOOL _fNoThumbnails;    // Vista - New
+    BOOL _fHideSCA[3];      // Volume, Network, Power
     BOOL _fShouldResize;
     BOOL _fMonitorClipped;
     BOOL _fHandledDelayBootStuff;

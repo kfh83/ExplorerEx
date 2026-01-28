@@ -109,25 +109,25 @@ LRESULT CALLBACK TaskbarSizingBarSubclassProc(
         GetWindowRect(hWnd, &rc);
 
         UINT uStuckPlace = c_tray.getStuckPlace();
-        /*if (uStuckPlace)
+        if (uStuckPlace)
         {
             if (uStuckPlace == 1)
             {
-                rc.bottom -= c_tray._cyClockMargin;
+                rc.bottom -= c_tray._iSizingBarHeight;
             }
             else if (uStuckPlace == 2)
             {
-                rc.left += c_tray._cyClockMargin;
+                rc.left += c_tray._iSizingBarHeight;
             }
             else
             {
-                rc.top += c_tray._cyClockMargin;
+                rc.top += c_tray._iSizingBarHeight;
             }
         }
         else
         {
-            rc.right -= c_tray._cyClockMargin;
-        }*/
+            rc.right -= c_tray._iSizingBarHeight;
+        }
 
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
@@ -182,25 +182,25 @@ void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething
     }
 }
 
-BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown *punk)
+BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown* punk)
 {
-    IDeskBand2 *pdb2;
-    BOOL fCanRenderComposited = FALSE;
+    BOOL fFixed = FALSE;
+    BOOL fGlassEnabled = FALSE;
+    BOOL fCompositionEnabled = IsAppThemed() && IsCompositionActive();
+
+    IDeskBand2* pdb2;
     if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pdb2))))
     {
-        pdb2->CanRenderComposited(&fCanRenderComposited);
-        pdb2->SetCompositionState(fCanRenderComposited && (IsAppThemed() && IsCompositionActive()));
+        pdb2->CanRenderComposited(&fGlassEnabled);
+        pdb2->SetCompositionState(fGlassEnabled && fCompositionEnabled);
         pdb2->Release();
     }
-
-    BOOL bRet = FALSE;
-    if (!fCanRenderComposited)
+    if (!fGlassEnabled)
     {
-        bRet = TRUE;
+        fFixed = TRUE;
         c_tray.EnableGlass(FALSE);
     }
-
-    return bRet;
+    return fFixed;
 }
 
 // @NOTE (allison): Thanks to amr for this solution
@@ -316,21 +316,21 @@ static BOOL CALLBACK SetTransparency(HWND hwnd, LPARAM lParam)
 BOOL IsSizeMoveRestricted()
 {
     // Refused to compile for me, linker error:
-    //return SHRegGetBoolValueFromHKCUHKLM(
-    //    L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-    //    L"LockTaskbar",
-    //    FALSE);
+    return _SHRegGetBoolValueFromHKCUHKLM(
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+        L"LockTaskbar",
+        FALSE);
     return FALSE;
 }
 
 BOOL IsSizeMoveEnabled()
 {
     // Refused to compile for me, linker error:
-    //return !IsSizeMoveRestricted()
-    //    && SHRegGetBoolValueFromHKCUHKLM(
-    //        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-    //        L"TaskbarSizeMove",
-    //        TRUE);
+    return !IsSizeMoveRestricted()
+        && _SHRegGetBoolValueFromHKCUHKLM(
+            L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            L"TaskbarSizeMove",
+            TRUE);
     return TRUE;
 }
 
@@ -392,7 +392,7 @@ HRESULT CTrayBandSite::AddBand(IUnknown* punk)
                 HWND hwnd;
                 if (SUCCEEDED(pdbi->GetDefaultBandWidth(ShortFromResult(hr), 0, &nWidth)) && SUCCEEDED(IUnknown_GetWindow(_pbsInner, &hwnd)))
                 {
-                    int iIndex = SendMessageW(hwnd, RB_INSERTBAND, ShortFromResult(hr), 0);
+                    int iIndex = (int)SendMessageW(hwnd, RB_IDTOINDEX, (WPARAM)ShortFromResult(hr), 0);
                     SendMessageW(hwnd, RB_SETBANDWIDTH, iIndex, nWidth);
                 }
                 pdbi->Release();
@@ -427,7 +427,9 @@ HRESULT CTrayBandSite::SetBandState(DWORD dwBandID, DWORD dwMask, DWORD dwState)
 
 HRESULT CTrayBandSite::RemoveBand(DWORD dwBandID)
 {
-    return _pbsInner->RemoveBand(dwBandID);
+    HRESULT hr = _pbsInner->RemoveBand(dwBandID);
+    BandSite_FixUpComposition(this);
+    return hr;
 }
 
 
@@ -461,22 +463,13 @@ HRESULT CTrayBandSite::_AddRequiredBands()
 
 HRESULT CTrayBandSite::_SetWindowTheme(LPWSTR pwzTheme)
 {
-    if (_pwzTheme)
-    {
-        delete[] _pwzTheme;
-        _pwzTheme = NULL;
-    }
+    CoTaskMemFree(_pwzTheme);
+    _pwzTheme = nullptr;
 
     if (pwzTheme)
     {
-        int cchLen = lstrlen(pwzTheme) + 1;
-        _pwzTheme = new WCHAR[cchLen];
-        if (_pwzTheme)
-        {
-            StringCchCopy(_pwzTheme, cchLen, pwzTheme);
-        }
+        SHStrDupW(pwzTheme, &_pwzTheme);
     }
-
     return S_OK;
 }
 

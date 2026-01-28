@@ -917,6 +917,7 @@ IShellTaskSchedulerSettings : IUnknown
 	virtual HRESULT STDMETHODCALLTYPE GetFlags(SCHEDULERFLAGS *) = 0;
 };
 
+// d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp
 LSTATUS __stdcall SHRegGetDWORDW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, DWORD *pdwData)
 {
 	DWORD pcbData; // [esp+8h] [ebp-4h] BYREF
@@ -926,6 +927,7 @@ LSTATUS __stdcall SHRegGetDWORDW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue,
 	//	CULAssertOutputDebugString((int)L"d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp", 155, (int)L"hkey");
 	//	__debugbreak();
 	//}
+	// 
 	//if (!pdwData)
 	//{
 	//	CULAssertOutputDebugString((int)L"d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp", 156, (int)L"pdwData");
@@ -948,7 +950,8 @@ LSTATUS __stdcall SHRegGetDWORDW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue,
 
 #define HYBRID_CODE
 
-DEFINE_GUID(CLSID_StartMenuPathCompleteQueryCache, 0x8099904B, 0x0B91, 0x4906, 0xA8, 0x9D, 0x11, 0xDE, 0x2B, 0xD8, 0xF7, 0x37); // 8099904b-0b91-4906-a89d-11de2bd8f737
+// 8099904b-0b91-4906-a89d-11de2bd8f737
+DEFINE_GUID(CLSID_StartMenuPathCompleteQueryCache, 0x8099904B, 0x0B91, 0x4906, 0xA8, 0x9D, 0x11, 0xDE, 0x2B, 0xD8, 0xF7, 0x37);
 GUID CLSID_StartMenuQueryCache =
 {
   1830086837u,
@@ -3999,7 +4002,7 @@ void CSearchOpenView::_SizeExplorerBrowser(int cx, int cy)
 		cmci.dwState = CM_STATE_NONE;
 		cmci.dwMask = CM_MASK_WIDTH;
 		cmci.uWidth = (UINT)RECTWIDTH(rc);
-		if (field_B0 != 0) // EXEX-Vista(allison): TODO: Check why field_B0 is never true
+		//if (field_B0 != 0) // EXEX-Vista(allison): TODO: Check why field_B0 is never true
 		{
 			cmci.uWidth -= GetSystemMetrics(SM_CXVSCROLL);
 		}

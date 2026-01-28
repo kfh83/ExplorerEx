@@ -523,6 +523,21 @@ HRESULT SHBindToObjectEx(IShellFolder* psf, LPCITEMIDLIST pidl, LPBC pbc, REFIID
     return hr;
 }
 
+static void LogZ(const wchar_t* tag, HWND h)
+{
+    const DWORD ex = static_cast<DWORD>(GetWindowLongPtr(h, GWL_EXSTYLE));
+    const HWND parent = GetParent(h);
+    const HWND owner = GetWindow(h, GW_OWNER);
+    RECT rc{};
+    GetWindowRect(h, &rc);
+    wprintf(L"[Z] %s hwnd=%p ex=%08x topmost=%d tool=%d layered=%d parent=%p owner=%p rect=(%ld,%ld %ld,%ld)\n",
+        tag, h, ex,
+        !!(ex & WS_EX_TOPMOST),
+        !!(ex & WS_EX_TOOLWINDOW),
+        !!(ex & WS_EX_LAYERED),
+        parent, owner, rc.left, rc.top, rc.right, rc.bottom);
+}
+
 BOOL SetWindowZorder(HWND hwnd, HWND hwndInsertAfter)
 {
     return SetWindowPos(hwnd, hwndInsertAfter, 0, 0, 0, 0,
@@ -538,8 +553,10 @@ BOOL CALLBACK _FixZorderEnumProc(HWND hwnd, LPARAM lParam)
     {
         if (hwndOwner == hwndTest)
         {
+            wprintf(L"[Z] _FixZorderEnumProc demote owned topmost hwnd=%p (owner=%p)\n", hwnd, hwndTest);
+            LogZ(L"demote:before", hwnd);
             SetWindowZorder(hwnd, HWND_NOTOPMOST);
-
+            LogZ(L"demote:after", hwnd);
             break;
         }
     }
@@ -2842,7 +2859,8 @@ bool SHUndocInit(void)
 		LOAD_ORDINAL(shlwapi, SHQueueUserWorkItem, 260);
 		LOAD_ORDINAL(shlwapi, SHLoadRegUIStringW, 439);
 		LOAD_ORDINAL(shlwapi, SHCreateWorkerWindowW, 278);
-
+        LOAD_ORDINAL(shlwapi, _SHRegGetValueFromHKCUHKLM, 629);
+        LOAD_ORDINAL(shlwapi, _SHRegGetBoolValueFromHKCUHKLM, 630);
     }
 
 

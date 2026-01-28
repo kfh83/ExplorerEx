@@ -40,7 +40,7 @@ IShellUserAssist : IUnknown
 	virtual HRESULT STDMETHODCALLTYPE RegisterNotify(UACallback pfnUACB, void* param, int) = 0;
 };
 
-IShellUserAssist *g_uempUa = NULL;
+IShellUserAssist* g_uempUa = NULL;
 
 BOOL UEMIsLoaded()
 {
@@ -62,6 +62,26 @@ VOID EnsureUserAssist()
 	}
 }
 
+DEFINE_GUID(IID_IShellUserAssist7, 0x90D75131, 0x43A6, 0x4664, 0x9A, 0xF8, 0xDC, 0xCE, 0xB8, 0x5A, 0x74, 0x62);
+DEFINE_GUID(IID_IShellUserAssist10, 0x49B36D57, 0x5FD2, 0x45A7, 0x98, 0x1B, 0x6, 0x2, 0x8D, 0x57, 0x7A, 0x47);
+
+IShellUserAssist* g_pUserAssist = nullptr;
+
+VOID EnsureUserAssistMulti()
+{
+	if (!g_pUserAssist)
+	{
+		HRESULT hr = CoCreateInstance(CLSID_UserAssist, nullptr, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IShellUserAssist10, (PVOID*)&g_pUserAssist);
+		if (FAILED(hr))
+		{
+			hr = CoCreateInstance(CLSID_UserAssist, nullptr, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_NO_CODE_DOWNLOAD, IID_IShellUserAssist7, (PVOID*)&g_pUserAssist);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = g_pUserAssist->Enable(TRUE);
+		}
+	}
+}
 
 HRESULT UEMFireEvent(const GUID* pguidGrp, int eCmd, DWORD dwFlags, WPARAM wParam, LPARAM lParam)
 {
@@ -180,34 +200,33 @@ HMODULE SHPinDllOfCLSID(REFCLSID rclsid)
 	return fn ? fn(rclsid) : nullptr;
 }
 
-IShellUserAssist *GetUserAssistWorker(REFCLSID clsidUserAssist)
+IShellUserAssist* GetUserAssistWorker(REFCLSID clsidUserAssist)
 {
-	IShellUserAssist *pua;
-
 	if (!g_uempUa)
 	{
-		if (SUCCEEDED(CoCreateInstance(clsidUserAssist, nullptr, CLSCTX_INPROC | CLSCTX_NO_CODE_DOWNLOAD, IID_PPV_ARGS(&pua))))
+		IShellUserAssist* pua;
+		HRESULT hr = CoCreateInstance(clsidUserAssist, nullptr, CLSCTX_INPROC | CLSCTX_NO_CODE_DOWNLOAD, IID_IShellUserAssist10, (void**)&pua);
+		if (FAILED(hr))
+		{
+			hr = CoCreateInstance(clsidUserAssist, nullptr, CLSCTX_INPROC | CLSCTX_NO_CODE_DOWNLOAD, IID_IShellUserAssist7, (void**)&pua);
+		}
+		if (SUCCEEDED(hr))
 		{
 			SHPinDllOfCLSID(clsidUserAssist);
 		}
-		else
-		{
-			pua = (IShellUserAssist *)-1;
-		}
 
-		if (InterlockedCompareExchangePointer((void **)&g_uempUa, pua, nullptr) && pua != (IShellUserAssist *)-1)
+		if (InterlockedCompareExchangePointer((void**)&g_uempUa, pua, nullptr) && pua != (IShellUserAssist*)-1)
 		{
 			pua->Release();
 		}
 	}
-
-	return g_uempUa != (IShellUserAssist *)-1 ? g_uempUa : nullptr;
+	return g_uempUa != (IShellUserAssist*)-1 ? g_uempUa : nullptr;
 }
 
-HRESULT UAQueryEntry(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut)
+HRESULT UAQueryEntry(const GUID* pguidGrp, LPCWSTR pszPath, UEMINFO* pueiOut)
 {
 	HRESULT hr = E_FAIL;
-	IShellUserAssist *pua = GetUserAssistWorker(CLSID_UserAssist);
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
 	if (pua)
 	{
 		hr = pua->QueryEntry(pguidGrp, pszPath, pueiOut);
@@ -215,10 +234,10 @@ HRESULT UAQueryEntry(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut)
 	return hr;
 }
 
-HRESULT UARegisterNotify(UACallback a1, void *a2, int a3)
+HRESULT UARegisterNotify(UACallback a1, void* a2, int a3)
 {
 	HRESULT hr = E_FAIL;
-	IShellUserAssist *pua = GetUserAssistWorker(CLSID_UserAssist);
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
 	if (pua)
 	{
 		hr = pua->RegisterNotify(a1, a2, a3);

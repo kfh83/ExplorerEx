@@ -674,10 +674,11 @@ HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIS
 }
 
 #include "cocreateinstancehook.h"
+#define FALLBACK_ALLPROGRAMS_LIST
 
 HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 {
-	HRESULT hr = CoCreateInstance(CLSID_NamespaceTreeControl, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pns));
+	HRESULT hr = CoCreateInstance(CLSID_NamespaceTreeControl, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pns));
 	if (SUCCEEDED(hr))
 	{
 		IUnknown_SetSite(_pns, static_cast<INameSpaceTreeControlEvents*>(this));
@@ -698,21 +699,21 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 				v5 |= NSTCS_NOORDERSTREAM;
 			}
 
-			hr = _pns->Initialize(hwnd, NULL, v5);
+			hr = _pns->Initialize(hwnd, nullptr, v5);
 			if (SUCCEEDED(hr))
 			{
 				LPITEMIDLIST pidl;
-				hr = BindToGetFolderAndPidl(CLSID_ProgramsFolderAndFastItems, NULL, &pidl);
+				hr = BindToGetFolderAndPidl(CLSID_ProgramsFolderAndFastItems, nullptr, &pidl);
 				if (SUCCEEDED(hr))
 				{
-					IShellItem *psi;
+					IShellItem* psi;
 					hr = SHCreateItemFromIDList(pidl, IID_PPV_ARGS(&psi));
 					if (SUCCEEDED(hr))
 					{
-						CoCreateInstance(CLSID_PersonalStartMenu, 0, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
+						CoCreateInstance(CLSID_PersonalStartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
 						if (this->_psif)
 						{
-							IUnknown_SetSite(_psif, static_cast<IServiceProvider *>(this));
+							IUnknown_SetSite(_psif, static_cast<IServiceProvider*>(this));
 						}
 
 						hr = _pns->AppendRoot(psi, 96, 3, _psif);
@@ -722,16 +723,16 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 						}
 						psi->Release();
 					}
-					ILFree((LPITEMIDLIST)pidl);
+					ILFree(pidl);
 				}
 
 				LPCWSTR pszTheme = IsCompositionActive() ? L"StartMenuHoverComposited" : L"StartMenuHover";
 				_pns->SetTheme(pszTheme);
 
-#if 1
+#ifdef FALLBACK_ALLPROGRAMS_LIST
 				WCHAR szFallback[MAX_PATH];
 				ExpandEnvironmentStringsW(L"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs", szFallback, MAX_PATH);
-				IShellItem *psi = nullptr;
+				IShellItem* psi = nullptr;
 				if (SUCCEEDED(SHCreateItemFromParsingName(szFallback, nullptr, IID_PPV_ARGS(&psi))))
 				{
 					_pns->AppendRoot(psi, 96, 3, nullptr);

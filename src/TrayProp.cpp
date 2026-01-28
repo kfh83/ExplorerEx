@@ -627,7 +627,7 @@ LRESULT CNotificationsDlg::OnCloseCmd(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
     if (_hPlaceholderIcon)
     {
         DestroyIcon(_hPlaceholderIcon);
-        _hPlaceholderIcon = NULL;
+        _hPlaceholderIcon = nullptr;
     }
 
     _saItems.RemoveAll();
@@ -644,8 +644,8 @@ LRESULT CNotificationsDlg::OnCloseCmd(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 
     if (_pTrayNotify)
     {
-        ULONG a;
-        _pTrayNotify->RegisterCallback(NULL,&a);
+        DWORD dwToken;
+        _pTrayNotify->RegisterCallback(nullptr, &dwToken);
     }
 
     bHandled = TRUE;
@@ -1685,7 +1685,7 @@ void _TaskbarOptions_OnInitDialog(HWND hDlg)
 
     if (!SHWindowsPolicy(POLID_TaskbarNoThumbnail) && c_tray.GlassEnabled() && IsCompositionActive())
     {
-        CheckDlgButton(hDlg, IDC_SHOW_THUMBNAILS, !tvo.fNoTaskbarThumbnailsPolicyEnabled);
+        CheckDlgButton(hDlg, IDC_SHOW_THUMBNAILS, !tvo.fNoThumbnails);
     }
     else
     {
@@ -1968,7 +1968,7 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
     if (::IsWindowEnabled(::GetDlgItem(hDlg, IDC_SHOW_THUMBNAILS)))
     {
         BOOL v4 = ::IsDlgButtonChecked(hDlg, IDC_SHOW_THUMBNAILS);
-        tvo.fNoTaskbarThumbnailsPolicyEnabled = !v4;
+        tvo.fNoThumbnails = !v4;
         SendMessage(c_tray._hwndTasks, 0x43F, 0, v4);
     }
 

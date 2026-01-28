@@ -61,11 +61,11 @@ const WCHAR CTrayNotify::c_wzTrayNotifyVertOpenTheme[]      = L"TrayNotifyVertOp
 //
 // Global functions...
 //
-int CALLBACK DeleteDPAPtrCB(TNINFOITEM *pItem, void *pData);
+int CALLBACK DeleteInfoItemCB(TNINFOITEM *pItem, void *pData);
 
-int CALLBACK DeleteDPAPtrCB(TNINFOITEM *pItem, void *pData)
+int CALLBACK DeleteInfoItemCB(TNINFOITEM* pItem, void* pData)
 {
-    LocalFree(pItem);
+    delete pItem;
     return TRUE;
 }
 
@@ -172,16 +172,34 @@ void CTrayNotify::_TestNotify()
 
 #endif  // DEBUG
 
-void CTrayNotify::_TickleForTooltip(CNotificationItem *pni)
+DEFINE_GUID(SCAID_Volume,   0x7820AE73, 0x23E3, 0x4229, 0x82, 0xC1, 0xE4, 0x1C, 0xB6, 0x7D, 0x5B, 0x9C);
+DEFINE_GUID(SCAID_Network,  0x7820AE74, 0x23E3, 0x4229, 0x82, 0xC1, 0xE4, 0x1C, 0xB6, 0x7D, 0x5B, 0x9C);
+DEFINE_GUID(SCAID_Power,    0x7820AE75, 0x23E3, 0x4229, 0x82, 0xC1, 0xE4, 0x1C, 0xB6, 0x7D, 0x5B, 0x9C);
+
+#define SCAID_Min           SCAID_Volume
+#define SCAID_Max           SCAID_Power
+#define SCAID_RANGE_START   SCAID_Min.Data1
+#define SCAID_RANGE_END     SCAID_Max.Data1
+
+BOOL IsSCAGuid(REFGUID guidItem)
 {
-    if (pni->pszIconText == NULL || *pni->pszIconText == 0)
+    // Check if the .Data1 section of the guidItem is between SCAID_Min and SCAID_Max
+    // and the rest of the guid matches the usual SCAID trailing bytes,
+    // which will return true for Volume, Network and Power guids.
+    return memcmp(&guidItem.Data2, &SCAID_Min.Data2, sizeof(SCAID_Min) - sizeof(SCAID_Min.Data1)) == 0
+        && guidItem.Data1 >= SCAID_RANGE_START
+        && guidItem.Data1 <= SCAID_RANGE_END;
+}
+
+void CTrayNotify::_TickleForTooltip(CNotificationItem* pni)
+{
+    if (IsSCAGuid(pni->guidItem))
+        return;
+
+    WCHAR* pszIconText = pni->pszIconText;
+    if (pszIconText == nullptr || *pszIconText == 0)
     {
-        //
-        // item hasn't set tooltip yet, tickle it by sending
-        // mouse-moved notification
-        //
-        CTrayItem *pti = m_TrayItemManager.GetItemDataByIndex(
-            m_TrayItemManager.FindItemAssociatedWithHwndUid(pni->hWnd, pni->uID));
+        CTrayItem* pti = m_TrayItemManager.GetItemDataByIndex(m_TrayItemManager.FindItemAssociatedWithHwndUid(pni->hWnd, pni->uID));
         if (pti)
         {
             _SendNotify(pti, WM_MOUSEMOVE, 0, nullptr, 0);
@@ -311,21 +329,22 @@ UINT CTrayNotify::_GetAccumulatedTime(CTrayItem * pti)
     return uTimerElapsed;
 }
 
-void CTrayNotify::_RemoveImage(UINT uIMLIndex)
+void CTrayNotify::_RemoveImage(REFGUID guid, UINT uIMLIndex)
 {
-    INT_PTR nCount;
-    INT_PTR i;
-
-    if (uIMLIndex != (UINT)-1) 
+    CTrayItemManager* ptim = _GetItemManagerByGuid(guid);
+    if (uIMLIndex != (UINT)-1)
     {
-        ImageList_Remove(_himlIcons, uIMLIndex);
+        HIMAGELIST himlIcons = _GetImageListByGuid(guid);
+        ImageList_Remove(himlIcons, uIMLIndex);
 
-        nCount = m_TrayItemManager.GetItemCount();
-        for (i = nCount - 1; i >= 0; i--) 
+        INT_PTR nCount = ptim->GetItemCount();
+        for (INT_PTR i = nCount - 1; i >= 0; i--)
         {
-            int iImage = m_TrayItemManager.GetTBBtnImage(i);
+            int iImage = ptim->GetTBBtnImage(i);
             if (iImage > (int)uIMLIndex)
-                m_TrayItemManager.SetTBBtnImage(i, iImage - 1);
+            {
+                ptim->SetTBBtnImage(i, iImage - 1);
+            }
         }
     }
 }
@@ -333,8 +352,9 @@ void CTrayNotify::_RemoveImage(UINT uIMLIndex)
 //---------------------------------------------------------------------------
 // Returns TRUE if either the images are OK as they are or they needed
 // resizing and the resize process worked. FALSE otherwise.
-BOOL CTrayNotify::_CheckAndResizeImages()
+BOOL CTrayNotify::_CheckAndResizeImages(HWND hwndToolbar)
 {
+#ifdef DEAD_CODE
     HIMAGELIST himlOld, himlNew;
     int cxSmIconNew, cySmIconNew, cxSmIconOld, cySmIconOld;
     int i, cItems;
@@ -405,6 +425,88 @@ BOOL CTrayNotify::_CheckAndResizeImages()
     }
 
     return fOK;
+#endif
+    // ebp
+    // rsi
+    // r12d
+    // ebx MAPDST
+    UINT v9; // eax
+    HIMAGELIST himlNew; // rbx
+    int i; // r12d
+    int cItems; // r13d
+    HICON hicon; // r15
+    int cxSmIconOld; // [rsp+30h] [rbp-48h] BYREF
+    int cySmIconOld; // [rsp+34h] [rbp-44h] BYREF
+
+    BOOL fOK = 1;
+
+    if (_fNoTrayItemsDisplayPolicyEnabled)
+        return 1;
+
+    HIMAGELIST* phimlIcons = &_himlIcons;
+    if (hwndToolbar == _hwndToolbarSCA)
+    {
+        phimlIcons = &_himlIconsSCA;
+    }
+
+    cxSmIconOld = 0;
+    cySmIconOld = 0;
+    ImageList_GetIconSize(*phimlIcons, &cxSmIconOld, &cySmIconOld);
+
+    int cxSmIconNew = GetSystemMetrics(SM_CXSMICON);
+    int cySmIconNew = GetSystemMetrics(SM_CYSMICON);
+    if (cxSmIconNew != cxSmIconOld || cySmIconNew != cySmIconOld)
+    {
+        v9 = SHGetImageListFlags(hwndToolbar);
+        himlNew = ImageList_Create(cxSmIconNew, cySmIconNew, v9, 0, 1);
+        if (himlNew)
+        {
+            i = 0;
+            cItems = ImageList_GetImageCount(*phimlIcons);
+            if (cItems <= 0)
+            {
+            LABEL_16:
+                ImageList_Destroy(*phimlIcons);
+                *phimlIcons = himlNew;
+
+                if (himlNew == _himlIconsSCA)
+                    m_TrayItemManagerSCA.SetIconList(himlNew);
+                else
+                    m_TrayItemManager.SetIconList(himlNew);
+                SendMessageW(hwndToolbar, TB_SETIMAGELIST, 0, (LPARAM)*phimlIcons);
+                SendMessageW(hwndToolbar, TB_AUTOSIZE, 0, 0);
+            }
+            else
+            {
+                while (true)
+                {
+                    hicon = ImageList_GetIcon(*phimlIcons, i, 0);
+                    if (hicon)
+                    {
+                        if (ImageList_ReplaceIcon(himlNew, -1, hicon) == -1)
+                        {
+                            fOK = 0;
+                        }
+                        DestroyIcon(hicon);
+                    }
+                    else
+                    {
+                        fOK = 0;
+                    }
+                    if (!fOK)
+                    {
+                        break;
+                    }
+                    if (++i >= cItems)
+                    {
+                        goto LABEL_16;
+                    }
+                }
+                ImageList_Destroy(himlNew);
+            }
+        }
+    }
+    return fOK;
 }
 
 void CTrayNotify::_ActivateTips(BOOL bActivate)
@@ -417,6 +519,9 @@ void CTrayNotify::_ActivateTips(BOOL bActivate)
 
     if (_hwndToolbarInfoTip)
         SendMessage(_hwndToolbarInfoTip, TTM_ACTIVATE, (WPARAM)bActivate, 0);
+
+    if (_hwndToolbarInfoTipSCA)
+        SendMessage(_hwndToolbarInfoTipSCA, TTM_ACTIVATE, (WPARAM)bActivate, 0);
 }
 
 // x,y in client coords
@@ -615,7 +720,7 @@ void CTrayNotify::_EmptyInfoTipQueue()
 {
     delete _pinfo;
     _pinfo = NULL;
-    _dpaInfo.EnumCallback(DeleteDPAPtrCB, NULL);
+    _dpaInfo.EnumCallback(DeleteInfoItemCB, NULL);
     _dpaInfo.DeleteAllPtrs();
 }
 
@@ -741,12 +846,11 @@ void CTrayNotify::_ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UIN
         // maybe it's in the queue
 
         // Remove only the first info tip from this (hwnd, uID)
-        _RemoveInfoTipFromQueue(hwnd, uID, TRUE);
+        _RemoveInfoTipFromQueue(GUID_NULL, hwnd, uID, TRUE);
     }
 }
 
-void CTrayNotify::_SetInfoTip(HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle,
-        DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync)
+void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync)
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
 
@@ -825,8 +929,11 @@ DWORD CTrayNotify::_GetBalloonWaitInterval(BALLOONEVENT be)
     }
 }
 
+DEFINE_GUID(POLID_TaskbarNoNotification, 0x16C9508E, 0x7D8B, 0x4972, 0x9D, 0xFF, 0x92, 0x03, 0x06, 0x09, 0xDD, 0xCB);
+
 BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbRefresh, BOOL bFirstTime)
 {
+#ifdef DEAD_CODE
     BOOL fResize = FALSE;
 
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
@@ -837,7 +944,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         return FALSE;
     }
 
-    _CheckAndResizeImages();
+    _CheckAndResizeImages(_hwndToolbar); // @NOTE: _hwndToolbar hardcoded to fix compile temporarily
 
     if (pnid->uFlags & NIF_STATE) 
     {
@@ -1022,38 +1129,242 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         _NotifyCallback(NIM_MODIFY, nIcon, -1);
 
     return TRUE;
+#endif
+    // eax
+    // edi
+    // edi
+    DWORD dwInfoFlags; // eax
+    BOOL v16; // eax
+    // [esp+10h] [ebp-34h]
+    int bIsEqualIcon; // [esp+14h] [ebp-30h]
+    // [esp+18h] [ebp-2Ch]
+    int iCount; // [esp+18h] [ebp-2Ch]
+    // [esp+1Ch] [ebp-28h]
+    // [esp+20h] [ebp-24h]
+    HICON hIcon2; // [esp+20h] [ebp-24h]
+    int iImageNew; // [esp+20h] [ebp-24h]
+    int iImageOld; // [esp+24h] [ebp-20h] MAPDST
+    // [esp+4Ch] [ebp+8h]
+
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 826
+
+    BOOL fResize = 0;
+
+    CTrayItemManager* ptim = _GetItemManagerByGuid(pnid->guidItem);
+    HIMAGELIST himl = _GetImageListByGuid(pnid->guidItem);
+
+    CTrayItem* pti = ptim->GetItemDataByIndex(nIcon);
+    if (!pti || !bFirstTime
+        && pnid->uFlags == (NIF_INFO | NIF_GUID)
+        && IsSCAGuid(pnid->guidItem)
+        && (SHWindowsPolicy(POLID_TaskbarNoNotification) || pti->IsHidden()))
+    {
+        return FALSE;
+    }
+
+    //pti->field_6D8 = (pnid->uFlags >> 7) & 1;
+
+    if ((pnid->uFlags & NIF_GUID) != 0)
+        memcpy(&pti->guidItem, &pnid->guidItem, sizeof(pnid->guidItem));
+    else
+        pnid->guidItem = GUID_NULL;
+
+    _CheckAndResizeImages(_hwndToolbar);
+    _CheckAndResizeImages(_hwndToolbarSCA);
+
+    if (SHWindowsPolicy(POLID_TaskbarNoNotification))
+        pnid->uFlags &= ~0x10u;
+
+    if ((pnid->uFlags & NIF_STATE) != 0)
+    {
+        DWORD dwOldState = pti->dwState;
+        DWORD dwStateMask = pnid->dwStateMask;
+        if ((dwStateMask & ~3u) != 0) // NIS_VALIDMASK
+            return FALSE;
+
+        pti->dwState = dwStateMask & pnid->dwState | pti->dwState & ~dwStateMask;
+        if ((pnid->dwStateMask & 1) != 0)
+        {
+            if (pti->IsHidden())
+            {
+                ptim->SetTBBtnStateHelper(nIcon, 4, 0);
+                _PlaceItem(nIcon, pti, TRAYEVENT_ONICONHIDE);
+            }
+            else
+            {
+                ptim->SetTBBtnStateHelper(nIcon, 4, 0);
+                _PlaceItem(nIcon, pti, TRAYEVENT_ONICONHIDE);
+            }
+        }
+        if ((((unsigned __int8)dwOldState ^ LOBYTE(pnid->dwState)) & 2) != 0 && (dwOldState & 2) != 0)
+        {
+            ptim->SetTBBtnImage(nIcon, -1);
+            pti->hIcon = nullptr;
+        }
+        fResize = ((unsigned __int8)dwOldState ^ (unsigned __int8)pnid->dwState) & 1;
+    }
+
+    HICON hIcon1 = 0;
+    if ((pnid->uFlags & 2) != 0)
+    {
+        hIcon2 = 0;
+        bIsEqualIcon = 0;
+        iImageOld = ptim->GetTBBtnImage(nIcon, 1);
+        if (!bFirstTime)
+        {
+            if (iImageOld == -1)
+            {
+                goto LABEL_38;
+            }
+            if (himl)
+            {
+                hIcon1 = ImageList_GetIcon(himl, iImageOld, 0);
+            }
+            if (hIcon1)
+            {
+                hIcon2 = (HICON)pnid->dwIcon;
+            }
+            if (iImageOld == -1)
+            {
+                goto LABEL_38;
+            }
+            if (hIcon1)
+            {
+                if (hIcon2)
+                    bIsEqualIcon = SHAreIconsEqual(hIcon1, hIcon2);
+            LABEL_38:
+                if (hIcon1)
+                {
+                    DestroyIcon(hIcon1);
+                }
+            }
+        }
+
+        if (pti->IsIconShared())
+        {
+            iImageNew = ptim->FindImageIndex((HICON)pnid->dwIcon, 1);
+            if (iImageNew == -1)
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            if (pnid->dwIcon)
+            {
+                iImageNew = ImageList_ReplaceIcon(himl, iImageOld, (HICON)pnid->dwIcon);
+                if (iImageNew < 0)
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                _RemoveImage(pti->guidItem, iImageOld);
+                iImageNew = -1;
+            }
+
+            if (pti->IsSharedIconSource())
+            {
+                iCount = ptim->GetItemCount();
+                for (INT_PTR i = 0; i < iCount; ++i)
+                {
+                    if (ptim->GetTBBtnImage(i, 1) == iImageOld)
+                    {
+                        ptim->GetItemDataByIndex(i)->hIcon = (HICON)pnid->dwIcon;
+                        ptim->SetTBBtnImage(i, iImageNew);
+                    }
+                }
+            }
+            if (iImageOld == -1 || iImageNew == -1)
+            {
+                fResize = 1;
+            }
+        }
+
+        pti->hIcon = (HICON)pnid->dwIcon;
+        ptim->SetTBBtnImage(nIcon, iImageNew);
+        if (!pti->IsHidden() && !bFirstTime)
+        {
+            pti->SetItemSameIconModify(bIsEqualIcon);
+            _PlaceItem(nIcon, pti, TRAYEVENT_ONICONMODIFY);
+        }
+    }
+
+    if ((pnid->uFlags & NIF_MESSAGE) != 0)
+        pti->uCallbackMessage = pnid->uCallbackMessage;
+
+    if ((pnid->uFlags & NIF_TIP) != 0)
+    {
+        ptim->SetTBBtnText(nIcon, pnid->szTip);
+        StringCchCopyW(pti->szIconText, 128, pnid->szTip);
+    }
+
+    if (fResize)
+        _OnSizeChanged(0);
+
+    if ((pnid->uFlags & NIF_INFO) != 0)
+    {
+        dwInfoFlags = pnid->dwInfoFlags;
+        if ((dwInfoFlags & NIIF_USER) != 0)
+        {
+            if (pti->hBalloonIcon)
+            {
+                DestroyIcon(pti->hBalloonIcon);
+            }
+            if (pnid->dwBalloonIcon)
+            {
+                pti->hBalloonIcon = CopyIcon((HICON)pnid->dwBalloonIcon);
+            }
+        }
+        else if ((dwInfoFlags & 0xF) == 0)
+        {
+            pnid->dwInfoFlags = dwInfoFlags & ~0x20u;
+        }
+
+        v16 = pti->IsHidden();
+        if (!v16)
+        {
+            if (bFirstTime || fResize)
+            {
+                v16 = 1;
+            }
+
+            _SetInfoTip(
+                pti->guidItem,
+                pti->hWnd,
+                pti->uID,
+                pnid->szInfo,
+                pnid->szInfoTitle,
+                pnid->dwInfoFlags,
+                v16,
+                pnid->uFlags & NIF_REALTIME);
+        }
+    }
+    if (!bFirstTime)
+    {
+        _NotifyCallback(ptim, 1u, nIcon, -1);
+    }
+    return 1;
 }
 
 BOOL CTrayNotify::_SetVersionNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon)
 {
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 1065
 
-    CTrayItem * pti = m_TrayItemManager.GetItemDataByIndex(nIcon);
-    if (!pti)
-        return FALSE;
-
-    if (pnid->uVersion < NOTIFYICON_VERSION) 
+    CTrayItemManager* ptim = _GetItemManager(IsSCAGuid((pnid->uFlags & NIF_GUID) != 0 ? pnid->guidItem : GUID_NULL));
+    CTrayItem* pti = ptim->GetItemDataByIndex(nIcon);
+    if (pti && (pnid->uVersion == 0 || pnid->uVersion == NOTIFYICON_VERSION || pnid->uVersion == NOTIFYICON_VERSION_4))
     {
-        pti->uVersion = 0;
+        pti->uVersion = pnid->uVersion;
         return TRUE;
     }
-    else if (pnid->uVersion == NOTIFYICON_VERSION) // Version 3, used by XP.
-    {
-        pti->uVersion = NOTIFYICON_VERSION;
-    }
-    else if (pnid->uVersion == NOTIFYICON_VERSION_4) // Version 4, used since Vista.
-    {
-        pti->uVersion = NOTIFYICON_VERSION_4;
-        return TRUE;
-    } 
-    else 
-    {
-        return FALSE;
-    }
+    return FALSE;
 }
 
-void CTrayNotify::_NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem)
+void CTrayNotify::_NotifyCallback(CTrayItemManager* ptim, DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem)
 {
+#ifdef DEAD_CODE
     //ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
     if (_pNotifyCB)
     {
@@ -1079,55 +1390,92 @@ void CTrayNotify::_NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR
                 delete pni;
         }
     }
-}
+#endif
+    CNotificationItem* pni; // eax MAPDST
+    int bStat; // [esp+10h] [ebp-1Ch] SPLIT BYREF
 
-void CTrayNotify::_RemoveInfoTipFromQueue(HWND hWnd, UINT uID, BOOL bRemoveFirstOnly /* Default = FALSE */)
-{
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 1091
 
-    int cItems = _GetQueueCount();
-
-    for (int i = 0; _dpaInfo && (i < cItems); i++)
+    if (this->_pNotifyCB)
     {
-        TNINFOITEM * pii = _dpaInfo.GetPtr(i);
-
-        if (pii->hWnd == hWnd && pii->uID == uID)
+        pni = new CNotificationItem;
+        if (pni)
         {
-            _dpaInfo.DeletePtr(i);      // this removes the element from the dpa
-            delete pii;
-
-            if (bRemoveFirstOnly)
+            bStat = 0;
+            if (nCurrentItem == -1)
             {
+                if (nPastItem != -1)
+                {
+                    bStat = 0;
+                    m_TrayItemRegistry.GetTrayItem(nPastItem, pni, &bStat);
+                    if (bStat)
+                    {
+                        goto LABEL_13;
+                    }
+                }
+            }
+            else if (ptim->GetTrayItem(nCurrentItem, pni, &bStat) && bStat)
+            {
+            LABEL_13:
+                PostMessageW(this->_hwndNotify, 0x409u, dwMessage, reinterpret_cast<LPARAM>(pni));
                 return;
             }
-            else
+            delete pni;
+        }
+    }
+}
+
+void CTrayNotify::_RemoveInfoTipFromQueue(REFGUID guid, HWND hWnd, UINT uID, BOOL bRemoveFirstOnly /* Default = FALSE */)
+{
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 1126
+
+    int cItems = _GetQueueCount();
+    if (_dpaInfo)
+    {
+        for (int i = 0; i < cItems; ++i)
+        {
+            TNINFOITEM* pii = _dpaInfo.GetPtr(i);
+            if (pii && (!IsEqualGUID(guid, GUID_NULL) && IsEqualGUID(pii->guid, guid) || pii->hWnd == hWnd && pii->uID == uID))
             {
-                i = i-1;
+                _dpaInfo.DeletePtr(i);
+                delete pii;
+
+                if (bRemoveFirstOnly)
+                    return;
+                i = i - 1;
                 cItems = _GetQueueCount();
             }
         }
     }
 }
 
-BOOL CTrayNotify::_DeleteNotify(INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon)
+BOOL CTrayNotify::_DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon)
 {
     BOOL bRet = FALSE;
 
     if (_fNoTrayItemsDisplayPolicyEnabled)
         return bRet;
 
-    _NotifyCallback(NIM_DELETE, nIcon, -1);
-    CTrayItem *pti = m_TrayItemManager.GetItemDataByIndex(nIcon);
+    BOOL fSCA = IsSCAGuid(guid);
+    CTrayItemManager* ptim = _GetItemManager(fSCA);
+    HWND hwndToolbar = _GetToolbar(fSCA);
+    HIMAGELIST himlIcons = _GetImageList(fSCA);
+
+    _NotifyCallback(ptim, NIM_DELETE, nIcon, -1);
+    CTrayItem* pti = ptim->GetItemDataByIndex(nIcon);
     if (pti)
     {
-        _RemoveInfoTipFromQueue(pti->hWnd, pti->uID);
+        _RemoveInfoTipFromQueue(pti->guidItem, pti->hWnd, pti->uID);
 
         // delete info tip if showing
         if (_pinfo && _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID)
         {
             // frees pinfo and shows the next balloon if any
             _beLastBalloonEvent = BALLOONEVENT_BALLOONHIDE;
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, TRUE, NIN_BALLOONHIDE); 
+            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, TRUE, NIN_BALLOONHIDE);
+
+            delete _pinfo;
+            _pinfo = nullptr;
         }
 
         // Save the icon info only if needed...
@@ -1137,30 +1485,30 @@ BOOL CTrayNotify::_DeleteNotify(INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveI
                 pti->uNumSeconds = _GetAccumulatedTime(pti);
 
             // On Delete, add the icon to the past icons list, and the item to the past items list
-            HICON hIcon = NULL;
-            if (_himlIcons)
+            HICON hIcon = nullptr;
+            if (himlIcons)
             {
-                hIcon = ImageList_GetIcon(_himlIcons, m_TrayItemManager.GetTBBtnImage(nIcon), ILD_NORMAL);
+                hIcon = ImageList_GetIcon(himlIcons, ptim->GetTBBtnImage(nIcon), ILD_NORMAL);
             }
 
             int nPastSessionIndex = m_TrayItemRegistry.DoesIconExistFromPreviousSession(pti, pti->szIconText, hIcon);
 
             if (nPastSessionIndex != -1)
             {
-                _NotifyCallback(NIM_DELETE, -1, nPastSessionIndex);
+                _NotifyCallback(ptim, NIM_DELETE, -1, nPastSessionIndex);
                 m_TrayItemRegistry.DeletePastItem(nPastSessionIndex);
             }
 
             if (m_TrayItemRegistry.AddToPastItems(pti, hIcon))
-                _NotifyCallback(NIM_ADD, -1, 0);
+                _NotifyCallback(ptim, NIM_ADD, -1, 0);
 
             if (hIcon)
                 DestroyIcon(hIcon);
         }
-        
+
         _KillItemTimer(pti);
 
-        bRet = (BOOL) SendMessage(_hwndToolbar, TB_DELETEBUTTON, nIcon, 0);
+        bRet = (BOOL)SendMessage(hwndToolbar, TB_DELETEBUTTON, nIcon, 0);
 
         if (!bShutdown)
         {
@@ -1175,9 +1523,13 @@ BOOL CTrayNotify::_DeleteNotify(INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveI
     return bRet;
 }
 
+DEFINE_GUID(POLID_HideSCANetwork, 0x541C4B08, 0x7965, 0x4B1A, 0xB4, 0x2C, 0xF2, 0x08, 0x15, 0x16, 0xDD, 0x8A);
+DEFINE_GUID(POLID_HideSCAPower, 0x7730F1F5, 0x79F1, 0x4EE9, 0xBF, 0x42, 0x3A, 0x60, 0x1B, 0xC2, 0x21, 0x4D);
+DEFINE_GUID(POLID_HideSCAVolume, 0x095E1984, 0x0218, 0x4B38, 0x8D, 0xAC, 0x5B, 0xCF, 0xB9, 0x93, 0xC4, 0x94);
 
 BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
 {
+#ifdef DEAD_CODE
     TBBUTTON tbb;
 
     //ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
@@ -1283,6 +1635,166 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
         _NotifyCallback(NIM_ADD, iInsertPos, -1);
     
     return fRet;
+#endif
+    CTrayNotify* v3; // ecx
+    int v4; // esi
+    CTrayItem* ItemDataByIndex; // eax
+    signed int v6; // eax
+    CTrayItem* pti; // ecx MAPDST
+    HICON hIcon; // edx
+    TRAYVIEWOPTS tvo; // [esp+10h] [ebp-7Ch] BYREF
+    // [esp+40h] [ebp-4Ch]
+    // [esp+44h] [ebp-48h] SPLIT
+    BOOL fRedraw; // [esp+48h] [ebp-44h] SPLIT
+    int iInsertPos; // [esp+4Ch] [ebp-40h]
+    // [esp+50h] [ebp-3Ch]
+    // [esp+58h] [ebp-34h]
+    INT_PTR nPastSessionIndex; // [esp+58h] [ebp-34h] SPLIT
+    TBBUTTON tbb = {}; // [esp+5Ch] [ebp-30h] BYREF
+
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 1240
+
+    BOOL fHasGUID = (pnid->uFlags & NIF_GUID) != 0 && IsSCAGuid(pnid->guidItem);
+    CTrayItemManager* ptim = _GetItemManager(fHasGUID);
+    HWND hwndToolbar = _GetToolbar(fHasGUID);
+
+    BOOL fRet = 0;
+    if (fHasGUID)
+    {
+        iInsertPos = SendMessageW(this->_hwndToolbarSCA, TB_BUTTONCOUNT, 0, 0);
+        if (iInsertPos > 0)
+        {
+            v4 = 0;
+            while (true)
+            {
+                ItemDataByIndex = ptim->GetItemDataByIndex(v4);
+                if (ItemDataByIndex)
+                {
+                    break;
+                }
+            LABEL_14:
+                if (++v4 >= iInsertPos)
+                {
+                    goto LABEL_15;
+                }
+            }
+
+            v6 = ItemDataByIndex->guidItem.Data1 - pnid->guidItem.Data1;
+            if (v6 >= 0)
+            {
+                if (!v6)
+                {
+                    return 0;
+                }
+                goto LABEL_14;
+            }
+            iInsertPos = v4;
+        }
+
+    LABEL_15:
+        c_tray.GetTrayViewOpts(&tvo/*, 0*/);
+        if ((SHWindowsPolicy(POLID_HideSCAVolume) || tvo.fHideSCA[SCA_VOLUME]) && IsEqualGUID(SCAID_Volume, pnid->guidItem)
+            || (SHWindowsPolicy(POLID_HideSCANetwork) || tvo.fHideSCA[SCA_NETWORK]) && IsEqualGUID(SCAID_Network, pnid->guidItem)
+            || (SHWindowsPolicy(POLID_HideSCAPower) || tvo.fHideSCA[SCA_POWER]) && IsEqualGUID(SCAID_Power, pnid->guidItem))
+        {
+            fRet = 1;
+        }
+    }
+    else
+    {
+        iInsertPos = 0;
+    }
+
+    pti = new CTrayItem;
+    if (!pti)
+        return 0;
+
+    pti->hWnd = GetHWnd(pnid);
+    pti->uID = pnid->uID;
+
+    if ((pnid->uFlags & 0x20) != 0)
+        memcpy(&pti->guidItem, &pnid->guidItem, sizeof(pnid->guidItem));
+    else
+        pnid->guidItem = GUID_NULL;
+
+    pti->uVersion = fHasGUID ? 4 : 0;
+    pti->hBalloonIcon = nullptr;
+    if (this->_bStartupIcon)
+    {
+        pti->SetStartupIcon(TRUE);
+    }
+
+    //SHExePathFromHWND(pti->hWnd, pti->szExeName, ARRAYSIZE(pti->szExeName));
+
+    if ((pnid->uFlags & 2) != 0)
+        hIcon = GetHIcon(pnid);
+    else
+        hIcon = nullptr;
+
+    nPastSessionIndex = m_TrayItemRegistry.CheckAndRestorePersistentIconSettings(pti, (pnid->uFlags & 4) != 0 ? pnid->szTip : nullptr, hIcon);
+
+    tbb.bReserved[0] = 0;
+    tbb.bReserved[1] = 0;
+    tbb.dwData = reinterpret_cast<DWORD_PTR>(pti);
+    tbb.iBitmap = -1;
+    tbb.idCommand = Toolbar_GetUniqueID(hwndToolbar);
+    tbb.fsStyle = 0;
+    tbb.iString = -1;
+    tbb.fsState = 4;
+
+    if (nPastSessionIndex == -1
+        && (pnid->dwStateMask & 0x20000000) != 0
+        && *pti->szExeName
+        && _szExplorerExeName[0]
+        && lstrcmpiW(pti->szExeName, _szExplorerExeName))
+    {
+        pti->dwUserPref = 2;
+    }
+
+    pnid->dwStateMask &= ~0x20000000u;
+    if (pti->IsDemoted() && m_TrayItemRegistry.IsAutoTrayEnabled() || fRet)
+    {
+        tbb.fsState |= 8u;
+        if (fRet)
+        {
+            pnid->uFlags |= 8u;
+            pnid->dwStateMask |= 1u;
+            pnid->dwState |= 1u;
+            pti->dwUserPref |= 4u;
+        }
+    }
+
+    fRet = 1;
+    fRedraw = _SetRedraw(0);
+    if (SendMessageW(hwndToolbar, TB_INSERTBUTTONW, iInsertPos, reinterpret_cast<LPARAM>(&tbb)))
+    {
+        if (_ModifyNotify(pnid, iInsertPos, 0, 1))
+        {
+            if (nPastSessionIndex != -1)
+            {
+                _NotifyCallback(ptim, 2u, -1, nPastSessionIndex);
+                m_TrayItemRegistry.DeletePastItem(nPastSessionIndex);
+            }
+            if (!_PlaceItem(0, pti, TRAYEVENT_ONNEWITEMINSERT))
+            {
+                _UpdateChevronState(this->_fBangMenuOpen, 0, 1);
+                _OnSizeChanged(0);
+            }
+            _Size();
+        }
+        else
+        {
+            _DeleteNotify(pnid->guidItem, iInsertPos, 0, 0);
+            fRet = 0;
+        }
+    }
+    _SetRedraw(fRedraw);
+    if (fRet)
+    {
+        _NotifyCallback(ptim, 0, iInsertPos, -1);
+    }
+
+    return fRet;
 }
 
 
@@ -1302,61 +1814,62 @@ void CTrayNotify::_SetCursorPos(INT_PTR i)
     }
 }
 
-WPARAM CTrayNotify::_CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex)
-{
-    if (inputType == TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE)
-    {
-        POINT ptCursor;
-        if (GetCursorPos(&ptCursor))
-            return MAKEWPARAM(ptCursor.x, ptCursor.y);
-        return 0;
-    }
-    if (inputType == TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD)
-    {
-        RECT rcItem;
-        if (SendMessageW(hwnd, TB_GETITEMRECT, itemIndex, (LPARAM)&rcItem))
-        {
-            MapWindowPoints(hwnd, nullptr, (LPPOINT)&rcItem, 2);
-            return MAKEWPARAM((rcItem.left + rcItem.right) / 2, (rcItem.top + rcItem.bottom) / 2);
-        }
-        return 0;
-    }
-    return inputType;
-}
-
-LRESULT CTrayNotify::_SendNotify(CTrayItem *pti, UINT uMsg, DWORD dwAnchorPoint, HWND const hwnd, int itemIndex)
+LRESULT CTrayNotify::_SendNotify(const CTrayItem* pti, UINT uMsg, DWORD dwAnchorPoint, HWND const hwnd, int nIndex)
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
 
+    LRESULT lres = 0;
+
     WPARAM wParam;
     LPARAM lParam;
-    if (pti->uVersion >= NOTIFYICON_VERSION_4) // Version 4, used since Vista:
+    if (pti->uCallbackMessage && pti->hWnd)
     {
-        wParam = _CalculateAnchorPointWPARAMIfNecessary(dwAnchorPoint, hwnd, itemIndex);
-        lParam = MAKELPARAM(uMsg, pti->uID);
-    }
-    else // NOTIFYICON version 3 and prior:
-    {
-        wParam = pti->uID;
-        lParam = uMsg;
+        if (pti->uVersion >= 4)
+        {
+            wParam = dwAnchorPoint;
+            if (dwAnchorPoint == -1)
+            {
+                POINT ptCursor;
+                wParam = GetCursorPos(&ptCursor) ? MAKEWPARAM(ptCursor.x, ptCursor.y) : 0;
+            }
+            else if (dwAnchorPoint == -2)
+            {
+                RECT rcItem;
+                if (SendMessageW(hwnd, TB_GETITEMRECT, nIndex, (LPARAM)&rcItem))
+                {
+                    MapWindowRect(hwnd, nullptr, &rcItem);
+                    wParam = MAKEWPARAM((rcItem.left + rcItem.right) / 2, (rcItem.top + rcItem.bottom) / 2);
+                }
+                else
+                {
+                    wParam = 0;
+                }
+            }
+            lParam = MAKELPARAM(uMsg, pti->uID);
+        }
+        else
+        {
+            wParam = pti->uID;
+            lParam = uMsg;
+        }
+        lres = SendNotifyMessageW(pti->hWnd, pti->uCallbackMessage, wParam, lParam);
     }
 
-    if (pti->uCallbackMessage && pti->hWnd)
-       return SendNotifyMessage(pti->hWnd, pti->uCallbackMessage, wParam, lParam);
-    return 0;
+    return lres;
 }
 
+// EXEX-VISTA(allison): Validated.
 void CTrayNotify::_SetToolbarHotItem(HWND hWndToolbar, UINT nToolbarIcon)
 {
     if (!_fNoTrayItemsDisplayPolicyEnabled && hWndToolbar && nToolbarIcon != -1)
     {
         SetFocus(hWndToolbar);
-        InvalidateRect(hWndToolbar, NULL, TRUE);
+        InvalidateRect(hWndToolbar, nullptr, TRUE);
         SendMessage(hWndToolbar, TB_SETHOTITEM, nToolbarIcon, 0);
     }
 }
 
-LRESULT CALLBACK CTrayNotify::ChevronSubClassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
+LRESULT CALLBACK CTrayNotify::s_ChevronWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
     CTrayNotify * pTrayNotify = reinterpret_cast<CTrayNotify*>(dwRefData);
@@ -1550,9 +2063,9 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 void CTrayNotify::_ToggleTrayItems(BOOL bEnable)
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-    for (INT_PTR i = m_TrayItemManager.GetItemCount()-1; i >= 0; i--)
+    for (INT_PTR i = m_TrayItemManager.GetItemCount() - 1; i >= 0; i--)
     {
-        CTrayItem *pti = m_TrayItemManager.GetItemDataByIndex(i);
+        CTrayItem* pti = m_TrayItemManager.GetItemDataByIndex(i);
 
         if (pti)
         {
@@ -1563,15 +2076,9 @@ void CTrayNotify::_ToggleTrayItems(BOOL bEnable)
             else // if (disable)
             {
                 _PlaceItem(i, pti, TRAYEVENT_ONDISABLEAUTOTRAY);
-                if (_pinfo && _IsChevronInfoTip(_pinfo->hWnd, _pinfo->uID))
-                {
-                    //hide the balloon 
-                    _beLastBalloonEvent = BALLOONEVENT_NONE;
-                    _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
-                }
             }
         }
-    }    
+    }
 }
 
 HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
@@ -1607,8 +2114,7 @@ void CTrayNotify::_ShowChevronInfoTip()
         TCHAR szInfoTip[256];
         LoadString(g_hinstCabinet, IDS_BANGICONINFOTIP1, szInfoTip, ARRAYSIZE(szInfoTip));
 
-        _SetInfoTip(_hwndNotify, UID_CHEVRONBUTTON, szInfoTip, szInfoTitle, 
-                TT_CHEVRON_INFOTIP_INTERVAL, NIIF_INFO, FALSE);
+        _SetInfoTip(GUID_NULL, _hwndNotify, UID_CHEVRONBUTTON, szInfoTip, szInfoTitle, TT_CHEVRON_INFOTIP_INTERVAL, NIIF_INFO, FALSE);
     }
 }
 
@@ -1627,8 +2133,62 @@ void CTrayNotify::_SetUsedTime()
     }
 }
 
+CTrayItemManager* CTrayNotify::_GetItemManager(BOOL fSCA)
+{
+    if (fSCA)
+    {
+        return &m_TrayItemManagerSCA;
+    }
+    return &m_TrayItemManager;
+}
+
+CTrayItemManager* CTrayNotify::_GetItemManagerByGuid(REFGUID guidItem)
+{
+    if (IsSCAGuid(guidItem))
+    {
+        return &m_TrayItemManagerSCA;
+    }
+    return &m_TrayItemManager;
+}
+
+HIMAGELIST CTrayNotify::_GetImageList(BOOL fSCA)
+{
+    if (fSCA)
+    {
+        return _himlIconsSCA;
+    }
+    return _himlIcons;
+}
+
+HIMAGELIST CTrayNotify::_GetImageListByGuid(REFGUID guidItem)
+{
+    if (IsSCAGuid(guidItem))
+    {
+        return _himlIconsSCA;
+    }
+    return _himlIcons;
+}
+
+HWND CTrayNotify::_GetToolbar(BOOL fSCA)
+{
+    if (fSCA)
+    {
+        return _hwndToolbarSCA;
+    }
+    return _hwndToolbar;
+}
+
+HWND CTrayNotify::_GetToolbarByGuid(REFGUID guidItem)
+{
+    if (IsSCAGuid(guidItem))
+    {
+        return _hwndToolbarSCA;
+    }
+    return _hwndToolbar;
+}
+
 BOOL CTrayNotify::GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG trayCallbackArg, 
-        TRAYCBRET * pOutData)
+                                TRAYCBRET * pOutData)
 {
     ASSERT(pOutData);
 
@@ -1678,12 +2238,47 @@ BOOL CTrayNotify::GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG t
     return FALSE;
 }
 
+// Add an SCA test item (e.g., Network) to the SCA toolbar
+void AddTestSCAItem(HWND hWnd)
+{
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hWnd;
+    nid.uID = 1001; // unique per hWnd
+    nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
+    nid.uCallbackMessage = WM_APP + 42; // your app-level message to receive tray notifications
+    nid.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APPLICATION)); // replace with your icon
+    nid.guidItem = SCAID_Network; // routes to SCA toolbar via IsSCAGuid
+
+    StringCchCopyW(nid.szTip, ARRAYSIZE(nid.szTip), L"SCA Test Item (Network)");
+    Shell_NotifyIconW(NIM_ADD, &nid);
+
+    // Optional: set version to 4 for modern behavior (keyboard anchor, etc.)
+    nid.uVersion = NOTIFYICON_VERSION_4;
+    Shell_NotifyIconW(NIM_SETVERSION, &nid);
+}
+
+// Remove the test SCA item
+void RemoveTestSCAItem(HWND hWnd)
+{
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd = hWnd;
+    nid.uID = 1001;
+    nid.uFlags = NIF_GUID;
+    nid.guidItem = SCAID_Network;
+
+    Shell_NotifyIconW(NIM_DELETE, &nid);
+}
+
+void WINAPI SHLogicalToPhysicalDPI(SIZE* a1);
+
 LRESULT CTrayNotify::_Create(HWND hWnd)
 {
     LRESULT lres = -1;
 
-    _nMaxHorz = 0x7fff;
-    _nMaxVert = 0x7fff;
+    _nMaxHorz = 0x7FFF;
+    _nMaxVert = 0x7FFF;
     _fAnimateMenuOpen       = ShouldTaskbarAnimate();
     _fRedraw                = TRUE;
     _bStartupIcon           = TRUE;
@@ -1712,17 +2307,29 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     _hwndNotify = hWnd;
     _hwndClock   = ClockCtl_Create(_hwndNotify, IDC_CLOCK, g_hinstCabinet);
 
-    _hwndPager = CreateWindowEx(0, WC_PAGESCROLLER, NULL,
-                        WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | PGS_HORZ,
-                        0, 0, 0, 0, _hwndNotify, (HMENU) 0, 0, NULL);
-    _hwndToolbar = CreateWindowEx(WS_EX_TOOLWINDOW, TOOLBARCLASSNAME, NULL,
-                        WS_VISIBLE | WS_CHILD | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | WS_CLIPCHILDREN | TBSTYLE_TRANSPARENT |
-                        WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CCS_NORESIZE | TBSTYLE_WRAPABLE,
-                        0, 0, 0, 0, _hwndPager, 0, g_hinstCabinet, NULL);
-                        
-    _hwndChevron = CreateWindowEx(  0, WC_BUTTON, NULL, 
-                        WS_VISIBLE | WS_CHILD, 
-                        0, 0, 0, 0, _hwndNotify, (HMENU)IDC_TRAYNOTIFY_CHEVRON, g_hinstCabinet, NULL);
+    _hwndPager = SHFusionCreateWindowEx(
+        0, WC_PAGESCROLLER, nullptr, PGS_HORZ | WS_TABSTOP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD,
+        0, 0, 0, 0, _hwndNotify, nullptr, nullptr, nullptr);
+
+    _hwndPagerSCA = SHFusionCreateWindowEx(
+        0, WC_PAGESCROLLER, nullptr, PGS_HORZ | WS_TABSTOP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD,
+        0, 0, 0, 0, _hwndNotify, nullptr, nullptr, nullptr);
+
+    _hwndToolbar = SHFusionCreateWindowEx(
+        WS_EX_TOOLWINDOW, TOOLBARCLASSNAME, nullptr,
+        CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER | TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | TBSTYLE_FLAT |
+        TBSTYLE_TRANSPARENT | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD,
+        0, 0, 0, 0, _hwndPager, (HMENU)1504, g_hinstCabinet, nullptr);
+
+    _hwndToolbarSCA = SHFusionCreateWindowEx(
+        WS_EX_TOOLWINDOW, TOOLBARCLASSNAME, nullptr,
+        CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER | TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | TBSTYLE_FLAT |
+        TBSTYLE_TRANSPARENT | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD,
+        0, 0, 0, 0, _hwndPagerSCA, (HMENU)1505, g_hinstCabinet, nullptr);
+
+    _hwndChevron = SHFusionCreateWindowEx(
+        0, WC_BUTTON, nullptr, WS_VISIBLE | WS_CHILD, 0, 0, 0, 0, _hwndNotify, (HMENU)IDC_TRAYNOTIFY_CHEVRON,
+        g_hinstCabinet, nullptr);
 
     if (_hwndNotify)
     {
@@ -1730,20 +2337,26 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
         if (IS_WINDOW_RTL_MIRRORED(_hwndNotify))
             dwExStyle |= WS_EX_LAYOUTRTL;
 
-        _hwndChevronToolTip = CreateWindowEx( dwExStyle, TOOLTIPS_CLASS, NULL,
-                                WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
-                                0, 0, 0, 0, _hwndNotify, NULL, g_hinstCabinet, NULL);
+        _hwndChevronToolTip = SHFusionCreateWindowEx(
+            dwExStyle, TOOLTIPS_CLASS, nullptr, TTS_ALWAYSTIP | TTS_NOPREFIX | WS_POPUP, 0, 0, 0, 0, _hwndNotify,
+            nullptr, g_hinstCabinet, nullptr);
 
-        _hwndInfoTip = CreateWindowEx( dwExStyle, TOOLTIPS_CLASS, NULL,
-                                WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP | TTS_BALLOON | TTS_CLOSE,
-                                0, 0, 0, 0, _hwndNotify, NULL, g_hinstCabinet, NULL);
+        // 0x200 is a new flag they added in Vista that is undocumented (at least as far as I can tell).
+        _hwndInfoTip = SHFusionCreateWindowEx(
+            dwExStyle, TOOLTIPS_CLASS, nullptr,
+            TTS_ALWAYSTIP | TTS_NOPREFIX | TTS_BALLOON | TTS_CLOSE | 0x200 | WS_POPUP, 0, 0, 0, 0, _hwndNotify,
+            nullptr, g_hinstCabinet, nullptr);
 
-        _himlIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-                                        SHGetImageListFlags(_hwndToolbar), 0, 1);
+        _himlIcons = ImageList_Create(
+            GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), SHGetImageListFlags(_hwndToolbar), 0, 1);
+
+        _himlIconsSCA = ImageList_Create(
+            GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), SHGetImageListFlags(_hwndToolbarSCA), 0, 1);
     }
 
     // Check to see if any windows failed to create, if so bail
-    if (_himlIcons && _hwndNotify && _hwndClock && _hwndToolbar && _hwndPager && _hwndChevron && _hwndChevronToolTip && _hwndInfoTip)
+    if (_himlIcons && _himlIconsSCA && _hwndToolbar && _hwndToolbarSCA && _hwndNotify && _hwndPager && _hwndPagerSCA
+        && _hwndChevron && _hwndChevronToolTip && _hwndInfoTip && _hwndClock)
     {
         // Get the explorer exe name, the complete launch path..
         if (!SUCCEEDED(SHExeNameFromHWND(_hwndNotify, _szExplorerExeName, ARRAYSIZE(_szExplorerExeName))))
@@ -1751,15 +2364,10 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
             _szExplorerExeName[0] = TEXT('\0');
         }
 
-        SetWindowTheme(_hwndClock, c_wzTrayNotifyTheme, NULL);
+        SendMessage(_hwndInfoTip, CCM_DPISCALE, TRUE, 0);
+        SendMessage(_hwndChevronToolTip, CCM_DPISCALE, TRUE, 0);
 
-        SendMessage(_hwndInfoTip, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTrayNotifyTheme);
-        SendMessage(_hwndToolbar, TB_SETWINDOWTHEME, 0, (LPARAM)c_wzTrayNotifyTheme);
-
-        SetWindowPos(_hwndInfoTip, HWND_TOPMOST,
-                     0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-        TOOLINFO ti = {0};
+        TOOLINFO ti = {};
         RECT     rc = {0,-2,0,0};
         ti.cbSize = sizeof(ti);
         ti.hwnd = _hwndNotify;
@@ -1776,11 +2384,16 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     
         // Tray toolbar is a child of the pager control
         SendMessage(_hwndPager, PGM_SETCHILD, 0, (LPARAM)_hwndToolbar);
+        SendMessage(_hwndPagerSCA, PGM_SETCHILD, 0, (LPARAM)_hwndToolbarSCA);
         
         // Set the window title to help out accessibility apps
         TCHAR szTitle[64];
         LoadString(g_hinstCabinet, IDS_TRAYNOTIFYTITLE, szTitle, ARRAYSIZE(szTitle));
         SetWindowText(_hwndToolbar, szTitle);
+
+        // Set the window title for the new SCA toolbar to help out accessibility apps
+        LoadString(g_hinstCabinet, IDS_TRAYNOTIFYTITLESCA, szTitle, ARRAYSIZE(szTitle));
+        SetWindowText(_hwndToolbarSCA, szTitle);
 
         // Toolbar settings - customize the tray toolbar...
         SendMessage(_hwndToolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
@@ -1790,29 +2403,46 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
         SendMessage(_hwndToolbar, TB_SETEXTENDEDSTYLE, 0, TBSTYLE_EX_INVERTIBLEIMAGELIST | TBSTYLE_EX_DOUBLEBUFFER | TBSTYLE_EX_TOOLTIPSEXCLUDETOOLBAR);
         SendMessage(_hwndToolbar, TB_SETIMAGELIST, 0, (LPARAM)_himlIcons);
 
+        // Toolbar settings for the new SCA toolbar
+        SendMessage(_hwndToolbarSCA, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
+        SendMessage(_hwndToolbarSCA, TB_SETPADDING, 0, MAKELONG(2, 2));
+        SendMessage(_hwndToolbarSCA, TB_SETMAXTEXTROWS, 0, 0);
+        SendMessage(_hwndToolbarSCA, CCM_SETVERSION, COMCTL32_VERSION, 0);
+        SendMessage(_hwndToolbarSCA, TB_SETEXTENDEDSTYLE, 0, TBSTYLE_EX_INVERTIBLEIMAGELIST | TBSTYLE_EX_DOUBLEBUFFER | TBSTYLE_EX_TOOLTIPSEXCLUDETOOLBAR);
+        SendMessage(_hwndToolbarSCA, TB_SETIMAGELIST, 0, (LPARAM)_himlIconsSCA);
+
         _hwndToolbarInfoTip = (HWND)SendMessage(_hwndToolbar, TB_GETTOOLTIPS, 0, 0);
         if (_hwndToolbarInfoTip)
         {
+            SendMessage(_hwndToolbarInfoTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, 10000);
             SHSetWindowBits(_hwndToolbarInfoTip, GWL_STYLE, TTS_ALWAYSTIP, TTS_ALWAYSTIP);
-            SetWindowZorder(_hwndToolbarInfoTip, HWND_TOPMOST);
+        }
+
+        _hwndToolbarInfoTipSCA = (HWND)SendMessage(_hwndToolbarSCA, TB_GETTOOLTIPS, 0, 0);
+        if (_hwndToolbarInfoTipSCA)
+        {
+            SendMessage(_hwndToolbarInfoTipSCA, TTM_SETDELAYTIME, TTDT_AUTOPOP, 10000);
+            SHSetWindowBits(_hwndToolbarInfoTipSCA, GWL_STYLE, TTS_ALWAYSTIP, TTS_ALWAYSTIP);
         }
 
         // if this fails, not that big a deal... we'll still show, but won't handle clicks
         SetWindowSubclass(_hwndToolbar, s_ToolbarWndProc, 0, reinterpret_cast<DWORD_PTR>(this));
+        SetWindowSubclass(_hwndToolbarSCA, s_ToolbarWndProc, 0, reinterpret_cast<DWORD_PTR>(this));
+
+        // SetWindowSubclass(_hwndInfoTip, s_BalloonSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
 
         ti.cbSize = sizeof(ti);
-        ti.hwnd = _hwndNotify;
+        ti.hwnd = _hwndChevron;
         ti.uFlags = TTF_IDISHWND | TTF_EXCLUDETOOLAREA;
         ti.uId = (UINT_PTR)_hwndChevron;
-        ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_SHOWDEMOTEDTIP);
+        ti.lpszText = (LPWSTR)-1;
         ti.hinst = g_hinstCabinet;
 
-        SetWindowZorder(_hwndChevronToolTip, HWND_TOPMOST);
         // Set the Chevron as the tool for the tooltip
         SendMessage(_hwndChevronToolTip, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
 
         // Subclass the Chevron button, so we can forward mouse messages to the tooltip
-        SetWindowSubclass(_hwndChevron, ChevronSubClassWndProc, 0, reinterpret_cast<DWORD_PTR>(this));
+        SetWindowSubclass(_hwndChevron, s_ChevronWndProc, 0, reinterpret_cast<DWORD_PTR>(this));
 
         _OpenTheme();
 
@@ -1820,6 +2450,13 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
 
         m_TrayItemManager.SetTrayToolbar(_hwndToolbar);
         m_TrayItemManager.SetIconList(_himlIcons);
+
+        m_TrayItemManagerSCA.SetTrayToolbar(_hwndToolbarSCA);
+        m_TrayItemManagerSCA.SetIconList(_himlIconsSCA);
+
+        _sizeTrayNotify.cx = 10;
+        _sizeTrayNotify.cy = 10;
+        SHLogicalToPhysicalDPI(&_sizeTrayNotify);
 
         lres = 0; // Yeah we succeeded
     }
@@ -1834,12 +2471,16 @@ LRESULT CTrayNotify::_Destroy()
     {
         for (INT_PTR i = m_TrayItemManager.GetItemCount() - 1; i >= 0; i--)
         {
-            _DeleteNotify(i, TRUE, TRUE);
+            _DeleteNotify(GUID_NULL, i, TRUE, TRUE);
+        }
+        for (INT_PTR i = m_TrayItemManagerSCA.GetItemCount() - 1; i >= 0; i--)
+        {
+            _DeleteNotify(SCAID_Network, i, TRUE, TRUE);
         }
         if (_pinfo)
         {
             delete _pinfo;
-            _pinfo = NULL;
+            _pinfo = nullptr;
         }    
     }
     else
@@ -1848,69 +2489,19 @@ LRESULT CTrayNotify::_Destroy()
         ASSERT((!_himlIcons || (ImageList_GetImageCount(_himlIcons) == 0)));
     }
 
-    if (_dpaInfo)
-    {
-        _dpaInfo.DestroyCallback(DeleteDPAPtrCB, NULL);
-    }
-    
+    _dpaInfo.DestroyCallback(DeleteInfoItemCB);
     if (_himlIcons)
     {
         ImageList_Destroy(_himlIcons);
-        _himlIcons = NULL;
+        _himlIcons = nullptr;
     }
-    
-    if (_hwndClock)
-    {
-        DestroyWindow(_hwndClock);
-        _hwndClock = NULL;
-    }
-    
-    if (_hwndToolbar)
-    {
-        RemoveWindowSubclass(_hwndToolbar, s_ToolbarWndProc, 0);
-        DestroyWindow(_hwndToolbar);
-        _hwndToolbar = NULL;
-    }
-    
-    if (_hwndChevron)
-    {
-        RemoveWindowSubclass(_hwndChevron, ChevronSubClassWndProc, 0);
-        DestroyWindow(_hwndChevron);
-        _hwndChevron = NULL;
-    }
-    
-    if (_hwndInfoTip)
-    {
-        DestroyWindow(_hwndInfoTip);
-        _hwndInfoTip = NULL;
-    }
-    
-    if (_hwndPager)
-    {
-        DestroyWindow(_hwndPager);
-        _hwndPager = NULL;
-    }
-    
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
-
-    if (_hwndChevronToolTip)
-    {
-        DestroyWindow(_hwndChevronToolTip);
-        _hwndChevronToolTip = NULL;
-    }
-
-    if (_pszCurrentThreadDesktopName)
-    {
-        LocalFree(_pszCurrentThreadDesktopName);
-    }
-
-    // Takes care of clearing up registry-related data
-    m_TrayItemRegistry.Delete();
-
+    _hwndToolbar = nullptr;
+    _hwndToolbarSCA = nullptr;
     return 0;
 }
 
@@ -2081,7 +2672,8 @@ LRESULT CTrayNotify::_HandleCustomDraw(LPNMCUSTOMDRAW pcd)
 
 void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL fSizeWindows)
 {
-    RECT rcClock, rcPager, rcChevron;
+#ifdef DEAD_CODE
+    RECT rcClock, rcPager, rcChevron, rcPagerSCA;
     SIZE szNotify;
     RECT rcBound = { 0, 0, nMaxHorz, nMaxVert };
     RECT rcBorder = rcBound;
@@ -2092,14 +2684,20 @@ void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL
 
     if (_hTheme)
     {
-        GetThemeBackgroundContentRect(_hTheme, NULL, TNP_BACKGROUND, 0, &rcBound, &rcBorder);
+        GetThemeBackgroundContentRect(_hTheme, nullptr, TNP_BACKGROUND, 0, &rcBound, &rcBorder);
     }
     else
     {
+#ifdef DEAD_CODE
         rcBorder.top += g_cyBorder;
         rcBorder.left += g_cxBorder;
         rcBorder.bottom -= g_cyBorder + 2;
         rcBorder.right -= g_cxBorder + 2;
+#endif
+        rcBorder.top += GetSystemMetrics(SM_CYBORDER);
+        rcBorder.left += GetSystemMetrics(SM_CXBORDER);
+        rcBorder.bottom -= GetSystemMetrics(SM_CYBORDER) + 2;
+        rcBorder.right -= GetSystemMetrics(SM_CXBORDER) + 2;
     }
 
     static LRESULT s_lRes = 0;
@@ -2183,19 +2781,26 @@ void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL
         {
             RECT rcWin;
             GetWindowRect(_hwndNotify, &rcWin);
-            int offsetX = _fVertical ? 0: RECTWIDTH(rcWin) - RECTWIDTH(*prcTotal);
+
+            int offsetX = _fVertical ? 0 : RECTWIDTH(rcWin) - RECTWIDTH(*prcTotal);
             int offsetY = _fVertical ? RECTHEIGHT(rcWin) - RECTHEIGHT(*prcTotal) : 0;
             OffsetRect(&rcClock, offsetX, offsetY);
             OffsetRect(&rcPager, offsetX, offsetY);
+            OffsetRect(&rcPagerSCA, offsetX, offsetY);
             OffsetRect(&rcChevron, offsetX, offsetY);
         }
 
         SetWindowPos(_hwndClock,   NULL, rcClock.left,   rcClock.top,   RECTWIDTH(rcClock),   RECTHEIGHT(rcClock),   SWP_NOZORDER);
         SetWindowPos(_hwndToolbar, NULL, 0,              0,             szNotify.cx,          szNotify.cy,           SWP_NOZORDER | SWP_NOCOPYBITS);
         SetWindowPos(_hwndPager,   NULL, rcPager.left,   rcPager.top,   RECTWIDTH(rcPager),   RECTHEIGHT(rcPager),   SWP_NOZORDER | SWP_NOCOPYBITS);
+
+        SetWindowPos(_hwndToolbarSCA, nullptr, 0, 0, szNotifySCA.cx, szNotifySCA.cy, SWP_NOZORDER | SWP_NOCOPYBITS);
+        SetWindowPos(_hwndPagerSCA, nullptr, rcPagerSCA.left, rcPagerSCA.top, RECTWIDTH(rcPagerSCA), RECTHEIGHT(rcPagerSCA), SWP_NOZORDER | SWP_NOCOPYBITS);
+
         SetWindowPos(_hwndChevron, NULL, rcChevron.left, rcChevron.top, RECTWIDTH(rcChevron), RECTHEIGHT(rcChevron), SWP_NOZORDER | SWP_NOCOPYBITS);
 
-        SendMessage(_hwndPager, PGMP_RECALCSIZE, (WPARAM) 0, (LPARAM) 0);
+        SendMessage(_hwndPager, PGMP_RECALCSIZE, 0, 0);
+        SendMessage(_hwndPagerSCA, PGMP_RECALCSIZE, 0, 0);
     }
 
     if (_fAnimating)
@@ -2209,17 +2814,253 @@ void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL
         RECT rcInvalid = *prcTotal;
         if (_fVertical)
         {
+#ifdef DEAD_CODE
             rcInvalid.bottom = rcPager.bottom;
+#endif
+            rcInvalid.bottom = rcPagerSCA.bottom;
         }
         else
         {
+#ifdef DEAD_CODE
             rcInvalid.right = rcPager.right;
+#endif
+            rcInvalid.right = rcPagerSCA.right;
         }
         InvalidateRect(_hwndNotify, &rcInvalid, FALSE);
         UpdateWindow(_hwndNotify);
     }
+#endif
+    int s_lres; // ebx
+    INT_PTR iFirstItem; // rax
+    BOOL fHasItems; // r13d
+    LONG iInset; // esi
+    int iOffsetLeft; // esi
+    LONG v18; // ebx
+    int iOffsetTop; // ecx MAPDST
+    LONG cx; // ecx
+    LONG cy; // ecx
+    LONG top; // r8d
+    LONG v29; // eax
+    LONG v30; // ecx
+    LONG bottom; // eax
+    LONG v32; // ecx
+    LONG left; // edx
+    LONG v34; // eax
+    bool v35; // cc
+    LONG v36; // ecx
+    LONG v37; // ecx
+    LONG right; // eax
+    int offsetX; // ebp
+    int offsetY; // esi
+    RECT v42; // xmm1
+    tagRECT rcChevron; // [rsp+48h] [rbp-C0h] BYREF
+    tagRECT rcBorder; // [rsp+60h] [rbp-A8h] BYREF
+    tagRECT rcPagerSCA; // [rsp+70h] [rbp-98h] BYREF
+    tagRECT rcPager; // [rsp+80h] [rbp-88h] BYREF
+    tagRECT rcClock; // [rsp+90h] [rbp-78h] BYREF
+    tagRECT rcWin; // [rsp+A8h] [rbp-60h] BYREF
+    tagRECT rcInvalid; // [rsp+A8h] [rbp-60h] SPLIT BYREF
+    RECT rcBound; // [rsp+C0h] [rbp-48h] BYREF
+
+    rcBound = { 0, 0, nMaxHorz, nMaxVert };
+    rcBorder = rcBound;
+
+    rcChevron.left = rcChevron.top = 0;
+    rcChevron.right = !_fNoTrayItemsDisplayPolicyEnabled && _fHaveDemoted ? _szChevron.cx : 0;
+    rcChevron.bottom = !_fNoTrayItemsDisplayPolicyEnabled && _fHaveDemoted ? _szChevron.cy : 0;
+
+    if (_hTheme)
+    {
+        GetThemeBackgroundContentRect(_hTheme, nullptr, TNP_BACKGROUND, 0, &rcBound, &rcBorder);
+    }
+    else
+    {
+        rcBorder.top += GetSystemMetrics(SM_CYBORDER);
+        rcBorder.left += GetSystemMetrics(SM_CXBORDER);
+        rcBorder.bottom -= GetSystemMetrics(SM_CYBORDER) + 2;
+        rcBorder.right -= GetSystemMetrics(SM_CXBORDER) + 2;
+    }
+
+    s_lres = SendMessageW(_hwndClock, WM_CALCMINSIZE, nMaxHorz, nMaxVert);
+    iFirstItem = _GetToolbarFirstVisibleItem(_hwndToolbarSCA, FALSE);
+    fHasItems = iFirstItem >= 0;
+
+    rcClock.left = rcClock.top = 0;
+    rcClock.right = LOWORD(s_lres);
+    rcClock.bottom = HIWORD(s_lres);
+
+    if (_hTheme && (iInset = field_334, rcBorder.left < iInset))
+        iOffsetLeft = iInset - rcBorder.left;
+    else
+        iOffsetLeft = 0;
+
+    if (_hTheme && (v18 = field_334, rcBorder.top < v18))
+        iOffsetTop = v18 - rcBorder.top;
+    else
+        iOffsetTop = 0;
+
+    if (_fVertical)
+        iOffsetTop = 0;
+
+    SIZE szNotify, szNotifySCA;
+    szNotify.cx = rcBorder.right - (_fVertical ? iOffsetLeft : 0) - rcBorder.left;
+    szNotify.cy = rcBorder.bottom - iOffsetTop - rcBorder.top;
+    szNotifySCA = szNotify;
+    SendMessageW(_hwndToolbar, TB_GETIDEALSIZE, _fVertical, (LPARAM)&szNotify);
+    SendMessageW(_hwndToolbarSCA, TB_GETIDEALSIZE, _fVertical, (LPARAM)&szNotifySCA);
+
+    if (_fVertical)
+    {
+        rcClock.left = rcBorder.left;
+        rcChevron.left = rcBorder.left;
+        rcClock.right = rcBorder.right;
+        rcChevron.right = rcBorder.right;
+        rcPagerSCA.left = iOffsetLeft + rcBorder.left;
+        rcPager.left = iOffsetLeft + rcBorder.left;
+        rcPager.right = iOffsetLeft + rcBorder.left + szNotify.cx;
+        rcPagerSCA.right = iOffsetLeft + rcBorder.left + szNotifySCA.cx;
+        if (_hTheme)
+        {
+            cx = _szChevron.cx;
+            rcChevron.left = (nMaxHorz - cx) / 2;
+            rcChevron.right = cx + rcChevron.left;
+        }
+        cy = szNotifySCA.cy;
+        top = rcBorder.top;
+        rcPagerSCA.bottom = szNotifySCA.cy;
+        if (rcChevron.bottom > rcBorder.top)
+            top = rcChevron.bottom;
+        prcTotal->left = 0;
+        prcTotal->right = nMaxHorz;
+        rcPagerSCA.top = 0;
+        rcPager.top = 0;
+
+        v29 = nMaxVert - top - cy;
+        if (szNotify.cy < v29)
+            v29 = szNotify.cy;
+        rcPager.bottom = v29;
+
+        OffsetRect(&rcPager, 0, top);
+
+        if (fHasItems)
+        {
+            v30 = _sizeTrayNotify.cy;
+        }
+        else
+        {
+            v30 = 0;
+        }
+        OffsetRect(&rcPagerSCA, 0, v30 + rcPager.bottom);
+        OffsetRect(&rcClock, 0, rcPagerSCA.bottom);
+
+        bottom = rcClock.bottom;
+        prcTotal->top = 0;
+        prcTotal->bottom = nMaxVert + bottom - rcBorder.bottom;
+    }
+    else
+    {
+        rcClock.top = rcBorder.top;
+        rcChevron.top = rcBorder.top;
+        rcClock.bottom = rcBorder.bottom;
+        rcChevron.bottom = rcBorder.bottom;
+        rcPager.bottom = iOffsetTop + rcBorder.top + szNotify.cy;
+        rcPagerSCA.top = iOffsetTop + rcBorder.top;
+        rcPager.top = iOffsetTop + rcBorder.top;
+        rcPagerSCA.bottom = iOffsetTop + rcBorder.top + szNotifySCA.cy;
+        if (_hTheme)
+        {
+            v32 = _szChevron.cy;
+            rcChevron.top = rcBorder.top + (rcBorder.bottom - v32 - rcBorder.top) / 2;
+            rcChevron.bottom = v32 + rcChevron.top;
+        }
+
+        left = rcBorder.left;
+        v34 = szNotifySCA.cx;
+        v35 = rcChevron.right <= rcBorder.left;
+        prcTotal->top = 0;
+        if (!v35)
+            left = rcChevron.right;
+
+        prcTotal->bottom = nMaxVert;
+        rcPagerSCA.left = 0;
+        rcPagerSCA.right = v34;
+        rcPager.left = 0;
+
+        v36 = nMaxHorz - left - v34;
+        if (szNotify.cx < v36)
+            v36 = szNotify.cx;
+        rcPager.right = v36;
+        OffsetRect(&rcPager, left, 0);
+
+        if (fHasItems)
+            v37 = _sizeTrayNotify.cx;
+        else
+            v37 = 0;
+        OffsetRect(&rcPagerSCA, v37 + rcPager.right, 0);
+        OffsetRect(&rcClock, rcPagerSCA.right, 0);
+
+        right = rcClock.right;
+        prcTotal->left = 0;
+        prcTotal->right = nMaxHorz + right - rcBorder.right;
+    }
+
+    if (fSizeWindows)
+    {
+        if (_fAnimating)
+        {
+            GetWindowRect(_hwndNotify, &rcWin);
+
+            if (_fVertical)
+                offsetX = 0;
+            else
+                offsetX = rcWin.right + prcTotal->left - rcWin.left - prcTotal->right;
+
+            if (_fVertical)
+                offsetY = rcWin.bottom + prcTotal->top - prcTotal->bottom - rcWin.top;
+            else
+                offsetY = 0;
+
+            OffsetRect(&rcClock, offsetX, offsetY);
+            OffsetRect(&rcPager, offsetX, offsetY);
+            OffsetRect(&rcPagerSCA, offsetX, offsetY);
+            OffsetRect(&rcChevron, offsetX, offsetY);
+        }
+
+        SetWindowPos(_hwndClock, nullptr, rcClock.left, rcClock.top, rcClock.right - rcClock.left, rcClock.bottom - rcClock.top, 4u);
+        SetWindowPos(_hwndToolbar, nullptr, 0, 0, szNotify.cx, szNotify.cy, 0x104u);
+        SetWindowPos(_hwndPager, nullptr, rcPager.left, rcPager.top, rcPager.right - rcPager.left, rcPager.bottom - rcPager.top, 0x104u);
+        SetWindowPos(_hwndToolbarSCA, nullptr, 0, 0, szNotifySCA.cx, szNotifySCA.cy, 0x104u);
+        SetWindowPos(_hwndPagerSCA, nullptr, rcPagerSCA.left, rcPagerSCA.top, rcPagerSCA.right - rcPagerSCA.left, rcPagerSCA.bottom - rcPagerSCA.top, 0x104u);
+        SetWindowPos(_hwndChevron, nullptr, rcChevron.left, rcChevron.top, rcChevron.right - rcChevron.left, rcChevron.bottom - rcChevron.top, 0x104u);
+
+        SendMessageW(_hwndPager, 200u, 0, 0);
+        SendMessageW(_hwndPagerSCA, 200u, 0, 0);
+    }
+
+    if (_fAnimating)
+    {
+        _rcAnimateCurrent = *prcTotal;
+        *prcTotal = _rcAnimateTotal;
+    }
+
+    if (fSizeWindows)
+    {
+        rcInvalid = *prcTotal;
+        if (_fVertical)
+        {
+            rcInvalid.bottom = rcPagerSCA.bottom;
+        }
+        else
+        {
+            rcInvalid.right = rcPagerSCA.right;
+        }
+
+        InvalidateRect(_hwndNotify, &rcInvalid, 0);
+        UpdateWindow(_hwndNotify);
+    }
 }
 
+// EXEX-VISTA(allison): Validated.
 LRESULT CTrayNotify::_CalcMinSize(int nMaxHorz, int nMaxVert)
 {
     RECT rcTotal;
@@ -2227,12 +3068,12 @@ LRESULT CTrayNotify::_CalcMinSize(int nMaxHorz, int nMaxVert)
     _nMaxHorz = nMaxHorz;
     _nMaxVert = nMaxVert;
 
-    if (!(GetWindowLong(_hwndClock, GWL_STYLE) & WS_VISIBLE) && !m_TrayItemManager.GetItemCount()) 
+    if (!(GetWindowLongPtr(_hwndClock, GWL_STYLE) & WS_VISIBLE) && !m_TrayItemManager.GetItemCount() && !m_TrayItemManagerSCA.GetItemCount())
     {
         // If we are visible, but have nothing to show, then hide ourselves
         ShowWindow(_hwndNotify, SW_HIDE);
         return 0L;
-    } 
+    }
     else if (!IsWindowVisible(_hwndNotify))
     {
         ShowWindow(_hwndNotify, SW_SHOW);
@@ -2441,7 +3282,7 @@ LRESULT CTrayNotify::_OnMouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam)
         } 
         else 
         {
-            _DeleteNotify(i, FALSE, TRUE);
+            _DeleteNotify(GUID_NULL, i, FALSE, TRUE); // @NOTE: GUID_NULL IS TEMPORARY
         }
         return 1;
     }
@@ -2534,8 +3375,8 @@ LRESULT CTrayNotify::_Notify(LPNMHDR pNmhdr)
             if (pti)
             {
                 //if it wasn't sharing an icon with another guy, go ahead and delete it
-                if (!pti->IsIconShared()) 
-                    _RemoveImage(ptbn->tbButton.iBitmap);
+                if (!pti->IsIconShared())
+                    _RemoveImage(pti->guidItem, ptbn->tbButton.iBitmap);
 
                 delete pti;
             }
@@ -2667,7 +3508,8 @@ LRESULT CTrayNotify::_Notify(LPNMHDR pNmhdr)
 
     case PGN_CALCSIZE:
         {
-            LPNMPGCALCSIZE   pCalcSize = (LPNMPGCALCSIZE)pNmhdr;
+            LPNMPGCALCSIZE pCalcSize = (LPNMPGCALCSIZE)pNmhdr;
+            HWND hwndToolbar = pNmhdr->hwndFrom == _hwndPager ? _hwndToolbar : _hwndToolbarSCA;
 
             switch(pCalcSize->dwFlag)
             {
@@ -2675,7 +3517,7 @@ LRESULT CTrayNotify::_Notify(LPNMHDR pNmhdr)
                 {
                     //Get the optimum WIDTH of the toolbar.
                     RECT rcToolBar;
-                    GetWindowRect(_hwndToolbar, &rcToolBar);
+                    GetWindowRect(hwndToolbar, &rcToolBar);
                     pCalcSize->iWidth = RECTWIDTH(rcToolBar);
                 }
                 break;
@@ -2684,7 +3526,7 @@ LRESULT CTrayNotify::_Notify(LPNMHDR pNmhdr)
                 {
                     //Get the optimum HEIGHT of the toolbar.
                     RECT rcToolBar;
-                    GetWindowRect(_hwndToolbar, &rcToolBar);
+                    GetWindowRect(hwndToolbar, &rcToolBar);
                     pCalcSize->iHeight = RECTHEIGHT(rcToolBar);
                 }
                 break;
@@ -2710,12 +3552,15 @@ void CTrayNotify::_OnSysChange(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (uMsg == WM_WININICHANGE)
     {
-        _CheckAndResizeImages();
+        _CheckAndResizeImages(_hwndToolbar); // @NOTE: _hwndToolbar hardcoded to fix compile temporarily
         if (lParam == SPI_SETMENUANIMATION || lParam == SPI_SETUIEFFECTS || (!wParam && 
             (!lParam || (lstrcmpi((LPTSTR)lParam, TEXT("Windows")) == 0))))
         {
             _fAnimateMenuOpen = ShouldTaskbarAnimate();
         }
+        _sizeTrayNotify.cx = 10;
+        _sizeTrayNotify.cy = 10;
+        SHLogicalToPhysicalDPI(&_sizeTrayNotify);
     }
 
     if (_hwndClock)
@@ -2803,7 +3648,10 @@ void CTrayNotify::_OnSizeChanged(BOOL fForceRepaint)
     c_tray.VerifySize(TRUE);
 
     if (fForceRepaint)
+    {
         UpdateWindow(_hwndToolbar);
+        UpdateWindow(_hwndToolbarSCA);
+    }
 }
 
 #define TT_ANIMATIONLENGTH  20    // sum of all the animation steps
@@ -2857,7 +3705,10 @@ void CTrayNotify::_ToggleDemotedMenu()
         }
 
         GetWindowRect(_hwndNotify, &_rcAnimateTotal);
-        _SizeWindows(_fVertical ? RECTWIDTH(_rcAnimateTotal) : _nMaxHorz, _fVertical ? _nMaxVert : RECTHEIGHT(_rcAnimateTotal), &_rcAnimateTotal, FALSE);
+
+        UINT nMaxVert = _fVertical ? _nMaxVert : RECTHEIGHT(_rcAnimateTotal);
+        UINT nMaxHorz = _fVertical ? RECTWIDTH(_rcAnimateTotal) : _nMaxHorz;
+        _SizeWindows(nMaxHorz, nMaxVert, &_rcAnimateTotal, FALSE);
 
         if (!_fBangMenuOpen)
         {
@@ -2872,6 +3723,16 @@ void CTrayNotify::_ToggleDemotedMenu()
         }
     }
 
+    BOOL fHasDemotedItems;
+    if (m_TrayItemRegistry.IsAutoTrayEnabled())
+    {
+        fHasDemotedItems = m_TrayItemManager.DemotedItemsPresent(2);
+    }
+    else
+    {
+        fHasDemotedItems = FALSE;
+    }
+
     for (INT_PTR i = m_TrayItemManager.GetItemCount() - 1; i >= 0; i--)
     {
         CTrayItem * pti = m_TrayItemManager.GetItemDataByIndex(i);
@@ -2880,14 +3741,14 @@ void CTrayNotify::_ToggleDemotedMenu()
             DWORD dwSleep = _GetStepTime(iAnimStep, cNumberDemoted);
             iAnimStep++;
 
-            if (_fBangMenuOpen)
+            if (_fBangMenuOpen && fHasDemotedItems)
             {
                 m_TrayItemManager.SetTBBtnStateHelper(i, TBSTATE_HIDDEN, TRUE);
             }
 
-            if (_fAnimateMenuOpen)
+            if (_fAnimateMenuOpen && (!_fBangMenuOpen || fHasDemotedItems))
             {
-                _AnimateButtons((int) i, dwSleep, cNumberDemoted, !_fBangMenuOpen);
+                _AnimateButtons((int)i, dwSleep, cNumberDemoted, !_fBangMenuOpen);
             }
 
             if (!_fBangMenuOpen)
@@ -2897,7 +3758,9 @@ void CTrayNotify::_ToggleDemotedMenu()
 
             if (_fAnimateMenuOpen)
             {
-                _SizeWindows(_fVertical ? RECTWIDTH(_rcAnimateTotal) : _nMaxHorz, _fVertical ? _nMaxVert : RECTHEIGHT(_rcAnimateTotal), &_rcAnimateTotal, TRUE);
+                UINT nMaxVert = _fVertical ? _nMaxVert : RECTHEIGHT(_rcAnimateTotal);
+                UINT nMaxHorz = _fVertical ? RECTWIDTH(_rcAnimateTotal) : _nMaxHorz;
+                _SizeWindows(nMaxHorz, nMaxVert, &_rcAnimateTotal, TRUE);
             }
         }
     }
@@ -2907,6 +3770,10 @@ void CTrayNotify::_ToggleDemotedMenu()
     if (_fBangMenuOpen)
     {
         KillTimer(_hwndNotify, TID_DEMOTEDMENU);
+    }
+    else
+    {
+        SetTimer(_hwndNotify, TID_DEMOTEDMENU, 3000, nullptr);
     }
 
     _ActivateTips(TRUE);
@@ -3072,6 +3939,7 @@ void CTrayNotify::_HideAllDemotedItems(BOOL bHide)
 
 BOOL CTrayNotify::_PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEvent)
 {
+#ifdef DEAD_CODE
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
 
     BOOL bDemoteStatusChange = FALSE;
@@ -3110,6 +3978,43 @@ BOOL CTrayNotify::_PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEven
 
     _SetOrKillIconDemoteTimer(pti, tiPos);
 
+    return bDemoteStatusChange;
+#endif
+    _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 3655
+
+    BOOL bDemoteStatusChange = FALSE;
+    if (!pti)
+        return bDemoteStatusChange;
+
+    CTrayItemManager* ptim = _GetItemManagerByGuid(pti->guidItem);
+    TRAYITEMPOS tiPos = _TrayItemPos(pti, tTrayEvent, &bDemoteStatusChange);
+
+    if (bDemoteStatusChange || tiPos == TIPOS_HIDDEN)
+    {
+        if (pti->IsStartupIcon() && (pti->IsDemoted() || tiPos == TIPOS_HIDDEN))
+        {
+            pti->uNumSeconds = 0;
+        }
+
+        if (!_fBangMenuOpen || pti->IsHidden())
+        {
+            if ((pti->IsDemoted() || tiPos == TIPOS_HIDDEN) && _pinfo && _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID)
+            {
+                _beLastBalloonEvent = BALLOONEVENT_APPDEMOTE;
+                _ShowInfoTip(/*&_pinfo->guid,*/ _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
+            }
+
+            ptim->SetTBBtnStateHelper(nIcon, TBSTATE_HIDDEN, pti->IsHidden() || m_TrayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted());
+
+            if (bDemoteStatusChange)
+            {
+                _UpdateChevronState(_fBangMenuOpen, 0, 1);
+                _OnSizeChanged(0);
+            }
+        }
+    }
+
+    _SetOrKillIconDemoteTimer(pti, tiPos);
     return bDemoteStatusChange;
 }
 
@@ -3611,7 +4516,7 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         if (!_fNoTrayItemsDisplayPolicyEnabled)
         {
             _SetUsedTime();
-            m_TrayItemRegistry.InitTrayItemStream(STGM_WRITE, this->GetTrayItemCB, this);
+            m_TrayItemRegistry.InitTrayItemStream(STGM_WRITE, GetTrayItemCB, this);
         }
         break;
 
@@ -3735,9 +4640,23 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
         return TRUE;
     }
 
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);    
-    INT_PTR nIcon = m_TrayItemManager.FindItemAssociatedWithHwndUid(GetHWnd(pNID), pNID->uID);
-    
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+
+    GUID guidItem = (pnid->nid.uFlags & NIF_GUID) != 0 ? pnid->nid.guidItem : GUID_NULL;
+    BOOL fSCA = IsSCAGuid(guidItem);
+    CTrayItemManager* ptim = _GetItemManager(fSCA);
+    HWND hwndToolbar = _GetToolbar(fSCA);
+
+    INT_PTR nIcon;
+    if (IsEqualGUID(GUID_NULL, guidItem))
+    {
+        nIcon = ptim->FindItemAssociatedWithHwndUid(GetHWnd(pNID), pNID->uID);
+    }
+    else
+    {
+        nIcon = ptim->FindItemAssociatedWithGuid(guidItem);
+    }
+
     BOOL bRet = FALSE;
     switch (pnid->dwMessage)
     {
@@ -3748,9 +4667,9 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
             if (!(_bRudeAppLaunched || IsDirectXAppRunningFullScreen()))
             {
                 SetForegroundWindow(v_hwndTray);
-                if (ToolBar_IsVisible(_hwndToolbar, nIcon))
+                if (ToolBar_IsVisible(hwndToolbar, nIcon))
                 {
-                    _SetToolbarHotItem(_hwndToolbar, nIcon);
+                    _SetToolbarHotItem(hwndToolbar, nIcon);
                     _fChevronSelected = FALSE;
                 }
                 else if (_fHaveDemoted)
@@ -3760,10 +4679,10 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
                 }
                 else
                 {
-                    INT_PTR nToolbarIcon = _GetToolbarFirstVisibleItem(_hwndToolbar, FALSE);
+                    INT_PTR nToolbarIcon = _GetToolbarFirstVisibleItem(hwndToolbar, FALSE);
                     if (nToolbarIcon != -1)
                     {
-                        _SetToolbarHotItem(_hwndToolbar, nToolbarIcon);
+                        _SetToolbarHotItem(hwndToolbar, nToolbarIcon);
                         _fChevronSelected = FALSE;
                     }
                     else
@@ -3809,8 +4728,8 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
             int nCountBefore = -1, nCountAfter = -1;
             if (pbRefresh)
             {
-                nCountBefore = m_TrayItemManager.GetPromotedItemCount();
-                if (m_TrayItemManager.GetDemotedItemCount() > 0)
+                nCountBefore = ptim->GetPromotedItemCount();
+                if (ptim->GetDemotedItemCount() > 0)
                     nCountBefore ++;
             }
 
@@ -3818,8 +4737,8 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
 
             if (bRet && pbRefresh)
             {
-                nCountAfter = m_TrayItemManager.GetPromotedItemCount();
-                if (m_TrayItemManager.GetDemotedItemCount() > 0)
+                nCountAfter = ptim->GetPromotedItemCount();
+                if (ptim->GetDemotedItemCount() > 0)
                     nCountAfter ++;
 
                 *pbRefresh = (nCountBefore != nCountAfter);
@@ -3830,7 +4749,7 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
     case NIM_DELETE:
         if (nIcon >= 0)
         {
-            bRet = _DeleteNotify(nIcon, FALSE, TRUE);
+            bRet = _DeleteNotify(guidItem, nIcon, FALSE, TRUE); // @NOTE: GUID_NULL IS TEMPORARY
             if (bRet)
             {
                 if (pbRefresh)
@@ -3893,35 +4812,21 @@ LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT 
 // Public
 HWND CTrayNotify::TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst)
 {
-    WNDCLASSEX wc;
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
 
-    ZeroMemory(&wc, sizeof(wc));
-    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.lpszClassName = c_szTrayNotify;
+    wc.style = CS_DBLCLKS;
+    wc.lpfnWndProc = s_WndProc;
+    wc.hInstance = hInst;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.cbWndExtra = sizeof(CTrayNotify*);
+    RegisterClassExW(&wc);
 
-    if (!GetClassInfoEx(hInst, c_szTrayNotify, &wc))
-    {
-        wc.lpszClassName = c_szTrayNotify;
-        wc.style = CS_DBLCLKS;
-        wc.lpfnWndProc = s_WndProc;
-        wc.hInstance = hInst;
-        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wc.hbrBackground = NULL;
-        wc.cbWndExtra = sizeof(CTrayNotify *);
-
-        if (!RegisterClassEx(&wc))
-        {
-            return(NULL);
-        }
-
-        if (!ClockCtl_Class(hInst))
-        {
-            return(NULL);
-        }
-    }
-
-    return (CreateWindowEx(0, c_szTrayNotify,
-            NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, 0, 0,
-            hwndParent, IntToPtr_(HMENU,uID), hInst, (void *)this));
+    ClockCtl_Class(hInst);
+    return SHFusionCreateWindowEx(
+        0, c_szTrayNotify, nullptr, WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD, 0, 0, 0, 0,
+        hwndParent, (HMENU)uID, hInst, this);
 }
 
 void CTrayNotify::_UpdateChevronSize()
@@ -3932,7 +4837,10 @@ void CTrayNotify::_UpdateChevronSize()
         if (hTheme)
         {
             HDC hdc = GetDC(_hwndChevron);
-            GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, PBS_DEFAULTED, NULL, TS_TRUE, &_szChevron);
+            GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, PBS_DEFAULTED, nullptr, TS_TRUE, &_szChevron);
+
+            _szChevron.cx = MulDiv(_szChevron.cx, GetDeviceCaps(hdc, LOGPIXELSX), 96);
+            _szChevron.cy = MulDiv(_szChevron.cy, GetDeviceCaps(hdc, LOGPIXELSY), 96);
             ReleaseDC(_hwndChevron, hdc);
             CloseThemeData(hTheme);
         }
@@ -4025,12 +4933,12 @@ void CTrayNotify::_SetTrayNotifyTheme()
 void CTrayNotify::_UpdateVertical(BOOL fVertical)
 {
     _fVertical = fVertical;
-    
-	// SIZE sizeSysToolBar{ 1, 1 };
-    // SendMessage(_hwndSysToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeSysToolBar);
 
-    SIZE sizeToolBar{ 1, 1 };
+    SIZE sizeToolBar = { 1, 1 };
     SendMessage(_hwndToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeToolBar);
+
+    SIZE sizeToolBarSCA = { 1, 1 };
+    SendMessage(_hwndToolbarSCA, TB_GETIDEALSIZE, _fVertical, (LPARAM)&sizeToolBarSCA);
 
     _SetTrayNotifyTheme();
     _UpdateChevronState(_fBangMenuOpen, TRUE, TRUE);
@@ -4038,13 +4946,13 @@ void CTrayNotify::_UpdateVertical(BOOL fVertical)
 
 void CTrayNotify::_SetChevronTheme()
 {
-    if (this->_hTheme)
+    if (_hTheme)
     {
         const WCHAR* pszTheme;
         BOOL fComposited = IsCompositionActive() && c_tray.GlassEnabled();
-        if (this->_fBangMenuOpen)
+        if (_fBangMenuOpen)
         {
-            if (this->_fVertical)
+            if (_fVertical)
             {
 				pszTheme = fComposited ? L"TrayNotifyVertOpenComposited" : L"TrayNotifyVertOpen";
             }
@@ -4057,7 +4965,7 @@ void CTrayNotify::_SetChevronTheme()
                 pszTheme = L"TrayNotifyHorizOpen";
             }
         }
-        else if (this->_fVertical)
+        else if (_fVertical)
         {
 			pszTheme = fComposited ? L"TrayNotifyVertComposited" : L"TrayNotifyVert";
         }

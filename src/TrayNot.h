@@ -31,6 +31,7 @@
 
 typedef struct
 {
+    GUID      guid;
     HWND      hWnd;
     UINT      uID;
     TCHAR     szTitle[64];
@@ -153,9 +154,6 @@ protected:
 
     void _OnSizeChanged(BOOL fForceRepaint);
 
-    // Used for notifications:
-    WPARAM _CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex);
-
     // Tray Animation functions
     DWORD _GetStepTime(int iStep, int cSteps);
     void _ToggleDemotedMenu();
@@ -173,30 +171,29 @@ protected:
     // WndProc callback functions
     LRESULT v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     // Callback for the chevron button
-    static LRESULT CALLBACK ChevronSubClassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
+    static LRESULT CALLBACK s_ChevronWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
         LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     // Callback for the toolbar
     static LRESULT CALLBACK s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
         LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
     // Icon Image-related functions
-    void _RemoveImage(UINT uIMLIndex);
-    BOOL _CheckAndResizeImages();
+    void _RemoveImage(REFGUID guid, UINT uIMLIndex);
+    BOOL _CheckAndResizeImages(HWND hwndToolbar);
 
    // InfoTip/Balloon tip functions
     void _ActivateTips(BOOL bActivate);
     void _InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick);
     void _PositionInfoTip();
     DWORD _ShowBalloonTip(LPTSTR szTitle, HICON hIcon, UINT uTimeout, DWORD dwLastSoundTime);
-    void _SetInfoTip(HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, 
-            DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync);
+    void _SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync);
     void _ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
     void _ShowChevronInfoTip();
     void _EmptyInfoTipQueue();
     void _HideBalloonTip();
     DWORD _GetBalloonWaitInterval(BALLOONEVENT be);
     void _DisableCurrentInfoTip(CTrayItem * ptiTemp, UINT uReason, BOOL bBalloonShowing);
-    void _RemoveInfoTipFromQueue(HWND hWnd, UINT uID, BOOL bRemoveFirstOnly = FALSE);
+    void _RemoveInfoTipFromQueue(REFGUID guid, HWND hWnd, UINT uID, BOOL bRemoveFirstOnly = FALSE);
     BOOL _CanShowBalloon();
     BOOL _CanActivateTips()
     {
@@ -212,14 +209,14 @@ protected:
     
     // Toolbar Notification helper functions - respond to different user messages
     BOOL _InsertNotify(PNOTIFYICONDATA32 pnid);
-    BOOL _DeleteNotify(INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon);
+    BOOL _DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon);
     BOOL _ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbRefresh, BOOL bFirstTime);
     BOOL _SetVersionNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon);
-    LRESULT _SendNotify(CTrayItem *pti, UINT uMsg, DWORD dwAnchorPoint, HWND const hwnd, int itemIndex);
+    LRESULT _SendNotify(const CTrayItem* pti, UINT uMsg, DWORD dwAnchorPoint, const HWND hwnd, int nIndex);
     void _SetToolbarHotItem(HWND hWndToolbar, UINT nToolbarIcon);
     INT_PTR _GetToolbarFirstVisibleItem(HWND hWndToolbar, BOOL bFromLast);
 
-    void _NotifyCallback(DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem);
+    void _NotifyCallback(CTrayItemManager* ptim, DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem);
 
     void _SetCursorPos(INT_PTR i);
 
@@ -262,6 +259,13 @@ protected:
     LRESULT _OnKeyDown(WPARAM wChar, LPARAM lFlags);
     void _SetUsedTime();
 
+    CTrayItemManager* _GetItemManager(BOOL fSCA);
+    CTrayItemManager* _GetItemManagerByGuid(REFGUID guidItem);
+    HIMAGELIST _GetImageList(BOOL fSCA);
+    HIMAGELIST _GetImageListByGuid(REFGUID guidItem);
+    HWND _GetToolbar(BOOL fSCA);
+    HWND _GetToolbarByGuid(REFGUID guidItem);
+
 	void _SetTrayNotifyTheme();
     void _SetChevronTheme();
     void _SetClockToolbarThemes();
@@ -287,18 +291,23 @@ private:
     HWND            _hwndNotify;
     HWND            _hwndChevron;
     HWND            _hwndToolbar;
+    HWND            _hwndToolbarSCA;                // Vista - Toolbar for the System Control Area (SCA)
     HWND            _hwndClock;
     HWND            _hwndPager;
+    HWND            _hwndPagerSCA;                  // Vista - Pager for the System Control Area (SCA)
     HWND            _hwndInfoTip;
     HWND            _hwndChevronToolTip;
     HWND            _hwndToolbarInfoTip;
+    HWND            _hwndToolbarInfoTipSCA;         // Vista - InfoTip for the System Control Area (SCA) Toolbar
 
     TCHAR           _szExplorerExeName[MAX_PATH];
     TCHAR *         _pszCurrentThreadDesktopName;
     
     HIMAGELIST      _himlIcons;
+    HIMAGELIST      _himlIconsSCA;                  // Vista - ImageList for the System Control Area (SCA)
 
     CTrayItemManager    m_TrayItemManager;
+    CTrayItemManager    m_TrayItemManagerSCA;       // Vista - TrayItemManager for the System Control Area (SCA)
     CTrayItemRegistry   m_TrayItemRegistry;
 
     BOOL            _fKey;
@@ -355,6 +364,12 @@ private:
     BOOL                _bWaitingBetweenBalloons;
     BOOL                _bStartMenuAllowsTrayBalloon;
     BALLOONEVENT        _beLastBalloonEvent;
+
+public: // @Temp for letting CTray access members directly
+    int                 field_334;
+
+private:
+    SIZE                _sizeTrayNotify;
 };
 #pragma optimize( "", off )
 //

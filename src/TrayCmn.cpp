@@ -32,19 +32,19 @@ CNotificationItem::CNotificationItem(const TNPersistStreamData* ptnpd)
 
 inline void CNotificationItem::_Init()
 {
-    hIcon = NULL;
-    pszExeName = NULL;
-    pszIconText = NULL;
+    hIcon = nullptr;
+    pszExeName = nullptr;
+    pszIconText = nullptr;
     guidItem = GUID_NULL;
 }
 
 void CNotificationItem::CopyNotifyItem(const NOTIFYITEM& no, BOOL bInsert /* = TRUE */)
 {
-    hWnd            =   no.hWnd;
-    uID             =   no.uID;
+    hWnd = no.hWnd;
+    uID = no.uID;
     if (bInsert)
-        dwUserPref      =   no.dwUserPref;
-    hIcon           =   CopyIcon(no.hIcon);
+        dwUserPref = no.dwUserPref;
+    hIcon = CopyIcon(no.hIcon);
     SetExeName(no.pszExeName);
     SetIconText(no.pszIconText);
     memcpy(&guidItem, &(no.guidItem), sizeof(no.guidItem));
@@ -57,8 +57,7 @@ const CNotificationItem& CNotificationItem::operator=(const TNPersistStreamData*
         _Free();
         _Init();
         CopyPTNPD(ptnpd);
-    }            
-
+    }
     return *this;
 }
 
@@ -67,7 +66,6 @@ const CNotificationItem& CNotificationItem::operator=(const CNotificationItem& n
     _Free();
     _Init();
     CopyNotifyItem(ni, FALSE);
-
     return *this;
 }
 
@@ -75,28 +73,30 @@ void CNotificationItem::CopyPTNPD(const TNPersistStreamData* ptnpd)
 {
     if (ptnpd)
     {
-        hWnd        =   NULL;       // ptnpd's dont have any hWnd
-        uID         =   ptnpd->uID;
-        dwUserPref  =   ptnpd->dwUserPref;
-        hIcon       =   NULL;       // TO DO : Save and load icon 
+        hWnd = nullptr;
+        uID = ptnpd->uID;
+        dwUserPref = ptnpd->dwUserPref;
+        hIcon = nullptr;
+
         SetExeName(ptnpd->szExeName);
         SetIconText(ptnpd->szIconText);
-        memcpy(&guidItem, &(ptnpd->guidItem), sizeof(ptnpd->guidItem));
+
+        memcpy(&guidItem, &ptnpd->guidItem, sizeof(ptnpd->guidItem));
     }
 }
 
-inline void CNotificationItem::CopyBuffer(LPCTSTR lpszSrc, LPTSTR * plpszDest)
+inline void CNotificationItem::CopyBuffer(LPCTSTR lpszSrc, LPTSTR* plpszDest)
 {
     if (*plpszDest)
     {
         delete[] *plpszDest;
         *plpszDest = NULL;
     }
-        
+
     int nStringLen = (lpszSrc == NULL) ? 0 : lstrlen(lpszSrc);
     if (nStringLen)
     {
-        *plpszDest = new TCHAR[(nStringLen+1)];
+        *plpszDest = new TCHAR[(nStringLen + 1)];
         if (*plpszDest)
         {
             if (SUCCEEDED(StringCchCopy(*plpszDest, nStringLen+1, lpszSrc)))
@@ -110,12 +110,16 @@ inline void CNotificationItem::CopyBuffer(LPCTSTR lpszSrc, LPTSTR * plpszDest)
 
 inline void CNotificationItem::SetExeName(LPCTSTR lpszExeName)
 {
-    CopyBuffer(lpszExeName, &pszExeName);
+    // CopyBuffer(lpszExeName, &pszExeName);
+    CoTaskMemFree(pszExeName);
+    CoAllocStringOpt(lpszExeName, &pszExeName);
 }
 
 inline void CNotificationItem::SetIconText(LPCTSTR lpszIconText)
 {
-    CopyBuffer(lpszIconText, &pszIconText);
+    // CopyBuffer(lpszIconText, &pszIconText);
+    CoTaskMemFree(pszIconText);
+    CoAllocStringOpt(lpszIconText, &pszIconText);
 }
 
 CNotificationItem::~CNotificationItem()
@@ -125,23 +129,20 @@ CNotificationItem::~CNotificationItem()
 
 void CNotificationItem::_Free()
 {
-    if (hIcon != NULL)
+    if (hIcon != nullptr)
         DestroyIcon(hIcon);
-    if (pszExeName)
-        delete [] pszExeName;
-    if (pszIconText)
-        delete [] pszIconText;
+    CoTaskMemFree(pszExeName);
+    CoTaskMemFree(pszIconText);
 }
 
 BOOL CNotificationItem::operator==(CNotificationItem& ni) const
 {
-    if (uID == ni.uID)
+    if (uID != ni.uID)
+        return FALSE;
+
+    if (!hWnd)
     {
-        if ((hWnd != NULL && hWnd == ni.hWnd) ||
-            (hWnd == NULL && pszExeName && lstrcmpi(pszExeName, ni.pszExeName) == 0))
-            return TRUE;
+        return pszExeName && ni.pszExeName && !lstrcmpiW(pszExeName, ni.pszExeName);
     }
-
-    return FALSE;
+    return hWnd == ni.hWnd;
 }
-

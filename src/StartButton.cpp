@@ -52,7 +52,7 @@ HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
     {
         HMENU hMenu = CreatePopupMenu();
         IContextMenu* pcm;
-        if (SUCCEEDED(psf->GetUIObjectOf(hWnd, CSIDL_INTERNET, &ppidlLast, IID_IContextMenu, NULL, (void**)&pcm)))
+        if (SUCCEEDED(psf->GetUIObjectOf(hWnd, 1, &ppidlLast, IID_IContextMenu, NULL, (void**)&pcm)))
         {
             if (SUCCEEDED(pcm->QueryContextMenu(hMenu, 0, 2, 32751, CMF_VERBSONLY)))
             {
@@ -202,42 +202,24 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
     return S_OK;
 }
 
-// dwRefData-> CTray+988 -> CStartButton
-HWND CStartButton::CreateStartButton(HWND hWnd)
+HWND CStartButton::CreateStartButton(HWND hwndParent)
 {
-    wprintf(L"Entering CStartButton::CreateStartButton\n");
-
-    DWORD dwStyleEx = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+    // dwStyle = 0x400 | 0x800 | 0x4000000 | 0x80000000 = 0x84000C00
+    DWORD dwStyleEx = GetWindowLongPtr(hwndParent, GWL_EXSTYLE);
     _hwndStart = SHFusionCreateWindowEx(
         dwStyleEx & (WS_EX_LAYOUTRTL | WS_EX_RTLREADING | WS_EX_RIGHT) | (WS_EX_LAYERED | WS_EX_TOOLWINDOW),
-        WC_BUTTON,
-        NULL,
-        WS_POPUP | WS_CLIPSIBLINGS | BS_VCENTER,
-        0, 0, 1, 1,
-        hWnd,
-        NULL,
-        g_hinstCabinet,
-        NULL);
-
-    wprintf(L"CStartButton::CreateStartButton parent HWND = %p\n", hWnd);
-
-    wprintf(L"CStartButton::CreateStartButton one\n");
-
+        WC_BUTTON, nullptr, WS_POPUP | WS_CLIPSIBLINGS | BS_VCENTER, 0, 0, 1, 1, hwndParent, nullptr, g_hinstCabinet,
+        nullptr);
     if (_hwndStart)
     {
         SetProp(_hwndStart, TEXT("StartButtonTag"), (HANDLE)0x130);
         SendMessage(_hwndStart, CCM_DPISCALE, TRUE, 0);
-        SetWindowSubclass(
-            _hwndStart,
-            (SUBCLASSPROC)s_StartButtonSubclassProc,
-            0,
-            (DWORD_PTR)this);
-        LoadString(g_hinstCabinet, IDS_STARTCLASSIC, (LPWSTR)_szWindowName, 50);
-        SetWindowText(_hwndStart, (LPCWSTR)_szWindowName);
+
+        SetWindowSubclass(_hwndStart, s_StartButtonSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
+
+        LoadString(g_hinstCabinet, IDS_STARTCLASSIC, _szWindowName, ARRAYSIZE(_szWindowName));
+        SetWindowText(_hwndStart, _szWindowName);
     }
-
-    wprintf(L"CStartButton::CreateStartButton two\n");
-
     return _hwndStart;
 }
 

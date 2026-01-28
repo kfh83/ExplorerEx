@@ -3315,13 +3315,13 @@ LRESULT SFTBarHost::_OnRefresh(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 }
 
 // EXEX-VISTA(allison): Validated.
-LPTSTR _DisplayNameOf(IShellFolder *psf, LPCITEMIDLIST pidl, UINT shgno)
+WCHAR* _DisplayNameOf(IShellFolder* psf, LPCITEMIDLIST pidl, UINT shgno)
 {
-    LPWSTR pszOut = 0;
+    LPWSTR pszOut = nullptr;
 
     LPITEMIDLIST pidlOut;
-    IShellFolder *psfOut;
-    if (SHBindToFolderIDListParent(psf, pidl, IID_PPV_ARGS(&psfOut), (LPCITEMIDLIST *)&pidlOut) >= 0)
+    IShellFolder* psfOut;
+    if (SUCCEEDED(SHBindToFolderIDListParent(psf, pidl, IID_PPV_ARGS(&psfOut), (LPCITEMIDLIST*)&pidlOut)))
     {
         DisplayNameOfAsString(psfOut, pidlOut, shgno, &pszOut);
         psfOut->Release();

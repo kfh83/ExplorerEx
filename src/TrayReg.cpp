@@ -709,7 +709,7 @@ int CTrayItemRegistry::DoesIconExistFromPreviousSession (
 // Returns TRUE to indicate the function succeeded, fails only if the index is invalid
 // *pbStat is set to TRUE if pni is filled in, FALSE if pni is not filled in. pni might
 // not be filled in, if the item specified by index doesnt meet specific criteria.
-BOOL CTrayItemRegistry::GetTrayItem(INT_PTR nIndex, CNotificationItem * pni, BOOL * pbStat)
+BOOL CTrayItemRegistry::GetTrayItem(INT_PTR nIndex, CNotificationItem* pni, BOOL* pbStat)
 {
     if (!_dpaPersistentItemInfo || (nIndex < 0) || (nIndex >= _dpaPersistentItemInfo.GetPtrCount()))
     {
@@ -815,4 +815,3 @@ UINT_PTR CTrayItemRegistry::_SizeOfPersistStreamData(DWORD dwVersion)
 
     return sizeof(TNPersistStreamData);
 }
-

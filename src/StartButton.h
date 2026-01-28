@@ -70,7 +70,7 @@ public:
 
     void BuildStartMenu();
     void CloseStartMenu();
-    HWND CreateStartButton(HWND hwnd);
+    HWND CreateStartButton(HWND hwndParent);
     void DestroyStartMenu();
     void DisplayStartMenu();
     void DrawStartButton(int iStateId, bool bRepaint /*allegedly*/);

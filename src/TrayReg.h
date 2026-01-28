@@ -116,7 +116,7 @@ typedef BOOL (CALLBACK * PFNTRAYNOTIFYCALLBACK)(INT_PTR nIndex, void *pCallbackD
 class CTrayItemRegistry
 {
     public:
-        CTrayItemRegistry() : _himlPastItemsIconList(NULL) { }
+        CTrayItemRegistry() : _himlPastItemsIconList(nullptr) { }
         ~CTrayItemRegistry() { }
 
         void InitRegistryValues(UINT uIconListFlags);
@@ -241,4 +241,3 @@ class CTrayItemRegistry
 };
 
 #endif // _TRAYREG_H
-
