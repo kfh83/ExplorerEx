@@ -952,183 +952,86 @@ LSTATUS __stdcall SHRegGetDWORDW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue,
 
 // 8099904b-0b91-4906-a89d-11de2bd8f737
 DEFINE_GUID(CLSID_StartMenuPathCompleteQueryCache, 0x8099904B, 0x0B91, 0x4906, 0xA8, 0x9D, 0x11, 0xDE, 0x2B, 0xD8, 0xF7, 0x37);
-GUID CLSID_StartMenuQueryCache =
-{
-  1830086837u,
-  47429u,
-  17907u,
-  { 158u, 224u, 124u, 170u, 147u, 168u, 239u, 145u }
-};
 
-const ITEMIDLIST c_idlDesktop = { {0, 0} };
+// #define SIMULATE_QUERY_PARSER_FAILURE
 
 HRESULT CSearchOpenView::Initialize(HWND hwnd)
 {
-#ifndef HYBRID_CODE
 	HTHEME hTheme;
 
 	HRESULT hr = _CreateExplorerBrowser(hwnd);
-	if (hr >= 0 && (hTheme = _hTheme, _hwnd = hwnd, hTheme))
+	if (SUCCEEDED(hr) && (_hwnd = hwnd, (hTheme = _hTheme) != nullptr))
 	{
-		GetThemeMargins(hTheme, NULL, SPP_SEARCHVIEW, 0, TMT_CONTENTMARGINS, 0, &this->_margins);
+		GetThemeMargins(hTheme, nullptr, SPP_SEARCHVIEW, 0, TMT_CONTENTMARGINS, nullptr, &_margins);
 	}
 	else
 	{
-		_margins.cxLeftWidth = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
-		_margins.cxRightWidth = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
+		_margins.cxLeftWidth = SHGetSystemMetricsScaled(SM_CXEDGE) * 2;
+		_margins.cxRightWidth = SHGetSystemMetricsScaled(SM_CXEDGE) * 2;
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		LPCITEMIDLIST v12 = &c_idlDesktop;
-		hr = SHCreateShellItemArrayFromIDLists(1, &v12, &_psiaStartMenuProvider);
+		field_C4 = 1;
+
+		LPITEMIDLIST pidlStartMenuProvider;
+		hr = SHParseDisplayName(L"shell:::{daf95313-e44d-46af-be1b-cbacea2c3065}", nullptr, &pidlStartMenuProvider, 0, nullptr);
 		if (SUCCEEDED(hr))
 		{
-			hr = _peb->Advise((IExplorerBrowserEvents *)this, &_dwCookie);
+			hr = SHCreateShellItemArrayFromIDLists(1, (LPCITEMIDLIST*)&pidlStartMenuProvider, &_psiaStartMenuProvider);
+			ILFree(pidlStartMenuProvider);
+		}
+		if (SUCCEEDED(hr))
+		{
+			LPITEMIDLIST pidlStartMenuAutoComplete;
+			hr = SHParseDisplayName(L"shell:::{e345f35f-9397-435c-8f95-4e922c26259e}", nullptr, &pidlStartMenuAutoComplete, 0, nullptr);
 			if (SUCCEEDED(hr))
 			{
-				hr = CoCreateInstance(CLSID_ShellTaskScheduler, NULL, CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER, IID_PPV_ARGS(&_psched));
-				if (SUCCEEDED(hr))
-				{
-					_psched->Status(1, -2);
-
-					IShellTaskSchedulerSettings *pstss;
-					if (SUCCEEDED(_psched->QueryInterface(IID_PPV_ARGS(&pstss))))
-					{
-						pstss->SetWorkerThreadCountMax(2);
-						pstss->Release();
-					}
-
-#if 0	// EXEX-Vista(allison): maybe todo?
-					if (!SHRegGetBoolUSValue(
-						L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-						L"Start_SimulateQueryParserFailure",
-						0,
-						0))
-					{
-						LANGID UserDefaultUILanguage = GetUserDefaultUILanguage();
-						InitializeQueryParser(UserDefaultUILanguage, &field_54, IID_PPV_ARGS(&_pqp));
-					}
-#endif
-
-					HMODULE hMod = GetModuleHandle(L"SHELL32.dll");
-					hr = ResourceStringLocalAllocCopyEx(hMod, 31156, 0, &_pszGroupPrograms);
-					if (SUCCEEDED(hr))
-					{
-						HMODULE hMod2 = GetModuleHandle(L"SHELL32.dll");
-						hr = ResourceStringLocalAllocCopyEx(hMod2, 31158, 0, &_pszGroupInternet);
-						if (SUCCEEDED(hr))
-						{
-							hr = SHCreateConditionFactory(IID_PPV_ARGS(&_pcf));
-							if (SUCCEEDED(hr))
-							{
-								hr = CoCreateInstance(/*CLSID_StartMenuQueryCache*/ CLSID_StartMenuPathCompleteQueryCache, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmqc));
-								if (SUCCEEDED(hr))
-								{
-									return _psmqc->InitializeCache();
-								}
-							}
-						}
-					}
-				}
+				hr = SHCreateShellItemArrayFromIDLists(1, (LPCITEMIDLIST*)&pidlStartMenuAutoComplete, &_psiaStartMenuAutoComplete);
+				ILFree(pidlStartMenuAutoComplete);
 			}
-		}
-	}
-	return hr;
-#else
-	HTHEME hTheme;
-
-	HRESULT hr = _CreateExplorerBrowser(hwnd);
-	if (SUCCEEDED(hr) && (_hwnd = hwnd, (hTheme = _hTheme) != 0))
-	{
-		GetThemeMargins(hTheme, NULL, SPP_SEARCHVIEW, 0, TMT_CONTENTMARGINS, NULL, &_margins);
-	}
-	else
-	{
-		_margins.cxLeftWidth = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
-		_margins.cxRightWidth = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
-	}
-	
-	if (SUCCEEDED(hr))
-	{
-		DWORD dwValue = 0;
-		if (SHRegGetDWORDW(HKEY_CURRENT_USER, REGSTR_PATH_EXPLORER, TEXT("NewDataLayer"), &dwValue) == ERROR_SUCCESS && dwValue >= 3)
-		{
-			field_C4 = 1;
-
-			LPITEMIDLIST pidlStartMenuProvider;
-			hr = SHParseDisplayName(TEXT("shell:::{daf95313-e44d-46af-be1b-cbacea2c3065}"), NULL, &pidlStartMenuProvider, 0, NULL);
-			if (SUCCEEDED(hr))
-			{
-				hr = SHCreateShellItemArrayFromIDLists(1, (LPCITEMIDLIST *)&pidlStartMenuProvider, &_psiaStartMenuProvider);
-				ILFree(pidlStartMenuProvider);
-				if (SUCCEEDED(hr))
-				{
-					LPITEMIDLIST pidlStartMenuAutoComplete;
-					hr = SHParseDisplayName(TEXT("shell:::{e345f35f-9397-435c-8f95-4e922c26259e}"), NULL, &pidlStartMenuAutoComplete, 0, NULL);
-					if (SUCCEEDED(hr))
-					{
-						hr = SHCreateShellItemArrayFromIDLists(1, (LPCITEMIDLIST *)&pidlStartMenuAutoComplete, &_psiaStartMenuAutoComplete);
-						ILFree(pidlStartMenuAutoComplete);
-					}
-				}
-			}
-		}
-		else
-		{
-			LPCITEMIDLIST pidlDesktop = &c_idlDesktop;
-			hr = SHCreateShellItemArrayFromIDLists(1, &pidlDesktop, &_psiaStartMenuProvider);
 		}
 
 		if (SUCCEEDED(hr))
 		{
 			hr = _peb->Advise(this, &_dwCookie);
-			if (SUCCEEDED(hr))
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = CoCreateInstance(CLSID_ShellTaskScheduler, nullptr, CLSCTX_INPROC, IID_PPV_ARGS(&_psched));
+		}
+		if (SUCCEEDED(hr))
+		{
+			_psched->Status(ITSSFLAG_KILL_ON_DESTROY, -2);
+
+			IShellTaskSchedulerSettings* pstss;
+			if (SUCCEEDED(_psched->QueryInterface(IID_PPV_ARGS(&pstss))))
 			{
-				hr = CoCreateInstance(CLSID_ShellTaskScheduler, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&_psched));
-				if (SUCCEEDED(hr))
-				{
-					_psched->Status(ITSSFLAG_KILL_ON_DESTROY, -2);
-
-					IShellTaskSchedulerSettings *pstss;
-					if (SUCCEEDED(_psched->QueryInterface(IID_PPV_ARGS(&pstss))))
-					{
-						pstss->SetWorkerThreadCountMax(2);
-						pstss->Release();
-					}
-
-					if (dwValue < 3)
-						hr = CoCreateInstance(CLSID_StartMenuQueryCache, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmqc));
-					else
-						hr = CoCreateInstance(CLSID_StartMenuPathCompleteQueryCache, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmqc));
-					if (SUCCEEDED(hr))
-					{
-						hr = _psmqc->InitializeCache();
-						if (SUCCEEDED(hr))
-						{
-#ifdef SIMULATE_QUERY_PARSER_FAILURE // EXEX-Vista(allison): maybe todo?
-							if (!SHRegGetBoolUSValueW(
-								L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-								L"Start_SimulateQueryParserFailure",
-								0,
-								0))
-							{
-								LANGID UserDefaultUILanguage = GetUserDefaultUILanguage();
-								InitializeQueryParser(hr, (PWSTR)UserDefaultUILanguage, &field_54, IID_PPV_ARGS(&_pqp));
-							}
-#endif
-							return SHCreateConditionFactory(IID_PPV_ARGS(&_pcf));
-						}
-					}
-				}
+				pstss->SetWorkerThreadCountMax(2);
+				pstss->Release();
 			}
+			hr = CoCreateInstance(CLSID_StartMenuPathCompleteQueryCache, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmqc));
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = _psmqc->InitializeCache();
+		}
+		if (SUCCEEDED(hr))
+		{
+#ifdef SIMULATE_QUERY_PARSER_FAILURE && _DEBUG // EXEX-Vista(allison): maybe todo?
+			if (!SHRegGetBoolUSValueW(REGSTR_PATH_STARTPANE_SETTINGS, L"Start_SimulateQueryParserFailure", FALSE, FALSE))
+			{
+				InitializeQueryParser(GetUserDefaultUILanguage(), &field_54, IID_PPV_ARGS(&_pqp));
+			}
+#endif
+			return SHCreateConditionFactory(IID_PPV_ARGS(&_pcf));
 		}
 	}
+
 	return hr;
-#endif
 }
 
-TASKOWNERID stru_1015F74 ={ 228903948u, 12084u, 19201u, { 162u, 153u, 110u, 250u, 217u, 237u, 114u, 28u }};
+TASKOWNERID stru_1015F74 = { 228903948u, 12084u, 19201u, { 162u, 153u, 110u, 250u, 217u, 237u, 114u, 28u } };
 
 HRESULT CSearchOpenView::AddPathCompletionTask(LPCWSTR pszPath)
 {
@@ -2790,9 +2693,9 @@ ILimitedItemsView : IUnknown
 	STDMETHOD(GetMaxItemCount)(UINT *) PURE;
 };
 
-HRESULT CSearchOpenView::_LimitViewResults(IFolderView *pfv, int nMaxItems)
+HRESULT CSearchOpenView::_LimitViewResults(IFolderView* pfv, int nMaxItems)
 {
-	ILimitedItemsView *pliv;
+	ILimitedItemsView* pliv;
 	HRESULT hr = pfv->QueryInterface(IID_PPV_ARGS(&pliv));
 	if (SUCCEEDED(hr))
 	{
@@ -4002,7 +3905,7 @@ void CSearchOpenView::_SizeExplorerBrowser(int cx, int cy)
 		cmci.dwState = CM_STATE_NONE;
 		cmci.dwMask = CM_MASK_WIDTH;
 		cmci.uWidth = (UINT)RECTWIDTH(rc);
-		//if (field_B0 != 0) // EXEX-Vista(allison): TODO: Check why field_B0 is never true
+		if (field_B0 != 0) // EXEX-Vista(allison): TODO: Check why field_B0 is never true
 		{
 			cmci.uWidth -= GetSystemMetrics(SM_CXVSCROLL);
 		}

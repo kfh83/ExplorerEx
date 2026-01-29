@@ -446,15 +446,15 @@ private:
 	void _UpdateTopMatch(UTM_REASON reason);
 
 private:
-	IExplorerBrowser *_peb;
-	IShellItemArray *_psiaStartMenuProvider;
-	IShellItemArray *_psiaStartMenuAutoComplete;
-	IFolderView2 *_pFolderView;
-	IShellTaskScheduler *_psched;
-	IDispatch *_pDispatchView;
+	IExplorerBrowser* _peb;
+	IShellItemArray* _psiaStartMenuProvider;
+	IShellItemArray* _psiaStartMenuAutoComplete;
+	IFolderView2* _pFolderView;
+	IShellTaskScheduler* _psched;
+	IDispatch* _pDispatchView;
 	IQueryParser* _pqp;
-	IConditionFactory2 *_pcf;
-	IStartMenuQueryCache *_psmqc;
+	IConditionFactory2* _pcf;
+	IStartMenuQueryCache* _psmqc;
 	int field_54;
 	DWORD _dwCookie;
 	HTHEME _hTheme;
@@ -463,7 +463,7 @@ private:
 	DWORD field_74;
 	VIEWMODE _viewMode;
 	int field_7C;
-	CPathCompleteInfo *_ppci;
+	CPathCompleteInfo* _ppci;
 	int field_84;
 	int field_88;
 	int field_8C;
@@ -479,10 +479,10 @@ private:
 	int field_B4;
 	int field_B8;
 	DWORD _dwCookieSink;
-	IStartMenuQuerySink *_psmqs;
+	IStartMenuQuerySink* _psmqs;
 	int field_C0;
 	int field_C4;
-	IShellItem *_psiFolder;
+	IShellItem* _psiFolder;
 
 	friend BOOL SearchView_RegisterClass();
 };
