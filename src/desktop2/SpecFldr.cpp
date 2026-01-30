@@ -182,11 +182,20 @@ public:
         return _kfId;
     }
 
+    BOOL HasFolderID() const
+    {
+        return !IsEqualGUID(_kfId, GUID_NULL);
+    }
+
     REFKNOWNFOLDERID GetMenuFolderID() const
     {
         return _kfMenuId;
     }
 
+    BOOL HasMenuFolderID() const
+    {
+        return !IsEqualGUID(_kfMenuId, GUID_NULL);
+    }
 
     BOOL IsDropTarget() const { return _uFlags & SFD_DROPTARGET; }
     BOOL IsCacheable() const { return _uFlags & SFD_USEBGTHREAD; }
@@ -207,7 +216,7 @@ public:
 	// Taken from ep_taskbar by @amrsatrio
     LPCWSTR GetItemName() const
     { 
-        return _pszPath == SFD_SEPARATOR ? NULL : _pszPath;
+        return _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget;
     }
 
     // Taken from ep_taskbar by @amrsatrio
@@ -283,57 +292,65 @@ public:
 
     void AdjustForSKU(DWORD dwProductType)
     {
-        LSTATUS Value; // eax
-        DWORD v5; // [esp+10h] [ebp-28h] SPLIT BYREF
-        int v6; // [esp+14h] [ebp-24h]
-        BOOL bIsServer; // [esp+18h] [ebp-20h]
-        int v8; // [esp+1Ch] [ebp-1Ch]
+        LSTATUS lStat; // eax
+        DWORD cbData; // [esp+10h] [ebp-28h] SPLIT BYREF
+        // [esp+14h] [ebp-24h]
+        // [esp+18h] [ebp-20h]
+        // [esp+1Ch] [ebp-1Ch]
         //CPPEH_RECORD ms_exc; // [esp+20h] [ebp-18h]
+        DWORD dwMode; // [esp+40h] [ebp+8h] SPLIT BYREF
 
-        v6 = 1;
-        bIsServer = IsOS(OS_ANYSERVER);
-        v8 = 0;
-        if (dwProductType == 4 || dwProductType == 6 || dwProductType == 16 || dwProductType == 27)
-            v6 = 0;
-        if (bIsServer)
-            v6 = 0;
-        if (IsEqualGUID(_kfId, GUID_NULL))
+        int v6 = 1;
+        BOOL v7 = IsOS(OS_ANYSERVER);
+        int v8 = 0;
+        if (dwProductType == PRODUCT_ENTERPRISE || dwProductType == PRODUCT_BUSINESS || dwProductType == PRODUCT_BUSINESS_N || dwProductType == PRODUCT_ENTERPRISE_N)
         {
-            if (_pszTarget == (LPCWSTR)-1 || !_pszTarget)// -1 = SFD_SEPARATOR
+            v6 = 0;
+        }
+        if (v7)
+        {
+            v6 = 0;
+        }
+        if (!memcmp(&this->_kfId, &GUID_NULL, 0x10u))
+        {
+            if (this->_pszTarget == (const WCHAR*)-1 || !this->_pszTarget)
             {
-                if (_pszPath && !StrCmpICW(L"Microsoft.AdministrativeTools", _pszPath) && bIsServer)
+                if (this->_pszPath && !StrCmpICW(L"Microsoft.AdministrativeTools", this->_pszPath) && v7)
                 {
-                    _uFlags = _uFlags & 0xFFFFFFFC | 2;
+                    this->_uFlags = this->_uFlags & ~3u | 2;
                     goto LABEL_33;
                 }
                 goto LABEL_34;
             }
-            //if (memcmp(&_kfId, &GUID_NULL, 0x10u)
-            //    && CcshellAssertFailedW(
-            //        L"d:\\longhorn\\shell\\explorer\\desktop2\\specfldr.cpp",
-            //        673,
-            //        L"!IsSeparator() && !HasFolderID()",
-            //        0))
-            //{
-            //    AttachUserModeDebugger();
-            //    do
-            //    {
-            //        __debugbreak();
-            //        ms_exc.registration.TryLevel = -2;
-            //    } while (dword_108BAD4);
-            //}
-            if (!StrCmpIC(TEXT("::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}"), _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget))
+
+            /*if (memcmp(&this->_kfId, &GUID_NULL, 0x10u)
+                && CcshellAssertFailedW(
+                    L"d:\\longhorn\\shell\\explorer\\desktop2\\specfldr.cpp",
+                    673,
+                    L"!IsSeparator() && !HasFolderID()",
+                    0))
             {
-                if (bIsServer)
+                AttachUserModeDebugger();
+                do
                 {
-                    _uFlags = _uFlags & 0xFFFFFFFC | 1;
+                    __debugbreak();
+                    ms_exc.registration.TryLevel = -2;
+                }
+                while (dword_108BAD4);
+            }*/
+
+            if (!StrCmpICW(L"::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}", this->_pszTarget != (const WCHAR*)-1 ? this->_pszTarget : nullptr))
+            {
+                if (v7)
+                {
+                    this->_uFlags = this->_uFlags & ~3u | 1;
                     v8 = 1;
                 }
                 goto LABEL_34;
             }
-            if (StrCmp(
-                TEXT("::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}"),
-                _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget))
+            if (StrCmpW(
+                L"::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}",
+                this->_pszTarget != (const WCHAR*)-1 ? this->_pszTarget : nullptr))
             {
                 goto LABEL_34;
             }
@@ -344,25 +361,43 @@ public:
             && !IsEqualGUID(GetFolderID(), FOLDERID_Recent))
         {
             if (IsEqualGUID(GetFolderID(), FOLDERID_Games) && !v6)
+            {
                 goto LABEL_15;
+            }
             goto LABEL_34;
         }
-        if (bIsServer)
+
+        if (v7)
         {
         LABEL_15:
-            _uFlags &= 0xFFFFFFFC;
+            this->_uFlags &= ~3u;
         LABEL_33:
             v8 = 1;
         }
+
     LABEL_34:
         if (v8)
         {
-            v5 = 4;
-            Value = SHRegGetValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", _pszShow, 24, nullptr, &dwProductType, &v5);
-            if (Value == 2 || Value == 3)
+            cbData = 4;
+            lStat = SHRegGetValueW(
+                HKEY_CURRENT_USER,
+                L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                this->_pszShow,
+                0x18,
+                nullptr,
+                &dwMode,
+                &cbData);
+            if (lStat == 2 || lStat == 3)
             {
-                dwProductType = _uFlags & 3;
-                _SHRegSetValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", _pszShow, 24, 4u, &dwProductType, 4u);
+                dwMode = this->_uFlags & 3;
+                _SHRegSetValue(
+                    HKEY_CURRENT_USER,
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                    this->_pszShow,
+                    0x18,
+                    4u,
+                    &dwMode,
+                    4u);
             }
         }
     }
@@ -394,7 +429,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowUser"),
-        /* _uFlags */                       0x609,
+        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -418,7 +453,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowMyDocs"),
-        /* _uFlags */                       0x1E09,
+        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -442,7 +477,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowMyPics"),
-        /* _uFlags */                       0x1E09,
+        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -466,7 +501,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowMyMusic"),
-        /* _uFlags */                       0x1E09,
+        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -490,7 +525,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowMyGames"),
-        /* _uFlags */                       0x0E09,
+        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -514,7 +549,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("StartMenuFavorites"),
-        /* _uFlags */                       0x1A98,
+        /* _uFlags */                       0x8 | 0x10 | 0x80 | 0x200 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Favorites"),
         /* _dwShellFolderFlags */           0,
@@ -562,7 +597,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_TrackDocs"),
-        /* _uFlags */                       0x9A,
+        /* _uFlags */                       0x2 | 0x8 | 0x10 | 0x80,
         /* _CreateShellMenuCallback */      CRecentShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0x2,
@@ -586,7 +621,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowMyComputer"),
-        /* _uFlags */                       0x409,
+        /* _uFlags */                       0x1 | 0x8 | 0x400,
         /* _CreateShellMenuCallback */      CMyComputerShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -682,7 +717,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowControlPanel"),
-        /* _uFlags */                       0x89,
+        /* _uFlags */                       0x1 | 0x8 | 0x80,
         /* _CreateShellMenuCallback */      nullptr, //CNoSubMenuShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -730,7 +765,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_AdminToolsRoot"),
-        /* _uFlags */                       0x18,
+        /* _uFlags */                       0x8 | 0x10,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -778,7 +813,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      TEXT("Start_ShowHelp"),
-        /* _uFlags */                       0x81,
+        /* _uFlags */                       0x1 | 0x80,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -850,7 +885,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      nullptr,
-        /* _uFlags */                       0x81,
+        /* _uFlags */                       0x1 | 0x80,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
@@ -935,56 +970,55 @@ public:
 	WCHAR _chMnem;                      // Keyboard accelerator
 	LPWSTR _pszDispName;                // Display name
 
-    SpecialFolderListItem(const CMenuDescriptor *psfd)
+    SpecialFolderListItem(const CMenuDescriptor* psfd)
         : _pidl(nullptr)
         , _psfd(psfd)
     {
-        if (_psfd->IsSeparator())
+
+        if (psfd->IsSeparator())
         {
             _iPinPos = PINPOS_SEPARATOR;
         }
-        else if (IsEqualGUID(_psfd->GetFolderID(), GUID_NULL))
+        else if (psfd->HasFolderID())
         {
-            if (_psfd->_pszTarget)
+            if ((psfd->_uFlags & 0x1000) != 0) // Probably something like psfd->IsSimple()
             {
-                IBindCtx *pbc;
-                if (SUCCEEDED(BindCtx_CreateWithMode(STGM_CREATE, &pbc)))
-                {
-                    SHParseDisplayName(_psfd->GetItemName(), pbc, &_pidl, 0, nullptr);
-                    pbc->Release();
-                }
+                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_VERIFY, nullptr, &_pidlSimple);
+            }
+            else
+            {
+                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_DEFAULT, nullptr, &_pidl);
+            }
+        }
+        else
+        {
+            IBindCtx* pbc;
+            if (psfd->_pszTarget && SUCCEEDED(BindCtx_CreateWithMode(STGM_CREATE, &pbc)))
+            {
+                SHParseDisplayName(psfd->GetItemName(), pbc, &_pidl, 0, nullptr);
+                pbc->Release();
+                return;
             }
 
-            IOpenControlPanel *pocp = nullptr;
-            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, NULL,
-                CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_LOCAL_SERVER | CLSCTX_REMOTE_SERVER, IID_PPV_ARGS(&pocp))))
+            IOpenControlPanel* pocp = nullptr;
+            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pocp))))
             {
-                WCHAR szPath[MAX_PATH];
-                if (SUCCEEDED(pocp->GetPath(_psfd->_pszPath, szPath, ARRAYSIZE(szPath))))
+                WCHAR szPath[260];
+                if (SUCCEEDED(pocp->GetPath(psfd->_pszPath, szPath, ARRAYSIZE(szPath))))
                 {
                     SHParseDisplayName(szPath, nullptr, &_pidl, 0, nullptr);
                 }
             }
-
             if (pocp)
             {
                 pocp->Release();
             }
         }
-        else if ((_psfd->_uFlags & 0x1000) != 0) // Probably something like "_psfd->IsSimple()"
-        {
-            SHGetKnownFolderIDList(_psfd->GetFolderID(), KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_VERIFY, nullptr, &_pidlSimple);
-        }
-        else
-        {
-            SHGetKnownFolderIDList(_psfd->GetFolderID(), 0, nullptr, &_pidl);
-        }
 
-        if (!IsEqualGUID(_psfd->GetMenuFolderID(), GUID_NULL))
+        if (psfd->HasMenuFolderID())
         {
-            SHGetKnownFolderIDList(_psfd->GetMenuFolderID(), 0, nullptr, &_pidlCascade);
+            SHGetKnownFolderIDList(psfd->GetMenuFolderID(), KF_FLAG_DEFAULT, nullptr, &_pidlCascade);
         }
-
         _iImageIndex = -1;
     }
 
@@ -993,6 +1027,7 @@ public:
         ILFree(_pidl);
         ILFree(_pidlCascade);
         ILFree(_pidlSimple);
+
         CoTaskMemFree(_pszDispName);
     }
 
@@ -1015,42 +1050,40 @@ public:
 
 HRESULT DisplayNameOfAsString(IShellFolder *psf, const ITEMIDLIST_RELATIVE *pidl, SHGDNF flags, WCHAR **ppsz);
 
-HRESULT SpecialFolderList::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)
+HRESULT SpecialFolderList::Exec(const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG* pvarargIn, VARIANTARG* pvarargOut)
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (pguidCmdGroup)
+    if (pguidCmdGroup && IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup) && nCmdID == 329)
     {
-        if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup) && nCmdID == 329)
+        CKnownFolderInformation* pkfi = new CKnownFolderInformation;
+        if (pkfi)
         {
-            CKnownFolderInformation *pkfi = new CKnownFolderInformation();
-            if (pkfi)
+            hr = SHGetKnownFolderIDList(FOLDERID_UsersFiles, KF_FLAG_DEFAULT, nullptr, &pkfi->_pidl);
+        }
+        if (SUCCEEDED(hr))
+        {
+            IShellFolder* psf;
+            LPCITEMIDLIST pidl;
+            hr = SHBindToParent(pkfi->_pidl, IID_PPV_ARGS(&psf), &pidl);
+            if (SUCCEEDED(hr))
             {
-                hr = SHGetKnownFolderIDList(FOLDERID_UsersFiles, 0, 0, &pkfi->_pidl);
+                hr = DisplayNameOfAsString(psf, pidl, SHGDN_NORMAL, &pkfi->_pszDispName);
                 if (SUCCEEDED(hr))
                 {
-                    IShellFolder *psf;
-                    LPCITEMIDLIST pidl;
-                    hr = SHBindToParent(pkfi->_pidl, IID_PPV_ARGS(&psf), &pidl);
-                    if (SUCCEEDED(hr))
-                    {
-                        hr = DisplayNameOfAsString(psf, pidl, 0, &pkfi->_pszDispName);
-                        if (SUCCEEDED(hr))
-                        {
-                            PostMessage(_hwnd, SBM_REBUILDMENU, (WPARAM)pkfi, 0);
-                            pkfi = nullptr;
-                        }
-                        psf->Release();
-                    }
+                    PostMessage(_hwnd, SBM_REBUILDMENU, reinterpret_cast<WPARAM>(pkfi), 0);
+                    pkfi = nullptr;
                 }
-
-                if (pkfi)
-                {
-                    delete pkfi;
-                }
+                psf->Release();
             }
         }
+
+        if (pkfi)
+        {
+            delete pkfi;
+        }
     }
+
     return hr;
 }
 
@@ -1073,13 +1106,13 @@ HRESULT SpecialFolderList::CLoadFullPidlTask::InternalResumeRT()
     if (pkfi)
     {
         const CMenuDescriptor* pdesc = &s_rgsfd[this->_dwIndex];
-        if (SHGetKnownFolderIDList(pdesc->GetFolderID(), 0, nullptr, &pkfi->_pidl) >= 0)
+        if (SUCCEEDED(SHGetKnownFolderIDList(pdesc->GetFolderID(), KF_FLAG_DEFAULT, nullptr, &pkfi->_pidl)))
         {
             IShellFolder* psf;
             LPCITEMIDLIST ppidlLast;
             if (SUCCEEDED(SHBindToParent(pkfi->_pidl, IID_PPV_ARGS(&psf), &ppidlLast)))
             {
-                HRESULT hr = DisplayNameOfAsString(psf, ppidlLast, 0, &pkfi->_pszDispName);
+                HRESULT hr = DisplayNameOfAsString(psf, ppidlLast, SHGDN_NORMAL, &pkfi->_pszDispName);
                 if (SUCCEEDED(hr))
                 {
                     IKnownFolderManager* pkfm = nullptr;
@@ -1098,13 +1131,10 @@ HRESULT SpecialFolderList::CLoadFullPidlTask::InternalResumeRT()
                                 {
                                     WCHAR szOutBuf[260];
                                     hr = SHLoadIndirectString(kfd.pszLocalizedName, szOutBuf, ARRAYSIZE(szOutBuf), nullptr);
-                                    if (SUCCEEDED(hr))
+                                    if (SUCCEEDED(hr) && !StrCmp(pkfi->_pszDispName, szOutBuf))
                                     {
-                                        if (!StrCmp(pkfi->_pszDispName, szOutBuf))
-                                        {
-                                            CoTaskMemFree(pkfi->_pszDispName);
-                                            pkfi->_pszDispName = nullptr;
-                                        }
+                                        CoTaskMemFree(pkfi->_pszDispName);
+                                        pkfi->_pszDispName = nullptr;
                                     }
                                 }
 
@@ -1381,8 +1411,8 @@ void SpecialFolderList::EnumItems()
     if (!field_18C)
     {
         field_18C = 1;
-        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Visible_Menu_Items, 53, dwVisibleEventFlags);
-        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Cascading_Menu_Items, 162, dwCascadingEventFlags);
+        (void)dwVisibleEventFlags; // Skipped telemetry StartMenu_Visible_Menu_Items 53
+        (void)dwCascadingEventFlags; // Skipped telemetry StartMenu_Cascading_Menu_Items 162
     }
     SetDesiredSize(0, iItems);
 
@@ -1482,7 +1512,7 @@ LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem* p, IShellFolder* psf, LPCI
         }
     }
 
-    if ((pitem->_psfd->_uFlags & SFD_PREFIX) && psz)
+    if (pitem->_psfd->_uFlags & SFD_PREFIX && psz)
     {
         CoTaskMemFree(pitem->_pszAccelerator);
         pitem->_pszAccelerator = nullptr;
@@ -2165,9 +2195,8 @@ HRESULT CRecentShellMenuCallback::_FilterRecentPidl(IShellFolder *psf, LPCITEMID
             LPITEMIDLIST pidlTarget;
             if (SUCCEEDED(psl->GetIDList(&pidlTarget)) && pidlTarget)
             {
-                DWORD dwAttr = SFGAO_FOLDER;
-                if (SUCCEEDED(SHGetAttributesOf(pidlTarget, &dwAttr)) &&
-                    !(dwAttr & SFGAO_FOLDER))
+                DWORD dwAttr = SFGAO_STREAM | SFGAO_FOLDER;
+                if (SUCCEEDED(SHGetAttributesOf(pidlTarget, &dwAttr)) && (dwAttr & SFGAO_STREAM | SFGAO_FOLDER) != SFGAO_FOLDER)
                 {
                     // We found a shortcut to a nonfolder - keep it!
                     _nShown++;
