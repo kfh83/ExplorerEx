@@ -540,9 +540,10 @@ void CTrayNotify::_InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick)
         {
             SHAllowSetForegroundWindow(_pinfo->hWnd);
 
-            _beLastBalloonEvent = (bRightMouseButtonClick ? BALLOONEVENT_USERRIGHTCLICK : BALLOONEVENT_USERLEFTCLICK);
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, 
-                FALSE, (bRightMouseButtonClick ? NIN_BALLOONTIMEOUT : NIN_BALLOONUSERCLICK));
+            _beLastBalloonEvent = bRightMouseButtonClick ? BALLOONEVENT_USERRIGHTCLICK : BALLOONEVENT_USERLEFTCLICK;
+
+            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, (bRightMouseButtonClick ? NIN_BALLOONTIMEOUT : NIN_BALLOONUSERCLICK));
         }
     }
 }
@@ -682,38 +683,25 @@ void CTrayNotify::_HideBalloonTip()
     _litsLastInfoTip = LITS_BALLOONDESTROYED;
 
     SendMessage(_hwndInfoTip, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)0);
-
-    TOOLINFO ti = {0};
-    ti.cbSize = sizeof(ti);
-    ti.hwnd = _hwndNotify;
-    ti.uId = (INT_PTR)_hwndNotify;
-    ti.lpszText = NULL;
-    
-    SendMessage(_hwndInfoTip, TTM_UPDATETIPTEXT, 0, (LPARAM)&ti);
 }
 
-void CTrayNotify::_DisableCurrentInfoTip(CTrayItem * ptiTemp, UINT uReason, BOOL bBalloonShowing)
+void CTrayNotify::_DisableCurrentInfoTip(CTrayItem* ptiTemp, UINT uReason, BOOL bBalloonShowing)
 {
-    _KillTimer(TF_INFOTIP_TIMER, _uInfoTipTimer);
-    _uInfoTipTimer = 0;
-
     if (ptiTemp)
     {
-        if (!uReason)
-        {
-            uReason = NIN_BALLOONTIMEOUT;
-        }
-
-        // NOTE(isabella) on Vista/V4 compatibility: This code was restructured into a separate
-        // class CTrayBalloonInfoTipManager, which is not aware of these additional parameters.
-        _SendNotify(ptiTemp, uReason, 0, nullptr, 0);
+        if (uReason)
+            _SendNotify(ptiTemp, uReason, 0, nullptr, 0);
+        else
+            _beLastBalloonEvent = BALLOONEVENT_TIMEOUT;
     }
-    
-    delete _pinfo;
-    _pinfo = NULL;
-
     if (bBalloonShowing)
+    {
+        if (uReason == NIN_BALLOONHIDE)
+        {
+            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+        }
         _HideBalloonTip();
+    }
 }
 
 void CTrayNotify::_EmptyInfoTipQueue()
@@ -733,7 +721,7 @@ BOOL CTrayNotify::_CanShowBalloon()
     return TRUE;
 }
 
-void CTrayNotify::_ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason)
+void CTrayNotify::_ShowInfoTip(REFGUID guid, HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason)
 {
     if (_fNoTrayItemsDisplayPolicyEnabled)
         return;
@@ -850,62 +838,75 @@ void CTrayNotify::_ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UIN
     }
 }
 
-void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync)
+void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, BOOL bAsync, BOOL bRealtime)
 {
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+    TNINFOITEM* pii; // eax MAPDST
+    CTrayItem* ptiTemp; // edi
+    INT_PTR nIcon; // eax
+    // [esp+10h] [ebp-20h]
 
-    // show the new one...
-    if (pszInfo[0])
+    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 719
+
+    CTrayItemManager* ItemManagerByGuid = CTrayNotify::_GetItemManagerByGuid(guid);
+    if (*pszInfo)
     {
-        TNINFOITEM *pii = new TNINFOITEM;
-        if (pii)
-        {
-            pii->hWnd = hWnd;
-            pii->uID = uID;
-            StringCchCopy(pii->szInfo, ARRAYSIZE(pii->szInfo), pszInfo);
-            StringCchCopy(pii->szTitle, ARRAYSIZE(pii->szTitle), pszInfoTitle);
-            pii->uTimeout = uTimeout;
-            if (pii->uTimeout < MIN_INFO_TIME)
-                pii->uTimeout = MIN_INFO_TIME;
-            else if (pii->uTimeout > MAX_INFO_TIME)
-                pii->uTimeout = MAX_INFO_TIME;
-            pii->dwInfoFlags  = dwInfoFlags;
+        pii = new TNINFOITEM;
+        if (!pii)
+            return;
+        pii->guid = guid;
+        pii->hWnd = hWnd;
+        pii->uID = uID;
+        pii->dwInfoFlags = dwInfoFlags;
+        pii->bRealtime = bRealtime;
+        StringCchCopyW(pii->szInfo, ARRAYSIZE(pii->szInfo), pszInfo);
+        StringCchCopyW(pii->szTitle, ARRAYSIZE(pii->szTitle), pszInfoTitle);
 
-            // if _pinfo is non NULL then we have a balloon showing right now
-            if (_pinfo || _GetQueueCount())
+        if (!this->_pinfo && !_GetQueueCount())
+        {
+            if (pii->bRealtime && !_CanShowBalloon())
             {
-                // if this is a different icon making the change request
-                // we might have to queue this up
-                if (hWnd != _pinfo->hWnd || uID != _pinfo->uID)
+                goto LABEL_13;
+            }
+            goto LABEL_20;
+        }
+
+        if (pii->bRealtime)
+        {
+            goto LABEL_13;
+        }
+        if (this->_pinfo)
+        {
+            if (hWnd == this->_pinfo->hWnd)
+            {
+                if (uID == this->_pinfo->uID)
                 {
-                    // if the current balloon has not been up for the minimum 
-                    // show delay or there are other items in the queue
-                    // add this to the queue
-                    if (!_dpaInfo || _dpaInfo.AppendPtr(pii) == -1)
+                    ptiTemp = nullptr;
+                    nIcon = ItemManagerByGuid->FindItemAssociatedWithHwndUid(this->_pinfo->hWnd, this->_pinfo->uID);
+                    if (nIcon != -1)
                     {
-                        delete pii;
+                        ptiTemp = ItemManagerByGuid->GetItemDataByIndex(nIcon);
                     }
+                    field_3C = 1;
+                    SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+                    _DisableCurrentInfoTip(ptiTemp, 1028, 1);
+                LABEL_20:
+                    _pinfo = pii;
+                    _ShowInfoTip(pii->guid, pii->hWnd, pii->uID, 1, bAsync, 0);
                     return;
                 }
-
-                CTrayItem * ptiTemp = NULL;
-                INT_PTR nIcon = m_TrayItemManager.FindItemAssociatedWithHwndUid(_pinfo->hWnd, _pinfo->uID);
-                if (nIcon != -1)
-                    ptiTemp = m_TrayItemManager.GetItemDataByIndex(nIcon);
-
-                _DisableCurrentInfoTip(ptiTemp, NIN_BALLOONTIMEOUT, FALSE);
             }
+        }
 
-            _pinfo = pii;  // in with the new
-
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, bAsync, 0);
+        if (_dpaInfo.AppendPtr(pii) < 0)
+        {
+        LABEL_13:
+            delete pii;
         }
     }
     else
     {
-        // empty text means get rid of the balloon
         _beLastBalloonEvent = BALLOONEVENT_BALLOONHIDE;
-        _ShowInfoTip(hWnd, uID, FALSE, FALSE, NIN_BALLOONHIDE);
+        _ShowInfoTip(guid, hWnd, uID, 0, 0, 0x403u);
     }
 }
 
@@ -1134,7 +1135,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     // edi
     // edi
     DWORD dwInfoFlags; // eax
-    BOOL v16; // eax
+    BOOL bAsync; // eax
     // [esp+10h] [ebp-34h]
     int bIsEqualIcon; // [esp+14h] [ebp-30h]
     // [esp+18h] [ebp-2Ch]
@@ -1322,22 +1323,16 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
             pnid->dwInfoFlags = dwInfoFlags & ~0x20u;
         }
 
-        v16 = pti->IsHidden();
-        if (!v16)
+        bAsync = pti->IsHidden();
+        if (!bAsync)
         {
             if (bFirstTime || fResize)
             {
-                v16 = 1;
+                bAsync = 1;
             }
 
             _SetInfoTip(
-                pti->guidItem,
-                pti->hWnd,
-                pti->uID,
-                pnid->szInfo,
-                pnid->szInfoTitle,
-                pnid->dwInfoFlags,
-                v16,
+                pti->guidItem, pti->hWnd, pti->uID, pnid->szInfo, pnid->szInfoTitle, pnid->dwInfoFlags, bAsync,
                 pnid->uFlags & NIF_REALTIME);
         }
     }
@@ -1472,7 +1467,9 @@ BOOL CTrayNotify::_DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOO
         {
             // frees pinfo and shows the next balloon if any
             _beLastBalloonEvent = BALLOONEVENT_BALLOONHIDE;
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, TRUE, NIN_BALLOONHIDE);
+
+            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5, 0xFFFF);
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, TRUE, NIN_BALLOONHIDE);
 
             delete _pinfo;
             _pinfo = nullptr;
@@ -3104,7 +3101,7 @@ void CTrayNotify::_OnInfoTipTimer()
     if (_pinfo)
     {
         _beLastBalloonEvent = BALLOONEVENT_TIMEOUT;
-        _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONTIMEOUT); // hide this balloon and show new one
+        _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONTIMEOUT); // hide this balloon and show new one
     }
 }
 
@@ -3136,7 +3133,7 @@ LRESULT CTrayNotify::_OnTimer(UINT_PTR uTimerID)
             if (_pinfo)
             {
                 _beLastBalloonEvent = BALLOONEVENT_USERXCLICK;
-                _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONTIMEOUT);
+                _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONTIMEOUT);
             }
             // This is called only when the user has clicked the 'X'.
             _litsLastInfoTip = LITS_BALLOONXCLICKED;
@@ -3148,7 +3145,7 @@ LRESULT CTrayNotify::_OnTimer(UINT_PTR uTimerID)
         _bWaitingBetweenBalloons = FALSE;
         if (_pinfo)
         {
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, TRUE, 0);
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, TRUE, TRUE, 0);
         }
     }
     else if (uTimerID == TID_BALLOONSHOW)
@@ -3158,7 +3155,7 @@ LRESULT CTrayNotify::_OnTimer(UINT_PTR uTimerID)
         _bStartMenuAllowsTrayBalloon = TRUE;
         if (_pinfo)
         {
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
         }
     }
     else if (uTimerID == TID_RUDEAPPHIDE)
@@ -3168,7 +3165,7 @@ LRESULT CTrayNotify::_OnTimer(UINT_PTR uTimerID)
         if (_pinfo && _bWaitAfterRudeAppHide)
         {
             _bWaitAfterRudeAppHide = FALSE;
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);            
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
         }
 
         _bWaitAfterRudeAppHide = FALSE;
@@ -3263,7 +3260,7 @@ LRESULT CTrayNotify::_OnMouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam)
                         _beLastBalloonEvent = BALLOONEVENT_USERRIGHTCLICK;
                     else
                         _beLastBalloonEvent = BALLOONEVENT_USERLEFTCLICK;
-                    _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONUSERCLICK);
+                    _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONUSERCLICK);
                 }
 
                 if (fClickDown)
@@ -4001,15 +3998,15 @@ BOOL CTrayNotify::_PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEven
             if ((pti->IsDemoted() || tiPos == TIPOS_HIDDEN) && _pinfo && _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID)
             {
                 _beLastBalloonEvent = BALLOONEVENT_APPDEMOTE;
-                _ShowInfoTip(/*&_pinfo->guid,*/ _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
+                _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
             }
 
             ptim->SetTBBtnStateHelper(nIcon, TBSTATE_HIDDEN, pti->IsHidden() || m_TrayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted());
 
             if (bDemoteStatusChange)
             {
-                _UpdateChevronState(_fBangMenuOpen, 0, 1);
-                _OnSizeChanged(0);
+                _UpdateChevronState(_fBangMenuOpen, FALSE, TRUE);
+                _OnSizeChanged(FALSE);
             }
         }
     }
@@ -4274,10 +4271,9 @@ void CTrayNotify::_OnWorkStationLocked(BOOL bLocked)
 {
     _bWorkStationLocked = bLocked;
 
-    if (!_bWorkStationLocked && !_fNoTrayItemsDisplayPolicyEnabled && 
-        _fEnableUserTrackedInfoTips && _pinfo)
+    if (!_bWorkStationLocked && !_fNoTrayItemsDisplayPolicyEnabled && _fEnableUserTrackedInfoTips && _pinfo)
     {
-        _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
+        _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
     }
 }
 
@@ -4286,27 +4282,29 @@ void CTrayNotify::_OnRudeApp(BOOL bRudeApp)
     if (_bRudeAppLaunched != bRudeApp)
     {
         _bWaitAfterRudeAppHide = FALSE;
-        
+
         _bRudeAppLaunched = bRudeApp;
 
-        if (!bRudeApp)
+        if (bRudeApp || !_pinfo)
         {
+            field_3C = 1;
+            KillTimer(_hwndNotify, 7u);
             if (_pinfo)
             {
-                SetTimer(_hwndNotify, TID_RUDEAPPHIDE, TT_RUDEAPPHIDE_INTERVAL, 0);
-                _bWaitAfterRudeAppHide = TRUE;
-
-                // _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, TRUE, TRUE, NIN_BALLOONSHOW);
+                if (_pinfo->bRealtime)
+                {
+                    _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, NIN_BALLOONTIMEOUT);
+                }
+                else
+                {
+                    SendMessageW(_hwndInfoTip, 0x411u, 0, 0);
+                }
             }
         }
         else
         {
-            _KillTimer(TF_INFOTIP_TIMER, _uInfoTipTimer);
-            _uInfoTipTimer = 0;
-
-            // NOTENOTE : *DO NOT* delete _pinfo, we will show the balloon tip after the fullscreen app has 
-            // gone away. 
-            _HideBalloonTip();
+            SetTimer(_hwndNotify, 6u, 0x2710u, nullptr);
+            _bWaitAfterRudeAppHide = 1;
         }
     }
 }
@@ -4443,7 +4441,10 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
     case TNM_ASYNCINFOTIP:
         ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        _ShowInfoTip((HWND)wParam, (UINT)lParam, TRUE, FALSE, 0);
+        if (_pinfo && _pinfo->hWnd == (HWND)wParam && _pinfo->uID == lParam)
+        {
+            _ShowInfoTip(_pinfo->guid, (HWND)wParam, lParam, TRUE, FALSE, 0);
+        }
         break;
 
     case TNM_NOTIFY:
@@ -4530,16 +4531,13 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     // this balloon to stay up forever, and screws up the tests. So we shim Winstone
     // to pass us this message, and allow normal balloon tips for such a machine.
     case TNM_ENABLEUSERTRACKINGINFOTIPS:
-        if ((BOOL) wParam == FALSE)
+        if ((BOOL)wParam == FALSE && !_fNoTrayItemsDisplayPolicyEnabled && _fEnableUserTrackedInfoTips && _pinfo)
         {
-            if (!_fNoTrayItemsDisplayPolicyEnabled && _fEnableUserTrackedInfoTips && _pinfo)
-            {
-                _fEnableUserTrackedInfoTips = (BOOL) wParam;
-                _beLastBalloonEvent = BALLOONEVENT_NONE;
-                _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
-            }
+            _fEnableUserTrackedInfoTips = FALSE;
+            _beLastBalloonEvent = BALLOONEVENT_NONE;
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
         }
-        _fEnableUserTrackedInfoTips = (BOOL) wParam;
+        _fEnableUserTrackedInfoTips = wParam;
         break;
 
     case TNM_WORKSTATIONLOCKED:
@@ -4749,7 +4747,7 @@ BOOL CTrayNotify::_TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh)
     case NIM_DELETE:
         if (nIcon >= 0)
         {
-            bRet = _DeleteNotify(guidItem, nIcon, FALSE, TRUE); // @NOTE: GUID_NULL IS TEMPORARY
+            bRet = _DeleteNotify(guidItem, nIcon, FALSE, TRUE);
             if (bRet)
             {
                 if (pbRefresh)
@@ -4883,7 +4881,7 @@ void CTrayNotify::_UpdateChevronState( BOOL fBangMenuOpen,
                   _pinfo && _IsChevronInfoTip(_pinfo->hWnd, _pinfo->uID) )
         {
             _beLastBalloonEvent = BALLOONEVENT_NONE;
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);         
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
         }
     }
 
@@ -4894,7 +4892,7 @@ void CTrayNotify::_UpdateChevronState( BOOL fBangMenuOpen,
         if ((_fBangMenuOpen != fBangMenuOpen) && _pinfo && _IsChevronInfoTip(_pinfo->hWnd, _pinfo->uID))
         {
             _beLastBalloonEvent = BALLOONEVENT_NONE;
-            _ShowInfoTip(_pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE); 
+            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
         }
 
         _fBangMenuOpen = fBangMenuOpen;

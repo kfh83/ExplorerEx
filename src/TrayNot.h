@@ -34,10 +34,11 @@ typedef struct
     GUID      guid;
     HWND      hWnd;
     UINT      uID;
-    TCHAR     szTitle[64];
-    TCHAR     szInfo[256];
+    WCHAR     szTitle[64];
+    WCHAR     szInfo[256];
     UINT      uTimeout;
     DWORD     dwInfoFlags;
+    BOOL bRealtime;
 } TNINFOITEM;
 
 //
@@ -171,11 +172,14 @@ protected:
     // WndProc callback functions
     LRESULT v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     // Callback for the chevron button
-    static LRESULT CALLBACK s_ChevronWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
-        LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    static LRESULT CALLBACK s_ChevronWndProc(
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     // Callback for the toolbar
-    static LRESULT CALLBACK s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
-        LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    static LRESULT CALLBACK s_ToolbarWndProc(
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    // Callback for the balloon tip
+    static LRESULT CALLBACK s_BalloonSubclassProc(
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
     // Icon Image-related functions
     void _RemoveImage(REFGUID guid, UINT uIMLIndex);
@@ -186,8 +190,8 @@ protected:
     void _InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick);
     void _PositionInfoTip();
     DWORD _ShowBalloonTip(LPTSTR szTitle, HICON hIcon, UINT uTimeout, DWORD dwLastSoundTime);
-    void _SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, UINT uTimeout, BOOL bAsync);
-    void _ShowInfoTip(HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
+    void _SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, BOOL bAsync, BOOL bRealtime);
+    void _ShowInfoTip(REFGUID guid, HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
     void _ShowChevronInfoTip();
     void _EmptyInfoTipQueue();
     void _HideBalloonTip();
@@ -299,6 +303,9 @@ private:
     HWND            _hwndChevronToolTip;
     HWND            _hwndToolbarInfoTip;
     HWND            _hwndToolbarInfoTipSCA;         // Vista - InfoTip for the System Control Area (SCA) Toolbar
+
+    int             field_38;                       // Vista - NEW
+    int             field_3C;                       // Vista - NEW
 
     TCHAR           _szExplorerExeName[MAX_PATH];
     TCHAR *         _pszCurrentThreadDesktopName;
