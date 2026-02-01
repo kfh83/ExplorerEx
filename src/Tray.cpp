@@ -7749,7 +7749,6 @@ void CTray::_RunDlg()
 void CTray::_ExploreCommonStartMenu(BOOL bExplore)
 {
     TCHAR szPath[MAX_PATH];
-    TCHAR szCmdLine[MAX_PATH + 50];
 
     //
     // Get the common start menu path.
