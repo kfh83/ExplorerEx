@@ -285,6 +285,8 @@ LRESULT CALLBACK CUserPane::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
             break;
 
         case WM_SYSCOLORCHANGE:
+            _crColor = GetSysColor(COLOR_CAPTIONTEXT);
+            // fallthrough
         case WM_DISPLAYCHANGE:
         case WM_SETTINGCHANGE:
             SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
