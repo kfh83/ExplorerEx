@@ -7760,37 +7760,14 @@ void CTray::_ExploreCommonStartMenu(BOOL bExplore)
         return;
     }
 
-    //
-    // If we are starting in explorer view, then the command line
-    // has a "/e, " before the quoted diretory.
-    //
-
+    SHELLEXECUTEINFO sei = { 0 };
+    sei.cbSize = sizeof(sei);
+    sei.nShow = SW_SHOWNORMAL;
+    sei.lpFile = szPath;
     if (bExplore)
-    {
-        StringCchCopy(szCmdLine, ARRAYSIZE(szCmdLine), TEXT("explorer.exe /e, \""));
-    }
-    else
-    {
-        StringCchCopy(szCmdLine, ARRAYSIZE(szCmdLine), TEXT("explorer.exe \""));
-    }
-
-    StringCchCat(szCmdLine, ARRAYSIZE(szCmdLine), szPath);
-    StringCchCat(szCmdLine, ARRAYSIZE(szCmdLine), TEXT("\""));
-
-    // Initialize process startup info
-    STARTUPINFO si = { 0 };
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_SHOWNORMAL;
-
-    // Start explorer
-    PROCESS_INFORMATION pi = { 0 };
-    if (CreateProcess(NULL, szCmdLine, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
-    {
-        // Close the process and thread handles
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
+        sei.lpVerb = TEXT("explore");
+    
+    ShellExecuteEx(&sei);
 }
 
 int CTray::_GetQuickLaunchID()
