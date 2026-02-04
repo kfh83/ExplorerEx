@@ -390,8 +390,7 @@ HRESULT GetMergedFolder(IShellFolder** ppsf, LPITEMIDLIST* ppidl,
                     !IsEqualGUID(*rgmfi[imfi].pguidObj, CLSID_StartMenu));
             }
 
-
-            hr = pasf->AddNameSpace(rgmfi[imfi].pguidObj, psf, NULL, rgmfi[imfi].uANSFlags,2);
+            hr = pasf->AddNameSpace(rgmfi[imfi].pguidObj, psf, NULL, rgmfi[imfi].uANSFlags, rgmfi[imfi].pguidObj == &CLSID_StartMenu ? 1 : 0);
             if (SUCCEEDED(hr))
             {
                 if (rgmfi[imfi].uANSFlags & ASFF_DEFNAMESPACE_DISPLAYNAME)
