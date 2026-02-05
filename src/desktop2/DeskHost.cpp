@@ -628,19 +628,16 @@ void CDesktopHost::_ComputeActualSize(MONITORINFO *pminfo, LPCRECT prcExclude)
         v4 = prcExclude->top - pminfo->rcMonitor.top;
 
     int v5 = 0;
-    if (_hTheme)
+    if (_hTheme && !field_C4)
     {
-        if (!field_C4)
+        BOOL v25 = 0;
+        DwmIsCompositionEnabled(&v25);
+        if (v25)
         {
-            BOOL v25 = 0;
-            DwmIsCompositionEnabled(&v25);
-            if (v25)
-            {
-                SIZE v26;
-                v26.cx = 70;
-                SHLogicalToPhysicalDPI(0, (int *)&v26);
-                v5 = v26.cx - _spm.panes[0].size.cy;
-            }
+            SIZE v26;
+            v26.cx = 70;
+            SHLogicalToPhysicalDPI(nullptr, (int *)&v26);
+            v5 = v26.cx - _spm.panes[0].size.cy;
         }
     }
     int v8 = v4 - v5;
@@ -727,11 +724,11 @@ void CDesktopHost::_ComputeActualSize(MONITORINFO *pminfo, LPCRECT prcExclude)
 
     HDWP hdwp = BeginDeferWindowPos(5);
     const DWORD dwSWPFlags = SWP_NOACTIVATE | SWP_NOZORDER;
-    DeferWindowPos(hdwp, _spm.panes[0].hwnd, 0, cx, 0, _rcActual.right - cx, v20, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[1].hwnd, 0, 0, 0, cx, v23, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[2].hwnd, 0, 0, v23, cx, cy, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[3].hwnd, 0, cx, v20, _rcActual.right - cx, v22 - v20, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[4].hwnd, 0, cx, v22, _rcActual.right - cx, _spm.panes[4].size.cy, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[0].hwnd, nullptr, cx, 0, _rcActual.right - cx, v20, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[1].hwnd, nullptr, 0, 0, cx, v23, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[2].hwnd, nullptr, 0, v23, cx, cy, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[3].hwnd, nullptr, cx, v20, _rcActual.right - cx, v22 - v20, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[4].hwnd, nullptr, cx, v22, _rcActual.right - cx, _spm.panes[4].size.cy, dwSWPFlags);
     EndDeferWindowPos(hdwp);
 #endif
 }
@@ -1267,7 +1264,7 @@ void CDesktopHost::OnContextMenu(LPARAM lParam)
                     TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"),
                     TEXT("DisableTaskMgr"),
                     SRRF_RT_REG_DWORD,
-                    0,
+                    nullptr,
                     &dwValue,
                     &cbData) == ERROR_SUCCESS)
                 {

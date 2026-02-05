@@ -57,17 +57,17 @@ HRESULT COpenViewHost::QueryService(REFGUID guidService, REFIID riid, void **ppv
 	if (IsEqualGUID(guidService, SID_SM_OpenView))
 	{
 		ASSERT(_aopa[OPENVIEW_SEARCHPANE].punk != NULL); // 430
-		hr = IUnknown_QueryService(_aopa[2].punk, guidService, riid, ppvObject);
+		hr = IUnknown_QueryService(_aopa[OPENVIEW_SEARCHPANE].punk, guidService, riid, ppvObject);
 	}
 	else if (IsEqualGUID(guidService, SID_SM_ViewControl))
 	{
 		ASSERT(_aopa[OPENVIEW_VIEWCONTROL].punk != NULL); // 436
-		hr = IUnknown_QueryService(_aopa[3].punk, guidService, riid, ppvObject);
+		hr = IUnknown_QueryService(_aopa[OPENVIEW_VIEWCONTROL].punk, guidService, riid, ppvObject);
 	}
 	else if (IsEqualGUID(guidService, SID_SM_TopMatch))
 	{
 		ASSERT(_aopa[OPENVIEW_TOPMATCH].punk != NULL); // 442
-		hr = IUnknown_QueryService(_aopa[4].punk, guidService, riid, ppvObject);
+		hr = IUnknown_QueryService(_aopa[OPENVIEW_TOPMATCH].punk, guidService, riid, ppvObject);
 	}
 	else if (IsEqualGUID(guidService, SID_SM_OpenHost))
 	{
@@ -75,11 +75,11 @@ HRESULT COpenViewHost::QueryService(REFGUID guidService, REFIID riid, void **ppv
 	}
 	else if (IsEqualGUID(guidService, SID_SM_MFU))
 	{
-		hr = IUnknown_QueryService(_aopa[0].punk, guidService, riid, ppvObject);
+		hr = IUnknown_QueryService(_aopa[OPENVIEW_MFU].punk, guidService, riid, ppvObject);
 	}
 	else if (IsEqualGUID(guidService, SID_SM_NSCHOST))
 	{
-		hr = IUnknown_QueryService(_aopa[1].punk, guidService, riid, ppvObject);
+		hr = IUnknown_QueryService(_aopa[OPENVIEW_NSCHOST].punk, guidService, riid, ppvObject);
 	}
 
 	if (FAILED(hr))
@@ -106,18 +106,18 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 		{
 		case 324:
 			ASSERT(pvarargIn->vt == VT_BYREF); // 611
-			return _HandleOpenBoxArrowKey((MSG *)pvarargIn->lVal);
+			return _HandleOpenBoxArrowKey(static_cast<MSG*>(pvarargIn->byref));
 
 		case 330:
 			ASSERT(pvarargIn->vt == VT_BYREF); // 618
-			return _HandleOpenBoxContextMenu((MSG *)pvarargIn->lVal);
+			return _HandleOpenBoxContextMenu(static_cast<MSG*>(pvarargIn->byref));
 
 		case 307:
-			IUnknown_QueryServiceExec((IServiceProvider *)this, SID_SM_OpenBox, &SID_SM_DV2ControlHost, nCmdID, 0, 0, pvarargOut);
+			IUnknown_QueryServiceExec(static_cast<IServiceProvider*>(this), SID_SM_OpenBox, &SID_SM_DV2ControlHost, nCmdID, 0, nullptr, pvarargOut);
 			if (pvarargOut->iVal && field_18)
 			{
 				_SetCurrentView(0, pvarargIn);
-				IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 310, 0, 0, 0);
+				IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 310, 0, nullptr, nullptr);
 				pvarargOut->iVal = 0;
 			}
 			return S_OK;
@@ -129,7 +129,7 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 
 		case 316:
 			ASSERT(pvarargIn->vt == VT_I4); // 646
-			_aopa[4].size.cy = pvarargIn->decVal.Lo32;
+			_aopa[OPENVIEW_TOPMATCH].size.cy = pvarargIn->decVal.Lo32;
 
 			RECT rc;
 			GetClientRect(_hwnd, &rc);
@@ -143,11 +143,12 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 			if (field_18 == 2 || field_18 == 1)
 			{
 				ASSERT(pvarargIn->vt == VT_BYREF); // 659
-				HWND hwndParent = (HWND)pvarargIn->lVal;
+				HWND hwndParent = static_cast<HWND>(pvarargIn->byref);
 				ASSERT(pvarargOut->vt == VT_BYREF); // 661
-
 				if (hwndParent && GetParent(hwndParent) == _hwnd)
-					pvarargOut->lVal = (LONG)hwndParent;
+				{
+					pvarargOut->byref = hwndParent;
+				}
 			}
 			return S_OK;
 		}
@@ -166,7 +167,7 @@ HRESULT COpenViewHost::SetSite(IUnknown* punkSite)
 		{
 			if (_aopa[i].punk)
 			{
-				IUnknown_SetSite(_aopa[i].punk, NULL);
+				IUnknown_SetSite(_aopa[i].punk, nullptr);
 				IUnknown_SafeReleaseAndNullPtr(&_aopa[i].punk);
 			}
 		}
@@ -225,7 +226,7 @@ extern void RemapSizeForHighDPI(SIZE *psiz);
 LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LPCREATESTRUCT lpcs = reinterpret_cast<LPCREATESTRUCT>(lParam);
-	SMPANEDATA *psmpd = reinterpret_cast<SMPANEDATA *>(lpcs->lpCreateParams);
+	SMPANEDATA* psmpd = static_cast<SMPANEDATA*>(lpcs->lpCreateParams);
 
 	HTHEME hTheme = psmpd->hTheme;
 
@@ -261,7 +262,7 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		RemapSizeForHighDPI(&_aopa[i].size);
 
-		HWND hwndPane = CreateWindowExW(0, _aopa[i].pszClassName, NULL, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i), NULL, &_aopa[i]);
+		HWND hwndPane = CreateWindowExW(0, _aopa[i].pszClassName, nullptr, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i), nullptr, &_aopa[i]);
 		if (!hwndPane || !GetWindowLongPtr(hwnd, GWL_STYLE))
 			return -1;
 
@@ -341,7 +342,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 				// int cy = nmgms.siz.cy;
 				if (i < 2)
 				{
-					nmgms.siz.cy += _aopa[3].size.cy;
+					nmgms.siz.cy += _aopa[OPENVIEW_VIEWCONTROL].size.cy;
 					//cy = _aopa[3].size.cy + nmgms.siz.cy;
 				}
 
@@ -430,10 +431,10 @@ void COpenViewHost::_Layout(int cx, int cy)
 			{
 				if (i == 2)
 				{
-					cy1 = cy - _aopa[4].size.cy;
+					cy1 = cy - _aopa[OPENVIEW_TOPMATCH].size.cy;
 					goto LABEL_11;
 				}
-				cy1 = _aopa[4].size.cy;
+				cy1 = _aopa[OPENVIEW_TOPMATCH].size.cy;
 			}
 			v6 = cy - cy1;
 			goto LABEL_11;
@@ -461,14 +462,14 @@ HRESULT COpenViewHost::_SetCurrentView(int a2, VARIANT* pvararg)
 		bool v6 = field_18 == 2;
 		if (field_18 < 2)
 		{
-			_ShowEnableWindow(_aopa[3].hwnd, FALSE);
-			IUnknown_QueryServiceExec(_aopa[3].punk, SID_SM_ViewControl, &SID_SM_DV2ControlHost, 302, a2, NULL, NULL);
+			_ShowEnableWindow(_aopa[OPENVIEW_VIEWCONTROL].hwnd, FALSE);
+			IUnknown_QueryServiceExec(_aopa[OPENVIEW_VIEWCONTROL].punk, SID_SM_ViewControl, &SID_SM_DV2ControlHost, 302, a2, NULL, NULL);
 			v6 = field_18 == 2;
 		}
 		
 		if (v6)
 		{
-			_ShowEnableWindow(_aopa[4].hwnd, FALSE);
+			_ShowEnableWindow(_aopa[OPENVIEW_TOPMATCH].hwnd, FALSE);
 		}
 
 		//if (a2 == 2)
@@ -489,16 +490,16 @@ HRESULT COpenViewHost::_SetCurrentView(int a2, VARIANT* pvararg)
 		
 		if (field_18 < 2)
 		{
-			_ShowEnableWindow(_aopa[3].hwnd, TRUE);
+			_ShowEnableWindow(_aopa[OPENVIEW_VIEWCONTROL].hwnd, TRUE);
 		}
 		else if (field_18 == 2)
 		{
-			_ShowEnableWindow(_aopa[4].hwnd, TRUE);
+			_ShowEnableWindow(_aopa[OPENVIEW_TOPMATCH].hwnd, TRUE);
 		}
 
 		if (field_18 == 1)
 		{
-			IUnknown_QueryServiceExec(_aopa[1].punk, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 302, a2, pvararg, NULL);
+			IUnknown_QueryServiceExec(_aopa[OPENVIEW_NSCHOST].punk, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 302, a2, pvararg, NULL);
 		}
 		return S_OK;
 	}
@@ -520,14 +521,14 @@ HRESULT COpenViewHost::_HandleOpenBoxContextMenu(MSG* pmsg)
 		VARIANT vt;
 		vt.lVal = -1;
 		vt.vt = VT_I4;
-		if (IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 325, 0, NULL, &vt) >= 0 && vt.lVal != -1)
+		if (IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 325, 0, nullptr, &vt) >= 0 && vt.lVal != -1)
 		{
-			pmsg->hwnd  = _aopa[2].hwnd;
+			pmsg->hwnd  = _aopa[OPENVIEW_SEARCHPANE].hwnd;
 		}
 		else
 		{
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 325, 0, NULL, &vt);
-			pmsg->hwnd  = _aopa[4].hwnd;
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 325, 0, nullptr, &vt);
+			pmsg->hwnd  = _aopa[OPENVIEW_TOPMATCH].hwnd;
 			if (vt.lVal == -1)
 			{
 				return hr;

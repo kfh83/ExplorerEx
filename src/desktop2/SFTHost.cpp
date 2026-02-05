@@ -2755,7 +2755,7 @@ LRESULT SFTBarHost::_OnLVItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
     return lResult;
 #else
     COLORREF SysColor; // eax
-    COLORREF v4; // eax
+    // eax
 
     LRESULT lResult = CDRF_DODEFAULT;
 
@@ -2777,13 +2777,12 @@ LRESULT SFTBarHost::_OnLVItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
         plvcd->clrTextBk = SysColor;
     }
 
-    plvcd->nmcd.uItemState &= 0xFFFFFFEE;
+    plvcd->nmcd.uItemState &= ~0x11u;
     if ((plvcd->nmcd.uItemState & 0x40) != 0 && this->_clrHot != -1
         || plvcd->nmcd.dwItemSpec == SendMessageW(this->_hwndList, 0x103Du, 0, 0))
     {
-        v4 = GetSysColor(COLOR_HIGHLIGHT);
-        plvcd->clrTextBk = v4;
-        plvcd->clrFace = v4;
+        plvcd->clrTextBk = GetSysColor(COLOR_HIGHLIGHT);
+        plvcd->clrFace = GetSysColor(COLOR_HIGHLIGHT);
         plvcd->clrText = this->_clrHot;
     }
 

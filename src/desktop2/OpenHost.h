@@ -13,24 +13,24 @@ class COpenViewHost
 {
 public:
 	// *** IUnknown ***
-	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj);
-	STDMETHODIMP_(ULONG) AddRef();
-	STDMETHODIMP_(ULONG) Release();
+	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+	STDMETHODIMP_(ULONG) AddRef() override;
+	STDMETHODIMP_(ULONG) Release() override;
 
 	// *** IServiceProvider ***
-	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject);
+	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
 
 	// *** IObjectWithSite ***
-	STDMETHODIMP SetSite(IUnknown *punkSite);
+	STDMETHODIMP SetSite(IUnknown *punkSite) override;
 
 	// *** IOleCommandTarget ***
-	STDMETHODIMP QueryStatus(const GUID* pguidCmdGroup,
-		ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT* pCmdText);
-	STDMETHODIMP Exec(const GUID* pguidCmdGroup, 
-		DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut);
+	STDMETHODIMP QueryStatus(const GUID* pguidCmdGroup, ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT* pCmdText) override;
+	STDMETHODIMP Exec(
+		const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut) override;
+
 private:
 	COpenViewHost(HWND hwnd);
-	~COpenViewHost();
+	~COpenViewHost() override;
 
 	static LRESULT CALLBACK s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

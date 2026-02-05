@@ -162,7 +162,7 @@ HRESULT CSearchOpenView::Exec(const GUID *pguidCmdGroup,
 								}
 
 								PathStripToRoot(pszPath1);
-								if (!PathIsRoot(pszPath1) || field_B4 || SHWindowsPolicy(POLID_NoRun))
+								if (!PathIsRoot(pszPath1) || _fIsBrowsing || SHWindowsPolicy(POLID_NoRun))
 								{
 									hr = _UpdateSearchText(pszPath);
 								}
@@ -353,7 +353,7 @@ HRESULT CSearchOpenView::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
 {
 	if (dispIdMember == 207)
 	{
-		CSearchOpenView::_UpdateTopMatch(UTM_REASON_0);
+		_UpdateTopMatch(UTM_REASON_0);
 	}
 	else if (dispIdMember == 216)
 	{
@@ -481,7 +481,7 @@ const PROPERTYKEY PKEY_ItemNameDisplay = { { 3072717104u, 18415u, 4122u, { 165u,
 
 HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 {
-	field_B4 = 0;
+	_fIsBrowsing = 0;
 
 	IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
 
@@ -530,7 +530,7 @@ HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 		}
 	}
 
-	field_B4 = FAILED(hr);
+	_fIsBrowsing = FAILED(hr);
 
 	if (_viewMode != VIEWMODE_PATHCOMPLETE)
 	{
@@ -1288,25 +1288,25 @@ LRESULT CSearchOpenView::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 		switch (pnm->code)
 		{
 			case 201u:
-				HandleApplyRegion(hwnd, _hTheme, (SMNMAPPLYREGION *)pnm, SPP_SEARCHVIEW, 0);
+				HandleApplyRegion(hwnd, _hTheme, (SMNMAPPLYREGION*)pnm, SPP_SEARCHVIEW, 0);
 				break;
 			case 215u:
-				return _OnSMNFindItem((SMNDIALOGMESSAGE *)pnm);
+				return _OnSMNFindItem((SMNDIALOGMESSAGE*)pnm);
 			case 223u:
 				return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
 			case NM_KILLFOCUS:
 			{
-				IShellView2 *psv2;
+				IShellView2* psv2;
 				if (_pFolderView && SUCCEEDED(_pFolderView->QueryInterface(IID_PPV_ARGS(&psv2))))
 				{
-					psv2->SelectAndPositionItem(NULL, SVSI_DESELECTOTHERS, NULL);
+					psv2->SelectAndPositionItem(nullptr, SVSI_DESELECTOTHERS, nullptr);
 					psv2->Release();
 				}
 				break;
 			}
 		}
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, (LPARAM)lParam);
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CSearchOpenView::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1537,7 +1537,7 @@ LRESULT CSearchOpenView::_OnSize(LPWINDOWPOS pwp)
 	if (_peb)
 	{
 		_SizeExplorerBrowser(pwp->cx, pwp->cy);
-		return 1;
+		lres = 1;
 	}
 	return lres;
 }
@@ -1553,7 +1553,7 @@ int CSearchOpenView::_OnEraseBkGnd(HWND hwnd, HDC hdc)
 		{
 			SHFillRectClr(hdc, &rc, 0);
 		}
-		DrawThemeBackground(_hTheme, hdc, SPP_SEARCHVIEW, 0, &rc, NULL);
+		DrawThemeBackground(_hTheme, hdc, SPP_SEARCHVIEW, 0, &rc, nullptr);
 	}
 	else
 	{
@@ -1594,7 +1594,6 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 {
 	bool v3; // zf
 	LPCWSTR v4; // eax
-	HWND *v5; // edi
 	BOOL v6; // eax
 	EXECUTEINFO* v7; // edi
 	BOOL v8; // eax
@@ -1618,10 +1617,12 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 	v16 = v3;
 	if (iItem == -1)
 	{
-		//SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_URL_Count, 120);
-		hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 308, 0, 0, &varIn);
+		(void)120; // Skopped telemetry StartMenu_Search_URL_Count
+		hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 308, 0, nullptr, &varIn);
 		if (hr < 0)
+		{
 			goto LABEL_38;
+		}
 		v4 = VariantToStringWithDefault(varIn, L"");
 		hr = StringCchCopyW(v19, 260u, v4);
 		/*SH*/ExpandEnvironmentStrings(v19, szKeyWord, 260);
@@ -1629,11 +1630,14 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 	}
 	else
 	{
-		CSearchOpenView::_InstrumentActivation(iItem);
-		hr = CSearchOpenView::_GetItemKeyWord(iItem, szKeyWord, 0x104u);
+		_InstrumentActivation(iItem);
+		hr = _GetItemKeyWord(iItem, szKeyWord, 0x104u);
 		if (hr < 0)
+		{
 			goto LABEL_6;
+		}
 	}
+
 	v16 = 1;
 	if (hr >= 0)
 	{
@@ -1650,7 +1654,7 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 			v5->field_4 = v17;
 			v6 = GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_CONTROL) < 0;
 			v5->field_8 = v6;
-			if (SHCreateThread(CSearchOpenView::s_ExecuteCommandLine, v5, 8u, 0))
+			if (SHCreateThread(s_ExecuteCommandLine, v5, 8u, 0))
 			{
 				v17 = 0;
 			}
@@ -1661,7 +1665,9 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 			}
 		}
 		if (v17)
+		{
 			CoTaskMemFree(v17);
+		}
 		goto LABEL_34;
 	}
 LABEL_6:
@@ -1700,7 +1706,7 @@ LABEL_6:
 		v7->field_4 = &ppidl->mkid.cb;
 		v8 = GetAsyncKeyState(16) < 0 && GetAsyncKeyState(17) < 0;
 		v7->field_8 = v8;
-		if (!SHCreateThread(CSearchOpenView::s_ExecuteIDList, v7, 8u, 0))
+		if (!SHCreateThread(s_ExecuteIDList, v7, 8u, 0))
 		{
 			operator delete(v7);
 			hr = 0x80004005;
@@ -1710,7 +1716,7 @@ LABEL_6:
 	}
 LABEL_34:
 	if (hr >= 0 && this->_viewMode == VIEWMODE_PATHCOMPLETE && szKeyWord[0])
-		CSearchOpenView::_UpdateMRU(szKeyWord);
+		_UpdateMRU(szKeyWord);
 LABEL_38:
 	Parent = GetParent(this->_hwnd);
 	_SendNotify(Parent, 204u, &nm);
@@ -1735,48 +1741,48 @@ struct SEARCHOPTIONINFO
 	int fDefaultValue;
 };
 
-struct SEARCHOPTIONINFO c_rgsoi[] =
+SEARCHOPTIONINFO c_rgsoi[] =
 {
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\PrimaryProperties\\IndexedLocations",
-	L"SearchOnly",
-	0
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\PrimaryProperties\\UnindexedLocations",
-	L"SearchOnly",
-	1
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"SearchSubFolders",
-	1
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"AutoWildCard",
-	1
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"EnableNaturalQuerySyntax",
-	0
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"WholeFileSystem",
-	0
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"SystemFolders",
-	0
-  },
-  {
-	L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
-	L"ArchivedFiles",
-	0
-  }
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\PrimaryProperties\\IndexedLocations",
+		L"SearchOnly",
+		FALSE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\PrimaryProperties\\UnindexedLocations",
+		L"SearchOnly",
+		TRUE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"SearchSubFolders",
+		TRUE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"AutoWildCard",
+		TRUE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"EnableNaturalQuerySyntax",
+		FALSE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"WholeFileSystem",
+		FALSE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"SystemFolders",
+		FALSE
+	},
+	{
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Search\\Preferences",
+		L"ArchivedFiles",
+		FALSE
+	}
 };
 
 int GetSearchOptionValue(DWORD so)
@@ -1969,7 +1975,7 @@ HRESULT CSearchOpenView::_CreateConditions(LPCWSTR pcszURL, ICondition **ppCondi
 		memset(&pu.pszProtocol, 0, 20);
 		pu.cbSize = sizeof(pu);
 		ParseURL(pcszURL, &pu);
-		if (this->field_B4)
+		if (this->_fIsBrowsing)
 		{
 			goto LABEL_4;
 		}
@@ -2044,15 +2050,14 @@ HRESULT CSearchOpenView::_CreateConditions(LPCWSTR pcszURL, ICondition **ppCondi
 
 HRESULT CSearchOpenView::_CreateExplorerBrowser(HWND hwnd)
 {
-	HRESULT hr = CoCreateInstance(CLSID_ExplorerBrowser, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_peb));
+	HRESULT hr = CoCreateInstance(CLSID_ExplorerBrowser, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_peb));
 	if (SUCCEEDED(hr))
 	{
 		IUnknown_SetSite(_peb, SAFECAST(this, IServiceProvider *));
-
 		hr = _peb->SetOptions(EBO_NOWRAPPERWINDOW);
 		if (SUCCEEDED(hr))
 		{
-			RECT rc = {0};
+			RECT rc = {};
 
 			FOLDERSETTINGS fs;
 			fs.ViewMode = FVM_DETAILS;
@@ -2070,12 +2075,12 @@ HRESULT CSearchOpenView::_CreateExplorerBrowser(HWND hwnd)
 
 HRESULT ResourceStringCoAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz);
 
-HRESULT CSearchOpenView::_FilterView(IFilterView *pfv)
+HRESULT CSearchOpenView::_FilterView(IFilterView* pfv)
 {
 	HRESULT hr = E_FAIL;
 	if (field_A8)
 	{
-		ICondition *pc;
+		ICondition* pc;
 		hr = _CreateConditions(field_A8, &pc);
 		if (SUCCEEDED(hr))
 		{
@@ -2086,8 +2091,8 @@ HRESULT CSearchOpenView::_FilterView(IFilterView *pfv)
 				CoTaskMemFree(pszText);
 			}
 
-			IFilterCondition *pfc;
-			hr = SHCreateFilter(L"StartMenu_Search", 0, PKEY_ItemNameDisplay, FCT_DEFAULT, pc, IID_PPV_ARGS(&pfc));
+			IFilterCondition* pfc;
+			hr = SHCreateFilter(L"StartMenu_Search", nullptr, PKEY_ItemNameDisplay, FCT_DEFAULT, pc, IID_PPV_ARGS(&pfc));
 			if (SUCCEEDED(hr))
 			{
 				hr = pfv->FilterByCondition(pfc);
@@ -2310,8 +2315,8 @@ DEFINE_ENUM_FLAG_OPERATORS(AUTOLISTFLAGS);
 
 struct AUTOLISTINIT
 {
-	WCHAR *pszParsingName;
-	WCHAR *pszDisplayName;
+	WCHAR* pszParsingName;
+	WCHAR* pszDisplayName;
 	GUID ftid;
 	AUTOLISTFLAGS dwAutoListFlags;
 	DWORD dwFolderFlags;
@@ -2323,17 +2328,17 @@ struct AUTOLISTINIT
 	PROPERTYKEY keyGroup;
 	BOOL fSortGroupAscending;
 	UINT cStackKeys;
-	const PROPERTYKEY *rgStackKeys;
+	const PROPERTYKEY* rgStackKeys;
 	UINT cSortColumns;
-	const SORTCOLUMN *rgSortColumns;
-	IColumnList *pcl;
-	IVisibleInList *pvl;
-	IScope *pscope;
-	IShellItemArray *psiaSubQueries;
-	ICondition *pc;
-	IPropertyKeyStore *pksRelevance;
+	const SORTCOLUMN* rgSortColumns;
+	IColumnList* pcl;
+	IVisibleInList* pvl;
+	IScope* pscope;
+	IShellItemArray* psiaSubQueries;
+	ICondition* pc;
+	IPropertyKeyStore* pksRelevance;
 	UINT cRowsGroupSubset;
-	IUnknown *punkStackData;
+	IUnknown* punkStackData;
 };
 
 MIDL_INTERFACE("c0a6c367-c264-4385-a704-9088bdc3640e")
@@ -2564,14 +2569,14 @@ HRESULT CSearchOpenView::_InitPidlAutoList(PIDLIST_ABSOLUTE *ppidl)
 					hr = CoCreateInstance(CLSID_SearchIDListFactory, 0, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psilf));
 					if (SUCCEEDED(hr))
 					{
-						IAutoListDescription *pald;
+						IAutoListDescription* pald;
 						hr = psilf->CreateAutoList(&ali, IID_PPV_ARGS(&pald));
 						if (SUCCEEDED(hr))
 						{
 							hr = psilf->CreateSearchIDListFromAutoList(pald, 0, ppidl);
 							if (SUCCEEDED(hr))
 							{
-								IUnknown_Set((IUnknown **)&_psmqs, (IUnknown *)psmqs);
+								IUnknown_Set((IUnknown**)&_psmqs, (IUnknown*)psmqs);
 							}
 							pald->Release();
 						}
@@ -2653,35 +2658,47 @@ HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem **ppsi)
 								}
 							}
 							if (pald)
+							{
 								pald->Release();
+							}
 						}
 
 						//(*(void(__stdcall **)(int))(*(_DWORD *)ali.field_78 + 8))(ali.field_78);
 						if (psilf)
+						{
 							psilf->Release();
+						}
 					}
 
 					CoTaskMemFree(ali.pszDisplayName);
 					if (hr < 0)
 					{
-						CSearchOpenView::_RevokeQuerySink();
+						_RevokeQuerySink();
 					}
 				}
 
 				if (psmqs)
+				{
 					psmqs->Release();
+				}
 			}
 
 			if (pvl)
+			{
 				pvl->Release();
+			}
 		}
 
 		if (pscope)
+		{
 			pscope->Release();
+		}
 	}
 
 	if (psf)
+	{
 		psf->Release();
+	}
 	return hr;
 }
 
@@ -2797,19 +2814,19 @@ IShellACLCustomMRU : IUnknown
 
 HRESULT CSearchOpenView::_UpdateMRU(LPCWSTR psz)
 {
-	WCHAR v6[] = TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU");
+	WCHAR szMRUKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU";
 
-	IShellACLCustomMRU *pacm;
-	HRESULT hr = CoCreateInstance(CLSID_ACLCustomMRU, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pacm));
+	IShellACLCustomMRU* pacm;
+	HRESULT hr = CoCreateInstance(CLSID_ACLCustomMRU, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pacm));
 	if (SUCCEEDED(hr))
 	{
-		WCHAR v5[MAX_PATH];
-		StringCchCopyW(v5, ARRAYSIZE(v5), psz);
-		StringCchCatW(v5, ARRAYSIZE(v5), TEXT("\\1"));
-		hr = pacm->Initialize(v6, 26);
+		WCHAR szMRU[260];
+		StringCchCopyW(szMRU, ARRAYSIZE(szMRU), psz);
+		StringCchCatW(szMRU, ARRAYSIZE(szMRU), L"\\1");
+		hr = pacm->Initialize(szMRUKey, 0x2 | 0x8 | 0x10);
 		if (SUCCEEDED(hr))
 		{
-			hr = pacm->AddMRUStringW(v5);
+			hr = pacm->AddMRUStringW(szMRU);
 		}
 		pacm->Release();
 	}
@@ -3307,7 +3324,7 @@ HRESULT CSearchOpenView::_AddTextFilterToLocation(
 
 HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 {
-	HRESULT hr; // edi
+	// edi
 	ITEMIDLIST **v3; // eax
 	LPWSTR v4; // eax
 	LPITEMIDLIST *v5; // eax
@@ -3321,7 +3338,7 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 	IShellItem *v16; // [esp+1Ch] [ebp-20h] SPLIT BYREF
 	//CPPEH_RECORD ms_exc; // [esp+24h] [ebp-18h]
 
-	hr = 0;
+	HRESULT hr = 0;
 	ppv = 0;
 
 	LPITEMIDLIST pidl = 0;
@@ -3372,7 +3389,7 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 		}
 		if (hr >= 0)
 		{
-			pfc = 0;
+			pfc = nullptr;
 			hr = TextToFilter(/*this->_pqp, &this->field_58,*/ this->field_A8, &pfc);
 			if (hr >= 0)
 			{
@@ -3393,7 +3410,9 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 				//CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>::~CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>(&ppv);
 			}
 			if (pfc)
+			{
 				pfc->Release();
+			}
 			goto LABEL_19;
 		}
 	}
@@ -3403,62 +3422,12 @@ LABEL_25:
 	return hr;
 }
 
-//#define TEST_CODE
 #define HYBRID_CODE
 
 HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
 {
-#ifndef HYBRID_CODE
-	HRESULT hr;
-
 	_SwitchToMode(VIEWMODE_DEFAULT, 0);
 
-	CoTaskMemFree(field_A8);
-	SHStrDup(psz, &field_A8);
-
-	if (_pFolderView && _viewMode != VIEWMODE_PATHCOMPLETE)
-	{
-		_CancelNavigation();
-
-		IFilterView *pfv;
-		hr = _pFolderView->QueryInterface(IID_PPV_ARGS(&pfv));
-		if (hr >= 0)
-		{
-			hr = _FilterView(pfv);
-			pfv->Release();
-		}
-	}
-	else
-	{
-#ifdef TEST_CODE
-		// Test browsing to "God Mode" using its shell namespace GUID
-		LPITEMIDLIST pidlTest = nullptr;
-		hr = SHParseDisplayName(L"shell:::{ED7BA470-8E54-465E-825C-99712043E01C}", nullptr, &pidlTest, 0, nullptr);
-		if (hr >= 0 && pidlTest)
-		{
-			_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
-			field_B8 = 1;
-			hr = _peb->BrowseToIDList(pidlTest, SBSP_WRITENOHISTORY);
-			field_B8 = 0;
-			ILFree(pidlTest);
-		}
-#else
-		LPITEMIDLIST pidl;
-		hr = _InitPidlAutoList(&pidl);
-		if (hr >= 0)
-		{
-			_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
-			field_B8 = 1;
-			hr = _peb->BrowseToIDList(pidl, SBSP_WRITENOHISTORY);
-			field_B8 = 0;
-			ILFree(pidl);
-		}
-#endif
-	}
-	return hr;
-#else
-	_SwitchToMode(VIEWMODE_DEFAULT, 0);
-	
 	CoTaskMemFree(field_A8);
 	HRESULT hr = SHStrDup(psz, &field_A8);
 	if (SUCCEEDED(hr))
@@ -3471,8 +3440,7 @@ HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
 			else
 				v17 = 1;
 
-			//if (EventEnabled(g_SHPerfRegHandle, &ShellTraceId_PerfTrack_StartPane_FindItem_Start))
-			//	TemplateEventDescriptor(g_SHPerfRegHandle, &ShellTraceId_PerfTrack_StartPane_FindItem_Start);
+			// Skipped telemetry StartPane_FindItem_Start
 
 			IUnknown_SafeReleaseAndNullPtr(&_psiFolder);
 			hr = _InitRegularAutoListItem(&this->_psiFolder);
@@ -3483,39 +3451,35 @@ HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
 				{
 					_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
 					IExplorerBrowser* peb = _peb;
-					field_B4 = v17;
+					_fIsBrowsing = v17;
 					int v10 = peb->BrowseToObject(_psiFolder, SBSP_WRITENOHISTORY);
-					field_B4 = 0;
+					_fIsBrowsing = 0;
 					return v10;
 				}
 			}
 		}
 		else if (!_pFolderView || _viewMode == VIEWMODE_PATHCOMPLETE)
 		{
-			IShellItem* v16 = NULL;
-
-			//if (EventEnabled(g_SHPerfRegHandle, &ShellTraceId_PerfTrack_StartPane_FindItem_Start))
-			//	TemplateEventDescriptor(g_SHPerfRegHandle, &ShellTraceId_PerfTrack_StartPane_FindItem_Start);
-
-			hr = _InitRegularAutoListItem(&v16);
+			IShellItem* psiAutoList = nullptr;
+			// Skipped telemetry StartPane_FindItem_Start
+			hr = _InitRegularAutoListItem(&psiAutoList);
 			if (SUCCEEDED(hr))
 			{
 				_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
-				field_B4 = 1;
-				hr = _peb->BrowseToObject(v16, SBSP_WRITENOHISTORY);
-				field_B4 = 0;
+				_fIsBrowsing = TRUE;
+				hr = _peb->BrowseToObject(psiAutoList, SBSP_WRITENOHISTORY);
+				_fIsBrowsing = FALSE;
 			}
-
-			if (v16)
+			if (psiAutoList)
 			{
-				v16->Release();
+				psiAutoList->Release();
 			}
 		}
 		else
 		{
 			_CancelNavigation();
 
-			IFilterView *pfv;
+			IFilterView* pfv;
 			hr = _pFolderView->QueryInterface(IID_PPV_ARGS(&pfv));
 			if (SUCCEEDED(hr))
 			{
@@ -3525,7 +3489,6 @@ HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
 		}
 	}
 	return hr;
-#endif
 }
 
 FOLDERFLAGS CSearchOpenView::_GetFolderFlags()

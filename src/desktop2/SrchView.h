@@ -122,16 +122,16 @@ class CPathCompleteInfo
 {
 public:
 	CPathCompleteInfo()
-		: _psz1(NULL)
-		, _psz2(NULL)
+		: _psz1(nullptr)
+		, _psz2(nullptr)
 	{
 	}
 
 	~CPathCompleteInfo()
 	{
-		_psz2 = NULL;
+		_psz2 = nullptr;
 		CoTaskMemFree(_psz2);
-		_psz1 = NULL;
+		_psz1 = nullptr;
 		CoTaskMemFree(_psz1);
 	}
 
@@ -476,7 +476,7 @@ private:
 	LPWSTR field_A8;
 	int field_AC;
 	int field_B0;
-	int field_B4;
+	BOOL _fIsBrowsing;
 	int field_B8;
 	DWORD _dwCookieSink;
 	IStartMenuQuerySink* _psmqs;

@@ -2998,50 +2998,22 @@ void ByUsage::AfterEnumItems()
 
 int ByUsage::UANotifyCB(void* param, const GUID* pguidGrp, const WCHAR*, UAEVENT eCmd)
 {
-#ifdef DEAD_CODE
-    // Refresh our list whenever a new app is started.
-    // or when the session changes (because that changes all the usage counts)
-    printf("UANotifyCB: %d %x\n", eCmd, param);
-    switch (eCmd)
-    {
-        case UAE_LAUNCH:
-        case UAE_TIME:
-        {
-            // @MOD: Use a global pointer for the ByUsage UI instead of using UserAssist event param.
-            // The former seems to be point to an invalid object sometimes.
-            if (g_pByUsageUI)
-            {
-                g_pByUsageUI->Invalidate();
-                g_pByUsageUI->StartRefreshTimer();
-            }
-            break;
-        }
-    }
-
-    return 0;
-#else
-    ByUsage *pbu = reinterpret_cast<ByUsage *>(param);
+    ByUsage* pbu = static_cast<ByUsage*>(param);
     switch (eCmd)
     {
         case UAE_LAUNCH:
         case UAE_SESSION:
         {
-            if (IsEqualGUID(*pguidGrp, UAIID_APPLICATIONS) || IsEqualGUID(*pguidGrp, UAIID_AUTOMATIC))
+            if ((IsEqualGUID(*pguidGrp, UAIID_APPLICATIONS) || IsEqualGUID(*pguidGrp, UAIID_AUTOMATIC))
+                && pbu && pbu->_pByUsageUI)
             {
-                if (pbu && pbu->_pByUsageUI)
-                {
-                    pbu->_pByUsageUI->Invalidate();
-                    pbu->_pByUsageUI->StartRefreshTimer();
-                }
+                pbu->_pByUsageUI->Invalidate();
+                pbu->_pByUsageUI->StartRefreshTimer();
             }
             break;
         }
-        default:
-            // Do nothing
-            ;
     }
-	return 0;
-#endif
+    return 0;
 }
 
 template <class T>
@@ -3340,169 +3312,79 @@ LRESULT ByUsage::_ModifySMInfo(PSMNMMODIFYSMINFO pmsi)
 
 void ByUsage::_FillPinnedItemsCache()
 {
-#ifdef DEAD_CODE
-    if (SHRestricted(REST_NOSMPINNEDLIST))   //If no pinned list is allowed,.....
-        return;                             //....there is nothing to do!
+    if (SHRestricted(REST_NOSMPINNEDLIST))
+        return;
 
     ULONG ulPinChange;
     _psmpin->GetChangeCount(&ulPinChange);
     if (_ulPinChange == ulPinChange)
-    {
-        // No change in pin list; do not need to reload
         return;
-    }
 
     _ulPinChange = ulPinChange;
     _rtPinned.Reset();
+
     if (_rtPinned._sl.Create(4))
     {
-        IEnumFullIDList *penum;
-
+        IEnumFullIDList* penum;
         if (SUCCEEDED(_psmpin->EnumObjects(&penum)))
         {
             LPITEMIDLIST pidl;
-            while (penum->Next(1, &pidl, NULL) == S_OK)
+            while (penum->Next(1, &pidl, nullptr) == S_OK)
             {
-                IShellLink *psl;
-                HRESULT hr;
+                IShellLink* psl;
                 CByUsageHiddenData hd;
 
-                //
-                //  If we have a shortcut, do bookkeeping based on the shortcut
-                //  target.  Otherwise do it based on the pinned object itself.
-                //  Note that we do not go through _PathIsInterestingExe
-                //  because all pinned items are interesting.
-
-                hr = SHGetUIObjectFromFullPIDL(pidl, NULL, IID_PPV_ARGS(&psl));
+                HRESULT hr = SHGetUIObjectFromFullPIDL(pidl, nullptr, IID_PPV_ARGS(&psl));
                 if (SUCCEEDED(hr))
                 {
                     hd.LoadFromShellLink(psl);
                     psl->Release();
-
-                    // We do not need to SHRegisterDarwinLink because the only
-                    // reason for getting the MSI path is so pinned items can
-                    // prevent items on the Start Menu from appearing in the MFU.
-                    // So let the shortcut on the Start Menu do the registration.
-                    // (If there is none, then that's even better - no work to do!)
                     hd.UpdateMSIPath();
                 }
-
-                if (FAILED(hr))
+                else
                 {
-                    hr = DisplayNameOfAsOLESTR(_pdirDesktop->Folder(), pidl, SHGDN_FORPARSING, &hd._pwszTargetPath);
+                    hd._pwszTargetPath = _DisplayNameOf(_pdirDesktop->Folder(), pidl, SHGDN_FORPARSING);
+                    if (hd._pwszTargetPath)
+                    {
+                        hr = S_OK;
+                    }
+
+                    if (FAILED(hr))
+                    {
+                        ASSERT(hd.IsClear()); // 2981
+                    }
                 }
 
-                //
-                //  If we were able to figure out what the pinned object is,
-                //  use that information to block the app from also appearing
-                //  in the MFU.
-                //
-                //  Inability to identify the pinned
-                //  object is not grounds for rejection.  A pinned items is
-                //  of great sentimental value to the user.
-                //
-                if (FAILED(hr))
-                {
-                    ASSERT(hd.IsClear());
-                }
-
-                CByUsageShortcut *pscut = _pMenuCache->CreateShortcutFromHiddenData(_pdirDesktop, pidl, &hd, TRUE);
+                CByUsageShortcut* pscut = _pMenuCache->CreateShortcutFromHiddenData(_pdirDesktop, pidl, &hd, 1);
                 if (pscut)
                 {
                     if (_rtPinned._sl.AppendPtr(pscut) >= 0)
                     {
-                        pscut->SetInteresting(true);  // Pinned items are always interesting
+                        pscut->SetInteresting(true);
                         if (IsSpecialPinnedPidl(pidl))
                         {
-                            CByUsageAppInfo *papp = _pMenuCache->GetAppInfoFromSpecialPidl(pidl);
+                            CByUsageAppInfo* papp = _pMenuCache->GetAppInfoFromSpecialPidl(_SHILMakeChild(pidl));
                             pscut->SetApp(papp);
-                            if (papp) papp->Release();
-                        }
-                    }
-                    else
-                    {
-                        // Couldn't append; oh well
-                        delete pscut;       // "delete" can handle NULL pointer
-                    }
-                }
-                hd.Clear();
-                ILFree(pidl);
-            }
-            penum->Release();
-        }
-    }
-#else
-    ULONG ulPinChange; // [esp+24h] [ebp-28h] BYREF
-    IEnumFullIDList *penum; // [esp+28h] [ebp-24h] BYREF
-    LPITEMIDLIST pidl; // [esp+30h] [ebp-1Ch] BYREF
-    //CPPEH_RECORD ms_exc; // [esp+34h] [ebp-18h]
-
-    if (!SHRestricted(REST_NOSMPINNEDLIST))
-    {  
-        _psmpin->GetChangeCount(&ulPinChange);
-        if (this->_ulPinChange != ulPinChange)
-        {
-            this->_ulPinChange = ulPinChange;
-            _rtPinned.Reset();            
-            if (_rtPinned._sl.Create(4) && SUCCEEDED(_psmpin->EnumObjects(&penum)))
-            {
-                while (!penum->Next(1, &pidl, 0))
-                {
-                    IShellLink *psl;
-                    HRESULT hr;
-                    CByUsageHiddenData hd;
-                    
-                    hr = SHGetUIObjectFromFullPIDL(pidl, 0, IID_PPV_ARGS(&psl));
-                    if (hr >= 0)
-                    {
-                        hd.LoadFromShellLink(psl);
-                        psl->Release();
-                        hd.UpdateMSIPath();
-                    }
-                    else
-                    {
-                        hd._pwszTargetPath = _DisplayNameOf(this->_pdirDesktop->Folder(), pidl, 0x8000u);
-                        if (hd._pwszTargetPath)
-                        {
-                            hr = 0;
-                        }
-
-                        if (FAILED(hr))
-                        {
-                            ASSERT(hd.IsClear()); // 2981
-                        }
-                    }
-
-                    CByUsageShortcut* pscut = _pMenuCache->CreateShortcutFromHiddenData(this->_pdirDesktop, pidl, &hd, 1);
-                    if (pscut)
-                    {
-                        if (_rtPinned._sl.AppendPtr(pscut) < 0)
-                        {
-                            delete pscut;
-                        }
-                        else
-                        {
-							pscut->SetInteresting(true);
-                            if (IsSpecialPinnedPidl(pidl))
+                            if (papp)
                             {
-                                CByUsageAppInfo* papp = _pMenuCache->GetAppInfoFromSpecialPidl(_SHILMakeChild(pidl));
-                                pscut->SetApp(papp);
-                                if (papp)
-                                {
-                                    //CByUsageAppInfo::DecrementUsage(papp);
-                                }
+                                //CByUsageAppInfo::DecrementUsage(papp);
                             }
                         }
                     }
-                    hd.Clear();
-                    ILFree(pidl);
+                    else
+                    {
+                        delete pscut;
+                    }
                 }
-                penum->Release();
+
+                hd.Clear();
+                ILFree(pidl);
             }
-            //SHTracePerf(&ShellTraceId_StartMenu_PinItemToMenu_Stop);
+
+            penum->Release();
         }
     }
-#endif
+    // Skipped telemetry StartMenu_PinItemToMenu_Stop
 }
 
 IAssociationElement* GetAssociationElementFromSpecialPidl(IShellFolder *psf, LPCITEMIDLIST pidlItem)
@@ -3524,79 +3406,39 @@ IAssociationElement* GetAssociationElementFromSpecialPidl(IShellFolder *psf, LPC
 //
 //  On success, the returned ByUsageAppInfo has been AddRef()d
 //
-CByUsageAppInfo *CMenuItemsCache::GetAppInfoFromSpecialPidl(LPCITEMIDLIST pidl)
+CByUsageAppInfo* CMenuItemsCache::GetAppInfoFromSpecialPidl(LPCITEMIDLIST pidl)
 {
-#ifdef DEAD_CODE
-    CByUsageAppInfo *papp = NULL;
+    CByUsageAppInfo* papp = nullptr;
 
-    IAssociationElement *pae = GetAssociationElementFromSpecialPidl(_pdirDesktop->Folder(), pidl);
-    if (pae)
+    IShellFolder* psf;
+    if (SUCCEEDED(SHGetDesktopFolder(&psf)))
     {
-        LPWSTR pszData;
-        if (SUCCEEDED(pae->QueryString(AQVS_APPLICATION_PATH, L"open", &pszData)))
-        {
-            //
-            //  HACK!  Outlook puts the short file name in the registry.
-            //  Convert to long file name (if it won't cost too much) so
-            //  people who select Outlook as their default mail client
-            //  won't get a dup copy in the MFU.
-            //
-            LPTSTR pszPath = pszData;
-            TCHAR szLFN[MAX_PATH];
-            if (!PathIsNetworkPath(pszData))
-            {
-                DWORD dwLen = GetLongPathName(pszData, szLFN, ARRAYSIZE(szLFN));
-                if (dwLen && dwLen < ARRAYSIZE(szLFN))
-                {
-                    pszPath = szLFN;
-                }
-            }
-
-            papp = GetAppInfo(pszPath, true);
-            SHFree(pszData);
-        }
-        pae->Release();
-    }
-    return papp;
-#else
-    int v2; // ebx MAPDST
-    CByUsageAppInfo *papp; // edi
-    IAssociationElement *pae; // eax MAPDST
-    LPWSTR pszPath; // edi
-    DWORD dwLen; // eax
-    IShellFolder *psf; // [esp+Ch] [ebp-214h] BYREF
-    LPWSTR pszData; // [esp+10h] [ebp-210h] BYREF
-    WCHAR szLFN[260]; // [esp+14h] [ebp-20Ch] BYREF
-
-    papp = 0;
-    if (SHGetDesktopFolder(&psf) >= 0)
-    {
-        pae = GetAssociationElementFromSpecialPidl(psf, pidl);
+        IAssociationElement* pae = GetAssociationElementFromSpecialPidl(psf, pidl);
         if (pae)
         {
+            LPWSTR pszData;
             if (SUCCEEDED(pae->QueryString(AQVS_APPLICATION_PATH, L"open", &pszData)))
             {
-                pszPath = pszData;
+                LPWSTR pszPath = pszData;
                 if (!PathIsNetworkPathW(pszData))
                 {
-                    dwLen = GetLongPathNameW(pszData, szLFN, 260u);
-                    if (dwLen)
+                    WCHAR szLFN[260];
+                    DWORD dwLen = GetLongPathNameW(pszData, szLFN, ARRAYSIZE(szLFN));
+                    if (dwLen && dwLen < ARRAYSIZE(szLFN))
                     {
-                        if (dwLen < 260)
-                        {
-                            pszPath = szLFN;
-                        }
+                        pszPath = szLFN;
                     }
                 }
-                papp = CMenuItemsCache::GetAppInfo(pszPath, 1);
+
+                papp = GetAppInfo(pszPath, true);
                 CoTaskMemFree(pszData);
             }
             pae->Release();
         }
         psf->Release();
     }
+
     return papp;
-#endif
 }
 
 void ByUsage::_EnumPinnedItemsFromCache()
@@ -3633,7 +3475,7 @@ void ByUsage::_EnumPinnedItemsFromCache()
 //                                                                            // Changing this requires changing ByUsageUI::SFTHOST_MAXNOTIFY
 //};
 
-const struct CMenuItemsCache::ROOTFOLDERINFO CMenuItemsCache::c_rgrfi[] =
+const CMenuItemsCache::ROOTFOLDERINFO CMenuItemsCache::c_rgrfi[] =
 {
     { FOLDERID_StartMenu,           0x0,        8u },
     { FOLDERID_Programs,            0x0,        4u },
@@ -3648,9 +3490,9 @@ BOOL CMenuItemsCache::InitDesktopFolder()
 {
     if (_pdirDesktop)
         return 0;
-    
+
     _pdirDesktop = CByUsageDir::CreateDesktop();
-    return _pdirDesktop != 0;
+    return _pdirDesktop != nullptr;
 }
 
 //
@@ -3659,62 +3501,32 @@ BOOL CMenuItemsCache::InitDesktopFolder()
 //
 void ByUsage::EnumItems()
 {
-#ifdef DEAD_CODE
-    _FillPinnedItemsCache();
+    // Skipped telemetry StartMenu_Fill_MenuCache_Start
     _NotifyDesiredSize();
 
-
-    _pMenuCache->LockPopup();
-    _pMenuCache->InitCache();
-
-    BOOL fNeedUpdateDarwin = !_pMenuCache->IsCacheUpToDate();
-
-    // Note!  UpdateCache() must occur before _EnumPinnedItemsFromCache()
-    // because UpdateCache() resets _fPinned.
-    _pMenuCache->UpdateCache();
-
-    if (fNeedUpdateDarwin)
-    {
-        SHReValidateDarwinCache();
-    }
-
-    _pMenuCache->RefreshDarwinShortcuts(&_rtPinned);
-    _EnumPinnedItemsFromCache();
-    EnumFolderFromCache();
-
-    // Finished collecting data; do some postprocessing...
-    AfterEnumItems();
-
-    // Do not unlock before this point, as AfterEnumItems depends on the cache to stay put.
-    _pMenuCache->UnlockPopup();
-#else
-    //SHTracePerf(&ShellTraceId_StartMenu_Fill_MenuCache_Start);
-    
-    _NotifyDesiredSize();
-
-    if (_pMenuCache->LockPopup() < 0)
+    if (FAILED(_pMenuCache->LockPopup()))
         return;
-    
+
     if (_pMenuCache->InitDesktopFolder())
     {
         _pMenuCache->InitCache();
 
-        BOOL fNeedUpdateDarwin = _pMenuCache->IsCacheUpToDate();
-
+        BOOL fNeedUpdateDarwin = !_pMenuCache->IsCacheUpToDate();
         _pMenuCache->UpdateCache();
-        
-        if (!fNeedUpdateDarwin)
+
+        if (fNeedUpdateDarwin)
             SHReValidateDarwinCache();
 
-        _pMenuCache->RefreshDarwinShortcuts(&this->_rtPinned);
+        _pMenuCache->RefreshDarwinShortcuts(&_rtPinned);
         _EnumPinnedItemsFromCache();
         EnumFolderFromCache();
+
         AfterEnumItems();
-        IUnknown_SafeReleaseAndNullPtr(&this->_pMenuCache->_pdirDesktop);
+        IUnknown_SafeReleaseAndNullPtr(&_pMenuCache->_pdirDesktop);
     }
+
     _pMenuCache->UnlockPopup();
-    //SHTracePerf(&ShellTraceId_StartMenu_Fill_MenuCache_Stop);
-#endif
+    // Skipped telemetry StartMenu_Fill_MenuCache_Stop
 }
 
 void ByUsage::_NotifyDesiredSize()

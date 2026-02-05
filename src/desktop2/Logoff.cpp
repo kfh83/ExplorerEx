@@ -65,8 +65,8 @@ IShutdownChoiceListener : IUnknown
 
 enum SHUTDOWN_CHOICE
 {
-    SHUTDOWN_CHOICE_0 = 0,
-	SHUTDOWN_CHOICE_1 = 1,
+    SHTDN_NONE = 0,
+    SHUTDOWN_CHOICE_1 = 1,
     SHUTDOWN_CHOICE_2 = 2,
     SHUTDOWN_CHOICE_3 = 3,
 };
@@ -119,7 +119,7 @@ public:
     STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction);
 
     CLogoffPane();
-    ~CLogoffPane();
+    ~CLogoffPane() override;
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnCreate(LPARAM lParam);
@@ -200,8 +200,8 @@ private:
 
 CLogoffPane::CLogoffPane()
 {
-    //ASSERT(_hwndTB == NULL);
-    //ASSERT(_hwndTT == NULL);
+    ASSERT(_hwndTB == NULL);
+    ASSERT(_hwndTT == NULL);
     _clr = CLR_INVALID;
 }
 
@@ -713,22 +713,24 @@ LRESULT CLogoffPane::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 int __thiscall CLogoffPane::_GetLocalImageForShutdownChoice(DWORD a2)
 {
-    bool v2; // zf
-    int v5; // [esp+0h] [ebp-4h] BYREF
-
-    v2 = this->_psdc == 0;
-    v5 = 1;
-    if (!v2)
+    int v5 = 1;
+    if (this->_psdc != nullptr)
     {
         //this->_psdc->GetChoiceIcon(a2, &v5);
         if (v5 >= 2)
         {
             if (v5 <= 3)
+            {
                 return 3;
+            }
             if (v5 == 4)
+            {
                 return 4;
+            }
             if (v5 == 5)
+            {
                 return 2;
+            }
         }
     }
     return 1;
@@ -736,34 +738,22 @@ int __thiscall CLogoffPane::_GetLocalImageForShutdownChoice(DWORD a2)
 
 void CLogoffPane::_SetShutdownButtonProperties(int a2)
 {
-    SHUTDOWN_CHOICE sdChoice; // [esp+34h] [ebp-1Ch] BYREF
-    //CPPEH_RECORD ms_exc; // [esp+38h] [ebp-18h]
-
-    if (this->_psdc && this->_psdc->GetDefaultChoice(&sdChoice) >= 0)
+    SHUTDOWN_CHOICE sdChoice;
+    if (_psdc && SUCCEEDED(_psdc->GetDefaultChoice(&sdChoice)))
     {
-        //if (sdChoice == SHUTDOWN_CHOICE_0
-        //    && CcshellAssertFailedW(L"d:\\longhorn\\shell\\explorer\\desktop2\\logoff.cpp", 780, L"sdChoice != SHTDN_NONE", 0))
-        //{
-        //    AttachUserModeDebugger();
-        //    do
-        //    {
-        //        __debugbreak();
-        //        ms_exc.registration.TryLevel = -2;
-        //    } while (dword_108BA88);
-        //}
-
-        if ((sdChoice & 0x40000) != 0)
+        _ASSERT(sdChoice != SHTDN_NONE); // 780
+        if ((sdChoice & 0x40000) != 0 && a2)
         {
-            if (a2)
-                SendMessageW(this->_hwndTB, TB_SETSTATE, 1u, 16);
+            SendMessageW(_hwndTB, TB_SETSTATE, 1, TBSTATE_INDETERMINATE);
         }
 
-		TBBUTTONINFO tbbi = {0};
+        TBBUTTONINFO tbbi = {};
         tbbi.cbSize = sizeof(tbbi);
-        tbbi.dwMask = 1;
-        tbbi.iImage = /*_GetLocalImageForShutdownChoice(sdChoice)*/ 3;
-        //SHTracePerfSQMSetValueImpl(&ShellTraceId_StartMenu_Right_Control_Button_Label, 55, sdChoice);
-        SendMessageW(this->_hwndTB, TB_SETBUTTONINFOW, 1u, (LPARAM)&tbbi);
+        tbbi.dwMask = TBIF_IMAGE;
+        tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice);
+
+        (void)sdChoice; // Skipped telemetry StartMenu_Right_Control_Button_Label
+        SendMessageW(_hwndTB, TB_SETBUTTONINFOW, 1, (LPARAM)&tbbi);
     }
 }
 

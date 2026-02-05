@@ -325,9 +325,11 @@ void CUserPane::_HidePictureWindow()
         _fadeB = -1;
         _UpdatePictureWindow(0xFF, 0);
     }
-    
+
     EnableWindow(_hwndStatic, FALSE);
-    SetWindowPos(_hwndStatic, 0, 0, 0, 0, 0, 0x497u);
+    SetWindowPos(
+        _hwndStatic, nullptr, 0, 0, 0, 0,
+        SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW | SWP_NOSENDCHANGING);
 }
 
 LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -378,21 +380,21 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
             if (_hwndStatic)
             {
                 DestroyWindow(_hwndStatic);
-                _hwndStatic = NULL;
+                _hwndStatic = nullptr;
             }
             break;
         }
         case WM_ERASEBKGND:
         {
             RECT rc;
-            GetClientRect(this->_hwnd, &rc);
+            GetClientRect(_hwnd, &rc);
             if (_hTheme)
             {
                 DrawPlacesListBackground(_hTheme, hwnd, (HDC)wParam);
             }
             else
             {
-                SHFillRectClr((HDC)wParam, &rc, GetSysColor(4));
+                SHFillRectClr((HDC)wParam, &rc, GetSysColor(COLOR_MENU));
                 DrawEdge((HDC)wParam, &rc, EDGE_ETCHED, BF_LEFT);
             }
             return 1;
@@ -406,17 +408,21 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
                 {
                     VARIANT vt;
                     vt.vt = VT_BOOL;
-                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, NULL, &vt);
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, nullptr, &vt);
                     if (vt.boolVal == VARIANT_FALSE)
                     {
                         EnableWindow(_hwndStatic, TRUE);
-                        SetWindowPos(_hwndStatic, NULL, 0, 0, 0, 0, 0x457u);
+                        SetWindowPos(
+                            _hwndStatic, nullptr, 0, 0, 0, 0,
+                            SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
                     }
                 }
                 else if (pwp->flags & SWP_HIDEWINDOW)
                 {
                     EnableWindow(_hwndStatic, 0);
-                    SetWindowPos(_hwndStatic, 0, 0, 0, 0, 0, 0x497u);
+                    SetWindowPos(
+                        _hwndStatic, nullptr, 0, 0, 0, 0,
+                        SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW | SWP_NOSENDCHANGING);
                 }
 
                 if ((pwp->flags & (SWP_NOSIZE | SWP_NOMOVE)) != (SWP_NOSIZE | SWP_NOMOVE))
@@ -435,11 +441,13 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
                 {
                     VARIANT vt;
                     vt.vt = VT_BOOL;
-                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, 0, &vt);
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, nullptr, &vt);
                     if (vt.boolVal == VARIANT_FALSE)
                     {
-                        EnableWindow(_hwndStatic, 1);
-                        SetWindowPos(_hwndStatic, _GetPictureWindowPrevHnwd(), 0, 0, 0, 0, 0x653u);
+                        EnableWindow(_hwndStatic, TRUE);
+                        SetWindowPos(
+                            _hwndStatic, _GetPictureWindowPrevHnwd(), 0, 0, 0, 0,
+                            SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_NOSENDCHANGING);
                     }
                     break;
                 }
@@ -461,29 +469,26 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
         }
         case WM_NCCREATE:
         {
-            return _OnNcCreate(hwnd, 0x81u, wParam, lParam);
+            return _OnNcCreate(hwnd, uMsg, wParam, lParam);
         }
 
         case WM_NCDESTROY:
         {
             SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-            if (this)
-            {
-                this->Release();
-            }
+            Release();
             break;
         }
         case UPM_CHANGENOTIFY:
         {
-            LPITEMIDLIST *pppidl = 0;
+            LPITEMIDLIST* pppidl = 0;
             LONG plEvent = 0;
             HANDLE v5 = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &pppidl, &plEvent);
             if (v5)
             {
-                if (plEvent == 0x4000000 && *pppidl && *(DWORD *)((*pppidl)->mkid.abID) == 11)
+                if (plEvent == 0x4000000 && *pppidl && *(DWORD*)((*pppidl)->mkid.abID) == 11)
                 {
                     _UpdateUserInfo(0);
-                    _UpdatePictureWindow(0xFFu, 0);
+                    _UpdatePictureWindow(0xFF, 0);
                 }
                 SHChangeNotification_Unlock(v5);
             }
@@ -565,9 +570,9 @@ void CUserPane::_DoFade()
 
 DWORD CUserPane::s_FadeThreadProc(LPVOID lpParameter)
 {
-    CUserPane *pThis = reinterpret_cast<CUserPane*>(lpParameter);
+    CUserPane* pThis = static_cast<CUserPane*>(lpParameter);
     pThis->_DoFade();
-	pThis->Release();
+    pThis->Release();
     return 0;
 }
 
@@ -584,7 +589,7 @@ void CUserPane::_FadePictureWindow()
         else
         {
             AddRef();
-            if (!SHCreateThread(CUserPane::s_FadeThreadProc, this, 0, NULL))
+            if (!SHCreateThread(s_FadeThreadProc, this, 0, nullptr))
             {
                 Release();
             }
@@ -600,7 +605,7 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         {
             if (_fadeA == -1)
             {
-                SetCursor(LoadCursor(NULL, IDC_HAND));
+                SetCursor(LoadCursor(nullptr, IDC_HAND));
                 return 1;
             }
             break;
@@ -616,13 +621,12 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         case WM_LBUTTONUP:
         {
-            IOpenControlPanel *pocp = NULL;
-            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, NULL, 0x17, IID_PPV_ARGS(&pocp))))
+            IOpenControlPanel* pocp = nullptr;
+            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pocp))))
             {
-                pocp->Open(L"Microsoft.UserAccounts", NULL, NULL);
+                pocp->Open(L"Microsoft.UserAccounts", nullptr, nullptr);
             }
-
-            //SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_UserTile_Clicked, 69);
+            // Skipped telemetry StartMenu_UserTile_Clicked
             if (pocp)
             {
                 pocp->Release();
@@ -637,7 +641,7 @@ LRESULT CUserPane::OnSize()
 {
     RECT rc;
     GetClientRect(_hwnd, &rc);
-    
+
     if (_hwndStatic)
     {
         int iPicOffset = rc.bottom - field_28;
@@ -656,28 +660,19 @@ LRESULT CUserPane::OnSize()
 HRESULT CUserPane::_CreateUserPicture()
 {
     _hwndStatic = SHFusionCreateWindowEx(
-        0x80088u,
-        L"Desktop User Picture",
-        L"user picture",
-        CW_USEDEFAULT,
-        0,
-        0,
-        _iFramedPicWidth,
-        _iFramedPicHeight,
-        _hwnd,
-        NULL,
-        g_hinstCabinet,
-        this);
-
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED, L"Desktop User Picture", L"user picture", CW_USEDEFAULT,
+        0, 0, _iFramedPicWidth, _iFramedPicHeight, _hwnd, nullptr, g_hinstCabinet, this);
     if (!_hwndStatic)
+    {
         return E_FAIL;
+    }
 
-    SetWindowPos(_hwndStatic, GetWindow(GetAncestor(_hwnd, GA_ROOT), GW_HWNDPREV), 0, 0, 0, 0, 0x413u);
+    SetWindowPos(
+        _hwndStatic, GetWindow(GetAncestor(_hwnd, GA_ROOT), GW_HWNDPREV), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
 
-
-    IStream *pstm = NULL;
+    IStream* pstm = nullptr;
     HRESULT hr = SHCreateStreamOnModuleResourceW(g_hinstCabinet, MAKEINTRESOURCE(7013), L"PNGFILE", &pstm);
-    if (hr >= 0)
+    if (SUCCEEDED(hr))
     {
         _pgdipImage = Gdiplus::Bitmap::FromStream(pstm);
         if (!_pgdipImage)
@@ -685,12 +680,10 @@ HRESULT CUserPane::_CreateUserPicture()
             hr = E_OUTOFMEMORY;
         }
     }
-
     if (pstm)
     {
         pstm->Release();
     }
-
     return hr;
 }
 
@@ -733,8 +726,8 @@ void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
     ReleaseDC(_hwndStatic, hdc);
 }
 
-void SHLogicalToPhysicalDPI(int *a1, int *a2);
-void RemapSizeForHighDPI(SIZE *psiz);
+void SHLogicalToPhysicalDPI(int* a1, int* a2);
+void RemapSizeForHighDPI(SIZE* psiz);
 
 HRESULT CUserPane::_UpdateUserInfo(int a2)
 {
@@ -748,10 +741,10 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
     {
         WCHAR szUserPicturePath[260];
         szUserPicturePath[0] = '0';
-        SHGetUserPicturePath(0, SHGUPP_FLAG_CREATE, szUserPicturePath, ARRAYSIZE(szUserPicturePath));
+        SHGetUserPicturePath(nullptr, SHGUPP_FLAG_CREATE, szUserPicturePath, ARRAYSIZE(szUserPicturePath));
         if (szUserPicturePath[0])
         {
-            Gdiplus::Image *pgdiImageUserPicture = Gdiplus::Image::FromFile(szUserPicturePath);
+            Gdiplus::Image* pgdiImageUserPicture = Gdiplus::Image::FromFile(szUserPicturePath);
             if (pgdiImageUserPicture)
             {
                 _iUnframedPicHeight = USERPICHEIGHT;
@@ -789,9 +782,7 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
                 {
                     hr = _CreateUserPicture();
                 }
-
                 _UpdateUserImage(pgdiImageUserPicture);
-
                 delete pgdiImageUserPicture;
             }
         }
@@ -800,10 +791,9 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
         {
             SHChangeNotifyEntry fsne;
             fsne.fRecursive = FALSE;
-            fsne.pidl = NULL;
-
-            _uidChangeRegister = SHChangeNotifyRegister(_hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel, SHCNE_EXTENDED_EVENT,
-                UPM_CHANGENOTIFY, 1, &fsne);
+            fsne.pidl = nullptr;
+            _uidChangeRegister = SHChangeNotifyRegister(
+                _hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel, SHCNE_EXTENDED_EVENT, UPM_CHANGENOTIFY, 1, &fsne);
         }
 
         ULONG cch = ARRAYSIZE(_szUserName);
@@ -812,7 +802,7 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
 
         if (!a2)
         {
-            IUnknown_QueryServiceExec(_punkSite, IID_IFolderView, &SID_SM_DV2ControlHost, 329, 0, NULL, NULL);
+            IUnknown_QueryServiceExec(_punkSite, IID_IFolderView, &SID_SM_DV2ControlHost, 329, 0, nullptr, nullptr);
         }
     }
 
@@ -822,7 +812,6 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
     nm.idFrom = 0;
     nm.code = SMN_NEEDREPAINT;
     SendMessage(GetParent(_hwnd), WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
-
     return hr;
 }
 
@@ -835,8 +824,8 @@ BOOL WINAPI UserPicture_RegisterClass()
     wc.style = CS_GLOBALCLASS;
     wc.lpfnWndProc = CUserPane::s_WndProcPicture;
     wc.hInstance = g_hinstCabinet;
-    wc.hbrBackground = 0;
-    wc.hCursor = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
+    wc.hbrBackground = nullptr;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.lpszClassName = L"Desktop User Picture";
     return RegisterClassExW(&wc);
 }
