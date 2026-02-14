@@ -94,7 +94,7 @@ public:
 
     LPCWSTR _pszCurrentThemeName;
     INT _nSomeSize;
-    int _mouseOver;                // verify
+    int _mouseOver; // verify
     BOOL _fDisableVisualUpdateFromMouse;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
@@ -103,8 +103,8 @@ public:
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
     char padding[4];
-    int _uDown;                   // start btn pressed?
-    int _fAllowUp;                // can we un-press it?
+    int _uDown; // start btn pressed?
+    int _fAllowUp; // can we un-press it?
     int _nIsOnContextMenu;
     BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;
@@ -112,12 +112,12 @@ public:
     UINT _uStartButtonState;
     DWORD _tmOpen;
     HIMAGELIST _himlStartFlag;
-    IStartButtonSite *_pSite;
-    IMenuBand *_pmbStartMenu;
-    IMenuPopup *_pmpStartMenu;
-    IMenuBand *_pmbStartPane;
-    IMenuPopup *_pmpStartPane;
-    IUnknown *_punkSite;
+    IStartButtonSite* _pStartButtonSite;
+    IMenuBand* _pmbStartMenu;
+    IMenuPopup* _pmpStartMenu;
+    IMenuBand* _pmbStartPane;
+    IMenuPopup* _pmpStartPane;
+    IUnknown* _punkSite;
     char padding5[4];
     WCHAR _szWindowName[50];
 

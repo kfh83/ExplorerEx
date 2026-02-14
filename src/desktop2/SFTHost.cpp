@@ -5597,90 +5597,44 @@ LRESULT SFTBarHost::GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch)
     return hr;
 }
 
-// EXEX-VISTA(allison): Validated. Still needs cleanup.
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_DrawSeparator(HDC hdc, int x, int y)
 {
-#ifdef DEAD_CODE
     RECT rc;
     rc.left = x;
     rc.top = y;
     rc.right = rc.left + _cxTile;
     rc.bottom = rc.top + _cySep;
 
-    if (!_hTheme)
-    {
-        DrawEdge(hdc, &rc, EDGE_ETCHED,BF_TOPLEFT);
-    }
-    else
-    {
-        DrawThemeBackground(_hTheme, hdc, _iThemePartSep, 0, &rc, 0);
-    }
-#else
-    RECT rc; // [esp+4h] [ebp-10h] BYREF
-    LONG v4 = x + this->_cxTile;
-    rc.left = x;
-    rc.bottom = y + this->_cySep;
-    rc.right = v4;
-    rc.top = y;
     if (_hTheme)
-        DrawThemeBackground(_hTheme, hdc, this->_iThemePartSep, 0, &rc, 0);
+    {
+        DrawThemeBackground(_hTheme, hdc, _iThemePartSep, 0, &rc, nullptr);
+    }
     else
+    {
         DrawEdge(hdc, &rc, EDGE_ETCHED, BF_TOPLEFT);
-#endif
+    }
 }
 
-// EXEX-VISTA(allison): Validated. Still needs cleanup.
+// EXEX-VISTA(allison): Validated.
 void SFTBarHost::_DrawSeparators(LPNMLVCUSTOMDRAW plvcd)
 {
-#ifdef DEAD_CODE
     POINT pt;
     RECT rc;
 
-    for (int iSep = 0; iSep < _cSep; iSep++)
+    for (int iSep = 0; iSep < _cSep; ++iSep)
     {
         _ComputeListViewItemPosition(_rgiSep[iSep], &pt);
-        pt.y = pt.y - _cyTilePadding + (_cySepTile - _cySep + _cyTilePadding)/2;
+        pt.y += (_cySepTile - _cySep) / 2;
         _DrawSeparator(plvcd->nmcd.hdc, pt.x, pt.y);
     }
-
-    // Also draw a bonus separator at the bottom of the list to separate
-    // the MFU list from the More Programs button.
 
     if (_iThemePart == SPP_PROGLIST)
     {
         _ComputeListViewItemPosition(0, &pt);
         GetClientRect(_hwndList, &rc);
-        rc.bottom -= _cySep;
-        _DrawSeparator(plvcd->nmcd.hdc, pt.x, rc.bottom);
-
+        _DrawSeparator(plvcd->nmcd.hdc, pt.x, rc.bottom - _cySep);
     }
-#else
-    int v3; // ebx
-    int* rgiSep; // edi
-    struct tagRECT rc; // [esp+8h] [ebp-18h] BYREF
-    struct tagPOINT pt; // [esp+18h] [ebp-8h] BYREF
-
-    v3 = 0;
-    if (this->_cSep > 0)
-    {
-        rgiSep = this->_rgiSep;
-        do
-        {
-            SFTBarHost::_ComputeListViewItemPosition(*rgiSep, &pt);
-            pt.y += (this->_cySepTile - this->_cySep) / 2;
-            SFTBarHost::_DrawSeparator(plvcd->nmcd.hdc, pt.x, pt.y);
-            ++v3;
-            ++rgiSep;
-        } while (v3 < this->_cSep);
-    }
-
-    if (this->_iThemePart == 4)
-    {
-        SFTBarHost::_ComputeListViewItemPosition(0, &pt);
-        GetClientRect(this->_hwndList, &rc);
-        SFTBarHost::_DrawSeparator(plvcd->nmcd.hdc, pt.x, rc.bottom - this->_cySep);
-    }
-#endif
 }
 
 //****************************************************************************

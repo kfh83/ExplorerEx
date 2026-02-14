@@ -22,9 +22,9 @@ class CByUsageHiddenData;                    // "hd", "phd"
 class ByUsageUI;
 class ByUsageDUI;
 
-typedef CDPA<CByUsageShortcut, CTContainer_PolicyUnOwned<CByUsageShortcut>> ByUsageShortcutList;  // "sl", "psl"
-typedef CDPA<UNALIGNED ITEMIDLIST, CTContainer_PolicyUnOwned<UNALIGNED ITEMIDLIST>> CDPAPidl;// save typing
-typedef CDPA<CByUsageAppInfo, CTContainer_PolicyUnOwned<CByUsageAppInfo>>  ByUsageAppInfoList;
+typedef CDPA<CByUsageShortcut, CTContainer_PolicyUnOwned<CByUsageShortcut>> ByUsageShortcutList; // "sl", "psl"
+typedef CDPA<UNALIGNED ITEMIDLIST_ABSOLUTE, CTContainer_PolicyUnOwned<UNALIGNED ITEMIDLIST_ABSOLUTE>> CDPAPidl; // save typing
+typedef CDPA<CByUsageAppInfo, CTContainer_PolicyUnOwned<CByUsageAppInfo>> ByUsageAppInfoList;
 
 // Helper routines
 BOOL LocalFreeCallback(LPTSTR psz, LPVOID);

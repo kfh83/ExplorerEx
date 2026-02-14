@@ -1268,10 +1268,7 @@ LRESULT CTray::_OnCreate(HWND hwnd)
         lres = _CreateWindows();
     }
 
-    // EXEX-VISTA TODO: Uncomment when implemented _StarterWatermarkCreate
-#if 1
     _StarterWatermarkCreate(TRUE);
-#endif
 
     BOOL fFlip3dPolicy = TRUE;
     DwmSetWindowAttribute(_hwnd, DWMWA_FLIP3D_POLICY, &fFlip3dPolicy, sizeof(fFlip3dPolicy));
@@ -1411,7 +1408,7 @@ void CTray::OnStartMenuDismissed()
 {
     ForceStartButtonUp();
     _bMainMenuInit = 0;
-    PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
+    PostMessageW(v_hwndTray, 0x590, TRUE, 0);
 }
 
 // EXEX-VISTA: Reimplemented.
@@ -4862,12 +4859,12 @@ void CTray::EnableGlass(BOOL bEnable)
 
 void CTray::_RegisterForGlass()
 {
-    DWM_BLURBEHIND pBlurBehind;
-    pBlurBehind.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION | DWM_BB_TRANSITIONONMAXIMIZED;
-    pBlurBehind.fEnable = _fGlassEnabled && IsCompositionActive();
-    pBlurBehind.hRgnBlur = NULL;
-    pBlurBehind.fTransitionOnMaximized = TRUE;
-    DwmEnableBlurBehindWindow(_hwnd, &pBlurBehind);
+    DWM_BLURBEHIND blurBehind;
+    blurBehind.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION | DWM_BB_TRANSITIONONMAXIMIZED;
+    blurBehind.fEnable = _fGlassEnabled && IsCompositionActive();
+    blurBehind.hRgnBlur = nullptr;
+    blurBehind.fTransitionOnMaximized = TRUE;
+    DwmEnableBlurBehindWindow(_hwnd, &blurBehind);
 }
 
 const WCHAR c_szTaskbarTheme[] = L"TaskBar";
@@ -6910,6 +6907,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
             {
+#if 0
                 // DOESNT WORK (do we need?, cstartbutton handles it fine when the button is big enough)
                 if (((HWND)wParam) == _stb._hwndStart)
                 {
@@ -6920,7 +6918,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     _stb.OnContextMenu(_stb._hwndStart, (DWORD)lParam);
                     _fFromStart = FALSE;
                 }
-
+#endif
                 if (IsPosInHwnd(lParam, _hwndNotify) || SHIsChildOrSelf(_hwndNotify, GetFocus()) == S_OK)
                 {
                     // if click was inthe clock, include
@@ -8852,15 +8850,19 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                         v5 = 535;
                     else
                         v5 = 2 * (idCmd != 404) + 536;
+
                     SaveWindowPositions(v5);
                     _AppBarNotifyAll(nullptr, 3u, nullptr, 1);
-                    HWND DesktopWindow = GetDesktopWindow();
                     if (idCmd == 403)
-                        CascadeWindows(DesktopWindow, 0, 0, 0, 0);
+                    {
+                        CascadeWindows(GetDesktopWindow(), 0, nullptr, 0, nullptr);
+                    }
                     else
-                        TileWindows(DesktopWindow, idCmd != 404, 0, 0, 0);
+                    {
+                        TileWindows(GetDesktopWindow(), idCmd != 404, nullptr, 0, nullptr);
+                    }
                     this->_fUndoEnabled = 0;
-                    SetTimer(this->_hwnd, 0x12u, 0x1F4u, 0);
+                    SetTimer(this->_hwnd, 0x12u, 0x1F4u, nullptr);
                     _AppBarNotifyAll(nullptr, 3u, nullptr, 0);
                 }
             }
@@ -8877,26 +8879,23 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                 _RunDlg(0);
                 break;
             case 0x130u:
-                PostMessageW(this->_hwnd, 0x111u, 0x132u, 0);
+                PostMessageW(_hwnd, 0x111u, 0x132u, 0);
                 break;
             case 0x131u:
-                SetForegroundWindow(this->_hwnd);
-                SendMessageW(this->_stb._hwndStart, 0xF3u, 1u, 0);
-                SendMessageW(this->_stb._hwndStart, 0xF3u, 0, 0);
+                SetForegroundWindow(_hwnd);
+                SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
+                SendMessageW(_stb._hwndStart, 0xF3u, 0, 0);
                 break;
             case 0x132u:
-                if (GetAsyncKeyState(16) < 0)
+                if (GetAsyncKeyState(VK_SHIFT) < 0)
                 {
                     UEMFireEvent(&CLSID_ActiveDesktop, 40, 0, 1, -1);
                     _RefreshStartMenu();
                 }
-                if (!_bMainMenuInit)
+                if (!_bMainMenuInit && _stb.IsButtonPushed())
                 {
-                    if (_stb.IsButtonPushed())
-                    {
-                        _SetFocus(this->_stb._hwndStart);
-                        _ToolbarMenu();
-                    }
+                    _SetFocus(this->_stb._hwndStart);
+                    _ToolbarMenu();
                 }
                 break;
             }
@@ -8986,9 +8985,9 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
             }
             break;
         case 0x1A8u:
-            //SHTracePerf(&ShellTraceId_Taskbar_LockState_ChangeNotify_Start);
+            // Skipped telemetry LockState_ChangeNotify_Start
             _SetLockState(2u);
-            //SHTracePerf(&ShellTraceId_Taskbar_LockState_ChangeNotify_Stop);
+            // Skipped telemetry LockState_ChangeNotify_Stop
             return;
         case 0x1ABu:
             GetWindowRect(_hwndRebar, &rcView);

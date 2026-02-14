@@ -10,9 +10,9 @@
 #define REGSTR_VAL_DV2_STARTPANEL_FADEDELAY TEXT("StartPanel_FadeDelay")
 
 CUserPane::CUserPane()
-    : _fadeA(-1)
+    : _lRef(1)
+    , _fadeA(-1)
     , _fadeB(-1)
-    , _lRef(1)
 {
     ASSERT(_hwnd == NULL); // 19
     ASSERT(_hbmUserPicture == NULL); // 20

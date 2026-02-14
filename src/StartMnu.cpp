@@ -148,7 +148,8 @@ STDMETHODIMP CStartMenuHost::SetSubMenu(IMenuPopup *pmp, BOOL fSet)
     return NOERROR;
 #else
     IStartButton *pstb;
-    if (!fSet && SUCCEEDED(IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb))))
+    HRESULT hr = IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb));
+    if (!fSet && SUCCEEDED(hr))
     {
         pstb->OnStartMenuDismissed();
         pstb->Release();
@@ -197,82 +198,66 @@ STDMETHODIMP CStartMenuHost::IsWindowOwner(HWND hwnd)
 }
 
 CStartMenuHost::CStartMenuHost() : _cRef(1)
-{ 
+{
 }
 
 
-HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb)
+HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite)
 {
     HRESULT hres = E_OUTOFMEMORY;
-    IMenuPopup * pmp = NULL;
-    IMenuBand * pmb = NULL;
 
-    CStartMenuHost *psmh = new CStartMenuHost();
+    IMenuPopup* pmp = nullptr;
+    IMenuBand* pmb = nullptr;
+
+    CStartMenuHost* psmh = new(std::nothrow) CStartMenuHost();
     if (psmh)
     {
-        hres = CoCreateInstanceHook(CLSID_StartMenuBar, NULL, CLSCTX_INPROC_SERVER,
-                                IID_IMenuPopup, (LPVOID*)&pmp);
+        hres = CoCreateInstance(CLSID_StartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pmp));
         if (SUCCEEDED(hres))
         {
-            IObjectWithSite* pows;
-
-            hres = pmp->QueryInterface(IID_IObjectWithSite, (void**)&pows);
-            if(SUCCEEDED(hres))
+            hres = IUnknown_SetSite(pmp, static_cast<ITrayPriv*>(psmh));
+            if (SUCCEEDED(hres))
             {
                 IInitializeObject* pio;
-
-                pows->SetSite(SAFECAST(psmh, ITrayPriv*));
-
-                hres = pmp->QueryInterface(IID_IInitializeObject, (void**)&pio);
-                if(SUCCEEDED(hres))
+                hres = pmp->QueryInterface(IID_PPV_ARGS(&pio));
+                if (SUCCEEDED(hres))
                 {
                     hres = pio->Initialize();
                     pio->Release();
                 }
-
                 if (SUCCEEDED(hres))
                 {
                     IUnknown* punk;
-
                     hres = pmp->GetClient(&punk);
                     if (SUCCEEDED(hres))
                     {
                         IBandSite* pbs;
-
-                        hres = punk->QueryInterface(IID_IBandSite, (void**)&pbs);
-                        if(SUCCEEDED(hres))
+                        hres = punk->QueryInterface(IID_PPV_ARGS(&pbs));
+                        if (SUCCEEDED(hres))
                         {
                             DWORD dwBandID;
-
                             pbs->EnumBands(0, &dwBandID);
-                            hres = pbs->GetBandObject(dwBandID, IID_IMenuBand, (void**)&pmb);
+                            hres = pbs->GetBandObject(dwBandID, IID_PPV_ARGS(&pmb));
                             pbs->Release();
-                            // Don't release pmb
                         }
                         punk->Release();
                     }
                 }
-
-                if (FAILED(hres))
-                    pows->SetSite(NULL);
-
-                pows->Release();
             }
-
-            // Don't release pmp
         }
-        psmh->Release();
     }
 
     if (FAILED(hres))
     {
-        ATOMICRELEASE(pmp);
-        ATOMICRELEASE(pmb);
+        IUnknown_SetSite(pmp, nullptr);
+        IUnknown_SafeReleaseAndNullPtr(&pmp);
+        IUnknown_SafeReleaseAndNullPtr(&pmb);
+        IUnknown_SafeReleaseAndNullPtr(&psmh);
     }
 
     *ppmp = pmp;
     *ppmb = pmb;
-
+    *ppunkSite = static_cast<ITrayPriv*>(psmh);
     return hres;
 }
 

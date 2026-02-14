@@ -5,10 +5,11 @@
 #include "cabinet.h"
 
 #include "HostUtil.h"
+#include "SFTHost.h"
+#include "shguidp.h"
 #include "ShUndoc.h"
-#include "ShGuidP.h"
 
-HRESULT CNSCHost::QueryInterface(REFIID riid, void **ppvObj)
+HRESULT CNSCHost::QueryInterface(REFIID riid, void** ppvObj)
 {
 	static const QITAB qit[] =
 	{
@@ -18,7 +19,7 @@ HRESULT CNSCHost::QueryInterface(REFIID riid, void **ppvObj)
 		QITABENT(CNSCHost, INameSpaceTreeControlDropHandler),
 		QITABENT(CNSCHost, IServiceProvider),
 		QITABENT(CNSCHost, IOleCommandTarget),
-		{ 0 },
+		{},
 	};
 	return QISearch(this, qit, riid, ppvObj);
 }
@@ -551,7 +552,7 @@ LRESULT CNSCHost::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	LRESULT lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
 	if (this)
 	{
-		this->Release();
+		Release();
 	}
 	return lRes;
 }
@@ -594,8 +595,8 @@ LRESULT CNSCHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
 LRESULT CNSCHost::_OnSMNGetMinSize(PSMNGETMINSIZE psmngms)
 {
-	LRESULT lres = SendMessage(this->_hwnd, 0x1110, 0, 0);
-	psmngms->siz.cy = this->_margins.cyTopHeight + this->_margins.cyBottomHeight + lres * SendMessage(this->_hwnd, 0x111C, 0, 0);
+	LRESULT lres = SendMessage(_hwnd, 0x1110, 0, 0);
+	psmngms->siz.cy = _margins.cyTopHeight + _margins.cyBottomHeight + lres * SendMessage(_hwnd, 0x111C, 0, 0);
 	return 0;
 }
 
@@ -621,7 +622,7 @@ LRESULT CNSCHost::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			pvp->Release();
 		}
-		SetWindowPos(_hwnd, NULL, _margins.cxLeftWidth, _margins.cyTopHeight, iWidth, iHeight, SWP_NOZORDER);
+		SetWindowPos(_hwnd, nullptr, _margins.cxLeftWidth, _margins.cyTopHeight, iWidth, iHeight, SWP_NOZORDER);
 	}
 	return hr;
 }
@@ -645,26 +646,26 @@ BOOL CNSCHost::_AreChangesRestricted()
 HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIST_ABSOLUTE **pidlOut)
 {
 	if (psfOut)
-		*psfOut = NULL;
+		*psfOut = nullptr;
 
-	*pidlOut = NULL;
+	*pidlOut = nullptr;
 
 	WCHAR szPath[47] = L"shell:::";
 	StringFromGUID2(rclsid, &szPath[8], 39);
 
 	ITEMIDLIST_ABSOLUTE *pidl;
-	HRESULT hr = SHILCreateFromPath(szPath, &pidl, NULL);
+	HRESULT hr = SHILCreateFromPath(szPath, &pidl, nullptr);
 	if (SUCCEEDED(hr))
 	{
 		if (psfOut)
 		{
-			hr = SHBindToObject(NULL, pidl, NULL, IID_PPV_ARGS(psfOut));
+			hr = SHBindToObject(nullptr, pidl, nullptr, IID_PPV_ARGS(psfOut));
 		}
 
 		if (SUCCEEDED(hr))
 		{
 			*pidlOut = pidl;
-			pidl = NULL;
+			pidl = nullptr;
 		}
 
 		ILFree(pidl);
@@ -673,7 +674,8 @@ HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIS
 	return hr;
 }
 
-#include "cocreateinstancehook.h"
+HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
+
 #define FALLBACK_ALLPROGRAMS_LIST
 
 HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
@@ -688,18 +690,17 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 		hr = _pns->TreeAdvise(static_cast<INameSpaceTreeControlEvents*>(this), &_dwCookie);
 		if (SUCCEEDED(hr))
 		{
-			NSTCSTYLE v5;
+			NSTCSTYLE nsctsFlags = NSTCS_FULLROWSELECT | NSTCS_NOREPLACEOPEN | NSTCS_RICHTOOLTIP | NSTCS_FAVORITESMODE | NSTCS_AUTOHSCROLL | NSTCS_EMPTYTEXT;
 			if (_AreChangesRestricted())
-				v5 = 0x585808;
-			else
-				v5 |= NSTCS_DISABLEDRAGDROP;
-
+			{
+				nsctsFlags |= NSTCS_DISABLEDRAGDROP;
+			}
 			if (_SHRegGetBoolValueFromHKCUHKLM(REGSTR_PATH_STARTPANE_SETTINGS, TEXT("Start_SortByName"), TRUE))
 			{
-				v5 |= NSTCS_NOORDERSTREAM;
+				nsctsFlags |= NSTCS_NOORDERSTREAM;
 			}
 
-			hr = _pns->Initialize(hwnd, nullptr, v5);
+			hr = _pns->Initialize(hwnd, nullptr, nsctsFlags);
 			if (SUCCEEDED(hr))
 			{
 				LPITEMIDLIST pidl;
@@ -710,16 +711,16 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 					hr = SHCreateItemFromIDList(pidl, IID_PPV_ARGS(&psi));
 					if (SUCCEEDED(hr))
 					{
-						CoCreateInstance(CLSID_PersonalStartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
-						if (this->_psif)
+						HRESULT hrCreate = CoCreateInstance(CLSID_PersonalStartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
+						if (_psif)
 						{
 							IUnknown_SetSite(_psif, static_cast<IServiceProvider*>(this));
 						}
 
-						hr = _pns->AppendRoot(psi, 96, 3, _psif);
+						hr = _pns->AppendRoot(psi, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS, NSTCRS_HIDDEN | NSTCRS_EXPANDED, _psif);
 						if (SUCCEEDED(hr))
 						{
-							hr = IUnknown_GetWindow(_pns, &this->_hwnd);
+							hr = IUnknown_GetWindow(_pns, &_hwnd);
 						}
 						psi->Release();
 					}
@@ -735,7 +736,7 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 				IShellItem* psi = nullptr;
 				if (SUCCEEDED(SHCreateItemFromParsingName(szFallback, nullptr, IID_PPV_ARGS(&psi))))
 				{
-					_pns->AppendRoot(psi, 96, 3, nullptr);
+					_pns->AppendRoot(psi, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS, NSTCRS_HIDDEN | NSTCRS_EXPANDED, nullptr);
 					psi->Release();
 				}
 #endif
@@ -751,7 +752,7 @@ HRESULT CNSCHost::_CollapseAll()
 	{
 		_pns->CollapseAll();
 	}
-	return 1;
+	return S_FALSE;
 }
 
 HRESULT CNSCHost::_GetSelectedItem(IShellItem **ppsi)
@@ -765,8 +766,6 @@ HRESULT CNSCHost::_GetSelectedItem(IShellItem **ppsi)
 	}
 	return hr;
 }
-
-LRESULT _SendNotify(HWND hwndFrom, UINT code, OPTIONAL NMHDR *pnm);
 
 void CNSCHost::_NotifyCaptureInput(BOOL fBlock)
 {
@@ -796,7 +795,7 @@ BOOL NSCHost_RegisterClass()
 	ZeroMemory(&wc, sizeof(wc));
 
 	wc.style = CS_GLOBALCLASS;
-	wc.cbWndExtra = sizeof(CNSCHost *);
+	wc.cbWndExtra = sizeof(CNSCHost*);
 	wc.lpfnWndProc = CNSCHost::s_WndProc;
 	wc.hInstance = g_hinstCabinet;
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);

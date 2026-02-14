@@ -1184,7 +1184,7 @@ LRESULT CSearchOpenView::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				lres = self->_OnNCDestroy(hwnd, uMsg, wParam, lParam);
 				goto LABEL_39;
 			case 0x401u:
-				self->_PathCompleteUpdate((CPathCompleteInfo *)wParam, (LPITEMIDLIST)lParam);
+				self->_PathCompleteUpdate((CPathCompleteInfo*)wParam);
 				goto LABEL_35;
 			case 0x402u:
 				self->_UpdateIndexState(wParam);
@@ -2538,7 +2538,7 @@ HRESULT CSearchOpenView::_InitPidlAutoList(PIDLIST_ABSOLUTE *ppidl)
 				hr = CStartMenuQuerySink::s_CreateInstance(this->_hwnd, IID_PPV_ARGS(&psmqs));
 				if (hr >= 0)
 				{
-					CSearchOpenView::_RegisterQuerySink(psmqs);
+					_RegisterQuerySink(psmqs);
 
 					AUTOLISTINIT ali = { 0 };
 					ali.ftid = FOLDERTYPEID_Documents; //FOLDERTYPEID_Library in vista, but doesnt exist anymore
@@ -2576,7 +2576,7 @@ HRESULT CSearchOpenView::_InitPidlAutoList(PIDLIST_ABSOLUTE *ppidl)
 							hr = psilf->CreateSearchIDListFromAutoList(pald, 0, ppidl);
 							if (SUCCEEDED(hr))
 							{
-								IUnknown_Set((IUnknown**)&_psmqs, (IUnknown*)psmqs);
+								IUnknown_Set((IUnknown**)&_psmqs, psmqs);
 							}
 							pald->Release();
 						}
@@ -2626,7 +2626,7 @@ HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem **ppsi)
 				{
 					_RegisterQuerySink(psmqs);
 
-					AUTOLISTINIT ali = { 0 };
+					AUTOLISTINIT ali = {};
 					ali.ftid = FOLDERTYPEID_StartMenu;
 					ali.dwFolderFlags = _GetFolderFlags();
 					ali.pscope = pscope;
@@ -3510,18 +3510,18 @@ void CSearchOpenView::_CancelNavigation()
 		IOleCommandTarget *pct;
 		if (SUCCEEDED(_pFolderView->QueryInterface(IID_PPV_ARGS(&pct))))
 		{
-			pct->Exec(NULL, 23, 0, NULL, NULL);
+			pct->Exec(nullptr, 23, 0, nullptr, nullptr);
 			pct->Release();
 		}
 	}
 }
 
-void CSearchOpenView::_ConnectShellView(IShellView *psv)
+void CSearchOpenView::_ConnectShellView(IShellView* psv)
 {
 	ASSERT(_pDispatchView == NULL); // 796
-	if (SUCCEEDED(psv->GetItemObject(0, IID_PPV_ARGS(&this->_pDispatchView))))
+	if (SUCCEEDED(psv->GetItemObject(0, IID_PPV_ARGS(&_pDispatchView))))
 	{
-		ConnectToConnectionPoint(static_cast<IDispatch *>(this), DIID_DShellFolderViewEvents, TRUE, _pDispatchView, &field_74, NULL);
+		ConnectToConnectionPoint(static_cast<IDispatch*>(this), DIID_DShellFolderViewEvents, TRUE, _pDispatchView, &field_74, nullptr);
 	}
 }
 
@@ -3529,47 +3529,42 @@ void CSearchOpenView::_DisconnectShellView()
 {
 	if (_pDispatchView)
 	{
-		ConnectToConnectionPoint(static_cast<IDispatch *>(this), DIID_DShellFolderViewEvents, FALSE, _pDispatchView, &field_74, NULL);
+		ConnectToConnectionPoint(static_cast<IDispatch *>(this), DIID_DShellFolderViewEvents, FALSE, _pDispatchView, &field_74, nullptr);
 		IUnknown_SafeReleaseAndNullPtr(&_pDispatchView);
 	}
 }
 
 void CSearchOpenView::_DoKeyBoardContextMenu()
 {
-	int iCurSel; // edi
-	RECT rc; // [esp+8h] [ebp-2Ch] BYREF
-	POINT pt; // [esp+18h] [ebp-1Ch] BYREF
-	HWND hwnd; // [esp+20h] [ebp-14h] BYREF
-	IHitTestView *phtv; // [esp+24h] [ebp-10h] BYREF
-	IContextMenu *v7; // [esp+28h] [ebp-Ch] BYREF
-	IContextMenuSite *v8; // [esp+2Ch] [ebp-8h] BYREF
-	IShellView *psv; // [esp+30h] [ebp-4h] BYREF
-
-	iCurSel = CSearchOpenView::_GetCurSel();
-	if (iCurSel >= 0
-		&& this->_pFolderView
-		&& this->_pFolderView->QueryInterface(
-			__uuidof(IHitTestView),
-			(void **)&phtv) >= 0)
+	int iCurSel = _GetCurSel();
+	IHitTestView* phtv;
+	if (iCurSel >= 0 && _pFolderView && SUCCEEDED(_pFolderView->QueryInterface(IID_PPV_ARGS(&phtv))))
 	{
+		RECT rc;
 		if (phtv->GetItemRect(iCurSel, &rc) >= 0)
 		{
+			POINT pt;
 			pt.x = (rc.right + rc.left) / 2;
 			pt.y = (rc.bottom + rc.top) / 2;
-			if (this->_pFolderView->QueryInterface(IID_PPV_ARGS(&psv)) >= 0)
+
+			IShellView* psv;
+			if (_pFolderView->QueryInterface(IID_PPV_ARGS(&psv)) >= 0)
 			{
-				if (psv->GetItemObject(1, IID_PPV_ARGS(&v7)) >= 0)
+				IContextMenu* pcm;
+				if (psv->GetItemObject(1, IID_PPV_ARGS(&pcm)) >= 0)
 				{
-					if (this->_pFolderView->QueryInterface(IID_PPV_ARGS(&v8)) >= 0)
+					IContextMenuSite* v8;
+					if (_pFolderView->QueryInterface(IID_PPV_ARGS(&v8)) >= 0)
 					{
+						HWND hwnd;
 						if (psv->GetWindow(&hwnd) >= 0)
 						{
 							ClientToScreen(hwnd, &pt);
-							v8->DoContextMenuPopup(v7, 0, pt);
+							v8->DoContextMenuPopup(pcm, 0, pt);
 						}
 						v8->Release();
 					}
-					v7->Release();
+					pcm->Release();
 				}
 				psv->Release();
 			}
@@ -3757,14 +3752,14 @@ void CSearchOpenView::_FilterPathCompleteView(LPCWSTR pszPath)
 {
 	if (_pFolderView && _ppci && pszPath)
 	{
-		IFilterView *pfv;
+		IFilterView* pfv;
 		if (SUCCEEDED(_pFolderView->QueryInterface(IID_PPV_ARGS(&pfv))))
 		{
 			PROPVARIANT pvar;
 			if (SUCCEEDED(InitPropVariantFromString(pszPath, &pvar)))
 			{
-				IFilterCondition *pfc = NULL;
-				if (SUCCEEDED(CreateFilterConditionValue(pszPath, NULL, PKEY_ItemNameDisplay, COP_VALUE_STARTSWITH, pvar, &pfc)))
+				IFilterCondition* pfc = nullptr;
+				if (SUCCEEDED(CreateFilterConditionValue(pszPath, nullptr, PKEY_ItemNameDisplay, COP_VALUE_STARTSWITH, pvar, &pfc)))
 				{
 					pfv->FilterByCondition(pfc);
 					pfc->Release();
@@ -3783,17 +3778,13 @@ void CSearchOpenView::_InstrumentActivation(int iItem)
 
 #define HYBRID_CODE
 
-void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo *ppciNew, PIDLIST_ABSOLUTE pidl)
+void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo* ppciNew)
 {
 	BOOL v3 = 0;
-	if (ppciNew)
+	if (ppciNew && _ppci)
 	{
-		if (_ppci)
-		{
-			v3 = StrCmpI(_ppci->_psz2, ppciNew->_psz2) == 0;
-		}
+		v3 = StrCmpI(_ppci->_psz2, ppciNew->_psz2) == 0;
 	}
-
 	if (_ppci)
 	{
 		delete _ppci;
@@ -3808,7 +3799,7 @@ void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo *ppciNew, PIDLIST_AB
 	}
 	else
 	{
-		LPITEMIDLIST pidl;
+		ITEMIDLIST_ABSOLUTE* pidl;
 		if (SUCCEEDED(_InitPathCompletePidlAutoList(_ppci->_psz2, &pidl)))
 		{
 			_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
@@ -3983,7 +3974,7 @@ void CSearchOpenView::_UpdateScrolling()
 	int iItem; // [esp+3Ch] [ebp-4h] BYREF
 
 	iItem = -1;
-	pFolderView = this->_pFolderView;
+	pFolderView = _pFolderView;
 	if (pFolderView)
 	{
 		pFolderView->GetVisibleItem(-1, 1, &iItem);

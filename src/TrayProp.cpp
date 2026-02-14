@@ -96,7 +96,7 @@ const static DWORD aStartCustAdvancedTabHelpIDs[] = {
 #define REGSTR_VAL_LARGEICONSTEMP TEXT("Start_LargeIcons")
 #define REGSTR_VAL_ADMINTOOLSTEMP TEXT("Start_AdminToolsTemp")
 
-void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource);
+void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fCreateDIBSection = FALSE);
 void SetDlgItemIcon(HWND hDlg, int idStatic, HICON hi);
 void SetProgramIcon(HWND hDlg, int idLarge, int idSmall);
 
@@ -813,7 +813,7 @@ public:
 
 		//notification page
         psp.pszTemplate = (LPCWSTR)5;
-        //psp.pfnDlgProc = s_NotificationOptionsDlgProc;
+        psp.pfnDlgProc = s_NotificationOptionsDlgProc;
         psp.lParam = (LPARAM)this;
         hpage = CreatePropertySheetPageW(&psp);
         if (hpage)
@@ -846,8 +846,11 @@ private:
     // dlgproc's for the various pages
     static BOOL_PTR s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     static BOOL_PTR s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static BOOL_PTR s_NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    //static BOOL_PTR s_ToolbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    BOOL_PTR NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     void _ApplyTaskbarOptionsFromDialog(HWND hDlg);
     void _ApplyStartOptionsFromDialog(HWND hDlg);
@@ -1824,7 +1827,6 @@ BOOL_PTR CTaskBarPropertySheet::s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM 
     return fValue;
 }
 
-
 BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -1909,6 +1911,169 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
     case WM_CONTEXTMENU:
         ::SHWinHelp((HWND) wParam, NULL, HELP_CONTEXTMENU, (ULONG_PTR)(void *)aStartTabHelpIDs);
         break;
+    }
+
+    return FALSE;
+}
+
+//---------------------------------------------------------------------------
+void _TaskbarOptionsDestroyBitmaps(HWND hDlg)
+{
+    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, 0);
+    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, 0);
+}
+
+typedef struct
+{
+    int idc;
+    int iAdd;
+} CONTROLBITMAP;
+
+int _TaskbarPickBitmap(HWND hDlg, int iBmpBase, const CONTROLBITMAP* pca, int cca)
+{
+    for (int i = 0; i < cca; i++)
+    {
+        if (!IsDlgButtonChecked(hDlg, pca[i].idc))
+        {
+            iBmpBase += pca[i].iAdd;
+        }
+    }
+    return iBmpBase;
+}
+
+void _TaskbarOptionsUpdateDisplay(HWND hDlg)
+{
+    static const CONTROLBITMAP c_caTaskbar[] =
+    {
+        { 1107, 1 },
+        { 1104, 2 },
+        { 1105, 4 }
+    };
+
+    int iBmp;
+    if (IsDlgButtonChecked(hDlg, 1102))
+    {
+        iBmp = 145;
+    }
+    else
+    {
+        iBmp = _TaskbarPickBitmap(hDlg, 146, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
+    }
+    SetDlgItemBitmap(hDlg, 1111, iBmp);
+}
+
+BOOL_PTR CTaskBarPropertySheet::s_NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    CTaskBarPropertySheet* self = nullptr;
+    if (uMsg == WM_INITDIALOG)
+    {
+        SetTaskbarIcon(hDlg);
+        ::SetWindowLongPtrW(hDlg, DWLP_USER, lParam);
+        self = (CTaskBarPropertySheet*)((PROPSHEETPAGEW*)lParam)->lParam;
+    }
+    else
+    {
+        PROPSHEETPAGEW* psp = (PROPSHEETPAGEW*)::GetWindowLongPtrW(hDlg, DWLP_USER);
+        if (psp)
+        {
+            self = (CTaskBarPropertySheet*)psp->lParam;
+        }
+    }
+
+    BOOL_PTR fValue = FALSE;
+    if (self)
+    {
+        fValue = self->NotificationOptionsDlgProc(hDlg, uMsg, wParam, lParam);
+    }
+    return fValue;
+}
+
+void _NotificationOptionsDestroyBitmaps(HWND hDlg)
+{
+    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, 0);
+}
+
+void _NotificationOptionsUpdateDisplay(HWND hDlg)
+{
+    static const CONTROLBITMAP c_caNotify[] =
+    {
+        { 1111, 1 },
+        { 1110, 2 },
+        { 1109, 4 },
+        { 1108, 8 },
+        { 1000, 16 }
+    };
+
+    int iBmp = _TaskbarPickBitmap(hDlg, 190, c_caNotify, ARRAYSIZE(c_caNotify));
+    SetDlgItemBitmap(hDlg, 1112, iBmp, 0);
+
+    EnableWindow(::GetDlgItem(hDlg, 1007), ::IsDlgButtonChecked(hDlg, 1000));
+}
+
+#define ICatBandManager void* // Placeholder definition for ICatBandManager
+
+void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager * pCatBandManager = nullptr)
+{
+    TRAYVIEWOPTS tvo;
+    c_tray.GetTrayViewOpts(&tvo/*, pCatBandManager*/);
+
+    CheckDlgButton(hDlg, 1108, !tvo.fHideClock);
+    if (SHRestricted(REST_HIDECLOCK))
+    {
+        EnableWindow(GetDlgItem(hDlg, 1108), 0);
+    }
+
+    if (tvo.fNoTrayItemsDisplayPolicyEnabled || tvo.fNoAutoTrayPolicyEnabled)
+    {
+        EnableWindow(GetDlgItem(hDlg, 1000), 0);
+        EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), 0);
+        EnableWindow(GetDlgItem(hDlg, 1106), 0);
+    }
+    else
+    {
+        EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), tvo.fAutoTrayEnabledByUser);
+        CheckDlgButton(hDlg, 1000, tvo.fAutoTrayEnabledByUser);
+    }
+    _NotificationOptionsUpdateDisplay(hDlg);
+}
+
+BOOL_PTR CTaskBarPropertySheet::NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    if (uMsg == WM_DESTROY)
+    {
+        _NotificationOptionsDestroyBitmaps(hDlg);
+        return 0;
+    }
+
+    if (uMsg == WM_SYSCOLORCHANGE)
+    {
+        _NotificationOptionsUpdateDisplay(hDlg);
+        return 1;
+    }
+
+    if (uMsg != WM_NOTIFY)
+    {
+        if (uMsg == WM_INITDIALOG)
+        {
+            _NotificationOptions_OnInitDialog(hDlg, _dwFlags/*, _pCatBandManager*/);
+            if ((_dwFlags & TPF_INVOKECUSTOMIZE) != 0)
+            {
+                ::PostMessageW(hDlg, WM_COMMAND, IDC_CUSTOMIZE, 0);
+            }
+        }
+        else if (uMsg == WM_COMMAND)
+        {
+            if (GET_WM_COMMAND_ID(wParam, lParam) == IDC_CUSTOMIZE)
+            {
+                if (_pDlgNotify)
+                {
+                    _pDlgNotify->DoModal();
+                }
+            }
+            _NotificationOptionsUpdateDisplay(hDlg);
+            SendPSMChanged(hDlg);
+        }
+        return 0;
     }
 
     return FALSE;
@@ -2014,73 +2179,6 @@ void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
         ::PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
     }
 }
-
-//---------------------------------------------------------------------------
-void _TaskbarOptionsDestroyBitmaps(HWND hDlg)
-{
-    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, 0);
-    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, 0);
-}
-
-typedef struct
-{
-    int idc;
-    int iAdd;
-}
-CONTROLBITMAP;
-
-int _TaskbarPickBitmap(HWND hDlg, int iBmpBase, const CONTROLBITMAP* pca, int cca)
-{
-    for (int i = 0; i < cca; i++)
-    {
-        if (!IsDlgButtonChecked(hDlg, pca[i].idc))
-        {
-            iBmpBase += pca[i].iAdd;
-        }
-    }
-    return iBmpBase;
-}
-
-void _TaskbarOptionsUpdateDisplay(HWND hDlg)
-{
-    static const CONTROLBITMAP c_caTaskbar[] =
-    {
-        { IDC_LOCKTASKBAR, 1 },
-        { IDC_GROUPITEMS,  2 },
-        { IDC_QUICKLAUNCH, 4 },
-    };
-    static const CONTROLBITMAP c_caNotify[] =
-    {
-        { IDC_TRAYOPTSHOWCLOCK, 1 },
-        { IDC_NOTIFYMAN,        2 },
-    };
-
-    //
-    // top preview
-    //
-    int iBmp;
-    if (IsDlgButtonChecked(hDlg, IDC_TRAYOPTAUTOHIDE))
-    {
-        iBmp = IDB_TAAUTOHIDE;
-    }
-    else
-    {
-        iBmp = _TaskbarPickBitmap(hDlg, IDB_TAQLLOCKGROUP, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
-    }
-    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, iBmp);
-
-    //
-    // bottom preview
-    //
-    iBmp = _TaskbarPickBitmap(hDlg, IDB_NA_CLEAN_CLOCK_BATTERY_NETWORK_SOUND, c_caNotify, ARRAYSIZE(c_caNotify));
-    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, iBmp);
-
-    //
-    // customize button
-    //
-    EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), IsDlgButtonChecked(hDlg, IDC_NOTIFYMAN));
-}
-
 
 #define CX_PREVIEW  336
 #define CY_PREVIEW  35
@@ -2667,23 +2765,29 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags)
 
 // Passing iResource=0 deletes the bitmap in the control
 
-void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource)
+void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fCreateDIBSection)
 {
     HBITMAP hbm;
 
     if (iResource)
     {
-        hbm = (HBITMAP)LoadImage(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0,0, LR_LOADMAP3DCOLORS);
+        UINT uFlags = fCreateDIBSection ? LR_CREATEDIBSECTION : LR_LOADMAP3DCOLORS;
+        hbm = (HBITMAP)LoadImageW(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
+        if (!hbm)
+        {
+            //hbm = (HBITMAP)BrandingLoadImage(L"Shellbrd", MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
+        }
     }
     else
     {
-        hbm = NULL;
+        hbm = nullptr;
     }
 
-    hbm = (HBITMAP)SendDlgItemMessage(hDlg, idStatic, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbm);
+    hbm = (HBITMAP)SendDlgItemMessageW(hDlg, idStatic, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbm);
     if (hbm)
+    {
         DeleteObject(hbm);
-
+    }
 }
 
 void SetDlgItemIcon(HWND hDlg, int idStatic, HICON hIcon)

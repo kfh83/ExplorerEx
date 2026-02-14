@@ -561,7 +561,7 @@ public:
 
     LPCITEMIDLIST UpdateRelativePidl(CByUsageHiddenData *phd);
 
-    void SetApp(CByUsageAppInfo *papp)
+    void SetApp(CByUsageAppInfo* papp)
     {
         if (_papp) _papp->Release();
         _papp = papp;
@@ -1163,9 +1163,11 @@ SFTBarHost *ByUsage_CreateInstance()
     return g_pByUsageUI;
 }
 
-template <class T>
-int DPA_ILFreeCB(T self, LPVOID)
+template <typename T>
+int DPA_ILFreeCB(T* self, void* pData)
 {
+    // This seems odd but Microsoft seemingly called CoTaskMemFree directly rather than ILFree which
+    // is just a thin wrapper for CoTaskMemFree. Not sure why.
     CoTaskMemFree(self);
     return 1;
 }
@@ -1209,7 +1211,7 @@ ByUsage::~ByUsage()
 // d:\longhorn\Shell\inc\idllib.h
 PCUITEMID_CHILD _SHILMakeChild(const void *pv)
 {
-    PCUITEMID_CHILD pidl = reinterpret_cast<PCITEMID_CHILD>(pv);
+    PCUITEMID_CHILD pidl = static_cast<PCITEMID_CHILD>(pv);
     //RIP(ILIsChild(reinterpret_cast<PCUIDLIST_RELATIVE>(pidl))); // 178
     return pidl;
 }
@@ -1373,22 +1375,16 @@ HRESULT ByUsage::Initialize()
 
     return S_OK;
 #else
-    CMenuItemsCache *v3; // eax
-    CMenuItemsCache **p_pMenuCache; // edi
-
-    HRESULT hr = CoCreateInstanceHook(CLSID_StartMenuPin, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&this->_psmpin));
+    HRESULT hr = CoCreateInstanceHook(CLSID_StartMenuPin, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmpin));
     if (hr >= 0)
     {
         _pdirDesktop = CByUsageDir::CreateDesktop();
         if (_pdirDesktop)
         {
-            //v3 = (CMenuItemsCache *)InterlockedExchange(&g_pMenuCache, 0);
-            v3 = (CMenuItemsCache *)InterlockedExchangePointer((void *volatile *)&g_pMenuCache, 0);
-            p_pMenuCache = &this->_pMenuCache;
-            if (v3)
+            _pMenuCache = (CMenuItemsCache*)InterlockedExchangePointer(reinterpret_cast<void* volatile*>(&g_pMenuCache), nullptr);
+            if (_pMenuCache)
             {
-                *p_pMenuCache = v3;
-                v3->AttachUI(this->_pByUsageUI);
+                _pMenuCache->AttachUI(_pByUsageUI);
             }
             else
             {
@@ -1397,11 +1393,12 @@ HRESULT ByUsage::Initialize()
 
             if (hr >= 0)
             {
-                this->_ulPinChange = -1;
-                this->_dpaNew = nullptr;
+                _ulPinChange = -1;
+                _dpaNew = nullptr;
+
                 if (_pByUsageUI)
                 {
-                    this->_hwnd = _pByUsageUI->_hwnd;
+                    _hwnd = _pByUsageUI->_hwnd;
 
                     ASSERT(!_pMenuCache->IsLocked()); // 1390
                     _pByUsageUI->RegisterNotify(NOTIFY_PINCHANGE, SHCNE_EXTENDED_EVENT, _pidlBrowser, 0);
@@ -1410,15 +1407,15 @@ HRESULT ByUsage::Initialize()
 
             if (!s_fDoneCreateMenuItemCachTask)
             {
-                IShellTaskScheduler *psched;
+                IShellTaskScheduler* psched;
                 if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&psched))))
                 {
-                    CCreateMenuItemCacheTask *pTask = new CCreateMenuItemCacheTask(_pMenuCache, psched);
+                    CCreateMenuItemCacheTask* pTask = new CCreateMenuItemCacheTask(_pMenuCache, psched);
                     if (pTask)
                     {
-                        hr = psched->AddTask(pTask, TOID_STARTMENUCACHE, 0, 0x10000000);
+                        hr = psched->AddTask(pTask, TOID_STARTMENUCACHE, 0, ITSAT_DEFAULT_PRIORITY);
                         pTask->Release();
-                        s_fDoneCreateMenuItemCachTask = 1;
+                        s_fDoneCreateMenuItemCachTask = TRUE;
                     }
                     psched->Release();
                 }
@@ -1429,6 +1426,7 @@ HRESULT ByUsage::Initialize()
             hr = E_OUTOFMEMORY;
         }
     }
+
     return hr;
 #endif
 }
@@ -3215,7 +3213,7 @@ inline LRESULT ByUsage::_OnSetNewItems(HDPA hdpaNew)
     {
         // Both old and new are empty.  We're finished.
         // (Since we own dpaNew, free it to avoid a memory leak.)
-        dpaNew.DestroyCallback(ILFreeCallback, NULL);
+        dpaNew.DestroyCallback(DPA_ILFreeCB, nullptr);
         return 0;
     }
 
@@ -3223,7 +3221,7 @@ inline LRESULT ByUsage::_OnSetNewItems(HDPA hdpaNew)
 
     if (_dpaNew)
     {
-        _dpaNew.DestroyCallback(ILFreeCallback, NULL);
+        _dpaNew.DestroyCallback(DPA_ILFreeCB, nullptr);
     }
     _dpaNew.Attach(hdpaNew);
 
@@ -3555,11 +3553,8 @@ void ByUsage::_NotifyDesiredSize()
 CMenuItemsCache::CMenuItemsCache()
     : _cref(1)
 {
-    CByUsageRoot *rgrt; // eax
-
-    int i; // edx
-    rgrt = this->_rgrt;
-    for (i = 6; i >= 0; --i)
+    CByUsageRoot* rgrt = this->_rgrt;
+    for (int i = 6; i >= 0; --i)
     {
         rgrt->_sl.Detach();
         rgrt->_slOld.Detach();
@@ -4110,24 +4105,14 @@ BOOL CMenuItemsCache::InitCache()
 #endif
 }
 
-GUID POLID_NoStartMenuSubFolders =
-{
-  2019720721u,
-  60544u,
-  18851u,
-  { 179u, 183u, 106u, 190u, 115u, 150u, 147u, 252u }
-};
+DEFINE_GUID(POLID_NoStartMenuSubFolders, 0x78627E11, 0xEC80, 0x49A3, 0xB3, 0xB7, 0x6A, 0xBE, 0x73, 0x96, 0x93, 0xFC);
 
 HRESULT CMenuItemsCache::UpdateCache()
 {
-#ifdef DEAD_CODE
     FILETIME ft;
-    // Apps are "new" only if installed less than 1 week ago.
-    // They also must postdate the user's first use of the new Start Menu.
     GetSystemTimeAsFileTime(&ft);
     DecrementFILETIME(&ft, FT_ONEDAY * 7);
 
-    // _ftOldApps is the more recent of OS install time, or last week.
     if (CompareFileTime(&ft, &_ftOldApps) >= 0)
     {
         _ftOldApps = ft;
@@ -4135,245 +4120,83 @@ HRESULT CMenuItemsCache::UpdateCache()
 
     _dpaAppInfo.EnumCallbackEx(CByUsageAppInfo::EnumResetCB, this);
 
-    if(!SHRestricted(REST_NOSMMFUPROGRAMS))
+    if (!SHRestricted(REST_NOSMMFUPROGRAMS))
     {
-        int i;
-        for (i = 0; i < ARRAYSIZE(c_rgrfi); i++)
+        for (int i = 0; i < ARRAYSIZE(c_rgrfi); ++i)
         {
-            CByUsageRoot *prt = &_rgrt[i];
-            int csidl = c_rgrfi[i]._csidl;
+            CByUsageRoot* prt = &_rgrt[i];
+            KNOWNFOLDERID kfid = c_rgrfi[i]._kfid;
+            DWORD dwFlags = c_rgrfi[i]._dwFlags;
             _enumfl = c_rgrfi[i]._enumfl;
 
             if (!prt->_pidl)
             {
-                (void)SHGetSpecialFolderLocation(NULL, csidl, &prt->_pidl);     // void cast to keep prefast happy
+                SHGetKnownFolderIDList(kfid, dwFlags, nullptr, &prt->_pidl);
                 prt->SetNeedRefresh();
             }
 
             if (!_ShouldProcessRoot(i))
                 continue;
 
-
-            // Restrictions might deny recursing into subfolders
-            if ((_enumfl & ENUMFL_ISSTARTMENU) && SHRestricted(REST_NOSTARTMENUSUBFOLDERS))
+            if ((_enumfl & ENUMFL_ISSTARTMENU) != 0 && SHWindowsPolicy(POLID_NoStartMenuSubFolders))
             {
-                _enumfl &= ~ENUMFL_RECURSE;
                 _enumfl |= ENUMFL_NORECURSE;
             }
 
-            // Fill the cache if it is stale
-
-            LPITEMIDLIST pidl;
-            if (!IsRestrictedCsidl(csidl) &&
-                SUCCEEDED(SHGetSpecialFolderLocation(NULL, csidl, &pidl)))
+            ITEMIDLIST_ABSOLUTE* pidl;
+            if (!IsRestrictedKfid(kfid) && SUCCEEDED(SHGetKnownFolderIDList(kfid, dwFlags, nullptr, &pidl)))
             {
-                if (prt->_pidl == NULL || !ILIsEqual(prt->_pidl, pidl) ||
-                    prt->NeedsRefresh() || prt->NeedsRegister())
+                if (prt->_pidl == nullptr || !ILIsEqual(prt->_pidl, pidl) || prt->NeedsRefresh() || prt->NeedsRegister())
                 {
                     if (!prt->_pidl || prt->NeedsRefresh())
                     {
                         prt->ClearNeedRefresh();
-                        ASSERT(prt->_slOld == NULL);
-                        prt->_slOld = prt->_sl;
+                        ASSERT(prt->_slOld == nullptr); // 3678
+                        prt->_slOld.Attach(prt->_sl.Detach());
                         prt->_cOld = prt->_slOld ? prt->_slOld.GetPtrCount() : 0;
                         prt->_iOld = 0;
 
-                        // Free previous pidl
                         ILFree(prt->_pidl);
-                        prt->_pidl = NULL;
+                        prt->_pidl = nullptr;
 
                         if (prt->_sl.Create(4))
                         {
-                            CByUsageDir *pdir = CByUsageDir::Create(_pdirDesktop, pidl);
+                            CByUsageDir* pdir = CByUsageDir::Create(_pdirDesktop, pidl);
                             if (pdir)
                             {
-                                prt->_pidl = pidl;  // Take ownership
-                                pidl = NULL;        // So ILFree won't nuke it
+                                prt->_pidl = pidl;
+                                pidl = nullptr;
+
                                 _FillFolderCache(pdir, prt);
                                 pdir->Release();
                             }
                         }
-                        DPADELETEANDDESTROY(prt->_slOld);
+                        else
+                        {
+                            prt->_sl.Attach(prt->_slOld.Detach());
+                        }
+                        prt->_slOld.DestroyCallback(DPA_DeleteCB, nullptr);
                     }
+
                     if (_pByUsageUI && prt->NeedsRegister() && prt->_pidl)
                     {
-                        ASSERT(i < ByUsageUI::SFTHOST_MAXNOTIFY);
+                        ASSERT(i < ByUsageUI::SFTHOST_MAXNOTIFY); // 3707
                         prt->SetRegistered();
-                        ASSERT(!IsLocked());
+                        ASSERT(!IsLocked()); // 3709
                         _pByUsageUI->RegisterNotify(i, SHCNE_DISKEVENTS, prt->_pidl, TRUE);
                     }
                 }
                 ILFree(pidl);
-
             }
             else
             {
-                // Special folder doesn't exist; erase the file list
                 prt->Reset();
-            }
-        } // for loop!
-
-    } // Restriction!
-    _fIsCacheUpToDate = TRUE;
-    return S_OK;
-#else
-    struct CByUsageRoot *prt; // ebx MAPDST
-    DWORD v3; // ecx
-    LPITEMIDLIST *p_pidl; // esi
-    struct _DPA *m_hdpa; // ecx
-    struct CByUsageShortcutList *p_slOld; // edi
-    int cp; // eax
-    struct CByUsageDir *pdir; // eax
-    struct _DPA *v10; // eax
-    DWORD dwFlags; // [esp+18h] [ebp-40h] SPLIT
-    LPITEMIDLIST pidl; // [esp+20h] [ebp-38h] BYREF
-    unsigned int i; // [esp+24h] [ebp-34h]
-    KNOWNFOLDERID kfid; // [esp+2Ch] [ebp-2Ch] BYREF
-    //CPPEH_RECORD ms_exc; // [esp+40h] [ebp-18h]
-
-    FILETIME ft; // [esp+10h] [ebp-48h] BYREF
-    GetSystemTimeAsFileTime(&ft);
-    //SystemTimeAsFileTime = (FILETIME)(_FILETIMEtoInt64(&SystemTimeAsFileTime) - 6048000000000LL);
-	DecrementFILETIME(&ft, 6048000000000LL);
-    if (CompareFileTime(&ft, &this->_ftOldApps) >= 0)
-        this->_ftOldApps = ft;
-
-    _dpaAppInfo.EnumCallbackEx(CByUsageAppInfo::EnumResetCB, this);
-
-    if (!SHRestricted(REST_NOSMMFUPROGRAMS))
-    {
-        for (i = 0; i < 7; ++i)
-        {
-            prt = &this->_rgrt[i];
-            kfid = CMenuItemsCache::c_rgrfi[i]._kfid;
-            v3 = CMenuItemsCache::c_rgrfi[i]._dwFlags;
-            dwFlags = v3;
-            this->_enumfl = CMenuItemsCache::c_rgrfi[i]._enumfl;
-            p_pidl = &prt->_pidl;
-            if (!prt->_pidl)
-            {
-                SHGetKnownFolderIDList(kfid, v3, 0, &prt->_pidl);
-                prt->_fNeedRefresh = 1;
-            }
-            if (CMenuItemsCache::_ShouldProcessRoot(i))
-            {
-                if ((this->_enumfl & 8) != 0 && SHWindowsPolicy(POLID_NoStartMenuSubFolders))
-                    this->_enumfl |= 1u;
-                if (CMenuItemsCache::IsRestrictedKfid(kfid) || SHGetKnownFolderIDList(kfid, dwFlags, 0, &pidl) < 0)
-                {
-                    prt->Reset();
-                }
-                else
-                {
-                    if (!*p_pidl || !ILIsEqual(*p_pidl, pidl) || prt->_fNeedRefresh || !prt->_fRegistered)
-                    {
-                        if (!*p_pidl || prt->_fNeedRefresh)
-                        {
-                            prt->_fNeedRefresh = 0;
-
-                            //if (prt->_slOld.m_hdpa
-                            //    && CcshellAssertFailedW(
-                            //        L"d:\\longhorn\\shell\\explorer\\desktop2\\proglist.cpp",
-                            //        3678,
-                            //        L"prt->_slOld == NULL",
-                            //        0))
-                            //{
-                            //    AttachUserModeDebugger();
-                            //    do
-                            //    {
-                            //        __debugbreak();
-                            //        ms_exc.registration.TryLevel = -2;
-                            //    } while (dword_108B8D0);
-                            //}
-
-                            //m_hdpa = prt->_sl.m_hdpa;
-                            //prt->_sl.m_hdpa = 0;
-                            //p_slOld = &prt->_slOld;
-                            //CDPA_Base<CByUsageShortcut>::Attach((CDPA_Base<class CByUsageShortcut> *) & prt->_slOld, m_hdpa);
-                            prt->_slOld.Attach(prt->_sl.Detach());
-
-                            //if (prt->_slOld.m_hdpa)
-                            //    cp = p_slOld->m_hdpa->cp;
-                            //else
-                            //    cp = 0;
-
-                            prt->_cOld = prt->_slOld ? prt->_slOld.GetPtrCount() : 0;
-                            prt->_iOld = 0;
-                            p_pidl = &prt->_pidl;
-                            ILFree(prt->_pidl);
-                            prt->_pidl = 0;
-                            if (prt->_sl.Create(4))// prt->_sl.Create(4)
-                            {
-                                pdir = CByUsageDir::Create(this->_pdirDesktop, pidl);
-                                dwFlags = (DWORD)pdir;
-                                if (pdir)
-                                {
-                                    *p_pidl = pidl;
-                                    pidl = 0;
-                                    CMenuItemsCache::_FillFolderCache(pdir, prt);// _FillFolderCache(pdir, prt);
-									pdir->Release();
-                                }
-                            }
-                            else
-                            {
-                                //v10 = p_slOld->m_hdpa;
-                                //p_slOld->m_hdpa = 0;
-                                //CDPA_Base<CByUsageShortcut>::Attach((CDPA_Base<class CByUsageShortcut> *)prt, v10);
-								prt->_sl.Attach(prt->_slOld.Detach());
-                            }
-							prt->_slOld.DestroyCallback(DPA_DeleteCB<CByUsageShortcut>, 0);
-                            //CDPA<unsigned short>::DestroyCallback(DPA_DeleteCB<CByUsageShortcut>, 0);
-                        }
-
-                        if (this->_pByUsageUI && !prt->_fRegistered && *p_pidl)
-                        {
-                            //if ((int)i >= 9
-                            //    && CcshellAssertFailedW(
-                            //        L"d:\\longhorn\\shell\\explorer\\desktop2\\proglist.cpp",
-                            //        3707,
-                            //        L"i < ByUsageUI::SFTHOST_MAXNOTIFY",
-                            //        0))
-                            //{
-                            //    AttachUserModeDebugger();
-                            //    do
-                            //    {
-                            //        __debugbreak();
-                            //        ms_exc.registration.TryLevel = -2;
-                            //    } while (dword_108B8CC);
-                            //}
-
-                            prt->_fRegistered = 1;
-
-                            //if (CMenuItemsCache::IsLocked(this)
-                            //    && CcshellAssertFailedW(
-                            //        L"d:\\longhorn\\shell\\explorer\\desktop2\\proglist.cpp",
-                            //        3709,
-                            //        L"!IsLocked()",
-                            //        0))
-                            //{
-                            //    AttachUserModeDebugger();
-                            //    do
-                            //    {
-                            //        __debugbreak();
-                            //        ms_exc.registration.TryLevel = -2;
-                            //    } while (dword_108B8C8);
-                            //}
-
-                            _pByUsageUI->RegisterNotify(
-                                i,
-                                SHCNE_DISKEVENTS,
-                                prt->_pidl,
-                                1);
-                        }
-                    }
-                    ILFree(pidl);
-                }
             }
         }
     }
-    this->_fIsCacheUpToDate = 1;
-    return 0;
-#endif
+
+    _fIsCacheUpToDate = TRUE;
+    return S_OK;
 }
 
 void CMenuItemsCache::RefreshDarwinShortcuts(CByUsageRoot *prt)

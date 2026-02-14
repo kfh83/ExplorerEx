@@ -435,7 +435,7 @@ LRESULT CTopMatch::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
 	LRESULT lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
 	if (this)
-		this->Release();
+		Release();
 	return lRes;
 }
 
@@ -514,14 +514,14 @@ LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 			iCurSel1 = _GetLVCurSel();
 			if (iCurSel1 != -1)
 			{
-				iItem = SendMessage(this->_hwndList, LVM_GETNEXTITEM, iCurSel1, 0x200);
+				iItem = SendMessage(_hwndList, LVM_GETNEXTITEM, iCurSel1, 0x200);
 				goto LABEL_7;
 			}
 		LABEL_12:
 			lvfi.vkDirection = VK_HOME;
 		LABEL_13:
 			lvfi.flags = 0x40;
-			iItem1 = SendMessage(this->_hwndList, LVM_FINDITEMW, -1, (LPARAM)&lvfi);
+			iItem1 = SendMessage(_hwndList, LVM_FINDITEMW, -1, (LPARAM)&lvfi);
 		LABEL_14:
 			pdm->itemID = iItem1;
 			return iItem1 >= 0;
@@ -532,7 +532,7 @@ LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 			_ActivateItem(iCurSel, pdm->flags & 0x400);
 			return 1;
 		case 7u:
-			iItem1 = SendMessage(this->_hwndList, LVM_HITTEST, 0, (LPARAM)&pdm->pt);
+			iItem1 = SendMessage(_hwndList, LVM_HITTEST, 0, (LPARAM)&pdm->pt);
 			goto LABEL_14;
 		case 9u:
 		case 0xAu:
@@ -594,8 +594,8 @@ void CTopMatch::_AddSearchExtension()
 
 void CTopMatch::_AddSearchItem(LPARAM lParam, LPWSTR pszText)
 {
-	HWND hwndList; // [esp-10h] [ebp-70h]
-	HWND v5; // [esp-10h] [ebp-70h]
+	// [esp-10h] [ebp-70h]
+	// [esp-10h] [ebp-70h]
 	LVITEMW lvi; // [esp+Ch] [ebp-54h] BYREF
 	LVFINDINFOW lvfi; // [esp+48h] [ebp-18h] BYREF
 
@@ -604,20 +604,18 @@ void CTopMatch::_AddSearchItem(LPARAM lParam, LPWSTR pszText)
 	{
 		memset(&lvi.iItem, 0, 0x38u);
 		lvi.pszText = pszText;
-		hwndList = this->_hwndList;
 		lvfi.flags = 1;
 		lvi.mask = 5;
 		lvi.lParam = lParam;
 		lvfi.lParam = lParam;
-		if (SendMessageW(hwndList, LVM_FINDITEMW, 0xFFFFFFFF, (LPARAM)&lvfi) < 0)
+		if (SendMessageW(_hwndList, LVM_FINDITEMW, 0xFFFFFFFF, (LPARAM)&lvfi) < 0)
 		{
 			if (pszText)
 			{
 				lvi.mask |= 2u;
-				v5 = this->_hwndList;
 				lvi.iImage = 22;
 				lvi.iItem = lParam;
-				SendMessageW(v5, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
+				SendMessageW(_hwndList, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
 			}
 		}
 	}
@@ -625,50 +623,47 @@ void CTopMatch::_AddSearchItem(LPARAM lParam, LPWSTR pszText)
 
 LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 {
-	HRESULT hr; // ebx MAPDST
-	HWND Parent; // eax
-	HWND hwndList; // [esp-10h] [ebp-74h]
-	LVITEM lvi; // [esp+Ch] [ebp-58h] BYREF
-	NMHDR nm; // [esp+48h] [ebp-1Ch] BYREF
+	HRESULT hr = E_FAIL;
+	// Skipped telemetry StartMenu_Search_TopResult_Launch (585)
 
-	hr = 0x80004005;
-	//SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_TopResult_Launch, 73);
-	memset(&lvi.iItem, 0, 0x38u);
+	LVITEM lvi = {};
 	lvi.iItem = iItem;
-	hwndList = this->_hwndList;
-	lvi.mask = 4;
-	if (SendMessageW(hwndList, LVM_GETITEMW, 0, (LPARAM)&lvi))
+	lvi.mask = LVIF_PARAM;
+	if (SendMessageW(_hwndList, LVM_GETITEMW, 0, (LPARAM)&lvi))
 	{
-		if (lvi.lParam)
+		if (!lvi.lParam)
 		{
-			if (lvi.lParam == 1)
+			if (SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu))
 			{
-				if (SHWindowsPolicy(POLID_NoSearchInternetLinkInStartMenu))
-					return hr >= 0;
-				//SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_Internet_Count, 118);
-				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 319, 0, 0, 0);
+				return SUCCEEDED(hr);
 			}
-			else
+			// Skipped telemetry StartMenu_Search_Computer_Count (1141)
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 322, 0, nullptr, nullptr);
+		}
+		else if (lvi.lParam == 1)
+		{
+			if (SHWindowsPolicy(POLID_NoSearchInternetLinkInStartMenu))
 			{
-				if (lvi.lParam != 2)
-					return hr >= 0;
-				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 321, 0, 0, 0);
+				return SUCCEEDED(hr);
 			}
+			// Skipped telemetry StartMenu_Search_Internet_Count (1142);
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 319, 0, nullptr, nullptr);
 		}
 		else
 		{
-			if (SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu))
-				return hr >= 0;
-			//SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_Computer_Count, 117);
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 322, 0, 0, 0);
+			if (lvi.lParam != 2)
+			{
+				return SUCCEEDED(hr);
+			}
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 321, 0, nullptr, nullptr);
 		}
-		if (hr >= 0)
+		if (SUCCEEDED(hr))
 		{
-			Parent = GetParent(this->_hwnd);
-			_SendNotify(Parent, 204u, &nm);
+			NMHDR nm;
+			_SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &nm);
 		}
 	}
-	return hr >= 0;
+	return SUCCEEDED(hr);
 }
 
 int CTopMatch::_GetLVCurSel()

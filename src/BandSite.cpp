@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include "cocreateinstancehook.h"
 #include "cabinet.h"
 #include "bandsite.h"
@@ -697,6 +698,7 @@ HRESULT BandSite_SaveView(IUnknown *pbs)
 
 BOOL CTrayBandSite::HandleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *plres)
 {
+#if 0
     if (!_hwnd)
     {
         IUnknown_GetWindow(SAFECAST(this, IBandSite*), &_hwnd);
@@ -750,6 +752,69 @@ BOOL CTrayBandSite::HandleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     ASSERT(0);  // we know we support IWinEventHandler
     
     return FALSE;
+#endif
+    // ebx
+    HRESULT hr; // esi
+    IWinEventHandler* pweh; // [esp+10h] [ebp-1Ch] BYREF
+
+    if (!_hwnd)
+    {
+        IUnknown_GetWindow(static_cast<IBandSite*>(this), &_hwnd);
+    }
+    if (uMsg < WM_DRAWITEM)
+    {
+        goto LABEL_8;
+    }
+    if (uMsg <= WM_MEASUREITEM)
+    {
+    LABEL_18:
+        if (!_pcm)
+        {
+            goto LABEL_8;
+        }
+        _pcm->HandleMenuMsg2(uMsg, wParam, lParam, plres);
+        return 1;
+    }
+    if (uMsg != WM_NOTIFY)
+    {
+        if (uMsg != WM_INITMENUPOPUP && uMsg != WM_MENUCHAR)
+        {
+            goto LABEL_8;
+        }
+        goto LABEL_18;
+    }
+
+    if (((LPNMHDR)lParam)->code == RBN_MINMAX)
+    {
+        *plres = SHRestricted(REST_NOMOVINGBAND);
+        return 1;
+    }
+
+    if (((LPNMHDR)lParam)->code == -14)
+    {
+        NMMOUSE* pnm = (LPNMMOUSE)lParam;
+        if (_hwnd == pnm->hdr.hwndFrom)
+        {
+            if ((pnm->dwHitInfo == RBHT_CLIENT || pnm->dwItemSpec == -1) && plres)
+            {
+                *plres = HTTRANSPARENT;
+            }
+            return 1;
+        }
+    }
+
+LABEL_8:
+    if (QueryInterface(IID_PPV_ARGS(&pweh)) >= 0)
+    {
+        hr = pweh->OnWinEvent(hwnd, uMsg, wParam, lParam, plres);
+        pweh->Release();
+        return hr >= 0;
+    }
+    else
+    {
+        ASSERT(0); // 748
+        return 0;
+    }
 }
 
 void CTrayBandSite::_BroadcastExec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut)

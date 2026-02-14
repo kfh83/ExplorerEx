@@ -364,7 +364,9 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         hr = _pssc->Initialize(_hwnd, &rc);
         if (SUCCEEDED(hr))
         {
-            hr = _pssc->SetFlags(SSCSTATE_NODROPDOWN | SSCSTATE_APPENDTEXT | SSCSTATE_DRAWCUETEXTFOCUS);
+            // Build 6002 = SSCSTATE_DRAWCUETEXTFOCUS | SSCSTATE_APPENDTEXT | SSCSTATE_NODROPDOWN (0x2C)
+            // Build 6519+ = SSCSTATE_DRAWCUETEXTFOCUS | SSCSTATE_APPENDTEXT | SSCSTATE_NODROPDOWN | SSCSTATE_NOSUGGESTIONS (0xAC)
+            hr = _pssc->SetFlags(SSCSTATE_DRAWCUETEXTFOCUS | SSCSTATE_APPENDTEXT | SSCSTATE_NODROPDOWN);
             if (SUCCEEDED(hr))
             {
                 WCHAR szText[MAX_PATH];

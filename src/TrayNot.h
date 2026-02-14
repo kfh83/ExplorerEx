@@ -189,7 +189,7 @@ protected:
     void _ActivateTips(BOOL bActivate);
     void _InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick);
     void _PositionInfoTip();
-    DWORD _ShowBalloonTip(LPTSTR szTitle, HICON hIcon, UINT uTimeout, DWORD dwLastSoundTime);
+    DWORD _ShowBalloonTip(HICON hIcon, DWORD dwLastSoundTime);
     void _SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo, LPTSTR pszInfoTitle, DWORD dwInfoFlags, BOOL bAsync, BOOL bRealtime);
     void _ShowInfoTip(REFGUID guid, HWND hwnd, UINT uID, BOOL bShow, BOOL bAsync, UINT uReason);
     void _ShowChevronInfoTip();
@@ -255,6 +255,7 @@ protected:
     HRESULT _SetItemTimer(CTrayItem *pti);
     HRESULT _KillItemTimer(CTrayItem *pti);
     IUserEventTimer * _CreateTimer(int nTimerFlag);
+    BOOL _SetInfoTipTimer(UINT uTimerID, UINT uTimerInterval);
     HRESULT _SetTimer(int nTimerFlag, UINT uCallbackMessage, UINT uTimerInterval, ULONG * puTimerID);
     HRESULT _KillTimer(int nTimerFlag, ULONG uTimerID);
     BOOL _ShouldDestroyTimer(int nTimerFlag);
@@ -340,7 +341,7 @@ private:
     ULONG           _uInfoTipTimer;
     
     TNINFOITEM      *_pinfo;    // current balloon being shown
-    CDPA_Base<TNINFOITEM, CTContainer_PolicyUnOwned<TNINFOITEM>> _dpaInfo;
+    CDPA<TNINFOITEM, CTContainer_PolicyUnOwned<TNINFOITEM>> _dpaInfo;
 
     BOOL            _fInfoTipShowing;
     BOOL            _fItemClicked;

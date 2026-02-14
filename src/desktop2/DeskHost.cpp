@@ -17,7 +17,7 @@
 // #define TF_DV2DIALOG TF_CUSTOM1
 
 EXTERN_C HINSTANCE g_hinstCabinet;
-HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb);
+HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite);
 void RegisterDesktopControlClasses();
 
 const WCHAR c_wzStartMenuTheme[] = L"StartMenu";

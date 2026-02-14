@@ -108,7 +108,6 @@ IStartMenuQuerySink : IUnknown
 	STDMETHOD(SetStatusForQuery)(LPCWSTR, SM_QUERY_STATUS) PURE;
 };
 
-
 MIDL_INTERFACE("B99D542E-CABE-4AD8-ADE5-AEBCCDDB1509")
 IStartMenuQueryCache : IUnknown
 {
@@ -147,17 +146,17 @@ class CPathCompletionTask : public CRunnableTask
 public:
 	CPathCompletionTask(IUnknown *punk, IExplorerBrowser *peb, HWND hwnd, WCHAR *pszPath)
 		: CRunnableTask(RTF_DEFAULT)
+		, _pszPath(pszPath)
 		, _punk(punk)
 		, _peb(peb)
 		, _hwnd(hwnd)
-		, _pszPath(pszPath)
 	{
 		IUnknown_Set(&_punk, punk);
 		peb->AddRef();
 		PathRemoveBlanks(pszPath);
 	}
 
-	~CPathCompletionTask()
+	~CPathCompletionTask() override
 	{
 		CoTaskMemFree(_pszPath);
 		IUnknown_SafeReleaseAndNullPtr(&_peb);
@@ -191,9 +190,13 @@ public:
 
 			CPathCompleteInfo *ppci = new CPathCompleteInfo();
 			if (!ppci)
+			{
 				hr = E_OUTOFMEMORY;
+			}
 			if (hr < 0)
+			{
 				goto LABEL_42;
+			}
 			pszPath = this->_pszPath;
 			pidl = 0;
 			if (pszPath && *pszPath)
@@ -313,7 +316,7 @@ class CSearchOpenView
 {
 public:
 	CSearchOpenView();
-	~CSearchOpenView();
+	~CSearchOpenView() override;
 
 	// *** IUnknown ***
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppvObj);
@@ -421,7 +424,7 @@ private:
 	void _DoKeyBoardContextMenu();
 	void _FilterPathCompleteView(LPCWSTR pszPath);
 	void _InstrumentActivation(int iItem);
-	void _PathCompleteUpdate(CPathCompleteInfo *ppciNew, PIDLIST_ABSOLUTE pidl);
+	void _PathCompleteUpdate(CPathCompleteInfo* ppciNew);
 	void _ReleaseExplorerBrowser();
 	void _RevokeQuerySink();
 	void _SizeExplorerBrowser(int cx, int cy);

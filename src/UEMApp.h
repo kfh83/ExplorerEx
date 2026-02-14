@@ -120,8 +120,9 @@ typedef enum tagUAEVENT
 
 typedef int(CALLBACK *UACallback)(void *, const GUID *, LPCWSTR, UAEVENT);
 
-HRESULT UAQueryEntry(const GUID *pguidGrp, LPCWSTR pszPath, LPUEMINFO pui);
-HRESULT UARegisterNotify(UACallback a1, void *a2, int a3);
+HRESULT UAQueryEntry(const GUID* pguidGrp, LPCWSTR pszPath, LPUEMINFO pui);
+HRESULT UARegisterNotify(UACallback a1, void* a2, int a3);
+HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed);
 
 
 

@@ -244,3 +244,14 @@ HRESULT UARegisterNotify(UACallback a1, void* a2, int a3)
 	}
 	return hr;
 }
+
+HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->FireEvent(pguidGrp, eCmd, pszPath, dwTimeElapsed);
+	}
+	return hr;
+}
