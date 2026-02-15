@@ -3845,6 +3845,8 @@ void CTray::_CheckStagingAreaOnTimer()
     }
 }
 
+DEFINE_GUID(CLSID_SH_AddressBand, 0x01E04581, 0x4EEE, 0x11D0, 0xBF, 0xE9, 0x00, 0xAA, 0x00, 0x5B, 0x43, 0x83);
+
 void CTray::_HandleChangeNotify(WPARAM wParam, LPARAM lParam)
 {
     LPITEMIDLIST* ppidl;
@@ -3856,6 +3858,15 @@ void CTray::_HandleChangeNotify(WPARAM wParam, LPARAM lParam)
         {
             // something has changed within the staging area.
             _CheckStagingAreaOnTimer();
+        }
+        else if ((lEvent & SHCNE_ASSOCCHANGED) != 0)
+        {
+            IShellChangeNotify* pscn;
+            if (SUCCEEDED(BandSite_FindBand(_ptbs, CLSID_SH_AddressBand, IID_PPV_ARGS(&pscn), nullptr, nullptr)))
+            {
+                pscn->OnChange(lEvent, ppidl[0], ppidl[1]);
+                pscn->Release();
+            }
         }
         SHChangeNotification_Unlock(pshcnl);
     }
@@ -5974,6 +5985,32 @@ BOOL CTray::IsMouseOverClock()  // @TODO: Cleanup
     return result;
 }
 
+BOOL CTray::IsMouseOverClassicTaskbar()
+{
+    RECT rc;
+    GetWindowRect(_hwnd, &rc);
+
+    switch (_uStuckPlace)
+    {
+        case STICK_LEFT:
+            rc.right -= g_cxFrame;
+            break;
+        case STICK_TOP:
+            rc.bottom -= g_cyFrame;
+            break;
+        case STICK_RIGHT:
+            rc.left += g_cxFrame;
+            break;
+        default:
+            rc.top += g_cyFrame;
+            break;
+    }
+
+    DWORD dwPos = GetMessagePos();
+    POINT pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
+    return PtInRect(&rc, pt);
+}
+
 // EXEX-VISTA: Validated. But needs clean up.
 BOOL CTray::ShowClockFlyoutAsNeeded(LPARAM lParam)
 {
@@ -6510,34 +6547,54 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             _DoExitWindows(v_hwndDesktop, FALSE, FALSE);
             break;
 
+        // EXEX-VISTA (Allison): Validated. (Still needs cleanup.)
         case WM_NCHITTEST:
         {
-            RECT r1;
             POINT pt;
-
-            GetClientRect(hwnd, &r1);
-            MapWindowPoints(hwnd, NULL, (LPPOINT)&r1, 2);
-
+            RECT r1;
             pt.x = GET_X_LPARAM(lParam);
             pt.y = GET_Y_LPARAM(lParam);
-
             _SetUnhideTimer(pt.x, pt.y);
 
-            // If the user can't size or move the taskbar, then just say
-            // they hit something useless
-            if (!_fCanSizeMove)
+            lres = 2;
+            if ((_uAutoHide & AH_HIDING) != 0 || !_fCanSizeMove)
             {
-                return HTBORDER;
+                return 2;
             }
-            else if (PtInRect(&r1, pt))
+            GetClientRect(hwnd, &r1);
+            MapWindowPoints(hwnd, nullptr, (POINT*)&r1, 2);
+
+            if (_hTheme)
             {
-                // allow dragging if mouse is in client area of _hwnd
-                return HTCAPTION;
+                UINT v18;
+                switch (_uStuckPlace)
+                {
+                    case STICK_LEFT:
+                        r1.left = r1.right - _iSizingBarHeight;
+                        v18 = PtInRect(&r1, pt) ? HTRIGHT : 0;
+                        break;
+                    case STICK_TOP:
+                        r1.top = r1.bottom - _iSizingBarHeight;
+                        v18 = PtInRect(&r1, pt) ? HTBOTTOM : 0;
+                        break;
+                    case STICK_RIGHT:
+                        r1.right = r1.left + _iSizingBarHeight;
+                        v18 = PtInRect(&r1, pt) ? HTLEFT : 0;
+                        break;
+                    case STICK_BOTTOM:
+                        r1.bottom = r1.top + _iSizingBarHeight;
+                        v18 = PtInRect(&r1, pt) ? HTTOP : 0;
+                        break;
+                    default:
+                        return lres;
+                }
+                return v18;
             }
-            else
+            if (IsMouseOverClassicTaskbar())
             {
-                return _PtOnResizableEdge(pt, &r1);
+                return 2;
             }
+            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
         }
         break;
 

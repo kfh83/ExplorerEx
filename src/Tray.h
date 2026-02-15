@@ -244,6 +244,7 @@ public:
     void GetStuckMonitorRect(RECT* prcStuck);
     BOOL IsMouseOverStartButton();
     BOOL IsMouseOverClock();                       // ExplorerEx-Vista
+    BOOL IsMouseOverClassicTaskbar();               // ExplorerEx-Vista
     BOOL ShowClockFlyoutAsNeeded(LPARAM mousePos); // ExplorerEx-Vista
     void _ActivateWindowSwitcher();
     void _SetLockState(UINT newVal);
