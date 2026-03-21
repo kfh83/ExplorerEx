@@ -311,6 +311,7 @@ public:        // Methods required by SFTBarHost
 
     CMenuItemsCache *GetMenuCache() { return _pMenuCache; }
     BOOL IsInsertable(IDataObject *pdto);
+    BOOL IsPidlNew(ITEMIDLIST_ABSOLUTE* pidl);
     HRESULT InsertPinnedItem(IDataObject *pdto, int iInsert);
     void OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2);
     void OnPinListChange();
@@ -371,7 +372,7 @@ public:
     static inline __int64 FT_NEWAPPGRACEPERIOD() { return FT_ONEHOUR; }
 
 private:
-    CDPAPidl _dpaNew;                    // the new guys
+    CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> _dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>
 
     IStartMenuPin *         _psmpin;     // to access the pin list
     LPITEMIDLIST            _pidlBrowser;  // Special pinned items with special names
@@ -435,6 +436,8 @@ private:        // Methods required by SFTBarHost
 
     BOOL NeedBackgroundEnum() { return TRUE; }
     BOOL HasDynamicContent() { return TRUE; }
+
+    STDMETHODIMP Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG *pvarargIn, VARIANTARG *pvarargOut) override;
 
     void RefreshNow() { PostMessage(_hwnd, SFTBM_REFRESH, FALSE, 0); }
 

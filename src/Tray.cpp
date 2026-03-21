@@ -460,7 +460,7 @@ IBandSite* BandSite_CreateView();
 HRESULT BandSite_SaveView(IUnknown* pbs);
 LRESULT BandSite_OnMarshallBS(WPARAM wParam, LPARAM lParam);
 
-void CTray::_SaveTrayStuff(void)
+void CTray::_SaveTrayStuff()
 {
     TVSD tvsd;
 
@@ -473,18 +473,18 @@ void CTray::_SaveTrayStuff(void)
     tvsd.uStuckPlace = _uStuckPlace;
 
     tvsd.dwFlags = 0;
+    if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
     if (_fAlwaysOnTop)      tvsd.dwFlags |= TVSD_TOPMOST;
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
-    if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
-    if (_fNoThumbnails)     tvsd.dwFlags |= 0x80;
-    if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
+    if (_fHideClock)        tvsd.dwFlags |= TVSD_HIDECLOCK;
+    if (_fHideSCA[SCA_VOLUME])      tvsd.dwFlags |= TVSD_HIDESCAVOLUME;
+    if (_fHideSCA[SCA_NETWORK])     tvsd.dwFlags |= TVSD_HIDESCANETWORK;
+    if (_fHideSCA[SCA_POWER])       tvsd.dwFlags |= TVSD_HIDESCAPOWER;
+    if (_fNoThumbnails)     tvsd.dwFlags |= TVSD_HIDETHUMBNAILS;
 
     // Save in Stuck rects.
-    Reg_SetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"), &tvsd, sizeof(tvsd));
-
+    Reg_SetStruct(g_hkeyExplorer, L"StuckRectsXP2", L"Settings", &tvsd, sizeof(tvsd));
     BandSite_SaveView(_ptbs);
-
-    return;
 }
 
 //  Helper function for CDesktopHost so clicking twice on the Start Button

@@ -651,7 +651,7 @@ LRESULT CUserPane::OnSize()
         rcFrame.top = iPicOffset - _iFramedPicHeight - rc.top;
         rcFrame.right = rcFrame.left + _iFramedPicWidth;
         rcFrame.bottom = iPicOffset - rc.top;
-        MapWindowRect(_hwnd, NULL, &rcFrame);
+        MapWindowRect(_hwnd, nullptr, &rcFrame);
         MoveWindow(_hwndStatic, rcFrame.left, rcFrame.top, RECTWIDTH(rcFrame), RECTHEIGHT(rcFrame), FALSE);
     }
     return 0;

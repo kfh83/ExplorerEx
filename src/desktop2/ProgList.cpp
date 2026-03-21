@@ -1135,6 +1135,33 @@ void CByUsageHiddenData::LoadFromShellLink(IShellLink *psl)
 
 //****************************************************************************
 
+HRESULT ByUsageUI::Exec(
+    const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANTARG* pvarargIn, VARIANTARG* pvarargOut)
+{
+    HRESULT hr = E_INVALIDARG;
+
+    if (pguidCmdGroup && IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    {
+        switch (nCmdID)
+        {
+            case 305:
+            {
+                pvarargOut->vt = VT_BOOL;
+                pvarargOut->boolVal = _byUsage.IsPidlNew(reinterpret_cast<ITEMIDLIST_ABSOLUTE*>(pvarargIn->lVal)) ? VARIANT_TRUE : VARIANT_FALSE;
+                hr = S_OK;
+                break;
+            }
+            case 311:
+            {
+                hr = _byUsage._dpaNew ? S_OK : S_FALSE;
+                break;
+            }
+        }
+    }
+
+    return hr;
+}
+
 ByUsageUI::ByUsageUI() : _byUsage(this),
     // We want to log execs as if they were launched by the Start Menu
     SFTBarHost(HOSTF_FIREUEMEVENTS |
@@ -1394,7 +1421,7 @@ HRESULT ByUsage::Initialize()
             if (hr >= 0)
             {
                 _ulPinChange = -1;
-                _dpaNew = nullptr;
+                _dpaNew.Attach(nullptr);
 
                 if (_pByUsageUI)
                 {
@@ -2678,8 +2705,7 @@ void ByUsage::EnumFolderFromCache()
 
 BOOL IsPidlInDPA(LPCITEMIDLIST pidl, const CDPAPidl& dpa)
 {
-    int i;
-    for (i = dpa.GetPtrCount()-1; i >= 0; i--)
+    for (int i = dpa.GetPtrCount() - 1; i >= 0; i--)
     {
         if (ILIsEqual(pidl, dpa.FastGetPtr(i)))
         {
@@ -2689,37 +2715,27 @@ BOOL IsPidlInDPA(LPCITEMIDLIST pidl, const CDPAPidl& dpa)
     return FALSE;
 }
 
-void __stdcall ByUsage::_AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl)
+BOOL IsPidlOrParentInDPA(const ITEMIDLIST_ABSOLUTE* pidl, const CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>& dpa)
 {
-    ITEMIDLIST_ABSOLUTE *v2; // ebx
-    ITEMIDLIST_RELATIVE *v3; // esi
-
-    v2 = pidl;
-    if (pidl)
+    WCHAR szPath[260];
+    if (SHGetPathFromIDListW(pidl, szPath))
     {
-        do
+        for (int i = dpa.GetPtrCount() - 1; i >= 0; i--)
         {
-            v3 = 0;
-            if (pdpa->AppendPtr(v2, 0) >= 0)
+            if (PathIsPrefixW(szPath, dpa.FastGetPtr(i)))
             {
-                v3 = ILCloneParent(v2);
-                v2 = 0;
-                if (ILIsEmpty(v3) || IsPidlInDPA(v3, *pdpa))
-                {
-                    ILFree(v3);
-                    v3 = 0;
-                }
+                return TRUE;
             }
-            ILFree(v2);
-            v2 = v3;
-        } while (v3);
+        }
     }
+    return FALSE;
 }
 
 void ByUsage::_AddNewAppPidl(CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>* pdpa, ITEMIDLIST_ABSOLUTE* pidl)
 {
     WCHAR* pszName;
-    if (DisplayNameOfAsString(nullptr, pidl, 0x8000u, &pszName) >= 0 && pdpa->AppendPtr(pszName, nullptr) < 0)
+    if (SUCCEEDED(DisplayNameOfAsString(nullptr, pidl, SHGDN_FORPARSING, &pszName))
+        && FAILED(pdpa->AppendPtr(pszName, nullptr)))
     {
         CoTaskMemFree(pszName);
     }
@@ -2921,7 +2937,7 @@ void ByUsage::AfterEnumItems()
                 }
 
                 if (_pByUsageUI)
-                    _pByUsageUI->AddItem(pitem/*, NULL, pscut->RelativePidl()*/);
+                    _pByUsageUI->AddItem(pitem);
 
                 pitem->Release();
             }
@@ -2953,39 +2969,13 @@ void ByUsage::AfterEnumItems()
     ByUsageAppInfoList *pdpaAppInfo = _pMenuCache->GetAppList();
     pdpaAppInfo->EnumCallbackEx(_AfterEnumCB, &aei);
 
-#ifdef DEAD_CODE
-    // Now that we have the official list of new items, tell the
-    // foreground thread to pick it up.  We don't update the master
-    // copy in-place for three reasons.
-    //
-    //  1.  It generates contention since both the foreground and
-    //      background threads would be accessing it simultaneously.
-    //      This means more critical sections (yuck).
-    //  2.  It means that items that were new and are still new have
-    //      a brief period where they are no longer new because we
-    //      are rebuilding the list.
-    //  3.  By having only one thread access the master copy, we avoid
-    //      synchronization issues.
-
-    if (aei.dpaNew && _pByUsageUI && _pByUsageUI->_hwnd && SendNotifyMessage(_pByUsageUI->_hwnd, BUM_SETNEWITEMS, 0, (LPARAM)(HDPA)aei.dpaNew))
-    {
-        aei.dpaNew.Detach();       // Successfully delivered
-    }
-
-    //  If we were unable to deliver the new HDPA, then destroy it here
-    //  so we don't leak.
-    if (aei.dpaNew)
-    {
-        aei.dpaNew.DestroyCallback(DPA_ILFreeCB, NULL);
-    }
-#else
     if (aei.dpaNew)
     {
         if (_pByUsageUI)
         {
             if (_pByUsageUI->_hwnd)
             {
-                if (SendNotifyMessageW(_pByUsageUI->_hwnd, 0x8000u, 0, (LPARAM)(HDPA)aei.dpaNew))
+                if (SendNotifyMessageW(_pByUsageUI->_hwnd, 0x8000, 0, (LPARAM)(HDPA)aei.dpaNew))
                 {
                     aei.dpaNew.Detach();
                 }
@@ -2994,10 +2984,9 @@ void ByUsage::AfterEnumItems()
 
         if (aei.dpaNew)
         {
-            aei.dpaNew.DestroyCallback(DPA_ILFreeCB, NULL);
+            aei.dpaNew.DestroyCallback(DPA_ILFreeCB, nullptr);
         }
     }
-#endif
 
     if (!_fUEMRegistered)
     {
@@ -3214,37 +3203,37 @@ inline LRESULT ByUsage::_OnNotify(LPNMHDR pnm)
 //
 inline LRESULT ByUsage::_OnSetNewItems(HDPA hdpaNew)
 {
-    CDPAPidl dpaNew(hdpaNew);
+    CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> dpaNew(hdpaNew);
 
-    //
-    //  Most of the time, there are no new apps and there were no new apps
-    //  last time either.  Short-circuit this case...
-    //
     int cNew = _dpaNew ? _dpaNew.GetPtrCount() : 0;
-
     if (cNew == 0 && dpaNew.GetPtrCount() == 0)
     {
-        // Both old and new are empty.  We're finished.
-        // (Since we own dpaNew, free it to avoid a memory leak.)
         dpaNew.DestroyCallback(DPA_ILFreeCB, nullptr);
-        return 0;
     }
-
-    //  Now swap the new DPA in
-
-    if (_dpaNew)
+    else
     {
         _dpaNew.DestroyCallback(DPA_ILFreeCB, nullptr);
+        _dpaNew.Attach(dpaNew.Detach());
+
+        SMNMHAVENEWITEMS nmhni;
+        nmhni.ftNewestApp = _ftNewestApp;
+        _SendNotify(_pByUsageUI->_hwnd, SMN_HAVENEWITEMS, &nmhni.hdr);
+
+        SHDeleteKeyW(
+            HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage\\NewShortcuts");
+        HKEY hkey;
+        if (RegCreateKeyExW(
+            HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage\\NewShortcuts",
+            0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &hkey, nullptr) == ERROR_SUCCESS)
+        {
+            for (int i = 0; i < _dpaNew.GetPtrCount(); ++i)
+            {
+                DWORD dwData = 1;
+                _SHRegSetValue(hkey, nullptr, _dpaNew.GetPtr(i), SRRF_RT_DWORD, REG_DWORD, &dwData, sizeof(dwData));
+            }
+            RegCloseKey(hkey);
+        }
     }
-    _dpaNew.Attach(hdpaNew);
-
-    // Tell our dad that we can identify new items
-    // Also tell him the timestamp of the most recent app
-    // (so he can tell whether or not to restart the "offer new apps" counter)
-    SMNMHAVENEWITEMS nmhni;
-    nmhni.ftNewestApp = _ftNewestApp;
-    _SendNotify(_pByUsageUI->_hwnd, SMN_HAVENEWITEMS, &nmhni.hdr);
-
     return 0;
 }
 
@@ -3276,6 +3265,7 @@ LRESULT ByUsage::OnWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT ByUsage::_ModifySMInfo(PSMNMMODIFYSMINFO pmsi)
 {
+#if 0
     LPSMDATA psmd = pmsi->psmd;
 
     // Do this only if there is a ShellFolder.  We don't want to fault
@@ -3318,6 +3308,31 @@ LRESULT ByUsage::_ModifySMInfo(PSMNMMODIFYSMINFO pmsi)
             ILFree(pidl);
         }
     }
+    return 0;
+#endif
+    SMDATA* psmd = pmsi->psmd;
+    if ((psmd->dwMask & SMDM_SHELLFOLDER) != 0 && _dpaNew)
+    {
+        ITEMIDLIST_ABSOLUTE* pidl = nullptr;
+
+        IIdentityName* pin;
+        if (SUCCEEDED(psmd->psf->BindToObject(psmd->pidlItem, nullptr, IID_PPV_ARGS(&pin))))
+        {
+            pin->GetItemIDList(&pidl);
+            pin->Release();
+        }
+
+        if (pidl || (pidl = ILCombine(psmd->pidlFolder, psmd->pidlItem)) != nullptr)
+        {
+            if (IsPidlOrParentInDPA(pidl, _dpaNew))
+            {
+                pmsi->psminfo->dwFlags |= SMIF_NEW;
+                pmsi->psminfo->dwFlags &= ~SMIF_DEMOTED;
+            }
+            ILFree(pidl);
+        }
+    }
+
     return 0;
 }
 
@@ -4822,6 +4837,15 @@ BOOL ByUsage::IsInsertable(IDataObject *pdto)
     return _psmpin->IsPinnable(pdto, SMPINNABLE_REJECTSLOWMEDIA) == S_OK;
 }
 
+BOOL ByUsage::IsPidlNew(ITEMIDLIST_ABSOLUTE* pidl)
+{
+    BOOL fNew = FALSE;
+    if (_dpaNew && pidl)
+    {
+        fNew = IsPidlOrParentInDPA(pidl, _dpaNew);
+    }
+    return fNew;
+}
 
 HRESULT ByUsage::InsertPinnedItem(IDataObject *pdto, int iInsert)
 {

@@ -9,3 +9,4 @@ ReleaseDLL/
 src/immersive/libMinHook.x64.lib
 *.user
 *.vcproj.user
+/packages

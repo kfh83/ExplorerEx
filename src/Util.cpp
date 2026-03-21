@@ -95,10 +95,10 @@ void _MirrorBitmapInDC(HDC hdc , HBITMAP hbmOrig)
 }
 
 // Sort of a registry equivalent of the profile API's.
-BOOL Reg_GetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *pData, DWORD *pcbData)
+BOOL Reg_GetStruct(HKEY hkey, const WCHAR* pszSubKey, const WCHAR* pszValue, void* pData, DWORD* pcbData)
 {
     BOOL fRet = FALSE;
- 
+
     if (!g_fCleanBoot)
     {
         fRet = ERROR_SUCCESS == SHGetValue(hkey, pszSubKey, pszValue, NULL, pData, pcbData);
@@ -108,30 +108,25 @@ BOOL Reg_GetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *pData, 
 }
 
 // Sort of a registry equivalent of the profile API's.
-BOOL Reg_SetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *lpData, DWORD cbData)
+BOOL Reg_SetStruct(HKEY hkey, const WCHAR* pszSubKey, const WCHAR* pszValue, void* lpData, DWORD cbData)
 {
     HKEY hkeyNew = hkey;
     BOOL fRet = FALSE;
-
-    if (pszSubKey)
+    if (pszSubKey && RegCreateKeyExW(
+        hkey, pszSubKey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &hkeyNew, nullptr) != ERROR_SUCCESS)
     {
-        if (RegCreateKeyEx(hkey, pszSubKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hkeyNew, NULL) != ERROR_SUCCESS)
-        {
-            return fRet;
-        }
+        return fRet;
     }
-
-    if (RegSetValueEx(hkeyNew, pszValue, 0, REG_BINARY, (BYTE*)lpData, cbData) == ERROR_SUCCESS)
+    if (RegSetValueExW(hkeyNew, pszValue, 0, REG_BINARY, static_cast<const BYTE*>(lpData), cbData) == ERROR_SUCCESS)
     {
         fRet = TRUE;
     }
-
     if (pszSubKey)
+    {
         RegCloseKey(hkeyNew);
-
+    }
     return fRet;
 }
-
 
 HMENU LoadMenuPopup(LPCTSTR id)
 {

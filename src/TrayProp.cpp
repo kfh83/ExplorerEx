@@ -2034,6 +2034,43 @@ void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager
         EnableWindow(GetDlgItem(hDlg, IDC_CUSTOMIZE), tvo.fAutoTrayEnabledByUser);
         CheckDlgButton(hDlg, 1000, tvo.fAutoTrayEnabledByUser);
     }
+
+    LRESULT v8;
+    int v9;
+    HWND v10;
+    int nIDDlgItem = 1109;
+    int v16 = 3;
+    do
+    {
+        v8 = SendMessageW(c_tray.GetTrayNotifyHWND(), nIDDlgItem - 70, 0, 0);
+        if (!v8)
+        {
+            goto LABEL_12;
+        }
+        v9 = v8 - 1;
+        if (v9)
+        {
+            if (v9 != 1)
+            {
+                goto LABEL_13;
+            }
+            v10 = GetDlgItem(hDlg, nIDDlgItem);
+            EnableWindow(v10, 0);
+        LABEL_12:
+            CheckDlgButton(hDlg, nIDDlgItem, 0);
+            goto LABEL_13;
+        }
+        CheckDlgButton(hDlg, nIDDlgItem, 1);
+    LABEL_13:
+        ++nIDDlgItem;
+        --v16;
+    }
+    while (v16);
+
+    if (SHWindowsPolicy(POLID_HideSCAVolume))   EnableWindow(GetDlgItem(hDlg, 1109), 0);
+    if (SHWindowsPolicy(POLID_HideSCANetwork))  EnableWindow(GetDlgItem(hDlg, 1110), 0);
+    if (SHWindowsPolicy(POLID_HideSCAPower))    EnableWindow(GetDlgItem(hDlg, 1111), 0);
+
     _NotificationOptionsUpdateDisplay(hDlg);
 }
 

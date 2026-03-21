@@ -12,8 +12,8 @@ void _UnregisterNotify(ULONG nNotify);
 
 void _MirrorBitmapInDC(HDC hdc, HBITMAP hbmOrig);
 
-BOOL Reg_GetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *pData, DWORD *pcbData);
-BOOL Reg_SetStruct(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, void *lpData, DWORD cbData);
+BOOL Reg_GetStruct(HKEY hkey, const WCHAR* pszSubKey, const WCHAR* pszValue, void* pData, DWORD* pcbData);
+BOOL Reg_SetStruct(HKEY hkey, const WCHAR* pszSubKey, const WCHAR* pszValue, void* lpData, DWORD cbData);
 
 HMENU LoadMenuPopup(LPCTSTR id);
 

@@ -65,6 +65,7 @@ typedef struct tagTRAYVIEWOPTS
 #define TVSD_HIDESCAVOLUME      0x10
 #define TVSD_HIDESCANETWORK     0x20
 #define TVSD_HIDESCAPOWER       0x40
+#define TVSD_HIDETHUMBNAILS     0x80
 
 // old Win95 TVSD struct
 typedef struct _TVSD95
@@ -447,9 +448,9 @@ protected:
     LONG _SetAutoHideState(BOOL fAutoHide);
     void _ToolbarMenu();
     HFONT _CreateStartFont(HWND hwndTray);
-    void _SaveTrayStuff(void);
-    void _SaveTray(void);
-    void _SaveTrayAndDesktop(void);
+    void _SaveTrayStuff();
+    void _SaveTray();
+    void _SaveTrayAndDesktop();
     void _SlideStep(HWND hwnd, const RECT* prcMonitor, const RECT* prcOld, const RECT* prcNew);
     void _DoExitExplorer();
     void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, BOOL fFromNotifArea);
