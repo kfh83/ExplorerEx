@@ -187,12 +187,45 @@ void CTray::PurgeRebuildRequests()
 
 BOOL CTray::ShouldUseSmallIcons()
 {
-    return _fSMSmallIcons;  //_uModalMode possibly
+    return _fSMSmallIcons;
 }
 
-VOID CTray::HandleFullScreenApp2(HWND hwnd)
+typedef struct tagFSEPDATA
 {
-    return HandleFullScreenApp(hwnd);
+    RECT* prc;
+    HMONITOR hmon;
+    CTray* ptray;
+    BOOL field_C; // EXEX-VISTA(allison): NEW
+} FSEPDATA, *PFSEPDATA;
+
+// EXEX-VISTA(allison): Validated
+void CTray::HandleFullScreenApp(HWND hwnd)
+{
+    if (g_fDesktopRaised || _fProcessingDesktopRaise)
+        hwnd = nullptr;
+
+    BOOL fStuckRudeApp = _fStuckRudeApp;
+
+    _hwndRude = hwnd;
+
+    FSEPDATA d = {};
+    d.field_C = _fProcessingDesktopRaise;
+
+    RECT rc;
+    if (hwnd && GetWindowRect(hwnd, &rc))
+    {
+        d.prc = &rc;
+        d.hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+    }
+    d.ptray = this;
+
+    EnumDisplayMonitors(nullptr, nullptr, FullScreenEnumProc, reinterpret_cast<LPARAM>(&d));
+    if (fStuckRudeApp != _fStuckRudeApp)
+    {
+        _ResetZorder(FALSE);
+        SendMessageW(_hwndNotify, TNM_TRAYHIDE, 0, _fStuckRudeApp);
+        SendMessageW(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
+    }
 }
 
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
@@ -691,7 +724,7 @@ void CTray::InvisibleUnhide(BOOL fShowWindow)
 }
 
 // EXEX-VISTA: Arguments change. Very much so unmodified from XP.
-void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */)
+void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */, BOOL fUpdateSize)
 {
     RECT rc;
     BOOL fHiding;
@@ -709,7 +742,7 @@ void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */)
     }
 
     rc = _arStuckRects[_uStuckPlace];
-    _HandleSizing(0, NULL, _uStuckPlace, FALSE); // EXEX-VISTA TODO: CHANGE WHEN ARGUMENTS CHANGE.
+    _HandleSizing(0, nullptr, _uStuckPlace, fUpdateSize);
 
     if (!EqualRect(&rc, &_arStuckRects[_uStuckPlace]))
     {
@@ -724,11 +757,10 @@ void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */)
         if (EVAL((_uAutoHide & (AH_ON | AH_HIDING)) != (AH_ON | AH_HIDING)))
         {
             _fSelfSizing = TRUE;
-            SetWindowPos(_hwnd, NULL,
-                rc.left, rc.top,
+            SetWindowPos(
+                _hwnd, nullptr, rc.left, rc.top,
                 RECTWIDTH(rc), RECTHEIGHT(rc),
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
-
             _fSelfSizing = FALSE;
         }
 
@@ -736,8 +768,9 @@ void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */)
     }
 
     if (fWinIni)
+    {
         SizeWindows();
-
+    }
     if (fHiding)
     {
         InvisibleUnhide(TRUE);
@@ -1276,14 +1309,6 @@ LRESULT CTray::_OnCreate(HWND hwnd)
     return lres;
 }
 
-typedef struct tagFSEPDATA
-{
-    LPRECT prc;
-    HMONITOR hmon;
-    CTray* ptray;
-}
-FSEPDATA, * PFSEPDATA;
-
 BOOL WINAPI CTray::FullScreenEnumProc(HMONITOR hmon, HDC hdc, LPRECT prc, LPARAM dwData)
 {
     BOOL fFullScreen;   // Is there a rude app on this monitor?
@@ -1316,76 +1341,6 @@ BOOL WINAPI CTray::FullScreenEnumProc(HMONITOR hmon, HDC hdc, LPRECT prc, LPARAM
     pd->ptray->_AppBarNotifyAll(hmon, ABN_FULLSCREENAPP, NULL, fFullScreen);
 
     return TRUE;
-}
-
-void CTray::HandleFullScreenApp(HWND hwnd)
-{
-#ifdef DEAD_CODE
-    //
-    // First check to see if something has actually changed
-    //
-    _hwndRude = hwnd;
-
-    //
-    // Enumerate all the monitors, see if the app is rude on each, adjust
-    // app bars and _fStuckRudeApp as necessary.  (Some rude apps, such
-    // as the NT Logon Screen Saver, span multiple monitors.)
-    //
-    FSEPDATA d = { 0 };
-    RECT rc;
-    if (hwnd && GetWindowRect(hwnd, &rc))
-    {
-        d.prc = &rc;
-        d.hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
-    }
-    d.ptray = this;
-
-    EnumDisplayMonitors(NULL, NULL, FullScreenEnumProc, (LPARAM)&d);
-
-    //
-    // Now that we've set _fStuckRudeApp, update the tray's z-order position
-    //
-    _ResetZorder(0);
-
-    //
-    // stop the clock so we don't eat cycles and keep tons of code paged in
-    //
-    SendMessage(_hwndNotify, TNM_TRAYHIDE, 0, _fStuckRudeApp);
-
-    //
-    // Finally, let traynot know about whether the tray is hiding
-    //
-    SendMessage(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
-#else
-    int fProcessingDesktopRaise; // eax
-    struct tagRECT rc; // [esp+Ch] [ebp-24h] BYREF
-    int v6; // [esp+28h] [ebp-8h]
-    int fStuckRudeApp; // [esp+2Ch] [ebp-4h]
-
-    if (g_fDesktopRaised || _fProcessingDesktopRaise)
-        hwnd = 0;
-    fStuckRudeApp = _fStuckRudeApp;
-
-	FSEPDATA d = { 0 };
-    v6 = 0;
-    fProcessingDesktopRaise = _fProcessingDesktopRaise;
-    _hwndRude = hwnd;
-    v6 = fProcessingDesktopRaise;
-    if (hwnd && GetWindowRect(hwnd, &rc))
-    {
-        d.prc = &rc;
-        d.hmon = MonitorFromWindow(hwnd, 0);
-    }
-    d.ptray = this;
-
-    EnumDisplayMonitors(0, 0, CTray::FullScreenEnumProc, (LPARAM)&d);
-    if (fStuckRudeApp != _fStuckRudeApp)
-    {
-        CTray::_ResetZorder(0);
-        SendMessageW(_hwndNotify, 0x403u, 0, _fStuckRudeApp);
-        SendMessageW(_hwndNotify, 0x407u, _fStuckRudeApp, 0);
-    }
-#endif
 }
 
 void CTray::StartButtonClicked()
@@ -1494,158 +1449,87 @@ BOOL CALLBACK CTray::s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam)
     return 1;
 }
 
-static void LogZ(const wchar_t* tag, HWND h) {
-    DWORD ex = (DWORD)GetWindowLongPtr(h, GWL_EXSTYLE);
-    HWND parent = GetParent(h);
-    HWND owner = GetWindow(h, GW_OWNER);
-    RECT rc; GetWindowRect(h, &rc);
-    wprintf(L"[Z] %s hwnd=%p ex=%08x topmost=%d parent=%p owner=%p rect=(%d,%d %d,%d)\n",
-        tag, h, ex, !!(ex & WS_EX_TOPMOST), parent, owner, rc.left, rc.top, rc.right, rc.bottom);
-}
-
-// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
-void CTray::_ResetZorder(int a2)
+// EXEX-VISTA(allison): Validated.
+void CTray::_ResetZorder(BOOL fForce)
 {
-    LPARAM v3; // esi
-
+    HWND hwndZorder;
     if (g_fDesktopRaised || _fProcessingDesktopRaise || _fAlwaysOnTop && !_fStuckRudeApp)
     {
-        v3 = -1;
+        hwndZorder = HWND_TOPMOST;
     }
     else if (_IsActive())
     {
-        v3 = 0;
+        hwndZorder = HWND_TOP;
+    }
+    else if (_fStuckRudeApp != 0)
+    {
+        hwndZorder = HWND_BOTTOM;
     }
     else
     {
-        v3 = _fStuckRudeApp != 0 ? 1 : -2;
+        hwndZorder = HWND_NOTOPMOST;
     }
-    wprintf(L"[Z] _ResetZorder v3=%lld active=%d alwaysOnTop=%d rude=%d desktopRaised=%d a2=%d\n",
-        (long long)v3, _IsActive(), _fAlwaysOnTop, _fStuckRudeApp, g_fDesktopRaised, a2);
-
-    LogZ(L"tray:before", _hwnd);
-    LogZ(L"start:before", _stb._hwndStart);
-
-    if (v3 != (_IsTopmost() != 0) - 2 || a2)
+    if (hwndZorder != (_IsTopmost() != 0 ? HWND_TOPMOST : HWND_NOTOPMOST) || fForce)
     {
-        SetWindowPos(_stb._hwndStart, (HWND)v3, 0, 0, 0, 0, 0x213u);
-        SHForceWindowZorder(_hwnd, (HWND)v3);
-        EnumWindows(CTray::s_EnumTooltipWindowsProc, v3);
+        SetWindowPos(
+            _stb._hwndStart, hwndZorder, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        SHForceWindowZorder(_hwnd, hwndZorder);
+        EnumWindows(s_EnumTooltipWindowsProc, reinterpret_cast<LPARAM>(hwndZorder));
     }
-
-    LogZ(L"tray:after", _hwnd);
-    LogZ(L"start:after", _stb._hwndStart);
 }
 
 void CTray::_MessageLoop()
 {
-#ifdef DEAD_CODE
-    for (;;)
+    HRESULT hr;
+    MSG msg;
+
+    while (true)
     {
-        MSG  msg;
-        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        while (!PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
-            if (msg.message == WM_QUIT)
-            {
-                if (_hwnd && IsWindow(_hwnd))
-                {
-                    // Tell the tray to save everything off if we got here
-                    // without it being destroyed.
-                    SendMessage(_hwnd, WM_ENDSESSION, 1, 0);
-                }
-                return;  // break all the way out of the main loop
-            }
-
-            if (_pmbTasks)
-            {
-                HRESULT hr = _pmbTasks->IsMenuMessage(&msg);
-                if (hr == E_FAIL)
-                {
-                    if (_hwndTasks)
-                        SendMessage(_hwndTasks, TBC_FREEPOPUPMENUS, 0, 0);
-                }
-                else if (hr == S_OK)
-                {
-                    continue;
-                }
-            }
-
-            // Note that this needs to come before _pmbStartMenu since
-            // the start pane sometimes hosts the start menu and it needs
-            // to handle the start menu messages in that case.
-            if (_pmbStartPane &&
-                _pmbStartPane->IsMenuMessage(&msg) == S_OK)
-            {
-                continue;
-            }
-
-            if (_pmbStartMenu &&
-                _pmbStartMenu->IsMenuMessage(&msg) == S_OK)
-            {
-                continue;
-            }
-
-            if (_hMainAccel && TranslateAccelerator(_hwnd, _hMainAccel, &msg))
-            {
-                continue;
-            }
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        else
-        {
+            // _responseMonitor.IndicateIdle();
             WaitMessage();
         }
-    }
-#else
-    HRESULT v2; // eax
-    HWND hwndTasks; // eax
-    HACCEL hMainAccel; // eax
-    MSG msg; // [esp+Ch] [ebp-1Ch] BYREF
-
-    while (1)
-    {
-        while (!PeekMessage(&msg, 0, 0, 0, 1u))
+        if (msg.message == WM_QUIT)
         {
-            //ResponseMonitor::IndicateIdle(&this->field_640);
-            WaitMessage();
-        }
-        if (msg.message == 0x12)
             break;
-        //ResponseMonitor::UpdateLatency(&this->field_640, &msg);
-        //if (msg.message == 0x100)
-        //{
-        //    if (msg.wParam == 0xD)
-        //        SHTracePerf(&ShellTraceId_CTray_MessageLoop_Return_Info);
-        //}
-        //else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP)
-        //{
-        //    if (WPP_GLOBAL_Control != &WPP_GLOBAL_Control && (*((_BYTE*)WPP_GLOBAL_Control + 28) & 8) != 0)
-        //        WPP_SF_d(*((_QWORD*)WPP_GLOBAL_Control + 2), 0xAu, &MessageGuid, msg.message);
-        //    SHTracePerfLoop(&ShellTraceId_CTray_MessageLoop_LButtonAction_Info, msg.message);
-        //}
+        }
+        // _responseMonitor.UpdateLatency(&msg);
 
-        if (this->_pmbTasks)
+        if (msg.message == WM_KEYDOWN)
         {
-            v2 = this->_pmbTasks->IsMenuMessage(&msg);
-            if (v2 == 0x80004005)
+            if (msg.wParam == VK_RETURN)
             {
-                hwndTasks = this->_hwndTasks;
-                if (hwndTasks)
-                    SendMessageW(hwndTasks, 0x438u, 0, 0);
+                // Skipped telemetry ShellTraceId_CTray_MessageLoop_Return_Info
+            }
+        }
+        else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_LBUTTONUP)
+        {
+            (void)msg.message; // Skipped telemetry ShellTraceId_CTray_MessageLoop_LButtonAction_Info
+        }
+
+        if (_pmbTasks)
+        {
+            hr = _pmbTasks->IsMenuMessage(&msg);
+            if (hr == E_FAIL)
+            {
+                if (_hwndTasks)
+                {
+                    SendMessageW(_hwndTasks, 0x438, 0, 0);
+                }
                 goto LABEL_17;
             }
-            if (v2)
+            if (hr != S_OK)
+            {
                 goto LABEL_17;
+            }
         }
         else
         {
         LABEL_17:
-            if (_stb.IsMenuMessage(&msg))
+            if (_stb.IsMenuMessage(&msg) != S_OK)
             {
-                hMainAccel = this->_hMainAccel;
-                if (!hMainAccel || !TranslateAcceleratorW(this->_hwnd, hMainAccel, &msg))
+                if (!_hMainAccel || !TranslateAcceleratorW(_hwnd, _hMainAccel, &msg))
                 {
                     TranslateMessage(&msg);
                     DispatchMessageW(&msg);
@@ -1653,9 +1537,10 @@ void CTray::_MessageLoop()
             }
         }
     }
-    if (this->_hwnd && IsWindow(this->_hwnd))
-        SendMessageW(this->_hwnd, WM_ENDSESSION, 1u, 0);
-#endif
+    if (_hwnd && IsWindow(_hwnd))
+    {
+        SendMessageW(_hwnd, WM_ENDSESSION, 1, 0);
+    }
 }
 
 BOOL CTray::Init()
@@ -1664,7 +1549,7 @@ BOOL CTray::Init()
         MainThreadProc, this, CTF_THREAD_REF | CTF_COINIT | CTF_REF_COUNTED, SyncThreadProc) && (_hwnd != nullptr);
 }
 
-// EXEX-VISTA: Validated.
+// EXEX-VISTA(allison): Validated.
 int CTray::_GetPart(UINT uStuckPlace)
 {
     switch (uStuckPlace)
@@ -1710,9 +1595,10 @@ void CTray::_UpdateVertical(UINT uStuckPlace, BOOL fForce)
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void CTray::_InitBandsite()
 {
-    ASSERT(_hwnd);
+    ASSERT(_hwnd); // 2023
 
     // we initilize the contents after all the infrastructure is created and sized properly
     // need to notify which side we're on.
@@ -1729,13 +1615,13 @@ void CTray::_InitBandsite()
     BandSite_Update(_ptbs);
     BandSite_UIActivateDBC(_ptbs, DBC_SHOW);
 
-    BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARG(IDeskBand, &_pdbTasks), NULL, NULL);
+    BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARGS(&_pdbTasks), nullptr, nullptr);
     IUnknown_GetWindow(_pdbTasks, &_hwndTasks);
 
-    SendMessage(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
+    SendMessageW(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
 
     // Now that bandsite is ready, set the correct size
-    VerifySize(FALSE, TRUE);
+    VerifySize(FALSE, TRUE, FALSE);
     _AccountAllBandsForTaskbarSizingBar();
 }
 
@@ -1880,7 +1766,7 @@ DWORD CTray::_SyncThreadProc()
     {
         // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later. Partially reversed from Vista.
 
-        _ResetZorder(0); // obey the "always on top" flag
+        _ResetZorder(FALSE); // obey the "always on top" flag
         _KickStartAutohide();
 
         _InitBandsite();
@@ -3188,7 +3074,7 @@ BOOL CTray::_UpdateAlwaysOnTop(BOOL fAlwaysOnTop)
     // the state and update the window accordingly...
     //
     _fAlwaysOnTop = fAlwaysOnTop;
-    _ResetZorder(0);
+    _ResetZorder(FALSE);
 
     // Make sure the screen limits are update to the new state.
     _StuckTrayChange();
@@ -3655,7 +3541,7 @@ void CTray::_OnNewSystemSizes()
 {
     //TraceMsg(TF_TRAY, "Handling win ini change.");
     _stb.StartButtonReset();
-    VerifySize(TRUE);
+    VerifySize(TRUE, FALSE, TRUE);
 }
 
 //***   CheckWindowPositions -- flag which windows actually changed
@@ -3672,9 +3558,12 @@ int WINAPI CTray::CheckWndPosEnumProc(void* pItem, void* pData)
 
     wp.length = sizeof(wp);
     pI2->fRestore = TRUE;
-    if (GetWindowPlacement(pI2->hwnd, &wp)) {
+    if (GetWindowPlacement(pI2->hwnd, &wp))
+    {
         if (memcmp(&pI2->wp, &wp, sizeof(wp)) == 0)
+        {
             pI2->fRestore = FALSE;
+        }
     }
 
     //TraceMsg(TF_TRAY, "cwp: (hwnd=0x%x) fRestore=%d", pI2->hwnd, pI2->fRestore);
@@ -3685,8 +3574,10 @@ int WINAPI CTray::CheckWndPosEnumProc(void* pItem, void* pData)
 void CTray::CheckWindowPositions()
 {
     ENTERCRITICAL;      // i think this is needed...
-    if (_pPositions) {
-        if (_pPositions->hdsaWP) {
+    if (_pPositions)
+    {
+        if (_pPositions->hdsaWP)
+        {
             DSA_EnumCallback(_pPositions->hdsaWP, CheckWndPosEnumProc, NULL);
         }
     }
@@ -3901,6 +3792,8 @@ LRESULT CTray::_HandleDestroy()
 {
     _fFromStart = TRUE;
 
+    // _responseMonitor.Disconnect();
+
     MINIMIZEDMETRICS mm;
 
     //TraceMsg(DM_SHUTDOWN, "_HD: enter");
@@ -3912,18 +3805,24 @@ LRESULT CTray::_HandleDestroy()
 
     _RevokeDropTargets();
     _DestroyStartMenu();
-    Mixer_Shutdown();
+
+    // EXEX-VISTA TODO: Uncomment when CSystemMixer is implemented
+    /*if (_pSystemMixer)
+    {
+        _pSystemMixer->Release();
+        _pSystemMixer = nullptr;
+    }*/
 
     // Tell the start menu to free all its cached darwin links
-    SHRegisterDarwinLink(NULL, NULL, TRUE);
+    SHRegisterDarwinLink(nullptr, nullptr, TRUE);
 
     _DestroySavedWindowPositions(_pPositions);
-    _pPositions = NULL;
+    _pPositions = nullptr;
 
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     _UnregisterGlobalHotkeys();
@@ -3934,87 +3833,31 @@ LRESULT CTray::_HandleDestroy()
         _uNotify = 0;
     }
 
-    ATOMICRELEASE(_ptbs);
-    ATOMICRELEASE(_pdbTasks);
-    _hwndTasks = NULL;
+    IUnknown_SafeReleaseAndNullPtr(&_ptbs);
+    IUnknown_SafeReleaseAndNullPtr(&_pdbTasks);
+    _hwndTasks = nullptr;
 
     if (_hwndTrayTips)
     {
         DestroyWindow(_hwndTrayTips);
-        _hwndTrayTips = NULL;
+        _hwndTrayTips = nullptr;
     }
 
-    // REVIEW
     PostQuitMessage(0);
 
     if (_pSysTray)
     {
         _pSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_CLOSE, 0, nullptr, nullptr);
-        IUnknown_SafeReleaseAndNullPtr(&_pSysTray);
-    }
-
-    if (_himlStartFlag)
-    {
-        ImageList_Destroy(_himlStartFlag);
-    }
-
-    // clean up service objects
-    // _ssomgr.Destroy();
-
-    if (_hShellReadyEvent)
-    {
-        ResetEvent(_hShellReadyEvent);
-        CloseHandle(_hShellReadyEvent);
-        _hShellReadyEvent = NULL;
-    }
-
-    if (_hShellDesktopSwitch)
-    {
-        ResetEvent(_hShellDesktopSwitch);
-        CloseHandle(_hShellDesktopSwitch);
-        _hShellDesktopSwitch = NULL;
-    }
-
-    if (_fHandledDelayBootStuff)
-    {
-        TBOOL(WinStationUnRegisterConsoleNotification(SERVERNAME_CURRENT, v_hwndTray));
+        _pSysTray->Release();
+        _pSysTray = nullptr;
     }
 
     DeleteCriticalSection(&_csHotkey);
 
-    // The order in which we shut down the HTTP key monitoring is important.
-    //
-    // We must close the key before closing the event handle because
-    // closing the key causes the event to be signalled and we don't
-    // want ADVAPI32 to try to signal an event after we closed its handle...
-    //
-    // To avoid a spurious trigger when the event fires, we unregister
-    // the wait before closing the key.
-    //
+    _StarterWatermarkCreate(FALSE);
 
-    if (_hHTTPWait)
-    {
-        UnregisterWait(_hHTTPWait);
-        _hHTTPWait = NULL;
-    }
-
-    if (_hkHTTP)
-    {
-        RegCloseKey(_hkHTTP);
-        _hkHTTP = NULL;
-    }
-
-    if (_hHTTPEvent)
-    {
-        CloseHandle(_hHTTPEvent);
-        _hHTTPEvent = NULL;
-    }
-
-    // End of order-sensitive operations ----------------------------------
-
-    v_hwndTray = NULL;
-    _stb._hwndStart = NULL;
-
+    v_hwndTray = nullptr;
+    _stb._hwndStart = nullptr;
 
     //TraceMsg(DM_SHUTDOWN, "_HD: leave");
     return 0;
@@ -4944,35 +4787,31 @@ void CTray::_DrawBackupStartButton(const HDC hdc)
     }
 }
 
-// @NOTE (allison): Cleanup/simplifiy
+// EXEX-VISTA(allison): Validated.
 BOOL CTray::_ShouldSubclassForSizingBar()
 {
-    if (!_hTheme)
-        return FALSE;
-
-    BOOL bRet = TRUE;
-
-    if (!_fCanSizeMove && (_uAutoHide & AH_ON) == 0)
-        return FALSE;
-
-    return bRet;
+    return _hTheme && (_fCanSizeMove || (_uAutoHide & AH_ON) != 0);
 }
 
+// EXEX-VISTA(allison): Validated.
 void CTray::_AccountAllBandsForTaskbarSizingBar()
 {
     BOOL fShouldSubclass = _ShouldSubclassForSizingBar();
 
-    if (GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId())
+    if (GetWindowThreadProcessId(_hwnd, nullptr) == GetCurrentThreadId())
     {
         if (_ptbs)
+        {
             BandSite_AccountAllBandsForTaskbarSizingBar(_ptbs, fShouldSubclass);
+        }
     }
     else
     {
-        PostMessage(_hwnd, 0x5B6, fShouldSubclass, NULL);
+        PostMessageW(_hwnd, 0x5B6, fShouldSubclass, 0);
     }
 }
 
+// EXEX-VISTA(allison): Validated.
 void CTray::_OnThemeChanged()
 {
     if (_hTheme)
@@ -4988,16 +4827,21 @@ void CTray::_OnThemeChanged()
     _iPaddedBorderWidth = 0;
     if (!_hTheme)
     {
-        NONCLIENTMETRICSW ncm = { sizeof(ncm) };
+        NONCLIENTMETRICSW ncm = {};
+        ncm.cbSize = sizeof(ncm);
         if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, 0, &ncm, FALSE))
+        {
             _iPaddedBorderWidth = ncm.iPaddedBorderWidth;
+        }
     }
 
     _UpdateVertical(_uStuckPlace, TRUE);
+
     SetWindowStyle(_hwnd, WS_THICKFRAME | WS_BORDER, !_hTheme);
-    SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE);
+    SetWindowPos(
+        _hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     InvalidateRect(_hwnd, nullptr, TRUE);
-    PostMessage(_hwnd, SBM_REBUILDMENU, 0, 0);
+    PostMessageW(_hwnd, SBM_REBUILDMENU, 0, 0);
     _AccountAllBandsForTaskbarSizingBar();
 }
 
@@ -5484,7 +5328,7 @@ void CTray::RealityCheck()
     // window moving itself to non-TOPMOST or a random app messing with the tray
     // window position, can cause this.)
     //
-    _ResetZorder(0);
+    _ResetZorder(FALSE);
 }
 
 #define DELAY_STARTUPTROUBLESHOOT   (15 * 1000)
@@ -5537,23 +5381,38 @@ void CTray::_OnHandleStartupFailed()
     }
 }
 
+typedef enum _PREFETCHER_INFORMATION_CLASS
+{
+    PrefetcherRetrieveTrace = 1,            // q: PF_RETRIEVE_TRACE
+    PrefetcherSystemParameters,             // q: PF_SYSTEM_PREFETCH_PARAMETERS
+    PrefetcherBootPhase,                    // s: PF_BOOT_PHASE_ID
+    PrefetcherSpare1,                       // q: PrefetcherRetrieveBootLoaderTrace
+    PrefetcherOperationProcess,             // s: PF_OPERATION_PROCESS
+    PrefetcherCacheEntryUpdate,             // s: PF_CACHE_ENTRY_UPDATE
+    PrefetcherSpare2,
+    PrefetcherAppLaunchScenarioControl,     // s: PF_APP_LAUNCH_SCENARIO_CONTROL
+    PrefetcherInformationMax
+} PREFETCHER_INFORMATION_CLASS;
+
+typedef struct _PREFETCHER_INFORMATION
+{
+    _In_ ULONG Version;
+    _In_ ULONG Magic;
+    _In_ PREFETCHER_INFORMATION_CLASS PrefetcherInformationClass;
+    _Inout_ PVOID PrefetcherInformation;
+    _Inout_ ULONG PrefetcherInformationLength;
+} PREFETCHER_INFORMATION, *PPREFETCHER_INFORMATION;
+
 DEFINE_GUID(CLSID_SysTray, 0x35CEC8A3, 0x2BE6, 0x11D2, 0x87, 0x73, 0x92, 0xE2, 0x20, 0x52, 0x41, 0x53);
 
 // EXEX-VISTA: Implementation changed since XP. Inspect later.
 void CTray::_HandleDelayBootStuff()
 {
-    // This posted message is the last one processed by the primary
-    // thread (tray thread) when we boot.  At this point we will
-    // want to load the shell services (which usually create threads)
-    // and resume both the background start menu thread and the fs_notfiy
-    // thread.
-
     if (!_fHandledDelayBootStuff)
     {
         if (GetShellWindow() == nullptr)
         {
-            // The desktop browser hasn't finished navigating yet.
-            SetTimer(_hwnd, IDT_HANDLEDELAYBOOTSTUFF, 3 * 1000, NULL);
+            SetTimer(_hwnd, IDT_HANDLEDELAYBOOTSTUFF, 3 * 1000, nullptr);
             return;
         }
 
@@ -5564,39 +5423,28 @@ void CTray::_HandleDelayBootStuff()
             _pSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_OPEN, 0, nullptr, nullptr);
         }
 
-        //if (g_dwStopWatchMode)
-        //{
-        //    StopWatch_StartTimed(SWID_STARTUP, TEXT("_DelayedBootStuff"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());
-        //}
-
-        PostMessage(_hwnd, TM_SHELLSERVICEOBJECTS, 0, 0);
-
-        BandSite_HandleDelayBootStuff(_ptbs);
-
-        //check to see if there are any files or folders that could interfere
-        //with the fact that Program Files has a space in it.  An example would
-        //be a folder called "C:\Program" or a file called "C:\Program.exe"
         _CheckForRogueProgramFile();
+        _SignalShellReadyEvent();
 
-        // Create a named event and fire it so that the services can
-        // go to work, reducing contention during boot.
-        _hShellReadyEvent = CreateEvent(0, TRUE, TRUE, TEXT("ShellReadyEvent"));
-        if (_hShellReadyEvent)
-        {
-            // Set the event in case it was already created and our "create
-            // signaled" parameter to CreateEvent got ignored.
-            SetEvent(_hShellReadyEvent);
-        }
+        /*PREFETCHER_INFORMATION prefetcherInformation;
+        PF_BOOT_PHASE_ID pfShellReadyPhase;
+        prefetcherInformation.PrefetcherInformation = &pfShellReadyPhase;
+        pfShellReadyPhase = PfUserShellReadyPhase;
+        prefetcherInformation.Magic = 0x6B756843;
+        prefetcherInformation.Version = 23;
+        prefetcherInformation.PrefetcherInformationClass = PrefetcherBootPhase;
+        prefetcherInformation.PrefetcherInformationLength = sizeof(pfShellReadyPhase);
+        NtSetSystemInformation(SystemPrefetcherInformation, &prefetcherInformation, sizeof(prefetcherInformation));*/
 
-        TBOOL(WinStationRegisterConsoleNotification(SERVERNAME_CURRENT, _hwnd, NOTIFY_FOR_THIS_SESSION));
+        TBOOL(WinStationRegisterConsoleNotification(SERVERNAME_CURRENT, _hwnd, NOTIFY_FOR_THIS_SESSION)); // 7004
+
 #ifdef EXEX_DLL
         //_spTaskmanWnd.Attach(new (std::nothrow) CTaskmanWindow());
         InitializeImmersiveShell();
 #endif
-        //if (g_dwStopWatchMode)
-        //{
-        //    StopWatch_StopTimed(SWID_STARTUP, TEXT("_DelayedBootStuff"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());
-        //}
+
+        // _responseMonitor.Connect();
+        // _HandleBlockedStartupApps(this);
     }
 }
 
@@ -8375,6 +8223,7 @@ BOOL CTray::_CanMinimizeAll()
     return (_hwndTasks && SendMessage(_hwndTasks, TBC_CANMINIMIZEALL, 0, 0));
 }
 
+// EXEX-VISTA(allison): Validated.
 BOOL CTray::_MinimizeAll(BOOL fPostRaiseDesktop)
 {
     BOOL fRet = FALSE;
@@ -9539,7 +9388,7 @@ void CTray::_OnDesktopState(LPARAM lParam)
     {
         // if the desktop is raised, we need to force the tray to be always on top
         // until it's lowered again
-        _ResetZorder(0);
+        _ResetZorder(FALSE);
     }
 
     DAD_ShowDragImage(TRUE);       // unlock the drag sink if we are dragging.
@@ -9765,6 +9614,29 @@ void CTray::_MigrateOldBrowserSettingsCB(PVOID lpParameter, BOOLEAN)
 
     CTray* self = (CTray*)lpParameter;
     self->_MigrateOldBrowserSettings();
+}
+
+BOOL CTray::_SignalNamedEventOnce(void** ppv, const WCHAR* pszEventName)
+{
+    BOOL fRet = FALSE;
+    if (!*ppv)
+    {
+        *ppv = CreateEventW(nullptr, TRUE, TRUE, pszEventName);
+        if (*ppv)
+        {
+            SetEvent(*ppv);
+        }
+        fRet = TRUE;
+    }
+    return fRet;
+}
+
+void CTray::_SignalShellReadyEvent()
+{
+    if (_SignalNamedEventOnce(&_hShellReadyEvent, L"ShellReadyEvent"))
+    {
+        // Skipped telemetry ShellTraceId_Explorer_KickedOffDelayedBootWork_Info
+    }
 }
 
 //

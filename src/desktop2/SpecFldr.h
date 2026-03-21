@@ -53,7 +53,7 @@ public:
             : CRunnableTask(RTF_DEFAULT)
             , _hwnd(hwnd)
             , _dwIndex(dwIndex)
-            , _iIconSize(_iIconSize)
+            , _iIconSize(iIconSize)
         {
         }
 
@@ -90,7 +90,7 @@ private:
 
     void UpdateImage(int iImage)
     {
-        PostMessage(_hwnd, 0x40Au, 1u, 0);
+        PostMessage(_hwnd, 0x40A, 1u, 0);
     }
 
     void _NotifyHoverImage(int iImage)

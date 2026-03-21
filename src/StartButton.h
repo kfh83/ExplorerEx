@@ -27,16 +27,16 @@ IStartButton : IUnknown
 
 DECLARE_INTERFACE(IStartButtonSite)
 {
-    STDMETHOD_(VOID, EnableTooltips(BOOL bEnable)) PURE;
-    STDMETHOD_(VOID, PurgeRebuildRequests()) PURE;
+    STDMETHOD_(void, EnableTooltips(BOOL bEnable)) PURE;
+    STDMETHOD_(void, PurgeRebuildRequests()) PURE;
     STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
-    STDMETHOD_(VOID, HandleFullScreenApp2(HWND)) PURE;
-    STDMETHOD_(VOID, StartButtonClicked()) PURE;
-    STDMETHOD_(VOID, OnStartMenuDismissed()) PURE;
+    STDMETHOD_(void, HandleFullScreenApp(HWND)) PURE;
+    STDMETHOD_(void, StartButtonClicked()) PURE;
+    STDMETHOD_(void, OnStartMenuDismissed()) PURE;
     STDMETHOD_(int, GetStartButtonMinHeight()) PURE;
     STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
-    STDMETHOD_(VOID, SetUnhideTimer(LONG, LONG)) PURE;
-    STDMETHOD_(VOID, OnStartButtonClosing()) PURE;
+    STDMETHOD_(void, SetUnhideTimer(LONG, LONG)) PURE;
+    STDMETHOD_(void, OnStartButtonClosing()) PURE;
 };
 
 class CStartButton : public IStartButton, public IServiceProvider

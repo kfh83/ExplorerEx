@@ -4752,25 +4752,13 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             v12 = SFTBarHost::_GetLVCurSel();
             v15 = mppf;
             goto LABEL_29;
-        case 9u:                                    // SMNDM_FINDITEMID
+        case 9u: // SMNDM_FINDITEMID
         case 0xAu:
             return 1;
         case 0xBu:
             return 0;
         default:
-            //if (CcshellAssertFailedW(
-            //    L"d:\\longhorn\\shell\\explorer\\desktop2\\sfthost.cpp",
-            //    3570,
-            //    L"!\"Unknown SMNDM command\"",
-            //    0))
-            //{
-            //    AttachUserModeDebugger();
-            //    do
-            //    {
-            //        __debugbreak();
-            //        ms_exc.registration.TryLevel = -2;
-            //    } while (dword_108B97C);
-            //}
+            ASSERT(!"Unknown SMNDM command"); // 3570
             return 0;
     }
 #endif

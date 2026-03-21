@@ -1433,7 +1433,7 @@ HRESULT ByUsage::Initialize()
 
 void CMenuItemsCache::_InitStringList(HKEY hk, LPCTSTR pszSub, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa)
 {
-    ASSERT(static_cast<HDPA>(pdpa));
+    ASSERT(static_cast<HDPA>(*pdpa));
 
     LONG lRc;
     DWORD cb = 0;
@@ -2716,6 +2716,15 @@ void __stdcall ByUsage::_AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSO
     }
 }
 
+void ByUsage::_AddNewAppPidl(CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>* pdpa, ITEMIDLIST_ABSOLUTE* pidl)
+{
+    WCHAR* pszName;
+    if (DisplayNameOfAsString(nullptr, pidl, 0x8000u, &pszName) >= 0 && pdpa->AppendPtr(pszName, nullptr) < 0)
+    {
+        CoTaskMemFree(pszName);
+    }
+}
+
 BOOL ByUsage::_AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei)
 {
 #ifdef DEAD_CODE
@@ -2828,38 +2837,42 @@ BOOL ByUsage::_AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei)
         UEMINFO puei;
         papp->GetUAInfo(&puei);
         papp->CombineUAInfo(&puei, papp->_IsUAINFONew(&puei), 0, 1);
-        
+
         if (CompareFileTime(&puei.ftExecute, &paei->self->field_5C) > 0)
             paei->self->field_5C = puei.ftExecute;
-        
-        if (!papp->_fPinned)
+
+        if (!papp->_fPinned && FILETIMEtoInt64(papp->_ueiTotal.ftExecute))
         {
-            if (FILETIMEtoInt64(papp->_ueiTotal.ftExecute))
+            CByUsageItem* pitem = papp->CreateCByUsageItem();
+            if (pitem)
             {
-                CByUsageItem* pitem = papp->CreateCByUsageItem();
-                if (pitem)
+                if (paei->self->_pByUsageUI)
                 {
-                    if (paei->self->_pByUsageUI)
-                    {
-                        paei->self->_pByUsageUI->AddItem(pitem);
-                        ++paei->field_8;
-                    }
-                    pitem->Release();
+                    paei->self->_pByUsageUI->AddItem(pitem);
+                    ++paei->field_8;
                 }
+                pitem->Release();
             }
         }
 
-        if (paei->dpaNew && papp->_fNew && !papp->_fPinned && papp->_pscutBestSM)
+        if (paei->dpaNew && papp->IsNew() && !papp->_fPinned && papp->_pscutBestSM)
         {
-            //CcshellDebugMsgW(32, "%p.app.new(%s)", papp, (const char *)papp->_pszAppPath);
-            ITEMIDLIST_ABSOLUTE* v6 = ILCombine(papp->_pscutBestSM->ParentPidl(), papp->_pscutBestSM->RelativePidl());
-            _AddNewAppPidlAndParents(&paei->dpaNew, paei->self->_pMenuCache->GetPerUserVersionOfSharedItem(v6));
-            _AddNewAppPidlAndParents(&paei->dpaNew, v6);
+            ITEMIDLIST* pidlFull = papp->_pscutBestSM->CreateFullPidl();
+            ITEMIDLIST* pidl = paei->self->_pMenuCache->GetPerUserVersionOfSharedItem(pidlFull);
+
+            _AddNewAppPidl(&paei->dpaNew, pidl);
+            ILFree(pidl);
+            _AddNewAppPidl(&paei->dpaNew, pidlFull);
+            ILFree(pidlFull);
 
             if (CompareFileTime(&paei->self->_ftNewestApp, &papp->_ftCreated) < 0)
+            {
                 paei->self->_ftNewestApp = papp->_ftCreated;
+            }
             if (CompareFileTime(&paei->self->_ftNewestApp, &papp->_pscutBestSM->GetCreatedTime()) < 0)
+            {
                 paei->self->_ftNewestApp = papp->_pscutBestSM->GetCreatedTime();
+            }
         }
     }
     return 1;
@@ -4459,10 +4472,10 @@ CByUsageShortcut *CMenuItemsCache::GetNextShortcut()
 
 //****************************************************************************
 
-void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* dpa, LPCTSTR psz)
+void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* pdpa, LPCTSTR psz)
 {
     LPTSTR pszDup = StrDup(psz);
-    if (pszDup && dpa->AppendPtr(pszDup) < 0)
+    if (pszDup && pdpa->AppendPtr(pszDup) < 0)
     {
         LocalFree(pszDup);  // Append failed
     }

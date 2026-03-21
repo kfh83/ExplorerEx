@@ -1445,7 +1445,7 @@ LRESULT CSearchOpenView::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 			{
 				field_8C = 1;
 			}
-			break;	
+			break;
 		}
 		case 8u:
 			goto LABEL_34;
@@ -1460,21 +1460,10 @@ LRESULT CSearchOpenView::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 		case 0xBu:
 			return 0;
 		default:
-			//if (CcshellAssertFailedW(
-			//	L"d:\\longhorn\\shell\\explorer\\desktop2\\srchview.cpp",
-			//	2121,
-			//	L"!\"Unknown SMNDM command\"",
-			//	0))
-			//{
-			//	AttachUserModeDebugger();
-			//	do
-			//	{
-			//		__debugbreak();
-			//		ms_exc.registration.TryLevel = -2;
-			//	} while (dword_108BA00);
-			//}
+			ASSERT(!"Unknown SMNDM command"); // 2121
 			return lRes;
 	}
+
 	return lRes;
 }
 
@@ -1574,11 +1563,10 @@ int CSearchOpenView::_GetCurSel()
 
 int CSearchOpenView::_GetItemCount()
 {
-	HRESULT hr;
 	int cItems = 0;
 	if (_pFolderView)
 	{
-		hr = _pFolderView->ItemCount(SVGIO_ALLVIEW, &cItems);
+		_pFolderView->ItemCount(SVGIO_ALLVIEW, &cItems);
 	}
 	return cItems;
 }
@@ -2501,111 +2489,15 @@ HRESULT CStartMenuQuerySink::s_CreateInstance(HWND hwnd, REFIID riid, void **ppv
 	return hr;
 }
 
-PROPERTYKEY PKEY_StartMenu_Group =
-{
-  {
-	1272003389u,
-	59019u,
-	17644u,
-	{ 137u, 238u, 118u, 17u, 120u, 157u, 64u, 112u }
-  },
-  100u
-};
+DEFINE_PROPERTYKEY(PKEY_StartMenu_Group, 0x4BD13B3D, 0xE68B, 0x44EC, 0x89, 0xEE, 0x76, 0x11, 0x78, 0x9D, 0x40, 0x70, 100);
 
-FOLDERTYPEID FOLDERTYPEID_Library =
-{ 1269693544u, 50348u, 18198u, { 160u, 160u, 77u, 93u, 170u, 107u, 15u, 62u } };
-
-HRESULT CSearchOpenView::_InitPidlAutoList(PIDLIST_ABSOLUTE *ppidl)
-{
-	*ppidl = 0;
-
-	IScopeFactory *psf; // [esp+18h] [ebp-94h] BYREF
-	HRESULT hr = CoCreateInstance(CLSID_ScopeFactory, 0, 1u, IID_PPV_ARGS(&psf));
-	if (hr >= 0)
-	{
-		IScope *pscope;
-		if (psf->CreateScopeFromShellItemArray(_psiaStartMenuProvider, IID_PPV_ARGS(&pscope)) != S_OK)
-		{
-			hr = 0x80004005;
-		}
-		else
-		{
-			IVisibleInList *pvl;
-			hr = SHCreateSingleKindList(L"item", IID_PPV_ARGS(&pvl));
-			if (hr >= 0)
-			{
-				IStartMenuQuerySink *psmqs;
-				hr = CStartMenuQuerySink::s_CreateInstance(this->_hwnd, IID_PPV_ARGS(&psmqs));
-				if (hr >= 0)
-				{
-					_RegisterQuerySink(psmqs);
-
-					AUTOLISTINIT ali = { 0 };
-					ali.ftid = FOLDERTYPEID_Documents; //FOLDERTYPEID_Library in vista, but doesnt exist anymore
-					ali.dwFolderFlags = _GetFolderFlags();
-					ali.keyGroup = PKEY_StartMenu_Group;
-					ali.pscope = pscope;
-					ali.pvl = pvl;
-					ali.fSortGroupAscending = TRUE;
-					ali.flvm = FLVM_FIRST;
-					ali.iIconSize = 16;
-
-					ResourceStringCoAllocCopyEx(g_hinstCabinet, 8246, 0, &ali.pszDisplayName);
-
-					// Request optional query factory/sink. AUTOLISTINIT no longer has a field to hold it,
-					// so accept the returned interface (if any) and release it immediately to avoid leaks.
-					void *pvFactory = nullptr;
-					hr = _GetQueryFactoryWithSink(IID_NULL, &pvFactory);
-					// Treat S_FALSE (no factory) as non-fatal; callers continue when hr >= 0.
-					if (pvFactory)
-					{
-						IUnknown *punkFactory = reinterpret_cast<IUnknown *>(pvFactory);
-						punkFactory->Release();
-						pvFactory = nullptr;
-					}
-
-
-					ISearchIDListFactory *psilf;
-					hr = CoCreateInstance(CLSID_SearchIDListFactory, 0, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psilf));
-					if (SUCCEEDED(hr))
-					{
-						IAutoListDescription* pald;
-						hr = psilf->CreateAutoList(&ali, IID_PPV_ARGS(&pald));
-						if (SUCCEEDED(hr))
-						{
-							hr = psilf->CreateSearchIDListFromAutoList(pald, 0, ppidl);
-							if (SUCCEEDED(hr))
-							{
-								IUnknown_Set((IUnknown**)&_psmqs, psmqs);
-							}
-							pald->Release();
-						}
-						psilf->Release();
-					}
-
-
-					CoTaskMemFree(ali.pszDisplayName);
-					if (FAILED(hr))
-					{
-						_RevokeQuerySink();
-					}
-
-					psmqs->Release();
-				}
-				pvl->Release();
-			}
-			pscope->Release();
-		}
-		psf->Release();
-	}
-	return hr;
-}
+FOLDERTYPEID FOLDERTYPEID_Library = { 1269693544u, 50348u, 18198u, { 160u, 160u, 77u, 93u, 170u, 107u, 15u, 62u } };
 
 HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem **ppsi)
 {
-	*ppsi = NULL;
+	*ppsi = nullptr;
 
-	IScopeFactory *psf = 0;
+	IScopeFactory *psf = nullptr;
 	HRESULT hr = CoCreateInstance(CLSID_ScopeFactory, 0, 1u, IID_PPV_ARGS(&psf));
 	if (hr >= 0)
 	{
@@ -2752,25 +2644,18 @@ HRESULT CSearchOpenView::_RecreateBrowserObject()
 		if (_ppci)
 		{
 			delete _ppci;
-			_ppci = NULL;
+			_ppci = nullptr;
 		}
-
 		IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
 		_DisconnectShellView();
+
 		hr = _CreateExplorerBrowser(_hwnd);
-
-		// if the previous hr is FAILED(hr), or the "hr _peb->Advise(xxx)" is FAILED(hr), then release the browser
-		//if (hr < 0 || (hr = _peb->Advise(static_cast<IExplorerBrowserEvents *>(this), &_dwCookie), hr < 0))
-		//{
-		//	_ReleaseExplorerBrowser();
-		//}
-
-		if (hr >= 0)
+		if (SUCCEEDED(hr))
 		{
-			hr = _peb->Advise(static_cast<IExplorerBrowserEvents *>(this), &_dwCookie);
+			hr = _peb->Advise(static_cast<IExplorerBrowserEvents*>(this), &_dwCookie);
 		}
 
-		if (hr < 0)
+		if (FAILED(hr))
 		{
 			_ReleaseExplorerBrowser();
 		}
@@ -2782,12 +2667,12 @@ HRESULT CSearchOpenView::_RecreateBrowserObject()
 	return hr;
 }
 
-HRESULT MarshalToGIT(IUnknown *pUnk, REFIID riid, DWORD *pdwCookie)
+HRESULT MarshalToGIT(IUnknown* pUnk, REFIID riid, DWORD* pdwCookie)
 {
 	*pdwCookie = 0;
 
-	IGlobalInterfaceTable *pgit;
-	HRESULT hr = CoCreateInstance(CLSID_StdGlobalInterfaceTable, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pgit));
+	IGlobalInterfaceTable* pgit;
+	HRESULT hr = CoCreateInstance(CLSID_StdGlobalInterfaceTable, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pgit));
 	if (SUCCEEDED(hr))
 	{
 		hr = pgit->RegisterInterfaceInGlobal(pUnk, riid, pdwCookie);
@@ -3305,20 +3190,18 @@ STDAPI SHCreateFilteredIDList(
 
 #pragma endregion
 
-HRESULT CSearchOpenView::_AddTextFilterToLocation(
-	LPCITEMIDLIST pidl,
-	IFilterCondition *pfc,
-	LPITEMIDLIST *ppidl)
+HRESULT CSearchOpenView::_AddTextFilterToLocation(LPCITEMIDLIST pidl, IFilterCondition* pfc, LPITEMIDLIST* ppidl)
 {
-	IShellFolder *ppv = 0;
-	HRESULT hr = SHBindToObject(0, pidl, 0, IID_PPV_ARGS(&ppv));
-	if (hr >= 0)
+	IShellFolder* psf = nullptr;
+	HRESULT hr = SHBindToObject(nullptr, pidl, nullptr, IID_PPV_ARGS(&psf));
+	if (SUCCEEDED(hr))
 	{
-		hr = SHCreateFilteredIDList(ppv, FIT_FILTER, &pfc, 1, ppidl);
+		hr = SHCreateFilteredIDList(psf, FIT_FILTER, &pfc, 1, ppidl);
 	}
-
-	if (ppv)
-		ppv->Release();
+	if (psf)
+	{
+		psf->Release();
+	}
 	return hr;
 }
 
@@ -3341,7 +3224,7 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 	HRESULT hr = 0;
 	ppv = 0;
 
-	LPITEMIDLIST pidl = 0;
+	LPITEMIDLIST pidl = nullptr;
 	//CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>::CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>(&pidl);
 
 	//if (!this->_psiFolder
@@ -3358,8 +3241,9 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 	if (FindIDListbyFilterFlags(this->_psiFolder, FCT_WORDWHEEL, &v12, 0) >= 0)
 	{
 		//v3 = (ITEMIDLIST **)CTSmartObj<_ITEMIDLIST_ABSOLUTE *, CTSmartPtr_PolicyComplete<CTContainer_PolicyCoTaskMem>>::operator&(&pidl);
-		hr = ModifyOrRemoveItemFilterByIndex(this->_psiFolder, v12, 0, &pidl);
+		hr = ModifyOrRemoveItemFilterByIndex(this->_psiFolder, v12, nullptr, &pidl);
 	}
+
 	if (hr >= 0)
 	{
 		v4 = this->field_A8;
@@ -3416,13 +3300,12 @@ HRESULT CSearchOpenView::_UpdateSearchTextFilter()
 			goto LABEL_19;
 		}
 	}
+
 LABEL_25:
 	CoTaskMemFree(pidl);
 	//CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>::~CCoTaskMemPtr<_ITEMIDLIST_ABSOLUTE>((void **)&pidl);
 	return hr;
 }
-
-#define HYBRID_CODE
 
 HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
 {
@@ -3776,8 +3659,6 @@ void CSearchOpenView::_InstrumentActivation(int iItem)
 	// EXEX-Vista(allison): TODO.
 }
 
-#define HYBRID_CODE
-
 void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo* ppciNew)
 {
 	BOOL v3 = 0;
@@ -3964,8 +3845,7 @@ void CSearchOpenView::_UpdateOpenBoxText()
 
 void CSearchOpenView::_UpdateScrolling()
 {
-	IFolderView2 *pFolderView; // eax
-	IFolderView2 *v3; // eax
+	// eax
 	int *v4; // eax
 	RECT v5; // [esp+8h] [ebp-38h] BYREF
 	RECT v6; // [esp+18h] [ebp-28h] BYREF
@@ -3974,16 +3854,15 @@ void CSearchOpenView::_UpdateScrolling()
 	int iItem; // [esp+3Ch] [ebp-4h] BYREF
 
 	iItem = -1;
-	pFolderView = _pFolderView;
-	if (pFolderView)
+
+	if (_pFolderView)
 	{
-		pFolderView->GetVisibleItem(-1, 1, &iItem);
+		_pFolderView->GetVisibleItem(-1, 1, &iItem);
 		if (iItem > 0)
 		{
-			v3 = this->_pFolderView;
-			if (v3)
+			if (this->_pFolderView)
 			{
-				if (v3->QueryInterface(IID_PPV_ARGS(&v8)) >= 0)
+				if (this->_pFolderView->QueryInterface(IID_PPV_ARGS(&v8)) >= 0)
 				{
 					GetClientRect(this->_hwnd, &rc);
 					if (v8->GetItemRect(iItem, &v5) < 0 || v8->GetItemRect(0, &v6) < 0)
@@ -4035,11 +3914,12 @@ void CSearchOpenView::_UpdateTopMatch(UTM_REASON reason)
 	LONG v18; // [esp+38h] [ebp-4h]
 	HRESULT hr; // [esp+44h] [ebp+8h]
 
-	if (this->_viewMode)
+	if (this->_viewMode != VIEWMODE_DEFAULT)
 		return;
+
 	v18 = this->field_98;
 	v14 = this->field_88;
-	if (!CSearchOpenView::_GetItemCount())
+	if (_GetItemCount() == 0)
 	{
 		v7 = this->field_98;
 		v18 = v7 != 3 && v7;
@@ -4125,6 +4005,7 @@ void CSearchOpenView::_UpdateTopMatch(UTM_REASON reason)
 		}
 		ILFree(pidl);
 	}
+
 	if (this->field_88)
 	{
 		vt.vt = 3;

@@ -206,20 +206,19 @@ public:
     CTray();
 
     //~ Begin IStartButtonSite Interface
-    STDMETHODIMP_(VOID) EnableTooltips(BOOL bEnable) override;
-    STDMETHODIMP_(VOID) PurgeRebuildRequests() override;
+    STDMETHODIMP_(void) EnableTooltips(BOOL bEnable) override;
+    STDMETHODIMP_(void) PurgeRebuildRequests() override;
     STDMETHODIMP_(BOOL) ShouldUseSmallIcons() override;
-    STDMETHODIMP_(VOID) HandleFullScreenApp2(HWND hwnd) override;
-    STDMETHODIMP_(VOID) StartButtonClicked() override;
-    STDMETHODIMP_(VOID) OnStartMenuDismissed() override;
+    STDMETHODIMP_(void) HandleFullScreenApp(HWND hwnd) override;
+    STDMETHODIMP_(void) StartButtonClicked() override;
+    STDMETHODIMP_(void) OnStartMenuDismissed() override;
     STDMETHODIMP_(int) GetStartButtonMinHeight() override;
     STDMETHODIMP_(UINT) GetStartMenuStuckPlace() override;
-    STDMETHODIMP_(VOID) SetUnhideTimer(LONG x, LONG y) override;
-    STDMETHODIMP_(VOID) OnStartButtonClosing() override;
+    STDMETHODIMP_(void) SetUnhideTimer(LONG x, LONG y) override;
+    STDMETHODIMP_(void) OnStartButtonClosing() override;
     //~ End IStartButtonSite Interface
 
     void HandleWindowDestroyed(HWND hwnd);
-    void HandleFullScreenApp(HWND hwnd);
     void RealityCheck();
     DWORD getStuckPlace() { return _uStuckPlace; }
     void InvisibleUnhide(BOOL fShowWindow);
@@ -228,7 +227,7 @@ public:
     void AsyncSaveSettings();
     BOOL Init();
     void Unhide();
-    void VerifySize(BOOL fWinIni, BOOL fRoundUp = FALSE);
+    void VerifySize(BOOL fWinIni, BOOL fRoundUp, BOOL fUpdateSize);
     void SizeWindows();
     int HotkeyAdd(WORD wHotkey, LPCITEMIDLIST pidlFolder, LPCITEMIDLIST pidlItem, BOOL fClone);
     void CheckWindowPositions();
@@ -326,7 +325,6 @@ public:
     CStartButton _stb;
 
     IBandSite* _ptbs;
-    IBandSite* _bandSite; // Who added this??
 
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
@@ -416,7 +414,7 @@ protected:
     void _ScreenSizeChange(HWND hwnd);
     void _ContextMenu(DWORD dwPos, BOOL fFromNotifArea);
     void _StuckTrayChange();
-    void _ResetZorder(int a2);
+    void _ResetZorder(BOOL fForce);
     void _HandleSize();
     BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpdateSize);
     void _RegisterGlobalHotkeys();
@@ -571,6 +569,10 @@ protected:
     // App compat stuff
     static void CALLBACK _MigrateOldBrowserSettingsCB(PVOID lpParameter, BOOLEAN);
     void _MigrateOldBrowserSettings();
+
+    // ShellReady stuff
+    static BOOL WINAPI _SignalNamedEventOnce(void** ppv, const WCHAR* pszEventName);
+    void _SignalShellReadyEvent();
 
     static BOOL CALLBACK s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam);
 

@@ -42,7 +42,7 @@ HRESULT CStartButton::SetFocusToStartButton()
 HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
 {
     _nIsOnContextMenu = TRUE;
-    _pStartButtonSite->HandleFullScreenApp2(nullptr);
+    _pStartButtonSite->HandleFullScreenApp(nullptr);
     SetForegroundWindow(hWnd);
 
     LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);

@@ -2077,7 +2077,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             if (!IsAnyShellWindowAlreadyPresent())
             {
                 //temp
-                //SetThemeAppProperties(NULL);
+                // SetThemeAppProperties(0);
                 hDesktop = CreateDesktopAndTray();
             }
 

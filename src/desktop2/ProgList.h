@@ -29,7 +29,7 @@ typedef CDPA<CByUsageAppInfo, CTContainer_PolicyUnOwned<CByUsageAppInfo>> ByUsag
 // Helper routines
 BOOL LocalFreeCallback(LPTSTR psz, LPVOID);
 BOOL ILFreeCallback(LPITEMIDLIST pidl, LPVOID);
-void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* dpa, LPCTSTR psz);
+void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* pdpa, LPCTSTR psz);
 
 class CByUsageRoot
 {                         // "rt", "prt"
@@ -338,14 +338,18 @@ private:
     void EnumFolderFromCache();
     void AfterEnumItems();
 
-    typedef struct AFTERENUMINFO {
-        ByUsage *self;
-        CDPAPidl dpaNew;
-		int field_8;    // Vista - NEW
+    typedef struct AFTERENUMINFO
+    {
+        ByUsage* self;
+        CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>, not sure why yet.
+        int field_8; // Vista - NEW
     } AFTERENUMINFO;
-    static BOOL CALLBACK _AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei);
+
+    static BOOL CALLBACK _AfterEnumCB(CByUsageAppInfo* papp, AFTERENUMINFO* paei);
 
     static void _AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl);
+    // @Note (Allison): This is a new method in 6519 and replaces _AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl)
+    static void _AddNewAppPidl(CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>* pdpa, ITEMIDLIST_ABSOLUTE* pidl);
 
     static int UANotifyCB(void *param, const GUID *pguidGrp, const WCHAR *, UAEVENT eCmd);
 

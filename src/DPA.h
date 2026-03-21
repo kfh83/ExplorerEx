@@ -189,7 +189,11 @@ public:
 
     BOOL Sort(CompareType pfnCompare, LPARAM lParam)
     {
-        return DPA_Sort(m_hdpa, (PFNDACOMPARE)pfnCompare, lParam);
+        if (m_hdpa != nullptr)
+        {
+            return DPA_Sort(m_hdpa, (PFNDACOMPARE)pfnCompare, lParam);
+        }
+        return FALSE;
     }
 
     // EXEX-Vista(allison): TODO. Check if this still actually exists in the Vista+ version of CDPA.
@@ -232,6 +236,21 @@ public:
         : CDPA_Base<T, ContainerPolicy>(hdpa)
     {
     }
+};
+
+template <typename T, typename ContainerPolicy = CTContainer_PolicyRelease<T>>
+class CDPARelease : public CDPA<T, ContainerPolicy>
+{
+};
+
+template <typename T>
+class CDPACoTaskMem : public CDPA<T, CTContainer_PolicyCoTaskMem>
+{
+};
+
+template <typename T>
+class CDPANewMem : CDPA<T, CTContainer_PolicyNewMem>
+{
 };
 
 template<typename T>

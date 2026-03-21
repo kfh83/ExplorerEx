@@ -3773,7 +3773,7 @@ void CTrayNotify::_OnSizeChanged(BOOL fForceRepaint)
 
         PostMessage(_hwndNotify, TNM_ASYNCINFOTIPPOS, 0, 0);
     }
-    c_tray.VerifySize(TRUE);
+    c_tray.VerifySize(TRUE, FALSE, FALSE);
 
     if (fForceRepaint)
     {

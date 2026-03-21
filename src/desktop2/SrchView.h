@@ -272,7 +272,7 @@ public:
 				}
 			}
 		LABEL_36:
-			if ((CRunnableTask::ShouldContinue() & 0x80000000) == 0)
+			if ((ShouldContinue() & 0x80000000) == 0)
 			{
 				if (!ppci)
 				{
@@ -345,7 +345,9 @@ public:
 	STDMETHODIMP GetTypeInfoCount(UINT *pctinfo);
 	STDMETHODIMP GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo);
 	STDMETHODIMP GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId);
-	STDMETHODIMP Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr);
+	STDMETHODIMP Invoke(
+		DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams, VARIANT *pVarResult,
+		EXCEPINFO *pExcepInfo, UINT *puArgErr);
 
 	// *** INavigationOptions ***
 	STDMETHODIMP CanNavigateToIDList(PCIDLIST_ABSOLUTE pidl1, PCIDLIST_ABSOLUTE pidl2);
@@ -397,29 +399,28 @@ private:
 	HRESULT _ActivateItem(int iItem);
 	HRESULT _AddCheckIndexerStaterTask();
 	HRESULT _AddCondition(IObjectArray* poa, REFPROPERTYKEY a3, CONDITION_OPERATION a4, LPCWSTR a5);
-	HRESULT _CreateConditions(LPCWSTR pcszURL, ICondition **ppCondition);
+	HRESULT _CreateConditions(LPCWSTR pcszURL, ICondition** ppCondition);
 	HRESULT _CreateExplorerBrowser(HWND hwnd);
-	HRESULT _FilterView(IFilterView *pfv);
+	HRESULT _FilterView(IFilterView* pfv);
 	HRESULT _GetItemKeyWord(int itemIndex, LPWSTR pszDest, UINT cchDest);
-	HRESULT _GetQueryFactoryWithSink(REFIID riid, void **ppv);
+	HRESULT _GetQueryFactoryWithSink(REFIID riid, void** ppv);
 	HRESULT _GetSelectedItemParsingName(LPWSTR pszName, UINT cchName);
-	HRESULT _InitPathCompletePidlAutoList(LPCWSTR pszPath, PIDLIST_ABSOLUTE *ppidl);
-	HRESULT _InitPidlAutoList(PIDLIST_ABSOLUTE *ppidl);
+	HRESULT _InitPathCompletePidlAutoList(LPCWSTR pszPath, PIDLIST_ABSOLUTE* ppidl);
+	// HRESULT _InitPidlAutoList(PIDLIST_ABSOLUTE* ppidl); // Replaced by the newer _InitRegularAutoListItem
+	HRESULT _InitRegularAutoListItem(IShellItem** ppsi);
 
-	HRESULT _InitRegularAutoListItem(IShellItem **ppsi);
-
-	HRESULT _LimitViewResults(IFolderView *pfv, int nMaxItems);
-	HRESULT _Parse(IObjectArray *poa, REFPROPERTYKEY pkey, LPCWSTR psz);
+	HRESULT _LimitViewResults(IFolderView* pfv, int nMaxItems);
+	HRESULT _Parse(IObjectArray* poa, REFPROPERTYKEY pkey, LPCWSTR psz);
 	HRESULT _RecreateBrowserObject();
-	HRESULT _RegisterQuerySink(IStartMenuQuerySink *psmqs);
+	HRESULT _RegisterQuerySink(IStartMenuQuerySink* psmqs);
 	HRESULT _UpdateMRU(LPCWSTR psz);
 	HRESULT _UpdateSearchText(LPCWSTR psz);
 	HRESULT _UpdateSearchTextFilter();
-	HRESULT _AddTextFilterToLocation(LPCITEMIDLIST pidl, IFilterCondition *pfc, LPITEMIDLIST *ppidl);
+	HRESULT _AddTextFilterToLocation(LPCITEMIDLIST pidl, IFilterCondition* pfc, LPITEMIDLIST* ppidl);
 
 	FOLDERFLAGS _GetFolderFlags();
 	void _CancelNavigation();
-	void _ConnectShellView(IShellView *psv);
+	void _ConnectShellView(IShellView* psv);
 	void _DisconnectShellView();
 	void _DoKeyBoardContextMenu();
 	void _FilterPathCompleteView(LPCWSTR pszPath);
