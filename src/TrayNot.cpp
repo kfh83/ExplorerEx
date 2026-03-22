@@ -973,7 +973,6 @@ void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo,
     TNINFOITEM* pii; // eax MAPDST
     CTrayItem* ptiTemp; // edi
     INT_PTR nIcon; // eax
-    // [esp+10h] [ebp-20h]
 
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 719
 
@@ -983,6 +982,7 @@ void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo,
         pii = new TNINFOITEM;
         if (!pii)
             return;
+
         pii->guid = guid;
         pii->hWnd = hWnd;
         pii->uID = uID;
@@ -1261,21 +1261,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
 
     return TRUE;
 #endif
-    // eax
-    // edi
-    // edi
-    DWORD dwInfoFlags; // eax
-    BOOL bAsync; // eax
-    // [esp+10h] [ebp-34h]
-    int bIsEqualIcon; // [esp+14h] [ebp-30h]
-    // [esp+18h] [ebp-2Ch]
-    int iCount; // [esp+18h] [ebp-2Ch]
-    // [esp+1Ch] [ebp-28h]
-    // [esp+20h] [ebp-24h]
-    HICON hIcon2; // [esp+20h] [ebp-24h]
-    int iImageNew; // [esp+20h] [ebp-24h]
-    int iImageOld; // [esp+24h] [ebp-20h] MAPDST
-    // [esp+4Ch] [ebp+8h]
+    int iImageNew;
 
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 826
 
@@ -1293,7 +1279,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         return FALSE;
     }
 
-    //pti->field_6D8 = (pnid->uFlags >> 7) & 1;
+    pti->fUseDefaultTip = (pnid->uFlags & NIF_SHOWTIP) != 0;
 
     if ((pnid->uFlags & NIF_GUID) != 0)
         memcpy(&pti->guidItem, &pnid->guidItem, sizeof(pnid->guidItem));
@@ -1309,22 +1295,24 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     if ((pnid->uFlags & NIF_STATE) != 0)
     {
         DWORD dwOldState = pti->dwState;
-        DWORD dwStateMask = pnid->dwStateMask;
-        if ((dwStateMask & ~3u) != 0) // NIS_VALIDMASK
-            return FALSE;
 
-        pti->dwState = dwStateMask & pnid->dwState | pti->dwState & ~dwStateMask;
-        if ((pnid->dwStateMask & 1) != 0)
+        if ((pnid->dwStateMask & ~3u) != 0) // NIS_VALIDMASK
+        {
+            return FALSE;
+        }
+
+        pti->dwState = pnid->dwStateMask & pnid->dwState | pti->dwState & ~pnid->dwStateMask;
+        if ((pnid->dwStateMask & NIS_HIDDEN) != 0)
         {
             if (pti->IsHidden())
             {
-                ptim->SetTBBtnStateHelper(nIcon, 4, 0);
+                ptim->SetTBBtnStateHelper(nIcon, TBSTATE_ENABLED, FALSE);
                 _PlaceItem(nIcon, pti, TRAYEVENT_ONICONHIDE);
             }
-            else
+            else if (!bFirstTime)
             {
-                ptim->SetTBBtnStateHelper(nIcon, 4, 0);
-                _PlaceItem(nIcon, pti, TRAYEVENT_ONICONHIDE);
+                ptim->SetTBBtnStateHelper(nIcon, TBSTATE_ENABLED, TRUE);
+                _PlaceItem(nIcon, pti, TRAYEVENT_ONICONUNHIDE);
             }
         }
         if ((((unsigned __int8)dwOldState ^ LOBYTE(pnid->dwState)) & 2) != 0 && (dwOldState & 2) != 0)
@@ -1335,58 +1323,52 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         fResize = ((unsigned __int8)dwOldState ^ (unsigned __int8)pnid->dwState) & 1;
     }
 
-    HICON hIcon1 = 0;
+    HICON hIcon1 = nullptr;
     if ((pnid->uFlags & 2) != 0)
     {
-        hIcon2 = 0;
-        bIsEqualIcon = 0;
-        iImageOld = ptim->GetTBBtnImage(nIcon, 1);
+        HICON hIcon2 = nullptr;
+        BOOL bIsEqualIcon = FALSE;
+        int iImageOld = ptim->GetTBBtnImage(nIcon, 1);
         if (!bFirstTime)
         {
-            if (iImageOld == -1)
+            if (iImageOld != -1)
             {
-                goto LABEL_38;
-            }
-            if (himl)
-            {
-                hIcon1 = ImageList_GetIcon(himl, iImageOld, 0);
-            }
-            if (hIcon1)
-            {
-                hIcon2 = (HICON)pnid->dwIcon;
-            }
-            if (iImageOld == -1)
-            {
-                goto LABEL_38;
-            }
-            if (hIcon1)
-            {
-                if (hIcon2)
-                    bIsEqualIcon = SHAreIconsEqual(hIcon1, hIcon2);
-            LABEL_38:
+                if (himl)
+                {
+                    hIcon1 = ImageList_GetIcon(himl, iImageOld, 0);
+                }
                 if (hIcon1)
                 {
-                    DestroyIcon(hIcon1);
+                    hIcon2 = GetHIcon(pnid);
                 }
+                if (iImageOld != -1 && hIcon1 && hIcon2)
+                {
+                    bIsEqualIcon = SHAreIconsEqual(hIcon1, hIcon2);
+                }
+            }
+
+            if (hIcon1)
+            {
+                DestroyIcon(hIcon1);
             }
         }
 
         if (pti->IsIconShared())
         {
-            iImageNew = ptim->FindImageIndex((HICON)pnid->dwIcon, 1);
+            iImageNew = ptim->FindImageIndex(GetHIcon(pnid), TRUE);
             if (iImageNew == -1)
             {
-                return 0;
+                return FALSE;
             }
         }
         else
         {
             if (pnid->dwIcon)
             {
-                iImageNew = ImageList_ReplaceIcon(himl, iImageOld, (HICON)pnid->dwIcon);
+                iImageNew = ImageList_ReplaceIcon(himl, iImageOld, GetHIcon(pnid));
                 if (iImageNew < 0)
                 {
-                    return 0;
+                    return FALSE;
                 }
             }
             else
@@ -1397,7 +1379,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
 
             if (pti->IsSharedIconSource())
             {
-                iCount = ptim->GetItemCount();
+                INT_PTR iCount = ptim->GetItemCount();
                 for (INT_PTR i = 0; i < iCount; ++i)
                 {
                     if (ptim->GetTBBtnImage(i, 1) == iImageOld)
@@ -1407,6 +1389,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
                     }
                 }
             }
+
             if (iImageOld == -1 || iImageNew == -1)
             {
                 fResize = 1;
@@ -1423,7 +1406,9 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     }
 
     if ((pnid->uFlags & NIF_MESSAGE) != 0)
+    {
         pti->uCallbackMessage = pnid->uCallbackMessage;
+    }
 
     if ((pnid->uFlags & NIF_TIP) != 0)
     {
@@ -1432,11 +1417,13 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     }
 
     if (fResize)
-        _OnSizeChanged(0);
+    {
+        _OnSizeChanged(FALSE);
+    }
 
     if ((pnid->uFlags & NIF_INFO) != 0)
     {
-        dwInfoFlags = pnid->dwInfoFlags;
+        DWORD dwInfoFlags = pnid->dwInfoFlags;
         if ((dwInfoFlags & NIIF_USER) != 0)
         {
             if (pti->hBalloonIcon)
@@ -1453,14 +1440,11 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
             pnid->dwInfoFlags = dwInfoFlags & ~0x20u;
         }
 
-        bAsync = pti->IsHidden();
+        BOOL bAsync = pti->IsHidden();
         if (!bAsync)
         {
             if (bFirstTime || fResize)
-            {
                 bAsync = 1;
-            }
-
             _SetInfoTip(
                 pti->guidItem, pti->hWnd, pti->uID, pnid->szInfo, pnid->szInfoTitle, pnid->dwInfoFlags, bAsync,
                 pnid->uFlags & NIF_REALTIME);
@@ -1468,7 +1452,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     }
     if (!bFirstTime)
     {
-        _NotifyCallback(ptim, 1u, nIcon, -1);
+        _NotifyCallback(ptim, 1, nIcon, -1);
     }
     return 1;
 }
@@ -1925,14 +1909,14 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
 // set the mouse cursor to the center of the button.
 // do this becaus our tray notifies don't have enough data slots to
 // pass through info about the button's position.
-void CTrayNotify::_SetCursorPos(INT_PTR i)
+void CTrayNotify::_SetCursorPos(HWND hwnd, INT_PTR i)
 {
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+    _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 1419
 
     RECT rc;
-    if (SendMessage(_hwndToolbar, TB_GETITEMRECT, i, (LPARAM)&rc))
+    if (SendMessageW(hwnd, TB_GETITEMRECT, i, (LPARAM)&rc))
     {
-        MapWindowPoints(_hwndToolbar, HWND_DESKTOP, (LPPOINT)&rc, 2);
+        MapWindowPoints(hwnd, HWND_DESKTOP, (LPPOINT)&rc, 2);
         SetCursorPos((rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2);
     }
 }
@@ -2111,6 +2095,7 @@ LRESULT CALLBACK CTrayNotify::s_ChevronWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
+#if 0
     BOOL fClickDown = FALSE;
 
     CTrayNotify * pTrayNotify = reinterpret_cast<CTrayNotify*>(dwRefData);
@@ -2175,11 +2160,157 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
     default:
         if (InRange(uMsg, WM_MOUSEFIRST, WM_MOUSELAST))
         {
-            pTrayNotify->_OnMouseEvent(uMsg, wParam, lParam);
+            pTrayNotify->_OnMouseEvent(hwnd, uMsg, wParam, lParam);
         }
         break;
     }
 
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+#endif
+    CTrayItem* ItemData; // eax
+    INT_PTR i; // eax MAPDST
+    CTrayItem* pti; // eax MAPDST
+    unsigned int v17; // eax
+    POINT ptCursor; // [esp+10h] [ebp-18h] BYREF
+    HWND hwndInfoTip; // [esp+20h] [ebp-8h]
+    // [esp+40h] [ebp+18h]
+    int iIndex; // [esp+40h] [ebp+18h]
+    bool fShowInfoTip; // [esp+47h] [ebp+1Fh]
+    NMHDR* pnm;
+
+    DWORD dwAnchorPointCmd = 0;
+
+    CTrayNotify* pTrayNotify = reinterpret_cast<CTrayNotify*>(dwRefData);
+    // _AssertMsgW(pTrayNotify != nullptr, L"pTrayNotify SHOULD NOT be NULL, as passed to s_ToolbarWndProc.");
+
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hwnd, s_ToolbarWndProc, uIdSubclass);
+    }
+    if (pTrayNotify->_fNoTrayItemsDisplayPolicyEnabled)
+    {
+        return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+    }
+
+    CTrayItemManager* ptim = hwnd == pTrayNotify->_hwndToolbarSCA ? &pTrayNotify->m_TrayItemManagerSCA : &pTrayNotify->m_TrayItemManager;
+
+    if (uMsg == WM_NOTIFY)
+    {
+        pnm = reinterpret_cast<NMHDR*>(lParam);
+
+        ItemData = ptim->GetItemData(pnm->idFrom, 0, hwnd);
+        if (!ItemData)
+        {
+            goto LABEL_28;
+        }
+
+
+        fShowInfoTip = ItemData->uVersion < 4 || ItemData->fUseDefaultTip;
+
+        hwndInfoTip = hwnd == pTrayNotify->_hwndToolbarSCA ? pTrayNotify->_hwndToolbarInfoTipSCA : pTrayNotify->_hwndToolbarInfoTip;
+        if (pnm->code != -522)
+        {
+            if (pnm->code == -521)
+            {
+                if (ItemData->uVersion >= 4)
+                {
+                    iIndex = SendMessageW(hwnd, TB_COMMANDTOINDEX, pnm->idFrom, 0);
+                    if (iIndex != -1)
+                    {
+                        GetCursorPos(&ptCursor);
+                        MapWindowPoints(nullptr, hwnd, &ptCursor, 1u);
+                        if (iIndex == SendMessageW(hwnd, TB_HITTEST, 0, (LPARAM)&ptCursor))
+                        {
+                            pTrayNotify->_SendNotify(ItemData, 0x406, MAKELONG(ptCursor.x, ptCursor.y), nullptr, 0);
+                        }
+                        else
+                        {
+                            pTrayNotify->_SendNotify(ItemData, 0x406, 0xFFFFFFFE, hwnd, iIndex);
+                        }
+                    }
+                }
+                if (!fShowInfoTip)
+                {
+                    SetWindowPos(hwndInfoTip, nullptr, 0, 0, 0, 0, 0x16u);
+                    return 1;
+                }
+            }
+            goto LABEL_28;
+        }
+
+        if (ItemData->uVersion < 4)
+        {
+        LABEL_28:
+            if (uMsg - WM_MOUSEFIRST <= 0xE)
+            {
+                pTrayNotify->_OnMouseEvent(hwnd, uMsg, wParam, lParam);
+            }
+            return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+        }
+        pTrayNotify->_SendNotify(ItemData, 1031, 0, nullptr, 0);
+    }
+
+    if (uMsg == WM_CONTEXTMENU)
+    {
+        i = SendMessageW(hwnd, TB_GETHOTITEM, 0, 0);
+        if (i == -1)
+        {
+            POINT pt;
+            RECT rc;
+            if (!GetWindowRect(hwnd, &rc) || !GetCursorPos(&pt) || PtInRect(&rc, pt))
+            {
+                return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+            }
+        }
+        else
+        {
+            pti = ptim->GetItemDataByIndex(i);
+            if (lParam == (LPARAM)-1)
+            {
+                pTrayNotify->_fKey = 1;
+            }
+            if (pTrayNotify->_fKey && pti->uVersion < 4)
+            {
+                pTrayNotify->_SetCursorPos(hwnd, i);
+            }
+            SendMessageW(hwnd, 0x41Cu, 0, 0);
+            if (pti)
+            {
+                SHAllowSetForegroundWindow(pti->hWnd);
+
+                v17 = pti->uVersion;
+                if (v17 < 3)
+                {
+                    if (pTrayNotify->_fKey)
+                    {
+                        pTrayNotify->_SendNotify(pti, WM_RBUTTONDOWN, 0, nullptr, 0);
+                        pTrayNotify->_SendNotify(pti, WM_RBUTTONUP, 0, nullptr, 0);
+                    }
+                }
+                else
+                {
+                    if (v17 >= 4)
+                    {
+                        if (pTrayNotify->_fKey)
+                        {
+                            dwAnchorPointCmd = -2;
+                        }
+                        else
+                        {
+                            dwAnchorPointCmd = (DWORD)lParam;
+                        }
+                    }
+                    pTrayNotify->_SendNotify(pti, WM_CONTEXTMENU, dwAnchorPointCmd, hwnd, i);
+                }
+            }
+        }
+        return 0;
+    }
+    if (uMsg != WM_KEYDOWN)
+    {
+        goto LABEL_28;
+    }
+    pTrayNotify->_fReturn = wParam == 13;
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
 
@@ -3334,79 +3465,77 @@ BOOL _UseCachedIcon(UINT uMsg)
     return TRUE;
 }
 
-LRESULT CTrayNotify::_OnMouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CTrayNotify::_OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    // Icons can jump around between the time we get a down-click message and
-    // the time we get a double-click or up-click message.  E.g. clicking on
-    // the bang icon expands the hidden stuff, or an icon might delete itself
-    // in response to the down-click.
-    //
-    // It's undesirable for a different icon to get the corresponding double-
-    // or up-click in this case (very annoying to the user).
-    //
-    // To deal with this, cache the icon down-clicked and use that cached value
-    // (instead of the button the mouse is currently over) on double- or up-click.
+    _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 2832
 
-
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-
-    // The mouse cursor has moved over the toolbar, so if the chevron was selected
-    // earlier, it should not be anymore.
     _fChevronSelected = FALSE;
 
+    CTrayItemManager* ptim = _GetItemManager(hWnd == _hwndToolbarSCA);
+
     BOOL fClickDown = _IsClickDown(uMsg);
-    BOOL fUseCachedIcon = _UseCachedIcon(uMsg);
 
     INT_PTR i = -1;
 
-    if (fUseCachedIcon)
+    if (_UseCachedIcon(uMsg))
     {
-        i = ToolBar_CommandToIndex(_hwndToolbar, _idMouseActiveIcon);
+        i = ToolBar_CommandToIndex(hWnd, _idMouseActiveIcon);
     }
 
+    POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
     if (i == -1)
     {
-        POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-        i = SendMessage(_hwndToolbar, TB_HITTEST, 0, (LPARAM)&pt);
+        i = SendMessageW(hWnd, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&pt));
         if (fClickDown)
-            _idMouseActiveIcon = ToolBar_IndexToCommand(_hwndToolbar, i);
+        {
+            _idMouseActiveIcon = ToolBar_IndexToCommand(hWnd, i);
+        }
     }
 
-    CTrayItem *pti = m_TrayItemManager.GetItemDataByIndex(i);
+    CTrayItem* pti = ptim->GetItemDataByIndex(i);
     if (pti)
     {
-        if (IsWindow(pti->hWnd))
+        if (!IsWindow(pti->hWnd))
         {
-            if (fClickDown)
-            {
-                SHAllowSetForegroundWindow(pti->hWnd);
+            _DeleteNotify(pti->guidItem, i, FALSE, TRUE);
+            return 1;
+        }
 
-                if (_pinfo && _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID)
+        BOOL fIsEqualGUID = 0;
+        if (fClickDown)
+        {
+            SHAllowSetForegroundWindow(pti->hWnd);
+            if (_pinfo)
+            {
+                if (!IsEqualGUID(pti->guidItem, GUID_NULL))
+                {
+                    fIsEqualGUID = IsEqualGUID(pti->guidItem, _pinfo->guid);
+                }
+                else
+                {
+                    fIsEqualGUID = _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID;
+                }
+                if (fIsEqualGUID)
                 {
                     if (uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONDBLCLK)
                         _beLastBalloonEvent = BALLOONEVENT_USERRIGHTCLICK;
                     else
                         _beLastBalloonEvent = BALLOONEVENT_USERLEFTCLICK;
-                    _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONUSERCLICK);
-                }
+                    SendMessageW(_hwndInfoTip, 0x403, 5, 0xFFFF);
+                    _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, NIN_BALLOONUSERCLICK);
 
-                if (fClickDown)
-                {
-                    // down clicks count as activation
-                    _PlaceItem(i, pti, TRAYEVENT_ONITEMCLICK);
+                    (void)541; // Skipped telemetry ShellTraceId_Notification_Launch
                 }
-
-                _fItemClicked = TRUE;
-                _ActivateTips(FALSE);
             }
 
-            // XXX(isabella): Compare with ep_taskbar CTrayNotify::_HandleNotifyIcon_MouseEvent
-            // control flow. Amr skips this call when there is a click-down, and XP does not.
-            _SendNotify(pti, uMsg, lParam, nullptr, i);
+            _PlaceItem(i, pti, TRAYEVENT_ONITEMCLICK);
+            _fItemClicked = 1;
+            _ActivateTips(0);
         }
-        else
+        if (!fIsEqualGUID && (uMsg != WM_LBUTTONUP && uMsg != WM_RBUTTONUP || SendMessageW(hWnd, TB_GETHOTITEM, 0, 0) != -1))
         {
-            _DeleteNotify(GUID_NULL, i, FALSE, TRUE); // @NOTE: GUID_NULL IS TEMPORARY
+            MapWindowPoints(hWnd, nullptr, &pt, 1);
+            _SendNotify(pti, uMsg, MAKELONG(pt.x, pt.y), nullptr, 0);
         }
         return 1;
     }
@@ -3691,12 +3820,13 @@ void CTrayNotify::_OnSysChange(UINT uMsg, WPARAM wParam, LPARAM lParam)
         SendMessage(_hwndClock, uMsg, wParam, lParam);
 }
 
-void CTrayNotify::_OnCommand(UINT id, UINT uCmd)
+void CTrayNotify::_OnCommand(const HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-    if (id == IDC_TRAYNOTIFY_CHEVRON)
+#if 0
+    if (wParam == IDC_TRAYNOTIFY_CHEVRON)
     {
         ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        switch(uCmd)
+        switch(lParam)
         {
             case BN_SETFOCUS:
                 break;
@@ -3708,16 +3838,18 @@ void CTrayNotify::_OnCommand(UINT id, UINT uCmd)
     }
     else
     {
-        switch (uCmd)
+        switch (lParam)
         {
             case BN_CLICKED:
             {
                 ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-                CTrayItem *pti = m_TrayItemManager.GetItemData(id, FALSE, _hwndToolbar);
+                CTrayItem* pti = m_TrayItemManager.GetItemData(wParam, FALSE, _hwndToolbar);
                 if (pti)
                 {
                     if (_fKey)
-                        _SetCursorPos(SendMessage(_hwndToolbar, TB_COMMANDTOINDEX, id, 0));
+                    {
+                        _SetCursorPos(SendMessage(_hwndToolbar, TB_COMMANDTOINDEX, wParam, 0));
+                    }
 
                     SHAllowSetForegroundWindow(pti->hWnd);
                     if (pti->uVersion >= KEYBOARD_VERSION)
@@ -3733,7 +3865,9 @@ void CTrayNotify::_OnCommand(UINT id, UINT uCmd)
                         // Hitting RETURN is like double-clicking (which in the new
                         // style means keyselecting twice)
                         if (_fKey && _fReturn)
+                        {
                             _SendNotify(pti, NIN_KEYSELECT, TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD, nullptr, 0);
+                        }
                     }
                     else // pre-XP code:
                     {
@@ -3753,6 +3887,87 @@ void CTrayNotify::_OnCommand(UINT id, UINT uCmd)
                     }
                 }
                 break;
+            }
+        }
+    }
+#endif
+    int v9; // ebx
+
+    UINT id = GET_WM_COMMAND_ID(wParam, lParam);
+    UINT i = GET_WM_COMMAND_ID(wParam, lParam);
+    UINT cmd = GET_WM_COMMAND_CMD(wParam, lParam);
+
+    BOOL fSCA = GET_WM_COMMAND_HWND(wParam, lParam) == _hwndToolbarSCA;
+    CTrayItemManager* ptim = _GetItemManager(fSCA);
+    HWND hwndToolbar = _GetToolbar(fSCA);
+
+    if (id == 1502) // IDC_TRAYNOTIFY_CHEVRON
+    {
+        // _AssertMsgW(_fNoTrayItemsDisplayPolicyEnabled == 0, L"Impossible-the chevron shouldnt be shown");
+
+        if (cmd != 6) // BN_SETFOCUS
+        {
+            // field_2AC = 0;
+            KillTimer(_hwndChevron, 0xAu);
+
+            if (!_fBangMenuOpen && (v9 = 1, m_TrayItemManager.GetDemotedItemCount() == 5))
+            {
+                // SHTracePerf(&ShellTraceId_SystemTray_UserClickedChevon_ChangeNotify_Start);
+            }
+            else
+            {
+                v9 = 0;
+            }
+            _ToggleDemotedMenu();
+            if (v9)
+            {
+                // SHTracePerf(&ShellTraceId_SystemTray_UserClickedChevon_ChangeNotify_Stop);
+            }
+        }
+    }
+    else if (!cmd)
+    {
+        _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 3296
+        // field_2AC = 0;
+
+        KillTimer(this->_hwndChevron, 0xAu);
+        // _ActivateChevronTrackingTooltip(0);
+        CTrayItem* pti = ptim->GetItemData(i, 0, hwndToolbar);
+        if (pti)
+        {
+            INT_PTR v11 = SendMessageW(hwndToolbar, TB_COMMANDTOINDEX, i, 0);
+            LPARAM lParama = v11;
+            if (this->_fKey && pti->uVersion < 4)
+            {
+                _SetCursorPos(hwndToolbar, v11);
+            }
+            SHAllowSetForegroundWindow(pti->hWnd);
+            unsigned int uVersion = pti->uVersion;
+            if (uVersion < 3)
+            {
+                if (this->_fKey)
+                {
+                    _SendNotify(pti, WM_LBUTTONDOWN, 0, nullptr, 0);
+                    _SendNotify(pti, WM_LBUTTONUP, 0, nullptr, 0);
+                    if (this->_fReturn)
+                    {
+                        _SendNotify(pti, WM_LBUTTONDBLCLK, 0, nullptr, 0);
+                        _SendNotify(pti, WM_LBUTTONUP, 0, nullptr, 0);
+                    }
+                }
+            }
+            else
+            {
+                WPARAM v13 = 0;
+                if (uVersion >= 4)
+                {
+                    v13 = -(this->_fKey != 0) - 1;
+                }
+                _SendNotify(pti, (this->_fKey != 0) + 1024, v13, hwndToolbar, lParama);
+                if (this->_fKey && this->_fReturn)
+                {
+                    _SendNotify(pti, 1025, v13, hwndToolbar, lParama);
+                }
             }
         }
     }
@@ -4462,7 +4677,9 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
     case WM_COMMAND:
         if (!_fNoTrayItemsDisplayPolicyEnabled)
-            _OnCommand(GET_WM_COMMAND_ID(wParam, lParam), GET_WM_COMMAND_CMD(wParam, lParam));
+        {
+            _OnCommand(hWnd, wParam, lParam);
+        }
         break;
 
     case WM_SETFOCUS:
@@ -5102,22 +5319,21 @@ void CTrayNotify::_SetChevronTheme()
     }
 }
 
-extern HANDLE(*IsThemeClassDefined)(HTHEME hTheme, LPCWSTR pszAppName, LPCWSTR pszClassId, int fAllowInheritance);
+extern HANDLE (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const WCHAR* pszClassId, BOOL fAllowInheritance);
 
 void CTrayNotify::_SetClockToolbarThemes()
 {
     if (_hTheme)
     {
-        LPCWSTR pszTheme = !IsCompositionActive() || !c_tray.GlassEnabled() ? L"TrayNotify" : L"TrayNotifyComposited";
-        SetWindowTheme(_hwndClock, pszTheme, NULL);
+        const WCHAR* pszTheme = IsCompositionActive() && c_tray.GlassEnabled() ? L"TrayNotifyComposited" : L"TrayNotify";
+        SetWindowTheme(_hwndClock, pszTheme, nullptr);
 
         ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Clock", FALSE)) // 4876
+        SendMessageW(_hwndToolbar, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
+        SendMessageW(_hwndToolbarSCA, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
 
-        // SendMessage(_hwndSysToolbar, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
-        SendMessage(_hwndToolbar, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
-
-		ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)) // 4880
-        SendMessage(_hwndInfoTip, TB_SETWINDOWTHEME, 0, (LPARAM)L"TrayNotify");
+        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)) // 4880
+        SendMessageW(_hwndInfoTip, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(L"TrayNotify"));
     }
 }
 

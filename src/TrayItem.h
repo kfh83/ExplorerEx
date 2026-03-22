@@ -77,6 +77,8 @@ class CTrayItem
         UINT        uNumSeconds;
         GUID        guidItem;
 
+        BOOL         fUseDefaultTip;
+
     private:
         DWORD _GetStateFlag(ICONSTATEFLAG sf);
         void _SetIconState(ICONSTATEFLAG sf, BOOL bSet);

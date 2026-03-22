@@ -222,7 +222,7 @@ protected:
 
     void _NotifyCallback(CTrayItemManager* ptim, DWORD dwMessage, INT_PTR nCurrentItem, INT_PTR nPastItem);
 
-    void _SetCursorPos(INT_PTR i);
+    void _SetCursorPos(HWND hwnd, INT_PTR i);
 
     // Tray registry setting-related functions
     void _ToggleTrayItems(BOOL bEnable);
@@ -244,11 +244,11 @@ protected:
     void _OnIconDemoteTimer(WPARAM wParam, LPARAM lParam);
     
     // Various Message handles
-    LRESULT _OnMouseEvent(UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnCDNotify(LPNMTBCUSTOMDRAW pnm);
     LRESULT _Notify(LPNMHDR pNmhdr);
     void _OnSysChange(UINT uMsg, WPARAM wParam, LPARAM lParam);
-    void _OnCommand(UINT id, UINT uCmd);
+    void _OnCommand(const HWND hWnd, WPARAM wParam, LPARAM lParam);
     BOOL _TrayNotifyIcon(PTRAYNOTIFYDATA pnid, BOOL *pbRefresh);
 
     // User Event Timer functions
