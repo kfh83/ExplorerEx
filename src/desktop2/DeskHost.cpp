@@ -3528,181 +3528,20 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
 
 HRESULT CDesktopHost::_MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg)
 {
-#ifdef DEAD_CODE
     HRESULT hr = S_FALSE;
-    SMNDIALOGMESSAGE nmdm;
+    SMNDIALOGMESSAGE nmdm = {};
 
-    enum {
-        WHERE_IGNORE,               // ignore this message
-        WHERE_OUTSIDE,              // outside the Start Menu entirely
-        WHERE_DEADSPOT,             // a dead spot on the Start Menu
-        WHERE_ONSELF,               // over the item that initiated the popup
-        WHERE_ONOTHER,              // over some other item in the Start Menu
+    enum
+    {
+        WHERE_IGNORE,
+        WHERE_OUTSIDE,
+        WHERE_DEADSPOT,
+        WHERE_ONSELF,
+        WHERE_ONOTHER,
     } uiWhere;
 
-    //
-    //  Figure out where the mouse is.
-    //
-    //  Note: ChildWindowFromPointEx searches only immediate
-    //  children; it does not search grandchildren. Fortunately, that's
-    //  exactly what we want...
-    //
+    HWND hwndTarget = nullptr;
 
-    HWND hwndTarget = NULL;
-
-    if (fRemove)
-    {
-        if (psmd->punk)
-        {
-            // Inside a menuband - mouse has left our window
-            uiWhere = WHERE_OUTSIDE;
-        }
-        else
-        {
-            POINT pt = { GET_X_LPARAM(pmsg->lParam), GET_Y_LPARAM(pmsg->lParam) };
-            ScreenToClient(_hwnd, &pt);
-
-            hwndTarget = ChildWindowFromPointEx(_hwnd, pt, CWP_SKIPINVISIBLE);
-            if (hwndTarget == _hwnd)
-            {
-                uiWhere = WHERE_DEADSPOT;
-            }
-            else if (hwndTarget)
-            {
-                LRESULT lres;
-                nmdm.pt = pt;
-                HWND hwndChild = ::GetWindow(hwndTarget, GW_CHILD);
-                MapWindowPoints(_hwnd, hwndChild, &nmdm.pt, 1);
-                lres = _FindChildItem(hwndTarget, &nmdm, SMNDM_HITTEST | SMNDM_SELECT);
-                if (lres)
-                {
-                    // Mouse is over something; is it over the current item?
-
-                    if (nmdm.itemID == _itemTracking &&
-                        hwndTarget == _hwndTracking)
-                    {
-                        uiWhere = WHERE_ONSELF;
-                    }
-                    else
-                    {
-                        uiWhere = WHERE_ONOTHER;
-                    }
-                }
-                else
-                {
-                    uiWhere = WHERE_DEADSPOT;
-                }
-            }
-            else
-            {
-                // ChildWindowFromPoint failed - user has left the Start Menu
-                uiWhere = WHERE_OUTSIDE;
-            }
-        }
-    }
-    else
-    {
-        // Ignore PM_NOREMOVE messages; we'll pay attention to them when
-        // they are PM_REMOVE'd.
-        uiWhere = WHERE_IGNORE;
-    }
-
-    //
-    //  Now do appropriate stuff depending on where the mouse is.
-    //
-    switch (uiWhere)
-    {
-        case WHERE_IGNORE:
-            break;
-
-        case WHERE_OUTSIDE:
-            //
-            // If you've left the menu entirely, then we return the menu to
-            // its original state, which is to say, as if you are hovering
-            // over the item that caused the popup to open in the first place.
-            // as being in a dead zone.
-            //
-            // FALL THROUGH
-            goto L_WHERE_ONSELF_HOVER;
-
-        case WHERE_DEADSPOT:
-            // To avoid annoying flicker as the user wanders over dead spots,
-            // we ignore mouse motion over them (but dismiss if they click
-            // in a dead spot).
-            if (pmsg->message == WM_LBUTTONDOWN ||
-                pmsg->message == WM_RBUTTONDOWN)
-            {
-                // Must explicitly dismiss; if we let it fall through to the
-                // default handler, then it will dismiss for us, causing the
-                // entire Start Menu to go away instead of just the tracking
-                // part.
-                _DismissTrackShellMenu();
-                hr = S_OK;
-            }
-            break;
-
-        case WHERE_ONSELF:
-            if (pmsg->message == WM_LBUTTONDOWN ||
-                pmsg->message == WM_RBUTTONDOWN)
-            {
-                _DismissTrackShellMenu();
-                hr = S_OK;
-            }
-            else
-            {
-            L_WHERE_ONSELF_HOVER:
-                _hwndAltTracking = NULL;
-                _itemAltTracking = 0;
-                nmdm.itemID = _itemTracking;
-                _FindChildItem(_hwndTracking, &nmdm, SMNDM_FINDITEMID | SMNDM_SELECT);
-                KillTimer(_hwnd, IDT_MENUCHANGESEL);
-            }
-            break;
-
-        case WHERE_ONOTHER:
-            if (pmsg->message == WM_LBUTTONDOWN ||
-                pmsg->message == WM_RBUTTONDOWN)
-            {
-                _DismissTrackShellMenu();
-                hr = S_OK;
-            }
-            else if (hwndTarget == _hwndAltTracking && nmdm.itemID == _itemAltTracking)
-            {
-                // Don't restart the timer if the user wiggles the mouse
-                // within a single item
-            }
-            else
-            {
-                _hwndAltTracking = hwndTarget;
-                _itemAltTracking = nmdm.itemID;
-
-                DWORD dwHoverTime;
-                if (!SystemParametersInfo(SPI_GETMENUSHOWDELAY, 0, &dwHoverTime, 0))
-                {
-                    dwHoverTime = 0;
-                }
-                SetTimer(_hwnd, IDT_MENUCHANGESEL, dwHoverTime, 0);
-            }
-            break;
-    }
-
-    return hr;
-#else
-    POINT pt;
-
-    SMNDIALOGMESSAGE nmdm; // [esp+34h] [ebp-34h] BYREF
-    HRESULT hr = 1;
-    
-    enum {
-        WHERE_IGNORE,               // ignore this message
-        WHERE_OUTSIDE,              // outside the Start Menu entirely
-        WHERE_DEADSPOT,             // a dead spot on the Start Menu
-        WHERE_ONSELF,               // over the item that initiated the popup
-        WHERE_ONOTHER,              // over some other item in the Start Menu
-    } uiWhere;
-
-    HWND hwndTarget = 0;
-    
     if (fRemove)
     {
         if (psmd->punk)
@@ -3711,32 +3550,29 @@ HRESULT CDesktopHost::_MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg)
         }
         else
         {
+            POINT pt;
             pt.y = GET_Y_LPARAM(pmsg->lParam);
             pt.x = GET_X_LPARAM(pmsg->lParam);
             ScreenToClient(_hwnd, &pt);
-            
+
             hwndTarget = ChildWindowFromPointEx(_hwnd, pt, 1);
-            
-            HWND v8 = _spm.panes[1].hwnd;
+            HWND v8 = _spm.panes[SMPANETYPE_OPENVIEWHOST].hwnd;
             if (hwndTarget == v8)
             {
                 hwndTarget = ChildWindowFromPointEx(v8, pt, 1);
             }
-            
-            HWND v9 = _hwnd;
-            if (hwndTarget == v9 || hwndTarget == _spm.panes[1].hwnd)
+            if (hwndTarget == _hwnd || hwndTarget == _spm.panes[SMPANETYPE_OPENVIEWHOST].hwnd)
             {
                 uiWhere = WHERE_DEADSPOT;
             }
             else if (hwndTarget)
             {
-                MapWindowPoints(v9, hwndTarget, &pt, 1u);
-                
+                MapWindowPoints(_hwnd, hwndTarget, &pt, 1);
                 nmdm.pt = pt;
-                HWND fRemovea = ChildWindowFromPointEx(hwndTarget, pt, 1u);
-                MapWindowPoints(hwndTarget, fRemovea, &nmdm.pt, 1u);
-                nmdm.hwnd = fRemovea;
-                if (_FindChildItem(hwndTarget, &nmdm, 0x107u))
+                HWND hwndChild = ChildWindowFromPointEx(hwndTarget, pt, 1);
+                MapWindowPoints(hwndTarget, hwndChild, &nmdm.pt, 1);
+                nmdm.hwnd = hwndChild;
+                if (_FindChildItem(hwndTarget, &nmdm, 0x107))
                 {
                     if (nmdm.itemID == _itemTracking && hwndTarget == _hwndTracking)
                     {
@@ -3763,15 +3599,15 @@ HRESULT CDesktopHost::_MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg)
     {
         uiWhere = WHERE_IGNORE;
     }
-    
-    if (uiWhere == 1)
+
+    if (uiWhere == WHERE_OUTSIDE)
     {
         goto L_WHERE_ONSELF_HOVER;
     }
 
-    if (uiWhere == 2)
+    if (uiWhere == WHERE_DEADSPOT)
     {
-        if (pmsg->message == 513 || pmsg->message == 516)
+        if (pmsg->message == WM_LBUTTONDOWN || pmsg->message == WM_RBUTTONDOWN)
         {
             _DismissTrackShellMenu();
             return 0;
@@ -3779,34 +3615,34 @@ HRESULT CDesktopHost::_MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg)
         return hr;
     }
 
-    if (uiWhere == 3)
+    if (uiWhere == WHERE_ONSELF)
     {
-        if (pmsg->message == 516)
+        if (pmsg->message == WM_RBUTTONDOWN)
         {
             _DismissTrackShellMenu();
             hr = 0;
         }
-        if (pmsg->message == 513)
+        if (pmsg->message == WM_LBUTTONDOWN)
         {
             return 0;
         }
     L_WHERE_ONSELF_HOVER:
-        _hwndAltTracking = 0;
+        _hwndAltTracking = nullptr;
         _itemAltTracking = 0;
         nmdm.itemID = _itemTracking;
-        _FindChildItem(_hwndTracking, &nmdm, 0x109u);
-        KillTimer(_hwnd, 1u);
+        _FindChildItem(_hwndTracking, &nmdm, 0x109);
+        KillTimer(_hwnd, 1);
         return hr;
     }
 
-    if (uiWhere == 4)
+    if (uiWhere == WHERE_ONOTHER)
     {
-        if (pmsg->message == 513 || pmsg->message == 516)
+        if (pmsg->message == WM_LBUTTONDOWN || pmsg->message == WM_RBUTTONDOWN)
         {
             _DismissTrackShellMenu();
-            if (hwndTarget == _hwndTracking && pmsg->message == 513)
+            if (hwndTarget == _hwndTracking && pmsg->message == WM_LBUTTONDOWN)
             {
-                _FindChildItem(hwndTarget, &nmdm, 0x406u);
+                _FindChildItem(hwndTarget, &nmdm, 0x406);
             }
             return 0;
         }
@@ -3817,18 +3653,15 @@ HRESULT CDesktopHost::_MenuMouseFilter(LPSMDATA psmd, BOOL fRemove, LPMSG pmsg)
             _hwndAltTracking = hwndTarget;
 
             DWORD dwHoverTime;
-            if (!SystemParametersInfo(SPI_GETMENUSHOWDELAY, 0, &dwHoverTime, 0))
+            if (!SystemParametersInfoW(SPI_GETMENUSHOWDELAY, 0, &dwHoverTime, 0))
             {
                 dwHoverTime = 0;
             }
-            SetTimer(_hwnd, 1u, dwHoverTime, 0);
+            SetTimer(_hwnd, 1, dwHoverTime, nullptr);
         }
         return hr;
     }
-    
     return hr;
-
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
