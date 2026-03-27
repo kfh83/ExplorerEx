@@ -2136,20 +2136,19 @@ SFTBarHost::~SFTBarHost()
     ATOMICRELEASE(_psched);
     ASSERT(_pdtoDragOut == NULL);
 
-    _dpaEnum.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
-
-    _dpaEnumNew.DestroyCallbackEx(PaneItem::DPAEnumCallback, (void *)NULL);
+    _dpaEnum.DestroyCallback(PaneItem::DPAEnumCallback, nullptr);
+    _dpaEnumNew.DestroyCallback(PaneItem::DPAEnumCallback, nullptr);
 
     if (_himl)
     {
         if (_IsPrivateImageList())
         {
-            VARIANT vt = {0};
+            VARIANT vt = {};
             vt.vt = VT_BYREF;
-            IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 314, 0, &vt, 0);
+            IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 314, 0, &vt, nullptr);
         }
         ImageList_Destroy(_himl);
-		_himl = NULL;
+		_himl = nullptr;
     }
 
     if (_hfList)

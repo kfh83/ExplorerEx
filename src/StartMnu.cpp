@@ -453,16 +453,7 @@ DEFINE_GUID(POLID_NoClose, 0x29B0CC43, 0x2F2B, 0x4D0C, 0xA0, 0x81, 0xA5, 0x28, 0
 
 BOOL _ShowStartMenuShutdown()
 {
-#ifdef DEAD_CODE
-    return  !SHRestricted(REST_NOCLOSE) &&
-            (IsOS(OS_ANYSERVER) ||
-                (!GetSystemMetrics(SM_REMOTESESSION) &&
-                    (!IsOS(OS_FRIENDLYLOGONUI) || SHTestTokenPrivilegeW(NULL, SE_SHUTDOWN_NAME))));
-    // if friendly logon is active, then don't show shutdown unless they have privileges, since shutdown "only" shuts you down.
-    // if they're not using friendly logon ui, then shutdown also contains options to log you off/hibernate, so show it...
-#else
     return !SHWindowsPolicy(POLID_NoClose) && (IsOS(OS_ANYSERVER) || !GetSystemMetrics(SM_REMOTESESSION));
-#endif
 }
 
 //  If remote and not disabled by administrator then show "Disconnect".

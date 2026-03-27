@@ -10,22 +10,12 @@ class CLogoffPane;
 
 #define NUM_TBBUTTON_IMAGES 6
 
-#ifdef DEAD_CODE
-static const TBBUTTON tbButtonsCreate [] = 
-{
-    {0, SMNLC_EJECT,    TBSTATE_ENABLED, BTNS_SHOWTEXT|BTNS_AUTOSIZE, {0,0}, IDS_LOGOFF_TIP_EJECT, 0},
-    {1, SMNLC_LOGOFF,   TBSTATE_ENABLED, BTNS_SHOWTEXT|BTNS_AUTOSIZE, {0,0}, IDS_LOGOFF_TIP_LOGOFF, 1},
-    {2, SMNLC_TURNOFF,  TBSTATE_ENABLED, BTNS_SHOWTEXT|BTNS_AUTOSIZE, {0,0}, IDS_LOGOFF_TIP_SHUTDOWN, 2},
-    {2,SMNLC_DISCONNECT,TBSTATE_ENABLED, BTNS_SHOWTEXT|BTNS_AUTOSIZE, {0,0}, IDS_LOGOFF_TIP_DISCONNECT, 3},
-};
-#else
 static const TBBUTTON tbButtonsCreate[] =
 {
-  { 1, SMNLC_TURNOFF,       TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7032, 1 },
-  { 0, SMNLC_DISCONNECT,    TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7033, 2 },
-  { 5, SMNLC_LOGOFF,        TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7034, 0 }
+    { 1, 1, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7032, 1 },
+    { 0, 2, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7033, 2 },
+    { 5, 0, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7034, 0 }
 };
-#endif
 
 // WARNING!  Must be in sync with tbButtonsCreate
 static const UINT c_rgidmLegacy[] =
@@ -40,7 +30,44 @@ static const UINT c_rgidmLegacy[] =
 // {14CE31DC-ABC2-484C-B061-CF3416AED8FF}
 DEFINE_GUID(CLSID_AuthUIShutdownChoices, 0x14CE31DC, 0xABC2, 0x484C, 0xB0, 0x61, 0xCF, 0x34, 0x16, 0xAE, 0xD8, 0xFF);
 
-// EXEX-TODO: Move? Copied from https://github.com/AllieTheFox/AuthUX-Styles/blob/e05fda9e431ce5715e2e05093febc45cf8146d5c/sdk/inc/logoninterfaces.h#L1044-L1051
+enum SHTDN
+{
+    SHTDN_NONE = 0x0,
+    SHTDN_LOGOFF = 0x1,
+    SHTDN_SHUTDOWN = 0x2,
+    SHTDN_RESTART = 0x4,
+    SHTDN_RESTART_DOS = 0x8,
+    SHTDN_SLEEP = 0x10,
+    SHTDN_SLEEP2 = 0x20,
+    SHTDN_HIBERNATE = 0x40,
+    SHTDN_DISCONNECT = 0x80,
+    SHTDN_SWITCHUSER = 0x100,
+    SHTDN_LOCK = 0x200,
+    SHTDN_EJECT = 0x400,
+    SHTDN_MODIFIER_FORCE = 0x10000,
+    SHTDN_MODIFIER_INSTALL_UPDATES = 0x20000,
+    SHTDN_MODIFIER_ACCESS_DENIED = 0x40000,
+    SHTDN_MODIFIER_BROKEN = 0x80000,
+    SHTDN_MODIFIER_NO_WAKE = 0x100000,
+    SHTDN_MODIFIER_SEPARATOR = 0x400000,
+    SHTDN_MODIFIER_HYBRID = 0x800000,
+    SHTDN_MODIFIER_FORCE_OTHERS = 0x1000000,
+    SHTDN_MODIFIER_BOOTOPTIONS = 0x2000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SHTDN);
+
+typedef DWORD SHUTDOWN_CHOICE;
+
+enum SHUTDOWN_CHOICE_ICON
+{
+    SHUTDOWN_CHOICE_ICON_1 = 0x1,
+    SHUTDOWN_CHOICE_ICON_2 = 0x2,
+    SHUTDOWN_CHOICE_ICON_3 = 0x3,
+    SHUTDOWN_CHOICE_ICON_4 = 0x4,
+    SHUTDOWN_CHOICE_ICON_5 = 0x5,
+};
+
 MIDL_INTERFACE("a0b16477-52f1-4cfe-b1cc-388cd0e3e23a")
 IEnumShutdownChoices : IUnknown
 {
@@ -61,45 +88,37 @@ IShutdownChoiceListener : IUnknown
     STDMETHOD(StopListening)() PURE;
 };
 
-// EXEX-TODO: Move? Also, this interface changed between Windows versions. This is the Vista version.
-
-enum SHUTDOWN_CHOICE
+// Windows Vista version of the interface. Here for reference purposes.
+MIDL_INTERFACE("a5dbd3dc-ee32-497a-ab84-f2c6aa5913f5")
+IShutdownChoices_Vista : IUnknown
 {
-    SHTDN_NONE = 0,
-    SHUTDOWN_CHOICE_1 = 1,
-    SHUTDOWN_CHOICE_2 = 2,
-    SHUTDOWN_CHOICE_3 = 3,
+    virtual HRESULT STDMETHODCALLTYPE Refresh() = 0;
+    virtual HRESULT STDMETHODCALLTYPE CreateListener(IShutdownChoiceListener**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetShowBadChoices(BOOL) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceEnumerator(IEnumShutdownChoices**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDefaultChoice(SHUTDOWN_CHOICE*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMenuChoices(IEnumShutdownChoices**) = 0;
+    virtual BOOL STDMETHODCALLTYPE UserHasShutdownRights() = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceName(SHUTDOWN_CHOICE, int, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceDesc(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceVerb(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceIcon(SHUTDOWN_CHOICE, SHUTDOWN_CHOICE_ICON*) = 0;
 };
 
-MIDL_INTERFACE("bfdc5e2f-3402-49b3-8740-91d6dc5dbb15")
-IShutdownChoices : IUnknown
-{
-    STDMETHOD(Refresh)() PURE;
-    STDMETHOD(CreateListener)(IShutdownChoiceListener **ppOut) PURE;
-    STDMETHOD(SetShowBadChoices)(BOOL fShow) PURE;
-    STDMETHOD(GetChoiceEnumerator)(IEnumShutdownChoices **ppOut) PURE;
-    STDMETHOD(GetDefaultChoice)(DWORD *piOut) PURE; // This returns an ID representing the choice.
-    STDMETHOD(GetMenuChoices)(IEnumShutdownChoices **ppOut) PURE;
-    STDMETHOD_(BOOL, UserHasShutdownRights)() PURE;
-    STDMETHOD(GetChoiceName)(DWORD choice, int a3, LPWSTR a4, UINT a5) PURE;
-    STDMETHOD(GetChoiceDesc)(DWORD, LPWSTR, UINT) PURE;
-    STDMETHOD(GetChoiceVerb)(DWORD, LPWSTR, UINT) PURE;
-    STDMETHOD(GetChoiceIcon)(DWORD choice, int *pIcon) PURE;
-};
-
+// Windows 10 version of the interface. Missing many of the important methods from the Vista version.
 MIDL_INTERFACE("bfdc5e2f-3402-49b3-8740-91d6dc5dbb15")
 IShutdownChoices10 : IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE Refresh() = 0;
-    virtual HRESULT STDMETHODCALLTYPE SetChoiceMask(DWORD) = 0;
-    virtual void STDMETHODCALLTYPE GetChoiceMask(DWORD *) = 0;
-    virtual void STDMETHODCALLTYPE GetDefaultUIChoiceMask(DWORD *) = 0;
-    virtual HRESULT STDMETHODCALLTYPE SetShowBadChoices(int) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetChoiceEnumerator(IEnumShutdownChoices **) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetDefaultChoice(SHUTDOWN_CHOICE *) = 0;
-    virtual int STDMETHODCALLTYPE UserHasShutdownRights() = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetChoiceName(DWORD, int, WCHAR *, UINT) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetChoiceDesc(DWORD, WCHAR *, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetChoiceMask(SHUTDOWN_CHOICE) = 0;
+    virtual void STDMETHODCALLTYPE GetChoiceMask(SHUTDOWN_CHOICE*) = 0;
+    virtual void STDMETHODCALLTYPE GetDefaultUIChoiceMask(SHUTDOWN_CHOICE*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetShowBadChoices(BOOL) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceEnumerator(IEnumShutdownChoices**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDefaultChoice(SHUTDOWN_CHOICE*) = 0;
+    virtual BOOL STDMETHODCALLTYPE UserHasShutdownRights() = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceName(SHUTDOWN_CHOICE, int, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceDesc(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
 };
 
 class CLogoffPane
@@ -107,16 +126,15 @@ class CLogoffPane
     , public CAccessible
 {
 public:
-
     // *** IUnknown ***
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj);
-    STDMETHODIMP_(ULONG) AddRef(void) { return CUnknown::AddRef(); }
-    STDMETHODIMP_(ULONG) Release(void) { return CUnknown::Release(); }
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override { return CUnknown::AddRef(); }
+    STDMETHODIMP_(ULONG) Release() override { return CUnknown::Release(); }
 
     // *** IAccessible overridden methods ***
-    STDMETHODIMP get_accName(VARIANT varChild, BSTR *pszName);
-    STDMETHODIMP get_accKeyboardShortcut(VARIANT varChild, BSTR *pszKeyboardShortcut);
-    STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction);
+    STDMETHODIMP get_accName(VARIANT varChild, BSTR* pszName);
+    STDMETHODIMP get_accKeyboardShortcut(VARIANT varChild, BSTR* pszKeyboardShortcut);
+    STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR* pszDefAction);
 
     CLogoffPane();
     ~CLogoffPane() override;
@@ -134,7 +152,6 @@ public:
     LRESULT _OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm);
     LRESULT _OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnDisplayChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    LRESULT _OnSettingChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void    _InitMetrics();
     LRESULT _OnSize(int x, int y);
 
@@ -142,41 +159,39 @@ public:
 	void AddShutdownOptions(HMENU hMenu);
 	void ApplyLogoffMenuOption(HMENU hMenu);
     int GetTipIDFromIDM(int id);
-	HRESULT GetShutdownItemDescription(ULONG a2, WCHAR *pszDesc, UINT a4);
+    HRESULT GetShutdownItemDescription(SHUTDOWN_CHOICE sdChoice, WCHAR* pszDesc, UINT cchDesc);
 
 private:
     HWND _hwnd;
     HWND _hwndTB;
     HWND _hwndSplit;
-    HWND _hwndTT;   //Tooltip window.
+    HWND _hwndTT;
     COLORREF _clr;
-    int      _colorHighlight;
-    int      _colorHighlightText;
+    int _colorHighlight;
+    int _colorHighlightText;
     HTHEME _hTheme;
-    BOOL   _fSettingHotItem;
+    BOOL _fSettingHotItem;
     int field_40; // EXEX-TODO(isabella): Rename.
     MARGINS _margins;
     HFONT _hfMarlett;
     int field_58;
-    int field_5c;
+    int field_5C;
     HIMAGELIST _himl;
     int field_64;
     int field_68;
-    IShutdownChoices10 *_psdc;
-    IShutdownChoiceListener *_psdListen;
+    IShutdownChoices10* _psdc;
+    IShutdownChoiceListener* _psdListen;
     HWND _hwndSdListenMsg;
     IAccessible* _pAcc;
-
 
     // helper functions
     int _GetCurButton();
     LRESULT _NextVisibleButton(PSMNDIALOGMESSAGE pdm, int i, int direction);
     BOOL _IsButtonHiddenOrDisabled(int i, DWORD dwFlags);
     TCHAR _GetButtonAccelerator(int i);
-    void _RightAlign();
     void _ApplyOptions();
     HRESULT _InitShutdownObjects();
-    HRESULT _AddShutdownChoiceToMenu(HMENU hMenu, ULONG_PTR a3, UINT idMenuItem, UINT item);
+    HRESULT _AddShutdownChoiceToMenu(HMENU hMenu, SHUTDOWN_CHOICE sdChoice, UINT idMenuItem, UINT item);
 
     BOOL _SetTBButtons(int id, UINT iMsg);
     int _GetThemeBitmapSize(int iPartId, int iStateId, int id);
@@ -185,13 +200,12 @@ private:
 	int _GetIdstipFromCommand(int id);
     int _GetIdmFromCommand(int id);
     int _GetCurPressedButton();
-	int _HitTest(HWND hwndTest, POINT ptTest);
+    int _HitTest(HWND hwndTest, POINT ptTest);
     BOOL _IsPtInDropDownSplit(HWND hwnd, POINT pt);
     void _DoSplitButtonContextMenu(int a2);
-    int _IsTBButtonEnabled(int a2);
+    BOOL _IsTBButtonEnabled(int a2);
     void _SetShutdownButtonProperties(int a2);
-    int _GetLocalImageForShutdownChoice(DWORD a2);
-    
+    int _GetLocalImageForShutdownChoice(SHUTDOWN_CHOICE sdChoice);
 
     friend BOOL CLogoffPane_RegisterClass();
 
@@ -209,20 +223,21 @@ CLogoffPane::~CLogoffPane()
 {
 }
 
-HRESULT CLogoffPane::QueryInterface(REFIID riid, void * *ppvOut)
+HRESULT CLogoffPane::QueryInterface(REFIID riid, void** ppvOut)
 {
-    static const QITAB qit[] = {
+    static const QITAB qit[] =
+    {
         QITABENT(CLogoffPane, IAccessible),
         QITABENT(CLogoffPane, IDispatch), // IAccessible derives from IDispatch
         QITABENT(CLogoffPane, IEnumVARIANT),
-        { 0 },
+        {},
     };
     return QISearch(this, qit, riid, ppvOut);
 }
 
 LRESULT CALLBACK CLogoffPane::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CLogoffPane* self = reinterpret_cast<CLogoffPane*>(GetWindowLongPtr(hwnd, 0));
+    CLogoffPane* self = reinterpret_cast<CLogoffPane*>(GetWindowLongPtrW(hwnd, 0));
 
     switch (uMsg)
     {
@@ -316,12 +331,12 @@ void AddBitmapToToolbar(HWND hwndTB, HBITMAP hBitmap, int cxTotal, int cy, UINT 
 // EXEX-VISTA: Validated.
 BOOL CLogoffPane::_SetTBButtons(int id, UINT iMsg)
 {
-    HBITMAP hBitmap = (HBITMAP)LoadImage(_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(id), IMAGE_BITMAP,
-        0, 0, LR_CREATEDIBSECTION);
+    HBITMAP hBitmap = (HBITMAP)LoadImageW(
+        _AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCEW(id), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
     if (hBitmap)
     {
         BITMAP bm;
-        if (GetObject(hBitmap, sizeof(BITMAP), &bm))
+        if (GetObjectW(hBitmap, sizeof(BITMAP), &bm))
         {
             AddBitmapToToolbar(_hwndTB, hBitmap, bm.bmWidth, bm.bmHeight, NUM_TBBUTTON_IMAGES, iMsg);
         }
@@ -624,78 +639,33 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
 
 BOOL CLogoffPane::_IsButtonHiddenOrDisabled(int i, DWORD dwFlags)
 {
-#ifdef DEAD_CODE
-    TBBUTTON but;
-    SendMessage(_hwndTB, TB_GETBUTTON, i, (LPARAM) &but);
-    return but.fsState & TBSTATE_HIDDEN;
-#else
-    TBBUTTONINFO tbbi;
-    tbbi.dwMask = dwFlags | 4;
-    tbbi.cbSize = 0x20;
-    SendMessage(this->_hwndTB, TB_GETBUTTONINFO, i, (LPARAM)&tbbi);
-    return (tbbi.fsState & 0x18) != 0;
-#endif
+    TBBUTTONINFOW tbbi;
+    tbbi.dwMask = dwFlags | TBIF_STATE;
+    tbbi.cbSize = sizeof(tbbi);
+    SendMessageW(_hwndTB, TB_GETBUTTONINFOW, i, reinterpret_cast<LPARAM>(&tbbi));
+    return (tbbi.fsState & TBSTATE_HIDDEN | TBSTATE_INDETERMINATE) != 0;
 }
-
-void CLogoffPane::_RightAlign()
-{
-#if 0
-    int iWidthOfButtons=0;
-
-    // add up the width of all the non-hidden buttons
-    for(int i=0;i<ARRAYSIZE(tbButtonsCreate);i++)
-    {
-        if (!_IsButtonHidden(i))
-        {
-            RECT rc;
-            SendMessage(_hwndTB, TB_GETITEMRECT, i, (LPARAM) &rc);
-            iWidthOfButtons += RECTWIDTH(rc);
-        }
-    }
-
-    if (iWidthOfButtons)
-    {
-        RECT rc;
-        GetClientRect(_hwndTB, &rc);
-
-        int iIndent = RECTWIDTH(rc) - iWidthOfButtons - GetSystemMetrics(SM_CXEDGE);
-
-        if (iIndent < 0)
-            iIndent = 0;
-        SendMessage(_hwndTB, TB_SETINDENT, iIndent, 0);
-    }
-#endif
-}
-
-// #define DEAD_CODE
 
 LRESULT CLogoffPane::_OnSize(int x, int y)
 {
-#ifdef DEAD_CODE
-    if (_hwndTB)
-    {
-        SetWindowPos(_hwndTB, NULL, _margins.cxLeftWidth, _margins.cyTopHeight,
-            x - (_margins.cxRightWidth + _margins.cxLeftWidth), y - (_margins.cyBottomHeight + _margins.cyTopHeight),
-            SWP_NOACTIVATE | SWP_NOOWNERZORDER);
-        _RightAlign();
-    }
-    return 0;
-#else
     if (_hwndSplit)
     {
-        SetWindowPos(_hwndSplit, NULL, _margins.cxLeftWidth + field_64, _margins.cyTopHeight, field_68,
+        SetWindowPos(
+            _hwndSplit, nullptr, _margins.cxLeftWidth + field_64, _margins.cyTopHeight, field_68,
             y - (_margins.cyBottomHeight - _margins.cyTopHeight),
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER
+        );
     }
 
     if (_hwndTB)
     {
-        SetWindowPos(_hwndTB, NULL, _margins.cxLeftWidth, _margins.cyTopHeight, field_64,
+        SetWindowPos(
+            _hwndTB, nullptr, _margins.cxLeftWidth, _margins.cyTopHeight, field_64,
             y - (_margins.cyBottomHeight - _margins.cyTopHeight),
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER
+        );
     }
     return 0;
-#endif
 }
 
 LRESULT CLogoffPane::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -711,26 +681,39 @@ LRESULT CLogoffPane::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     return lres;
 }
 
-int __thiscall CLogoffPane::_GetLocalImageForShutdownChoice(DWORD a2)
+const struct
 {
-    int v5 = 1;
-    if (this->_psdc != nullptr)
+    SHUTDOWN_CHOICE sdc;
+    UINT uIdName;
+    UINT uIdAccName;
+    UINT uIdVerb;
+    UINT uIdDesc;
+    SHUTDOWN_CHOICE_ICON sdcIcon;
+} g_rgShutdownResources[] =
+{
+    { SHTDN_SHUTDOWN,                                   3008, 3009, 3010, 3011, SHUTDOWN_CHOICE_ICON_1 },
+    { SHTDN_SLEEP,                                      3016, 3017, 3018, 3019, SHUTDOWN_CHOICE_ICON_2 },
+    { SHTDN_RESTART,                                    3012, 3013, 3014, 3015, SHUTDOWN_CHOICE_ICON_4 },
+    { SHTDN_SLEEP | 0x200000,                           3026, 3027, 3028, 3029, SHUTDOWN_CHOICE_ICON_3 }, // Hybrid sleep (s4)
+    { SHTDN_HIBERNATE,                                  3022, 3023, 3024, 3025, SHUTDOWN_CHOICE_ICON_2 },
+    { SHTDN_SHUTDOWN | SHTDN_MODIFIER_INSTALL_UPDATES,  3030, 3031, 3032, 3033, SHUTDOWN_CHOICE_ICON_5 }
+};
+
+int CLogoffPane::_GetLocalImageForShutdownChoice(SHUTDOWN_CHOICE sdChoice)
+{
+    if (_psdc != nullptr)
     {
-        //this->_psdc->GetChoiceIcon(a2, &v5);
-        if (v5 >= 2)
+        SHUTDOWN_CHOICE_ICON sdChoiceIcon = SHUTDOWN_CHOICE_ICON_1;
+        // _psdc->GetChoiceIcon(sdChoice, &sdChoiceIcon); // @NOTE: Nuked sometime after vista
+        switch (sdChoiceIcon)
         {
-            if (v5 <= 3)
-            {
+            case SHUTDOWN_CHOICE_ICON_2:
+            case SHUTDOWN_CHOICE_ICON_3:
                 return 3;
-            }
-            if (v5 == 4)
-            {
+            case SHUTDOWN_CHOICE_ICON_4:
                 return 4;
-            }
-            if (v5 == 5)
-            {
+            case SHUTDOWN_CHOICE_ICON_5:
                 return 2;
-            }
         }
     }
     return 1;
@@ -742,12 +725,12 @@ void CLogoffPane::_SetShutdownButtonProperties(int a2)
     if (_psdc && SUCCEEDED(_psdc->GetDefaultChoice(&sdChoice)))
     {
         _ASSERT(sdChoice != SHTDN_NONE); // 780
-        if ((sdChoice & 0x40000) != 0 && a2)
+        if ((sdChoice & SHTDN_MODIFIER_ACCESS_DENIED) != 0 && a2)
         {
             SendMessageW(_hwndTB, TB_SETSTATE, 1, TBSTATE_INDETERMINATE);
         }
 
-        TBBUTTONINFO tbbi = {};
+        TBBUTTONINFOW tbbi = {};
         tbbi.cbSize = sizeof(tbbi);
         tbbi.dwMask = TBIF_IMAGE;
         tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice);
@@ -763,203 +746,140 @@ extern BOOL _AllowLockWorkStation();
 
 void CLogoffPane::_ApplyOptions()
 {
-#ifdef DEAD_CODE
-    SMNFILTEROPTIONS nmopt;
-    nmopt.smnop = SMNOP_LOGOFF | SMNOP_TURNOFF | SMNOP_DISCONNECT | SMNOP_EJECT;
-    _SendNotify(_hwnd, SMN_FILTEROPTIONS, &nmopt.hdr);
-
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_EJECT, !(nmopt.smnop & SMNOP_EJECT));
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_LOGOFF, !(nmopt.smnop & SMNOP_LOGOFF));
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_TURNOFF, !(nmopt.smnop & SMNOP_TURNOFF));
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_DISCONNECT, !(nmopt.smnop & SMNOP_DISCONNECT));
-
-    _RightAlign();
-#else
     if (_psdc)
         _psdc->Refresh();
 
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_TURNOFF, _ShowStartMenuShutdown() == 0);
-    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_DISCONNECT, _ShowStartMenuDisconnect() == 0);
-    SendMessage(_hwndTB, TB_HIDEBUTTON, 0, _AllowLockWorkStation() == 0);
+    BOOL fShowShutdown = _ShowStartMenuShutdown();
+    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_TURNOFF, fShowShutdown == 0);
+    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_DISCONNECT, _ShowStartMenuDisconnect() == 0);
+    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_LOGOFF, _AllowLockWorkStation() == 0);
 
-    SIZE siz; 
-    if (SendMessage(_hwndTB, TB_GETMAXSIZE, 0, (LPARAM)&siz))
+    SIZE siz;
+    if (SendMessageW(_hwndTB, TB_GETMAXSIZE, 0, reinterpret_cast<LPARAM>(&siz)))
+    {
         field_64 = siz.cx;
-
+    }
     // SHTracePerfSQMSetValueImpl(&ShellTraceId_StartMenu_Left_Control_Button_Label, 54, 5);
-    _SetShutdownButtonProperties(_ShowStartMenuShutdown());
-#endif
+    _SetShutdownButtonProperties(fShowShutdown);
 }
 
+// @NOTE This is not publicly in CommCtrl.h for some reason.
+// ref: https://learn.microsoft.com/en-us/windows/win32/controls/tbn-wrapaccelerator
+typedef struct tagNMTBWRAPACCELERATOR
+{
+    NMHDR hdr;
+    UINT ch;
+    int iButton;
+} NMTBWRAPACCELERATOR, *LPNMTBWRAPACCELERATOR;
 
 LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
 {
-#ifdef DEAD_CODE
+    NMHDR* v10;
+    LRESULT v13;
+
     if (pnm->hwndFrom == _hwndTB)
     {
         switch (pnm->code)
         {
-        case NM_CUSTOMDRAW:
-            return _OnCustomDraw((NMTBCUSTOMDRAW*)pnm);
-        case TBN_WRAPACCELERATOR:
-            return TRUE;            // Disable wraparound; we want DeskHost to do navigation
-        case TBN_GETINFOTIP:
-        {
-            NMTBGETINFOTIP* ptbgit = (NMTBGETINFOTIP*)pnm;
-            ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT && ptbgit->lParam <= IDS_LOGOFF_TIP_DISCONNECT);
-            LoadString(_AtlBaseModule.GetModuleInstance(), ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
-            return TRUE;
-        }
-        case TBN_HOTITEMCHANGE:
-        {
-            // Disallow setting a hot item if we are not focus
-            // (unless it was specifically our idea in the first place)
-            // Otherwise we interfere with keyboard navigation
-
-            NMTBHOTITEM* phot = (NMTBHOTITEM*)pnm;
-            if (!(phot->dwFlags & HICF_LEAVING) &&
-                GetFocus() != pnm->hwndFrom &&
-                !_fSettingHotItem)
-            {
-                return TRUE; // deny hot item change
-            }
-        }
-        break;
-
-        }
-    }
-    else // from host
-    {
-        switch (pnm->code)
-        {
-        case SMN_REFRESHLOGOFF:
-            _ApplyOptions();
-            return TRUE;
-        case SMN_FINDITEM:
-            return _OnSMNFindItem(CONTAINING_RECORD(pnm, SMNDIALOGMESSAGE, hdr));
-        case SMN_APPLYREGION:
-            return HandleApplyRegion(_hwnd, _hTheme, (SMNMAPPLYREGION*)pnm, SPP_LOGOFF, 0);
-        }
-    }
-
-    return FALSE;
-#else
-    // eax
-    // eax
-    // eax
-    HWND v8; // eax
-    UINT v9; // eax
-    NMHDR* v10; // eax
-    HWND v11; // edi
-    LRESULT v13; // eax
-    //CPPEH_RECORD ms_exc; // [esp+30h] [ebp-18h]
-
-    if (pnm->hwndFrom == this->_hwndTB)
-    {
-        switch (pnm->code)
-        {
-        case 0xFFFFFD2A:
-            pnm[1].idFrom = -1;
-            break;
-        case 0xFFFFFD31:
-            if (_GetCurPressedButton() == -1)
-            {
-                NMTBGETINFOTIP* ptbgit = (NMTBGETINFOTIP*)pnm;
-                if (ptbgit->lParam == 7032)
+            case TBN_WRAPACCELERATOR:
+                reinterpret_cast<NMTBWRAPACCELERATOR*>(pnm)->iButton = -1;
+                break;
+            case TBN_GETINFOTIPW:
+                if (_GetCurPressedButton() == -1)
                 {
-                    if (this->_psdc)
+                    NMTBGETINFOTIPW* ptbgit = reinterpret_cast<NMTBGETINFOTIPW*>(pnm);
+                    if (ptbgit->lParam != 7032)
                     {
-                        SHUTDOWN_CHOICE dwChoice;
-                        if (this->_psdc->GetDefaultChoice(&dwChoice) >= 0)
+                        _ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT/*7030*/ && ptbgit->lParam <= IDS_LOGOFF_TIP_LAST/*7036*/); // 879
+                        if (ptbgit->lParam)
                         {
-                            this->_psdc->GetChoiceDesc(dwChoice, ptbgit->pszText, ptbgit->cchTextMax);
+                            LoadStringW(g_hinstCabinet, ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
+                        }
+                    }
+                    else if (_psdc)
+                    {
+                        DWORD sdChoice;
+                        if (SUCCEEDED(_psdc->GetDefaultChoice(&sdChoice)))
+                        {
+                            _psdc->GetChoiceDesc(sdChoice, ptbgit->pszText, ptbgit->cchTextMax);
                         }
                     }
                 }
-                else
-                {
-                    ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT/*7030*/ && ptbgit->lParam <= IDS_LOGOFF_TIP_LAST/*7036*/); // 879
-                    if (ptbgit->lParam)
-                    {
-						LoadString(g_hinstCabinet, ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
-                    }
-                }
-            }
-            break;
-        case 0xFFFFFFF4:
-            return _OnCustomDraw((NMTBCUSTOMDRAW*)pnm);
-        default:
-            return 0;
+                break;
+            case NM_CUSTOMDRAW:
+                return _OnCustomDraw(reinterpret_cast<NMTBCUSTOMDRAW*>(pnm));
+            default:
+                return 0;
         }
         return 1;
     }
 
-    if (pnm->hwndFrom == this->_hwndSdListenMsg)
+    if (pnm->hwndFrom == _hwndSdListenMsg)
     {
         _ApplyOptions();
-        _SendNotify(this->_hwnd, 209, 0);
+        _SendNotify(_hwnd, 209, nullptr);
         return 0;
     }
 
-    v9 = pnm->code;
-    switch (v9)
+    switch (pnm->code)
     {
-    case 0xD5:
-        _ApplyOptions();
-        break;
-    case 0xD6:
-        if (GetFocus() == this->_hwndTB)
-        {
-            v13 = SendMessageW(this->_hwndTB, 0x447, 0, 0);
-            NotifyWinEvent(0x8005u, this->_hwndTB, -4, v13 + 1);
-        }
-        goto LABEL_29;
-    case 0xD7u:
-        return _OnSMNFindItem((SMNDIALOGMESSAGE*)pnm);
-    case 0xDDu:
-        if (this->_psdListen)
-        {
-            // SHTracePerf(&ShellTraceId_Explorer_ShutdownUX_StartMenuCriticalPath_Start);
-            this->_psdListen->ScanForPassiveChange();
-            // SHTracePerf(&ShellTraceId_Explorer_ShutdownUX_StartMenuCriticalPath_Stop);
-        }
-        return 0;
-    case 224:
-        if (_GetCurPressedButton() == 99)
-        {
-            TBBUTTONINFO tbbi;
-            tbbi.cbSize = sizeof(tbbi);
-            tbbi.dwMask = 32;
-            tbbi.idCommand = 0;
-            v10 = (NMHDR*)SendMessage(this->_hwndTB, TB_GETBUTTONINFO, 0, (LPARAM)&tbbi);
-            pnm = v10;
-            this->_fSettingHotItem = 1;
-            SendMessage(this->_hwndTB, TB_SETHOTITEM, (WPARAM)v10, 0);
-            this->_fSettingHotItem = 0;
-            SendMessage(this->_hwndSplit, 0xF3u, 0, 0);
-
-            if (SetFocus(this->_hwndTB) != this->_hwndTB)
+        case SMN_REFRESHLOGOFF:
+            _ApplyOptions();
+            break;
+        case 214:
+            if (GetFocus() == _hwndTB)
             {
-                NotifyWinEvent(0x8005u, this->_hwndTB, -4, (LONG)&pnm->hwndFrom + 1);
+                v13 = SendMessageW(_hwndTB, TB_GETHOTITEM, 0, 0);
+                NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, v13 + 1);
             }
-        }
-        return 0;
-    case 225:
-        break;
-    case 0xFFFFFFF8:
-    LABEL_29:
-        if (this->field_5c || CLogoffPane::_GetCurPressedButton() == 99)
-        {
-            this->field_5c = 0;
-            SendMessageW(this->_hwndSplit, BM_SETSTATE, 0, 0);
-            InvalidateRect(this->_hwndSplit, 0, 0);
-        }
-        return 0;
-    default:
-        return 0;
+            goto LABEL_29;
+        case 215:
+            return _OnSMNFindItem(reinterpret_cast<SMNDIALOGMESSAGE*>(pnm));
+        case 221:
+            if (_psdListen)
+            {
+                // Skipped telemetry ShellTraceId_Explorer_ShutdownUX_StartMenuCriticalPath_Start
+                _psdListen->ScanForPassiveChange();
+                // Skipped telemetry ShellTraceId_Explorer_ShutdownUX_StartMenuCriticalPath_Stop
+            }
+            return 0;
+        case 224:
+            if (_GetCurPressedButton() == 99)
+            {
+                TBBUTTONINFOW tbbi;
+                tbbi.cbSize = sizeof(tbbi);
+                tbbi.dwMask = TBIF_COMMAND;
+                tbbi.idCommand = 0;
+
+                v10 = (NMHDR*)SendMessageW(_hwndTB, TB_GETBUTTONINFO, 0, (LPARAM)&tbbi);
+                pnm = v10;
+
+                _fSettingHotItem = 1;
+                SendMessageW(_hwndTB, TB_SETHOTITEM, (WPARAM)v10, 0);
+                _fSettingHotItem = 0;
+
+                SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
+                if (SetFocus(_hwndTB) != _hwndTB)
+                {
+                    NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, (LONG)&pnm->hwndFrom + 1);
+                }
+            }
+            return 0;
+        case 225:
+            break;
+        case NM_KILLFOCUS:
+        LABEL_29:
+            if (field_5C || _GetCurPressedButton() == 99)
+            {
+                field_5C = 0;
+                SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
+                InvalidateRect(_hwndSplit, nullptr, 0);
+            }
+            return 0;
+        default:
+            return 0;
     }
     return 1;
-#endif
 }
 
 static const struct
@@ -969,12 +889,12 @@ static const struct
     int idsTip;
 } c_rgButtons[] =
 {
-  { 0, 5000, 7035 },
-  { 0, 410, 7030 },
-  { 0, 402, 7031 },
-  { 0, 517, 7034 },
-  { 1, 506, 7032 },
-  { 2, 5000, 7033 }
+    { 0, 5000, 7035 },
+    { 0, 410, 7030 },
+    { 0, 402, 7031 },
+    { 0, 517, 7034 },
+    { 1, 506, 7032 },
+    { 2, 5000, 7033 }
 };
 
 int CLogoffPane::_GetIdmFromIdstip(int id)
@@ -995,51 +915,50 @@ int CLogoffPane::_GetIdmFromIdstip(int id)
 
 int CLogoffPane::_GetIdstipFromCommand(int id)
 {
-    TBBUTTONINFO tbbi = { 0 };
+    TBBUTTONINFOW tbbi = {};
     tbbi.cbSize = sizeof(tbbi);
-    tbbi.dwMask = 0x10;
-    if (SendMessage(_hwndTB, TB_GETBUTTONINFO, id, (LPARAM)&tbbi) == -1)
-        return -1;
-    else
+    tbbi.dwMask = TBIF_LPARAM;
+    if (SendMessageW(_hwndTB, TB_GETBUTTONINFOW, id, reinterpret_cast<LPARAM>(&tbbi)) != -1)
+    {
         return tbbi.lParam;
+    }
+    return -1;
 }
 
 int CLogoffPane::_GetIdmFromCommand(int id)
 {
-    int IdstipFromCommand = _GetIdstipFromCommand(id);
-    return _GetIdmFromIdstip(IdstipFromCommand);
+    return _GetIdmFromIdstip(_GetIdstipFromCommand(id));
 }
 
 int CLogoffPane::_GetCurPressedButton()
 {
-    if (SendMessage(this->_hwndTB, TB_ISBUTTONPRESSED, 0, 0))
+    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 0, 0))
         return 0;
-    if (SendMessage(this->_hwndTB, TB_ISBUTTONPRESSED, 1, 0))
+    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 1, 0))
         return 1;
-
-    if ((SendMessage(this->_hwndSplit, BM_GETSTATE, 0, 0) & 4) != 0)
+    if ((SendMessageW(_hwndSplit, BM_GETSTATE, 0, 0) & BST_PUSHED) != 0)
         return 99;
     return -1;
 }
 
-HRESULT CLogOffMenuCallback_CreateInstance(IShellMenuCallback **ppsmc, CLogoffPane *pLogOffPane);
+HRESULT CLogOffMenuCallback_CreateInstance(IShellMenuCallback** ppsmc, CLogoffPane* pLogOffPane);
 
 void CLogoffPane::_DoSplitButtonContextMenu(int a2)
 {
-    SendMessage(_hwndTB, TB_SETHOTITEM, -1, 0);
+    SendMessageW(_hwndTB, TB_SETHOTITEM, -1, 0);
 
     IShellMenu* psm;
-    if (SUCCEEDED(CoCreateInstance(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psm))))
+    if (SUCCEEDED(CoCreateInstance(CLSID_MenuBand, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psm))))
     {
-        IShellMenuCallback* psmc = NULL;
+        IShellMenuCallback* psmc = nullptr;
         HRESULT hr = CLogOffMenuCallback_CreateInstance(&psmc, this);
 
         RECT rc;
         GetClientRect(_hwndSplit, &rc);
-        MapWindowRect(_hwndSplit, NULL, &rc);
+        MapWindowRect(_hwndSplit, nullptr, &rc);
 
         IMAGEINFO imageInfo;
-        if (!_hTheme && ImageList_GetImageInfo(_himl, 0, (IMAGEINFO*)&imageInfo))
+        if (!_hTheme && ImageList_GetImageInfo(_himl, 0, &imageInfo))
         {
             rc.right = imageInfo.rcImage.right + rc.left;
             rc.bottom = imageInfo.rcImage.bottom + rc.top;
@@ -1047,10 +966,10 @@ void CLogoffPane::_DoSplitButtonContextMenu(int a2)
 
         if (SUCCEEDED(hr))
         {
-            if (SUCCEEDED(psm->Initialize(psmc, 0, -1, 0x10000047)))
+            if (SUCCEEDED(psm->Initialize(psmc, 0, ANCESTORDEFAULT, 0x1 | SMINIT_RESTRICT_DRAGDROP | SMINIT_TOPLEVEL | 0x40 | SMINIT_VERTICAL)))
             {
-                SendMessage(this->_hwndSplit, 0xF3, 1u, 0);
-                //SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Left_Control_Button_Split_Open, 57);
+                SendMessageW(_hwndSplit, BM_SETSTATE, TRUE, 0);
+                (void)57; // Skipped telemetry ShellTraceId_StartMenu_Left_Control_Button_Split_Open
 
                 DWORD dwFlags = 0;
                 if (a2)
@@ -1063,7 +982,6 @@ void CLogoffPane::_DoSplitButtonContextMenu(int a2)
                 nmtsm.rcExclude = rc;
                 nmtsm.itemID = 99;
                 nmtsm.dwFlags = dwFlags;
-
                 _SendNotify(_hwnd, 216, &nmtsm.hdr);
             }
             psmc->Release();
@@ -1077,9 +995,8 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
     LPARAM v5; // edi
     WPARAM IdmFromCommand; // ebx
     int v7; // eax
-    IShutdownChoices* psdc; // eax
     // eax
-    HWND hwndSplit; // [esp-10h] [ebp-3Ch]
+    // [esp-10h] [ebp-3Ch]
     // [esp-4h] [ebp-30h]
     // [esp+28h] [ebp-4h]
 
@@ -1089,7 +1006,7 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
         v5 = lParam;
         if (!lParam)
         {
-            SendMessageW(this->_hwndTB, TB_PRESSBUTTON, 1u, 0);
+            SendMessageW(_hwndTB, TB_PRESSBUTTON, 1u, 0);
             return 0;
         }
         IdmFromCommand = _GetIdmFromCommand(1);
@@ -1103,15 +1020,16 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
             {
                 _DoSplitButtonContextMenu(0);
             }
-            else if (HIWORD(wParam) == 7 && (this->field_5c || _GetCurPressedButton() == 99))
+            else if (HIWORD(wParam) == 7 && (field_5C || _GetCurPressedButton() == 99))
             {
-                hwndSplit = this->_hwndSplit;
-                this->field_5c = 0;
+                HWND hwndSplit = _hwndSplit;
+                field_5C = 0;
                 SendMessageW(hwndSplit, BM_SETSTATE, 0, 0);
-                InvalidateRect(this->_hwndSplit, NULL, 0);
+                InvalidateRect(_hwndSplit, NULL, 0);
             }
             return 0;
         }
+
         if (_IsButtonHiddenOrDisabled(id, 0))
             return 0;
 
@@ -1121,10 +1039,14 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
         if (id == 1)
         {
             // SHTracePerf(&ShellTraceId_Explorer_ShutdownUX_DefaultButtonPress_Start);
-            if (_psdc && _psdc->GetDefaultChoice((SHUTDOWN_CHOICE*)&lParam) >= 0)
+            if (_psdc && _psdc->GetDefaultChoice((DWORD*)&lParam) >= 0)
+            {
                 v5 = lParam;
+            }
             else
+            {
                 v5 = 2;
+            }
             v7 = v5 | 0x10000000;
         }
         else
@@ -1132,7 +1054,7 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
             v5 = lParam;
         }
     }
-    
+
     // DWORD dwTick = GetTickCount();
     // SHTracePerfSQMStreamTwoImpl(&ShellTraceId_StartMenu_Logoff_Usage_Stream, 59, dwTick, v7);
     if (IdmFromCommand)
@@ -1169,7 +1091,7 @@ LRESULT CLogoffPane::_OnCustomDraw(NMTBCUSTOMDRAW* pnmtbcd)
         {
             if ((pnmtbcd->nmcd.uItemState & CDIS_HOT) != 0)
             {
-                if (field_5c)
+                if (field_5C)
                 {
                     pnmtbcd->nmcd.uItemState = pnmtbcd->nmcd.uItemState & 0xFFFFFFBF;
                 }
@@ -1188,82 +1110,71 @@ LRESULT CLogoffPane::_OnCustomDraw(NMTBCUSTOMDRAW* pnmtbcd)
 
 LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
 {
-    IMAGEINFO pImageInfo;
-    RECT pRect;
-    DWORD chText;
-
-    if (pdis->hwndItem == this->_hwndSplit && (pdis->itemAction & 0x45) != 0)
+    if (pdis->hwndItem == _hwndSplit && (pdis->itemAction & 0x45) != 0)
     {
-        unsigned int v4 = SendMessageW(this->_hwndTB, TB_GETBUTTONSIZE, 0, 0);
-        LONG v5 = pdis->rcItem.right - pdis->rcItem.left;
-        bool v6 = this->_hTheme == NULL;
-        pRect.left = 0;
-        pRect.top = 0;
-        int v7 = this->field_5c;
-        pRect.right = v5;
-        pRect.bottom = HIWORD(v4);
-        if (v6)
+        RECT rc;
+        rc.left = 0;
+        rc.top = 0;
+        rc.right = RECTWIDTH(pdis->rcItem);
+        rc.bottom = HIWORD(SendMessageW(_hwndTB, TB_GETBUTTONSIZE, 0, 0));
+
+        if (_hTheme == nullptr)
         {
-            int ia = pdis->itemState & 1;
-            DWORD SysColor = GetSysColor(4);
-            SHFillRectClr(pdis->hDC, &pdis->rcItem, SysColor);
-            int mode = SetBkMode(pdis->hDC, 1);
-            if (ImageList_GetImageInfo(this->_himl, ia, &pImageInfo))
+            int iImage = (pdis->itemState & ODS_SELECTED) != 0 ? 1 : 0;
+
+            SHFillRectClr(pdis->hDC, &pdis->rcItem, GetSysColor(COLOR_MENU));
+            int iOldMode = SetBkMode(pdis->hDC, TRANSPARENT);
+
+            IMAGEINFO imageInfo;
+            if (ImageList_GetImageInfo(_himl, iImage, &imageInfo))
             {
-                if (pRect.right > pImageInfo.rcImage.right)
+                if (rc.right > imageInfo.rcImage.right)
                 {
-                    pRect.right = pImageInfo.rcImage.right;
+                    rc.right = imageInfo.rcImage.right;
                 }
-                
-                if (v7)
+                if (field_5C)
                 {
-                    SHFillRectClr(pdis->hDC, &pRect, GetSysColor(13));
+                    SHFillRectClr(pdis->hDC, &rc, GetSysColor(COLOR_HIGHLIGHT));
                 }
                 ImageList_DrawEx(
-                    this->_himl,
-                    ia,
-                    pdis->hDC,
-                    pRect.left,
-                    pRect.top,
-                    0,
-                    pRect.bottom - pRect.top,
-                    0xFFFFFFFF,
-                    0xFFFFFFFF,
-                    0);
+                    _himl, iImage, pdis->hDC, rc.left, rc.top, 0, RECTHEIGHT(rc), CLR_NONE, CLR_NONE, 0);
             }
-            
-            HFONT h = (HFONT)SelectObject(pdis->hDC, this->_hfMarlett);
-            if (h)
+
+            HFONT hfMarlett = (HFONT)SelectObject(pdis->hDC, _hfMarlett);
+            if (hfMarlett)
             {
-                char Layout = GetLayout(pdis->hDC);
-                UINT ib = 1;
-                pRect.top += (pRect.bottom - field_58 - pRect.top) / 2;
-                if ((Layout & 1) != 0)
+                BOOL fRTL = (GetLayout(pdis->hDC) & LAYOUT_RTL) != 0;
+
+                UINT dtFlags = DT_CENTER;
+                rc.top += (rc.bottom - field_58 - rc.top) / 2;
+                if (fRTL)
                 {
-                    ib = 0x20001;
+                    dtFlags |= DT_RTLREADING;
                 }
-                chText = (unsigned __int16)((Layout & 1) != 0 ? 119 : 56);
-                DrawText(pdis->hDC, (LPCWSTR)&chText, 1, &pRect, ib);
-                SetTextColor(pdis->hDC, SetTextColor(pdis->hDC, GetSysColor(v7 != 0 ? 14 : 7)));
-                SelectObject(pdis->hDC, h);
+
+                WCHAR chOut = fRTL ? 'w' : '8';
+                DrawTextW(pdis->hDC, &chOut, 1, &rc, dtFlags);
+                SetTextColor(
+                    pdis->hDC, SetTextColor(pdis->hDC, GetSysColor(field_5C != 0 ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT)));
+                SelectObject(pdis->hDC, hfMarlett);
             }
-            
-            if (mode)
+            if (iOldMode)
             {
-                SetBkMode(pdis->hDC, mode);
+                SetBkMode(pdis->hDC, iOldMode);
             }
         }
         else
         {
-            int v8 = (v7 != 0) + 1;
-            if ((pdis->itemState & 1) != 0)
+            int iState = field_5C != 0 ? SPLS_HOT : SPLS_NORMAL;
+            if ((pdis->itemState & ODS_SELECTED) != 0)
             {
-                v8 = 3;
+                iState = SPLS_PRESSED;
             }
-            DrawThemeParentBackground(this->_hwndSplit, pdis->hDC, &pdis->rcItem);
-            DrawThemeBackground(this->_hTheme, pdis->hDC, 19, v8, &pRect, NULL);
+            DrawThemeParentBackground(_hwndSplit, pdis->hDC, &pdis->rcItem);
+            DrawThemeBackground(_hTheme, pdis->hDC, SPP_LOGOFFSPLITBUTTONDROPDOWN, iState, &rc, nullptr);
         }
     }
+
     return 1;
 }
 
@@ -1319,16 +1230,16 @@ LABEL_12:
 
 int CLogoffPane::_GetCurButton()
 {
-    if (field_5c)
+    if (field_5C)
     {
         return 99;
     }
-    return (int)SendMessage(_hwndTB, TB_GETHOTITEM, 0, 0);
+    return static_cast<int>(SendMessageW(_hwndTB, TB_GETHOTITEM, 0, 0));
 }
 
 BOOL CLogoffPane::_IsPtInDropDownSplit(HWND hwnd, POINT pt)
 {
-    return CLogoffPane::_HitTest(hwnd, pt) == 99;
+    return _HitTest(hwnd, pt) == 99;
 }
 
 LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
@@ -1454,9 +1365,9 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
                     }
                 }
                 IsPtInDropDownSplit = _IsPtInDropDownSplit(pdm->hwnd, pdm->pt);
-                if (IsPtInDropDownSplit != this->field_5c)
+                if (IsPtInDropDownSplit != this->field_5C)
                 {
-                    this->field_5c = IsPtInDropDownSplit;
+                    this->field_5C = IsPtInDropDownSplit;
                     if (!IsPtInDropDownSplit)
                         SendMessageW(this->_hwndSplit, 0xF3u, 0, 0);
                     goto LABEL_7;
@@ -1465,9 +1376,9 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             else
             {
                 pdm->flags &= ~0x100u;
-                if (this->field_5c)
+                if (this->field_5C)
                 {
-                    this->field_5c = 0;
+                    this->field_5C = 0;
                 LABEL_7:
                     InvalidateRect(this->_hwndSplit, 0, 0);
                 }
@@ -1489,10 +1400,10 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             pdm->pt.x = 0;
             pdm->pt.y = 0;
         }
-        if (this->field_5c)
+        if (this->field_5C)
         {
             v14 = this->_hwndSplit;
-            this->field_5c = 0;
+            this->field_5C = 0;
             SendMessageW(v14, 0xF3u, 0, 0);
             InvalidateRect(this->_hwndSplit, 0, 0);
         }
@@ -1539,17 +1450,6 @@ LRESULT CLogoffPane::_OnDisplayChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     // Propagate first because _InitMetrics needs to talk to the updated toolbar
     SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
     _InitMetrics();
-    return 0;
-}
-
-LRESULT CLogoffPane::_OnSettingChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    // Propagate first because _InitMetrics needs to talk to the updated toolbar
-    SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
-    // _InitMetrics() is so cheap it's not worth getting too upset about
-    // calling it too many times.
-    _InitMetrics();
-    _RightAlign();
     return 0;
 }
 
@@ -1781,8 +1681,8 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
 HRESULT CLogoffPane::get_accName(VARIANT varChild, BSTR *pszName)
 {
-    OLECHAR *v3; // eax
-    SHUTDOWN_CHOICE v5; // [esp+Ch] [ebp-D0h] BYREF
+    // eax
+    DWORD v5; // [esp+Ch] [ebp-D0h] BYREF
     OLECHAR psz[100]; // [esp+10h] [ebp-CCh] BYREF
 
     if (!varChild.lVal
@@ -1793,9 +1693,9 @@ HRESULT CLogoffPane::get_accName(VARIANT varChild, BSTR *pszName)
     {
         return CAccessible::get_accName(varChild, pszName);
     }
-    v3 = SysAllocString(psz);
+    OLECHAR* v3 = SysAllocString(psz);
     *pszName = v3;
-    return v3 != 0 ? 0 : 0x8007000E;
+    return v3 != nullptr ? 0 : 0x8007000E;
 }
 
 HRESULT CLogoffPane::get_accKeyboardShortcut(VARIANT varChild, BSTR *pszKeyboardShortcut)
@@ -1821,8 +1721,7 @@ HRESULT CLogoffPane::_InitShutdownObjects()
 {
     ASSERT(NULL == _psdc); // 805
 
-    HRESULT hr = CoCreateInstance(CLSID_AuthUIShutdownChoices, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psdc));
-
+    HRESULT hr = CoCreateInstance(CLSID_AuthUIShutdownChoices, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psdc));
     if (SUCCEEDED(hr))
     {
         _psdc->SetShowBadChoices(TRUE);
@@ -1839,25 +1738,26 @@ HRESULT CLogoffPane::_InitShutdownObjects()
 
         //ASSERT(!_psdListen); // 811
 
-        //hr = _psdc->CreateListener(&_psdListen);
-
-        //if (SUCCEEDED(hr))
-        //{
-        //    _psdListen->SetNotifyWnd(_hwnd, 0);
-        //    hr = _psdListen->StartListening();
-        //    if (SUCCEEDED(hr))
-        //    {
-        //        _psdListen->GetMessageWnd(&_hwndSdListenMsg);
-        //    }
-        //    else
-        //    {
-        //        // TODO: Trace
-        //    }
-        //}
-        //else
-        //{
-        //    // TODO: Trace.
-        //}
+#if 0
+        hr = _psdc->CreateListener(&_psdListen);
+        if (SUCCEEDED(hr))
+        {
+            _psdListen->SetNotifyWnd(_hwnd, 0);
+            hr = _psdListen->StartListening();
+            if (SUCCEEDED(hr))
+            {
+                _psdListen->GetMessageWnd(&_hwndSdListenMsg);
+            }
+            else
+            {
+                // TODO: Trace
+            }
+        }
+        else
+        {
+            // TODO: Trace.
+        }
+#endif
     }
     else
     {
@@ -1874,162 +1774,110 @@ void CLogoffPane::TBPressButton(WPARAM wParam, LPARAM lParam)
 
 void CLogoffPane::AddShutdownOptions(HMENU hMenu)
 {
-#if 1
-    if (_ShowStartMenuShutdown())
+    if (_ShowStartMenuShutdown() && _psdc)
     {
-        if (_psdc)
+        MENUITEMINFOW mi = {};
+        mi.cbSize = sizeof(mi);
+        mi.fType = MFT_SEPARATOR;
+        InsertMenuItemW(hMenu, 0xFFFF, 0x400, &mi);
+
+        IEnumShutdownChoices* pesc;
+        // HRESULT hr = _psdc->GetMenuChoices(&pesc);
+        HRESULT hr = _psdc->GetChoiceEnumerator(&pesc);
+        if (SUCCEEDED(hr))
         {
-			MENUITEMINFO mi = {0};
-			mi.cbSize = sizeof(mi);
-            mi.fType = 2048;
-            InsertMenuItem(hMenu, 0xFFFFu, 1024, &mi);
-
-            //IEnumShutdownChoices *pesc;
-            //HRESULT v4 = _psdc->GetMenuChoices(&pesc);
-            //if (v4 >= 0)
-            //{
-            //    DWORD v7;
-            //    for (UINT i = 100; !pesc->Next(1, &v7, 0); ++i)
-            //    {
-            //        if ((v7 & 0x400000) != 0)
-            //            InsertMenuItem(hMenu, 0xFFFF, 1024, &mi);
-            //        else
-            //            v4 = _AddShutdownChoiceToMenu(hMenu, v7, i, 0xFFFFu);
-            //        if (v4 < 0)
-            //            break;
-            //    }
-            //    pesc->Release();
-            //}
-        }
-    }
-#else
-    if (!_psdc)
-        return;
-
-    _psdc->SetShowBadChoices(TRUE);
-
-    IEnumShutdownChoices *iterator;
-    if (FAILED(_psdc->GetChoiceEnumerator(&iterator)))
-        return;
-
-    DWORD sc;
-    while (iterator->Next(1, &sc, nullptr) == S_OK)
-    {
-        if ((sc & 0x400000) != 0)
-        {
-            MENUITEMINFOW mi = { sizeof(mi),MIIM_TYPE, MFT_SEPARATOR };
-            InsertMenuItemW(hMenu, 0xFFFF, TRUE, &mi);
-        }
-        else
-        {
-            BOOL bC0000 = (sc & 0xC0000) != 0;
-            sc &= ~0xC0000;
-            //if (sc != m_scDefault && sc != (m_scDefault & ~0x20000))
+            SHUTDOWN_CHOICE sdChoice;
+            for (UINT i = 100; pesc->Next(1, &sdChoice, nullptr) == S_OK; ++i)
             {
-                WCHAR szChoiceName[200];
-                if (SUCCEEDED(_psdc->GetChoiceName(sc, TRUE, szChoiceName, ARRAYSIZE(szChoiceName))))
+                if ((sdChoice & 0x400000) != 0)
                 {
-                    MENUITEMINFOW mi = { sizeof(mi) };
-                    mi.fMask = MIIM_STATE | MIIM_ID | MIIM_TYPE;
-                    mi.fType = MFT_STRING;
-                    mi.fState = bC0000 ? MFS_DISABLED : MFS_ENABLED;
-                    mi.wID = sc;
-                    mi.dwTypeData = szChoiceName;
-                    InsertMenuItemW(hMenu, 0xFFFF, 1, &mi);
+                    InsertMenuItemW(hMenu, 0xFFFF, 0x400, &mi);
                 }
+                else
+                {
+                    hr = _AddShutdownChoiceToMenu(hMenu, sdChoice, i, 0xFFFF);
+                }
+                if (FAILED(hr))
+                    break;
             }
+            pesc->Release();
         }
     }
-
-    _SHPrettyMenu(hMenu);
-    iterator->Release();
-#endif
 }
 
-HRESULT CLogoffPane::_AddShutdownChoiceToMenu(
-    HMENU hMenu,
-    ULONG_PTR a3,
-    UINT idMenuItem,
-    UINT item)
+HRESULT CLogoffPane::_AddShutdownChoiceToMenu(HMENU hMenu, DWORD sdChoice, UINT idMenuItem, UINT item)
 {
-	ASSERT(idMenuItem <= 150 /*IDM_SHUTDOWN_LAST*/); // 1074
-	ASSERT(NULL != this->_psdc); // 1075
+    _ASSERT(idMenuItem <= IDM_SHUTDOWN_LAST /*150*/); // 1074
+    _ASSERT(nullptr != _psdc); // 1075
 
-    WCHAR v11[200]; // [esp+48h] [ebp-1ACh] BYREF
-    HRESULT hr = this->_psdc->GetChoiceName(a3, 1, v11, 200);
-    if (hr >= 0)
+    WCHAR szChoiceName[200];
+    HRESULT hr = _psdc->GetChoiceName(sdChoice, 1, szChoiceName, ARRAYSIZE(szChoiceName));
+    if (SUCCEEDED(hr))
     {
-		MENUITEMINFO mi = { 0 };
-		mi.cbSize = sizeof(mi);
-
-        mi.fMask = 0x33;
-        mi.fType = 0;
-        mi.dwTypeData = v11;
-        mi.wID = idMenuItem;
-        mi.dwItemData = a3;
-        mi.fState = (a3 & 0xC0000) != 0 ? 3 : 0;
-        if (!InsertMenuItemW(hMenu, item, 0x400, &mi))
+        MENUITEMINFOW mii = {};
+        mii.cbSize = sizeof(mii);
+        mii.fMask = MIIM_STATE | MIIM_ID | MIIM_TYPE | MIIM_DATA;
+        mii.fType = MFT_STRING;
+        mii.dwTypeData = szChoiceName;
+        mii.wID = idMenuItem;
+        mii.dwItemData = sdChoice;
+        mii.fState = (sdChoice & (SHTDN_MODIFIER_ACCESS_DENIED | SHTDN_MODIFIER_BROKEN)) != 0
+                         ? MFS_GRAYED
+                         : MFS_ENABLED;
+        if (!InsertMenuItemW(hMenu, item, 0x400, &mii))
         {
-            DWORD dwLastError = GetLastError();
-            if ((int)dwLastError > 0)
-                return (unsigned __int16)dwLastError | 0x80070000;
-            return dwLastError;
+            hr = HRESULT_FROM_WIN32(GetLastError());
         }
     }
+
     return hr;
 }
 
 extern BOOL _ShowStartMenuEject();
 extern BOOL _ShowStartMenuLogoff();
 
-const GUID POLID_HideFastUserSwitching =
-{
-  1462751767u,
-  63487u,
-  18332u,
-  { 141u, 150u, 188u, 147u, 141u, 104u, 103u, 245u }
-};
-
+DEFINE_GUID(POLID_HideFastUserSwitching, 0x572FD217, 0xF7FF, 0x479C, 0x8D, 0x96, 0xBC, 0x93, 0x8D, 0x68, 0x67, 0xF5);
 
 void CLogoffPane::ApplyLogoffMenuOption(HMENU hMenu)
 {
     if (!_AllowLockWorkStation())
     {
-        DeleteMenu(hMenu, 517, 0);
+        DeleteMenu(hMenu, IDM_LOCKWORKSTATION, 0);
         DeleteMenu(hMenu, 5000, 0);
     }
-    if (!IsOS(OS_FASTUSERSWITCHING)
-        || GetSystemMetrics(SM_REMOTESESSION)
-        || GetSystemMetrics(SM_REMOTECONTROL)
+    if (!IsOS(OS_FASTUSERSWITCHING) || GetSystemMetrics(SM_REMOTESESSION) || GetSystemMetrics(SM_REMOTECONTROL)
         || SHWindowsPolicy(POLID_HideFastUserSwitching))
     {
         DeleteMenu(hMenu, 5000, 0);
     }
     if (!_ShowStartMenuLogoff())
-        DeleteMenu(hMenu, 402, 0);
+    {
+        DeleteMenu(hMenu, IDM_LOGOFF, 0);
+    }
     if (!_ShowStartMenuEject())
-        DeleteMenu(hMenu, 410, 0);
+    {
+        DeleteMenu(hMenu, IDM_EJECTPC, 0);
+    }
 }
 
-HRESULT CLogoffPane::GetShutdownItemDescription(ULONG a2, WCHAR *pszDesc, UINT a4)
+HRESULT CLogoffPane::GetShutdownItemDescription(SHUTDOWN_CHOICE sdChoice, WCHAR* pszDesc, UINT cchDesc)
 {
-	ASSERT(NULL != this->_psdc); // 1106
-    return this->_psdc->GetChoiceDesc(a2, pszDesc, a4);
+    ASSERT(nullptr != _psdc); // 1106
+    return _psdc->GetChoiceDesc(sdChoice, pszDesc, cchDesc);
 }
 
 int CLogoffPane::GetTipIDFromIDM(int id)
 {
-    int v2; // ecx
-    unsigned int v3; // eax
-
-    v2 = 0;
-    v3 = 0;
+    int v2 = 0;
+    unsigned int v3 = 0;
     while (c_rgButtons[v3].idCmd != id)
     {
         ++v3;
         ++v2;
         if (v3 >= 6)
+        {
             return -1;
+        }
     }
     return c_rgButtons[v2].idsTip;
 }
@@ -2189,9 +2037,9 @@ DWORD CLogOffMenuCallback::_ShutdownChoiceFromMenuChoice(LPSMDATA psmd)
     return 0;
 }
 
-HRESULT CALLBACK CLogOffMenuCallback_CreateInstance(IShellMenuCallback **ppsmc, CLogoffPane *pLogoffPane)
+HRESULT CALLBACK CLogOffMenuCallback_CreateInstance(IShellMenuCallback** ppsmc, CLogoffPane* pLogoffPane)
 {
-    CLogOffMenuCallback *plmc = new CLogOffMenuCallback(pLogoffPane);
-    *ppsmc = SAFECAST(plmc, IShellMenuCallback *);
-    return *ppsmc != NULL ? S_OK : E_OUTOFMEMORY;
+    CLogOffMenuCallback* plmc = new(std::nothrow) CLogOffMenuCallback(pLogoffPane);
+    *ppsmc = static_cast<IShellMenuCallback*>(plmc);
+    return *ppsmc != nullptr ? S_OK : E_OUTOFMEMORY;
 }

@@ -438,9 +438,9 @@ void CTray::_GetSaveStateAndInitRects()
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
 	_fNoThumbnails = SHWindowsPolicy(POLID_TaskbarNoThumbnail) || BOOLIFY(dwTrayFlags & 0x80);
 
-    _fHideSCA[SCA_VOLUME] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAVOLUME);
-    _fHideSCA[SCA_NETWORK] = BOOLIFY(dwTrayFlags & TVSD_HIDESCANETWORK);
-    _fHideSCA[SCA_POWER] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAPOWER);
+    _rgfHideSCA[SCA_VOLUME] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAVOLUME);
+    _rgfHideSCA[SCA_NETWORK] = BOOLIFY(dwTrayFlags & TVSD_HIDESCANETWORK);
+    _rgfHideSCA[SCA_POWER] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAPOWER);
 
     _uAutoHide = (dwTrayFlags & TVSD_AUTOHIDE) ? AH_ON | AH_HIDING : 0;
     _RefreshSettings();
@@ -477,9 +477,9 @@ void CTray::_SaveTrayStuff()
     if (_fAlwaysOnTop)      tvsd.dwFlags |= TVSD_TOPMOST;
     if (_fSMSmallIcons)     tvsd.dwFlags |= TVSD_SMSMALLICONS;
     if (_fHideClock)        tvsd.dwFlags |= TVSD_HIDECLOCK;
-    if (_fHideSCA[SCA_VOLUME])      tvsd.dwFlags |= TVSD_HIDESCAVOLUME;
-    if (_fHideSCA[SCA_NETWORK])     tvsd.dwFlags |= TVSD_HIDESCANETWORK;
-    if (_fHideSCA[SCA_POWER])       tvsd.dwFlags |= TVSD_HIDESCAPOWER;
+    if (_rgfHideSCA[SCA_VOLUME])      tvsd.dwFlags |= TVSD_HIDESCAVOLUME;
+    if (_rgfHideSCA[SCA_NETWORK])     tvsd.dwFlags |= TVSD_HIDESCANETWORK;
+    if (_rgfHideSCA[SCA_POWER])       tvsd.dwFlags |= TVSD_HIDESCAPOWER;
     if (_fNoThumbnails)     tvsd.dwFlags |= TVSD_HIDETHUMBNAILS;
 
     // Save in Stuck rects.

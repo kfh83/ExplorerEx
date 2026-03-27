@@ -1800,9 +1800,9 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
 
     LABEL_15:
         c_tray.GetTrayViewOpts(&tvo/*, 0*/);
-        if ((SHWindowsPolicy(POLID_HideSCAVolume) || tvo.fHideSCA[SCA_VOLUME]) && IsEqualGUID(SCAID_Volume, pnid->guidItem)
-            || (SHWindowsPolicy(POLID_HideSCANetwork) || tvo.fHideSCA[SCA_NETWORK]) && IsEqualGUID(SCAID_Network, pnid->guidItem)
-            || (SHWindowsPolicy(POLID_HideSCAPower) || tvo.fHideSCA[SCA_POWER]) && IsEqualGUID(SCAID_Power, pnid->guidItem))
+        if ((SHWindowsPolicy(POLID_HideSCAVolume) || tvo.rgfHideSCA[SCA_VOLUME]) && IsEqualGUID(SCAID_Volume, pnid->guidItem)
+            || (SHWindowsPolicy(POLID_HideSCANetwork) || tvo.rgfHideSCA[SCA_NETWORK]) && IsEqualGUID(SCAID_Network, pnid->guidItem)
+            || (SHWindowsPolicy(POLID_HideSCAPower) || tvo.rgfHideSCA[SCA_POWER]) && IsEqualGUID(SCAID_Power, pnid->guidItem))
         {
             fRet = 1;
         }

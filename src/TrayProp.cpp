@@ -207,27 +207,27 @@ void CPinHelper::Save(BOOL bShowEmail, BOOL bShowBrowser)
     SavePinInfo(_pidlBrowser, bShowBrowserOld, bShowBrowser);
 }
 
-class ATL_NO_VTABLE CNotificationsDlg : 
+class ATL_NO_VTABLE CNotificationsDlg :
     public CComObjectRootEx<CComSingleThreadModel>,
-    public CDialogImpl<CNotificationsDlg>, 
+    public CDialogImpl<CNotificationsDlg>,
     public INotificationCB
 {
 public:
-    CNotificationsDlg() 
-    { 
-        _pTrayNotify = NULL; 
+    CNotificationsDlg()
+    {
+        _pTrayNotify = NULL;
         _fItemChanged = FALSE;
         _hPlaceholderIcon = NULL;
         _nIndex = -1;
         _fComboBoxActive = FALSE;
     };
-    virtual ~CNotificationsDlg() 
-    { 
-        if (_pTrayNotify) 
-        { 
-            _pTrayNotify->Release(); 
+    virtual ~CNotificationsDlg()
+    {
+        if (_pTrayNotify)
+        {
+            _pTrayNotify->Release();
             _pTrayNotify = NULL;
-        } 
+        }
     };
 
     DECLARE_NOT_AGGREGATABLE(CNotificationsDlg)
@@ -244,7 +244,7 @@ public:
         NOTIFY_HANDLER_EX(IDC_NOTIFY_ITEMS, LVN_ITEMCHANGED, OnItemChanged)
         NOTIFY_HANDLER_EX(IDC_NOTIFY_ITEMS, LVN_ENDSCROLL, OnEndScroll)
         NOTIFY_CODE_HANDLER(HDN_ITEMCHANGED, OnHeaderItemChanged)
-        COMMAND_HANDLER_EX(IDC_COMBO_ACTION, CBN_SELENDOK, OnComboSelEnd) 
+        COMMAND_HANDLER_EX(IDC_COMBO_ACTION, CBN_SELENDOK, OnComboSelEnd)
         COMMAND_ID_HANDLER_EX(IDB_NOTIFY_RESTOREDEFAULTS, OnRestoreDefaults)
         COMMAND_RANGE_HANDLER(IDOK, IDNO, OnCloseCmd)
     END_MSG_MAP()
@@ -302,16 +302,16 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     {
         if (!_hPlaceholderIcon)
         {
-            _hPlaceholderIcon = (HICON)LoadImage(g_hinstCabinet, 
+            _hPlaceholderIcon = (HICON)LoadImage(g_hinstCabinet,
                 MAKEINTRESOURCE(ICO_TRAYPROP_PLACEHOLDER), IMAGE_ICON,
-                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 
+                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
                 LR_LOADMAP3DCOLORS);
         }
 
         if (_hPlaceholderIcon)
             ni.hIcon = CopyIcon(_hPlaceholderIcon);
     }
-    
+
     if (iIndex == -1)
     {
         iIndex = _saItems.GetSize();
@@ -383,7 +383,7 @@ HRESULT CNotificationsDlg::Notify(DWORD dwMessage, NOTIFYITEM * pNotifyItem)
     if (!pNotifyItem || (!pNotifyItem->hWnd && !pNotifyItem->pszExeName))
         return E_INVALIDARG;
 
-    //ASSERT(pNotifyItem);        
+    //ASSERT(pNotifyItem);
     CNotificationItem ni = *pNotifyItem;
 
     switch (dwMessage)
@@ -447,7 +447,7 @@ LRESULT CNotificationsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
         static const struct {
             int ids;
             int idGroup;
-        } groupData[] =  {{ IDS_NOTIFY_CURRENTITEMS, GROUPID_CURRENTITEMS }, 
+        } groupData[] =  {{ IDS_NOTIFY_CURRENTITEMS, GROUPID_CURRENTITEMS },
                           { IDS_NOTIFY_PASTITEMS, GROUPID_PASTITEMS }};
 
         for (int i = 0; i < ARRAYSIZE(groupData); i++)
@@ -500,15 +500,15 @@ LRESULT CNotificationsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
         HWND hwndHeader = ListView_GetHeader(_hwndListView);
         ::SetWindowPos(_hwndCombo, hwndHeader, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
 
-        ::SetWindowSubclass(_hwndListView, s_ListViewSubClassWndProc, 0, 
+        ::SetWindowSubclass(_hwndListView, s_ListViewSubClassWndProc, 0,
                 reinterpret_cast<DWORD_PTR>(this));
 
-        ::SetWindowSubclass(_hwndCombo, s_ComboBoxSubClassWndProc, 0, 
+        ::SetWindowSubclass(_hwndCombo, s_ComboBoxSubClassWndProc, 0,
                 reinterpret_cast<DWORD_PTR>(this));
     }
 
     _saItems.RemoveAll();
-    
+
     if (_pTrayNotify)
     {
         _pTrayNotify->Release();
@@ -653,7 +653,7 @@ LRESULT CNotificationsDlg::OnCloseCmd(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
     return 0;
 }
 
-LRESULT CALLBACK CNotificationsDlg::s_ListViewSubClassWndProc( HWND hwnd, UINT uMsg, 
+LRESULT CALLBACK CNotificationsDlg::s_ListViewSubClassWndProc( HWND hwnd, UINT uMsg,
     WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData )
 {
     CNotificationsDlg * pNotificationsDlg = reinterpret_cast<CNotificationsDlg*>(dwRefData);
@@ -681,7 +681,7 @@ LRESULT CALLBACK CNotificationsDlg::s_ListViewSubClassWndProc( HWND hwnd, UINT u
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
 
-LRESULT CALLBACK CNotificationsDlg::s_ComboBoxSubClassWndProc( HWND hwnd, UINT uMsg, 
+LRESULT CALLBACK CNotificationsDlg::s_ComboBoxSubClassWndProc( HWND hwnd, UINT uMsg,
     WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData )
 {
     CNotificationsDlg * pNotificationsDlg = reinterpret_cast<CNotificationsDlg*>(dwRefData);
@@ -727,7 +727,7 @@ void CNotificationsDlg::ApplyChanges(void)
 {
     if (!_fItemChanged)
         return;
-        
+
     if (_pTrayNotify)
     {
         for (int i = 0; i < _saItems.GetSize(); i++)
@@ -740,7 +740,7 @@ void CNotificationsDlg::ApplyChanges(void)
 void CNotificationsDlg::_ShowComboBox(void)
 {
     int nCurIndex = _GetCurSel();
-        
+
     if (!_fComboBoxActive && nCurIndex == -1)
     {
         ::ShowWindow(_hwndCombo, SW_HIDE);
@@ -794,35 +794,35 @@ public:
 
         if (!SHWindowsPolicy(POLID_TaskbarLockAll))
         {
-            //taskbar page
-            psp.pszTemplate = MAKEINTRESOURCE(DLG_TRAY_OPTIONS);
+            // Taskbar page
+            psp.pszTemplate = MAKEINTRESOURCEW(DLG_TRAY_OPTIONS);
             psp.pfnDlgProc = s_TaskbarOptionsDlgProc;
-            psp.lParam = (LPARAM)this;
+            psp.lParam = reinterpret_cast<LPARAM>(this);
             hpage = CreatePropertySheetPage(&psp);
             if (hpage)
                 AddPage(hpage);
         }
 
-        //start page
-        psp.pszTemplate = MAKEINTRESOURCE(DLG_START);
+        // Start page
+        psp.pszTemplate = MAKEINTRESOURCEW(DLG_START);
         psp.pfnDlgProc = s_StartMenuDlgProc;
-        psp.lParam = (LPARAM) this;
+        psp.lParam = reinterpret_cast<LPARAM>(this);
         hpage = CreatePropertySheetPage(&psp);
         if (hpage)
             AddPage(hpage);
 
-		//notification page
-        psp.pszTemplate = (LPCWSTR)5;
+        // Notification page
+        psp.pszTemplate = MAKEINTRESOURCEW(5);
         psp.pfnDlgProc = s_NotificationOptionsDlgProc;
-        psp.lParam = (LPARAM)this;
+        psp.lParam = reinterpret_cast<LPARAM>(this);
         hpage = CreatePropertySheetPageW(&psp);
         if (hpage)
             AddPage(hpage);
 
-		//toolbar page
-		psp.pszTemplate = (LPCWSTR)10;
-		//psp.pfnDlgProc = s_ToolbarOptionsDlgProc;
-		psp.lParam = (LPARAM)this;
+		// Deskbands page
+		psp.pszTemplate = MAKEINTRESOURCEW(10);
+		psp.pfnDlgProc = s_DeskbandsOptionsDlgProc;
+		psp.lParam = reinterpret_cast<LPARAM>(this);
 		hpage = CreatePropertySheetPageW(&psp);
 		if (hpage)
 			AddPage(hpage);
@@ -847,13 +847,15 @@ private:
     static BOOL_PTR s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     static BOOL_PTR s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     static BOOL_PTR s_NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    //static BOOL_PTR s_ToolbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static BOOL_PTR s_DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    BOOL_PTR DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     void _ApplyTaskbarOptionsFromDialog(HWND hDlg);
     void _ApplyStartOptionsFromDialog(HWND hDlg);
+    void _ApplyNotificationOptionsFromDialog(HWND hDlg);
 
     // for the old style customize dialog
     SMADVANCED  _Adv;
@@ -862,6 +864,7 @@ private:
     CComObject<CNotificationsDlg>* _pDlgNotify;
 
     DWORD _dwFlags;
+    HWND _hwndDeskbandsTree;
 };
 
 //
@@ -982,7 +985,7 @@ void SetDocButton(HWND hDlg, int id);
 class CCustomizeSPPropSheet : public CPropertySheetImpl<CCustomizeSPPropSheet>
 {
 public:
-    CCustomizeSPPropSheet(HWND hwndParent) : 
+    CCustomizeSPPropSheet(HWND hwndParent) :
         CPropertySheetImpl<CCustomizeSPPropSheet>((LPCTSTR)NULL, 0, hwndParent)
       , _fInsideInit(FALSE)
     {
@@ -1177,9 +1180,9 @@ BOOL_PTR CCustomizeSPPropSheet::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM w
 BOOL CCustomizeSPPropSheet::GeneralTabInit(HWND hDlg)
 {
     _fInsideInit = TRUE; //We are getting inside initilization!
-    
+
     ::SendMessage(::GetDlgItem(hDlg, IDC_SPCUST_MINPROGS_ARROW), UDM_SETRANGE, 0, (LPARAM)MAKELONG(MAX_PROGS_ALLOWED, 0));
-    
+
     // set up icon size
     _bLargeIcons = _ReadStartPageSetting(REGSTR_VAL_DV2_LARGEICONS, /*bDefault*/ TRUE);
     ::CheckDlgButton(hDlg, IDC_SPCUST_LARGE, _bLargeIcons);
@@ -1209,7 +1212,7 @@ BOOL CCustomizeSPPropSheet::GeneralTabInit(HWND hDlg)
     ::EnableWindow(::GetDlgItem(hDlg, IDC_SPCUST_EMAILCB),   bMail);
 
     _fInsideInit = FALSE;  //We are done initializing.
-    
+
     return TRUE;
 }
 
@@ -1218,7 +1221,7 @@ void ClearUEMData()
 {
     HKEY hk;
 
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER, REGSTR_PATH_EXPLORER TEXT("\\UserAssist\\{75048700-EF1F-11D0-9888-006097DEACF9}\\Count"), 
+    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER, REGSTR_PATH_EXPLORER TEXT("\\UserAssist\\{75048700-EF1F-11D0-9888-006097DEACF9}\\Count"),
         0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | KEY_SET_VALUE,
         &hk))
     {
@@ -1294,7 +1297,7 @@ BOOL CCustomizeSPPropSheet::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwn
                     SendPSMChanged(hwndDlg);
             }
             return FALSE;
-            
+
         case IDB_SPCUST_CLEARPROG:
             ClearUEMData();
             return FALSE;
@@ -1437,7 +1440,7 @@ BOOL_PTR CCustomizeSPPropSheet::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
                 return TRUE;
             }
             break;
-#endif 
+#endif
     }
     return TRUE;
 }
@@ -1612,7 +1615,7 @@ BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
         return TRUE;
     }
 
-    
+
     return FALSE;
 }
 
@@ -1646,7 +1649,7 @@ BOOL_PTR CTaskBarPropertySheet::s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WP
             self = (CTaskBarPropertySheet*)psp->lParam;
     }
 
-    
+
     BOOL_PTR fValue = FALSE;
     if (self)
     {
@@ -1660,7 +1663,7 @@ void _TaskbarOptions_OnInitDialog(HWND hDlg)
 {
     TRAYVIEWOPTS tvo;
     c_tray.GetTrayViewOpts(&tvo);
-    
+
     CheckDlgButton(hDlg, IDC_QUICKLAUNCH, tvo.fShowQuickLaunch);
     CheckDlgButton(hDlg, IDC_TRAYOPTONTOP, tvo.fAlwaysOnTop);
     CheckDlgButton(hDlg, IDC_TRAYOPTAUTOHIDE, (tvo.uAutoHide & AH_ON));
@@ -1765,7 +1768,7 @@ BOOL_PTR CTaskBarPropertySheet::TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPAR
 
 void _StartOptions_OnInitDialog(HWND hDlg)
 {
-    // If StartPanel UI is turned off, then this check box should not show up! 
+    // If StartPanel UI is turned off, then this check box should not show up!
     if (SHRestricted(REST_NOSTARTPANEL))
     {
         //If the restriction exists, then hide this check box.
@@ -1789,7 +1792,7 @@ void _StartOptions_OnInitDialog(HWND hDlg)
 
         SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW,
             ss.fStartPanelOn ? IDB_START16 : IDB_STARTCLASSIC);
-        
+
         // disable "customize" for the style thats off.
         EnableWindow(GetDlgItem(hDlg, ss.fStartPanelOn ? IDC_OLDSTARTCUSTOMIZE : IDC_NEWSTARTCUSTOMIZE), FALSE);
     }
@@ -1842,7 +1845,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
                     ::EnableWindow(::GetDlgItem(hDlg, IDC_OLDSTARTCUSTOMIZE), GET_WM_COMMAND_ID(wParam, lParam) == IDC_OLDSCHOOL);
                     SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW,
                         GET_WM_COMMAND_ID(wParam, lParam) == IDC_NEWSCHOOL ? IDB_START16 : IDB_STARTCLASSIC);
-    
+
                     SendPSMChanged(hDlg);
                 }
                 break;
@@ -1960,6 +1963,113 @@ void _TaskbarOptionsUpdateDisplay(HWND hDlg)
         iBmp = _TaskbarPickBitmap(hDlg, 146, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
     }
     SetDlgItemBitmap(hDlg, 1111, iBmp);
+}
+
+BOOL_PTR CTaskBarPropertySheet::s_DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    CTaskBarPropertySheet* self = nullptr;
+    if (uMsg == WM_INITDIALOG)
+    {
+        SetTaskbarIcon(hDlg);
+        ::SetWindowLongPtrW(hDlg, DWLP_USER, lParam);
+        self = (CTaskBarPropertySheet*)((PROPSHEETPAGEW*)lParam)->lParam;
+    }
+    else
+    {
+        PROPSHEETPAGEW* psp = reinterpret_cast<PROPSHEETPAGEW*>(::GetWindowLongPtrW(hDlg, DWLP_USER));
+        if (psp)
+        {
+            self = (CTaskBarPropertySheet*)psp->lParam;
+        }
+    }
+
+    BOOL_PTR fValue = FALSE;
+    if (self)
+    {
+        fValue = self->DeskbandsOptionsDlgProc(hDlg, uMsg, wParam, lParam);
+    }
+    return fValue;
+}
+
+BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+#if 0
+    if (uMsg == WM_NOTIFY)
+    {
+        NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
+        switch (pnm->code)
+        {
+            case TVN_KEYDOWN:
+            {
+                if (reinterpret_cast<NMTVKEYDOWN*>(pnm)->wVKey == VK_SPACE)
+                {
+                    HTREEITEM hti = TreeView_GetNextItem(_hwndDeskbandsTree, nullptr, TVGN_CARET);
+                    if (hti && _ToggleDeskbandItem(_hwndDeskbandsTree, hti))
+                    {
+                        SendPSMChanged(hDlg);
+                        ::SetWindowLongPtrW(hDlg, 0, 1);
+                    }
+                }
+                return 1;
+            }
+            case PSN_RESET:
+            {
+                _HandleDeskbandOptions(0, 1);
+                return 0;
+            }
+            case PSN_APPLY:
+            {
+                _HandleDeskbandOptions(1, reinterpret_cast<PSHNOTIFY*>(lParam)->lParam);
+                break;
+            }
+            case PSN_KILLACTIVE:
+            {
+                _UpdateQLOnTaskbarPage(this);
+                break;
+            }
+            case PSN_SETACTIVE:
+            {
+                break;
+            }
+            case NM_DBLCLK:
+            case NM_CLICK:
+            {
+                if (pnm->idFrom == 1137)
+                {
+                    DWORD dwPos = GetMessagePos();
+                    POINT pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
+                    ::ScreenToClient(_hwndDeskbandsTree, &pt);
+
+                    HTREEITEM hti = TreeView_HitTest(_hwndDeskbandsTree, &pt);
+                    if (hti && _ToggleDeskbandItem(_hwndDeskbandsTree, hti))
+                    {
+                        SendPSMChanged(hDlg);
+                    }
+                }
+                return 1;
+            }
+            default:
+            {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    if (uMsg == WM_INITDIALOG)
+    {
+        _DeskbandOptions_OnInitDialog(hDlg, _dwFlags);
+        _UpdateQLOnDeskbandsPage();
+    }
+    else if (uMsg == WM_COMMAND)
+    {
+        if (GET_WM_COMMAND_ID(wParam, lParam) == IDC_CUSTOMIZE && _pDlgNotify)
+        {
+            _pDlgNotify->DoModal();
+        }
+        SendPSMChanged(hDlg);
+    }
+#endif
+    return 0;
 }
 
 BOOL_PTR CTaskBarPropertySheet::s_NotificationOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -2088,38 +2198,46 @@ BOOL_PTR CTaskBarPropertySheet::NotificationOptionsDlgProc(HWND hDlg, UINT uMsg,
         return 1;
     }
 
-    if (uMsg != WM_NOTIFY)
+    if (uMsg == WM_NOTIFY)
     {
-        if (uMsg == WM_INITDIALOG)
+        UINT code = ((NMHDR*)lParam)->code;
+        if (code == -202)
         {
-            _NotificationOptions_OnInitDialog(hDlg, _dwFlags/*, _pCatBandManager*/);
-            if ((_dwFlags & TPF_INVOKECUSTOMIZE) != 0)
-            {
-                ::PostMessageW(hDlg, WM_COMMAND, IDC_CUSTOMIZE, 0);
-            }
+            _ApplyNotificationOptionsFromDialog(hDlg);
+            return 1;
         }
-        else if (uMsg == WM_COMMAND)
+        if (code + 201 > 1)
         {
-            if (GET_WM_COMMAND_ID(wParam, lParam) == IDC_CUSTOMIZE)
-            {
-                if (_pDlgNotify)
-                {
-                    _pDlgNotify->DoModal();
-                }
-            }
-            _NotificationOptionsUpdateDisplay(hDlg);
-            SendPSMChanged(hDlg);
+            return 0;
         }
-        return 0;
+        return 1;
     }
-
-    return FALSE;
+    if (uMsg == WM_INITDIALOG)
+    {
+        _NotificationOptions_OnInitDialog(hDlg, _dwFlags/*, _pCatBandManager*/);
+        if ((_dwFlags & TPF_INVOKECUSTOMIZE) != 0)
+        {
+            ::PostMessageW(hDlg, WM_COMMAND, IDC_CUSTOMIZE, 0);
+        }
+    }
+    else if (uMsg == WM_COMMAND)
+    {
+        if (GET_WM_COMMAND_ID(wParam, lParam) == IDC_CUSTOMIZE)
+        {
+            if (_pDlgNotify)
+            {
+                _pDlgNotify->DoModal();
+            }
+        }
+        _NotificationOptionsUpdateDisplay(hDlg);
+        SendPSMChanged(hDlg);
+    }
+    return 0;
 }
 
 void _UpdateNotifySetting(BOOL fNotifySetting)
 {
-    ITrayNotify * pTrayNotify = NULL;
-    // localserver for tray notify
+    ITrayNotify* pTrayNotify = nullptr;
     if (SUCCEEDED(CoCreateInstanceHook(CLSID_TrayNotify, NULL, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&pTrayNotify))))
     {
         pTrayNotify->EnableAutoTray(fNotifySetting);
@@ -2215,6 +2333,38 @@ void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
         // changed a setting with the Start Menu)
         ::PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
     }
+}
+
+BOOL UpdateSCAIcon(HWND hDlg, int i)
+{
+    BOOL fHide = IsDlgButtonChecked(hDlg, i + 1109) != BST_CHECKED;
+    SendMessageW(c_tray.GetTrayNotifyHWND(), i + 1036, 0, fHide);
+    return fHide;
+}
+
+void CTaskBarPropertySheet::_ApplyNotificationOptionsFromDialog(HWND hDlg)
+{
+    TRAYVIEWOPTS tvo;
+    c_tray.GetTrayViewOpts(&tvo/*, _pCatBandManager*/);
+
+    tvo.fHideClock = ::IsDlgButtonChecked(hDlg, 1108) == 0;
+    for (UINT i = 0; i <= ARRAYSIZE(tvo.rgfHideSCA); i++)
+    {
+        tvo.rgfHideSCA[i] = UpdateSCAIcon(hDlg, i);
+    }
+    if (!tvo.fNoTrayItemsDisplayPolicyEnabled && !tvo.fNoAutoTrayPolicyEnabled)
+    {
+        BOOL fNotifySetting = ::IsDlgButtonChecked(hDlg, 1000);
+        if (tvo.fAutoTrayEnabledByUser != fNotifySetting)
+        {
+            tvo.fAutoTrayEnabledByUser = fNotifySetting;
+            _UpdateNotifySetting(fNotifySetting);
+        }
+    }
+    c_tray.SetTrayViewOpts(&tvo/*, _pCatBandManager*/);
+    SendMessageW(c_tray._hwndNotify, 0x402u, 0, tvo.fHideClock);
+    c_tray.SizeWindows();
+    ::SendNotifyMessageW(HWND_BROADCAST, 0x1Au, 0, (LPARAM)L"TraySettings");
 }
 
 #define CX_PREVIEW  336
@@ -2345,7 +2495,7 @@ void SetDocButton(HWND hDlg, int id)
             }
         }
     }
-    
+
     Button_Enable(GetDlgItem(hDlg, id), bAreDocs);
 }
 
@@ -2362,7 +2512,7 @@ void ClearRecentDocumentsAndMRUStuff(BOOL fBroadcastChange)
         if (fBroadcastChange)
             SHSendMessageBroadcast(WM_SETTINGCHANGE, 0,
                         (LPARAM)c_szRegMruKeysToDelete[i]);
-    }    
+    }
 }
 
 void HandleClearButtonClick(HWND hwndClear)
@@ -2508,7 +2658,7 @@ void StartMenuSort()
         {
             psf = BindToFolder(pidl);
         }
-        ILFree(pidl);                        
+        ILFree(pidl);
     }
 
     if (psf)
@@ -2617,10 +2767,10 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
         return FALSE;
     }
 
-    switch (msg) 
+    switch (msg)
     {
     case WM_COMMAND:
-        switch(GET_WM_COMMAND_ID(wParam, lParam)) 
+        switch(GET_WM_COMMAND_ID(wParam, lParam))
         {
         case IDC_ADDSHORTCUT:
             CallAppWiz(hwndDlg, FALSE);
@@ -2629,7 +2779,7 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
         case IDC_DELSHORTCUT:
             CallAppWiz(hwndDlg, TRUE);
             break;
-            
+
         case IDC_RESORT:
         {
             SHChangeDWORDAsIDList dwidl;
@@ -2639,13 +2789,13 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
             // Notify everyone that the order changed
             dwidl.cb      = sizeof(dwidl) - sizeof(dwidl.cbZero);
             dwidl.dwItem1 = SHCNEE_ORDERCHANGED;
-            dwidl.dwItem2 = 0; 
+            dwidl.dwItem2 = 0;
             dwidl.cbZero  = 0;
 
             SHChangeNotify(SHCNE_EXTENDED_EVENT, SHCNF_FLUSH, (LPCITEMIDLIST)&dwidl, NULL);
             break;
         }
-        
+
         case IDC_EXPLOREMENUS:
             ExecExplorerAtStartMenu(hwndDlg);
             break;
@@ -2772,7 +2922,7 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
         InitStartMenu_DoTreeHelp(pAdv, wParam);
         break;
     }
-        
+
     case WM_DESTROY:
         {
             pAdv->pTO->WalkTree(WALK_TREE_DELETE);

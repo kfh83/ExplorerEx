@@ -46,7 +46,7 @@ typedef struct tagTRAYVIEWOPTS
 #define SCA_VOLUME     0
 #define SCA_NETWORK    1
 #define SCA_POWER      2
-    BOOL fHideSCA[3]; // Volume, Network, Power
+    BOOL rgfHideSCA[3]; // Volume, Network, Power
 
     BOOL fNoTrayItemsDisplayPolicyEnabled;
     BOOL fNoAutoTrayPolicyEnabled;
@@ -273,9 +273,9 @@ public:
         ptvo->uAutoHide = _uAutoHide; // AH_HIDING , AH_ON
         ptvo->fShowQuickLaunch = (-1 != SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)-1));
 
-        for (int i = 0; i < ARRAYSIZE(ptvo->fHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
+        for (int i = 0; i < ARRAYSIZE(ptvo->rgfHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
         {
-            ptvo->fHideSCA[i] = _fHideSCA[i];
+            ptvo->rgfHideSCA[i] = _rgfHideSCA[i];
         }
     }
 
@@ -288,9 +288,9 @@ public:
         _fNoThumbnails = ptvo->fNoThumbnails;
         _uAutoHide = ptvo->uAutoHide; // AH_HIDING , AH_ON
 
-        for (int i = 0; i < ARRAYSIZE(_fHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
+        for (int i = 0; i < ARRAYSIZE(_rgfHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
         {
-            _fHideSCA[i] = ptvo->fHideSCA[i];
+            _rgfHideSCA[i] = ptvo->rgfHideSCA[i];
         }
         // There is no necessity to save the fNoAutoTrayPolicyEnabled, 
         // fNoTrayItemsDisplayPolicyEnabled, fAutoTrayEnabledByUser settings...
@@ -611,7 +611,7 @@ protected:
     BOOL _fSysSizing;      // being sized by user; hold off on recalc
     BOOL _fHideClock;
     BOOL _fNoThumbnails;    // Vista - New
-    BOOL _fHideSCA[3];      // Volume, Network, Power
+    BOOL _rgfHideSCA[3];    // Volume, Network, Power
     BOOL _fShouldResize;
     BOOL _fMonitorClipped;
     BOOL _fHandledDelayBootStuff;
