@@ -2525,7 +2525,7 @@ void RemoveTestSCAItem(HWND hWnd)
     Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
-void WINAPI SHLogicalToPhysicalDPI(SIZE* a1);
+void SHLogicalToPhysicalDPI(SIZE* pSize);
 
 LRESULT CTrayNotify::_Create(HWND hWnd)
 {
@@ -4630,7 +4630,8 @@ void CTrayNotify::_OnRudeApp(BOOL bRudeApp)
         if (bRudeApp || !_pinfo)
         {
             field_3C = 1;
-            KillTimer(_hwndNotify, 7u);
+            KillTimer(_hwndNotify, 7);
+
             if (_pinfo)
             {
                 if (_pinfo->bRealtime)
@@ -4639,14 +4640,14 @@ void CTrayNotify::_OnRudeApp(BOOL bRudeApp)
                 }
                 else
                 {
-                    SendMessageW(_hwndInfoTip, 0x411u, 0, 0);
+                    SendMessageW(_hwndInfoTip, TTM_TRACKACTIVATE, FALSE, 0);
                 }
             }
         }
         else
         {
-            SetTimer(_hwndNotify, 6u, 0x2710u, nullptr);
-            _bWaitAfterRudeAppHide = 1;
+            SetTimer(_hwndNotify, 6, 10000, nullptr);
+            _bWaitAfterRudeAppHide = TRUE;
         }
     }
 }

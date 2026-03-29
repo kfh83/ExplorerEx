@@ -1552,7 +1552,7 @@ void SFTBarHost::_InternalRepopulateList(BOOL a2)
 #endif
 }
 
-void SHLogicalToPhysicalDPI(int *a1, int *a2);
+void SHLogicalToPhysicalDPI(int *px, int *py);
 
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

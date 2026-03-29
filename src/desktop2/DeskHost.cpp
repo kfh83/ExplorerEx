@@ -533,13 +533,13 @@ extern int g_iLPX;
 extern int g_iLPY;
 extern void InitDPI();
 
-void SHLogicalToPhysicalDPI(int *a1, int *a2)
+void SHLogicalToPhysicalDPI(int *px, int *py)
 {
     InitDPI();
-    if (a1)
-        *a1 = MulDiv(*a1, g_iLPX, 96);
-    if (a2)
-        *a2 = MulDiv(*a2, g_iLPY, 96);
+    if (px)
+        *px = MulDiv(*px, g_iLPX, USER_DEFAULT_SCREEN_DPI);
+    if (py)
+        *py = MulDiv(*py, g_iLPY, USER_DEFAULT_SCREEN_DPI);
 }
 
 //

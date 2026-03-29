@@ -23,7 +23,7 @@ public:
     TASKITEM(TASKITEM* pti);
     ~TASKITEM();
     HWND hwnd;  // NULL if this item is a group of application entries
-    HWND field_4;
+    HWND hwnd2;
     DWORD dwFlags;
     class TaskShortcut *ptsh;
     DWORD dwTimeLastClicked;
@@ -145,7 +145,7 @@ protected:
     void _InitializeThumbnailMetrics();
     void _RegisterThumbnail(HWND hwnd, HTHUMBNAIL *phThumbnail);
     void _ShowThumbnail(HWND hwnd, int id, bool fGlom);
-    void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
+    void _UpdateThumbnailBackgroundBrush(COLORREF clrBackground, bool a3);
     void _UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumbnails);
 
     void _SetToolbarTheme();

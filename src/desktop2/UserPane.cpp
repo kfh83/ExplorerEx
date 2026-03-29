@@ -726,7 +726,7 @@ void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
     ReleaseDC(_hwndStatic, hdc);
 }
 
-void SHLogicalToPhysicalDPI(int* a1, int* a2);
+void SHLogicalToPhysicalDPI(int* px, int* py);
 void RemapSizeForHighDPI(SIZE* psiz);
 
 HRESULT CUserPane::_UpdateUserInfo(int a2)
