@@ -195,7 +195,7 @@ typedef struct tagFSEPDATA
     RECT* prc;
     HMONITOR hmon;
     CTray* ptray;
-    BOOL field_C; // EXEX-VISTA(allison): NEW
+    BOOL fProcessingDesktopRaise; // EXEX-VISTA(allison): NEW
 } FSEPDATA, *PFSEPDATA;
 
 // EXEX-VISTA(allison): Validated
@@ -209,7 +209,7 @@ void CTray::HandleFullScreenApp(HWND hwnd)
     _hwndRude = hwnd;
 
     FSEPDATA d = {};
-    d.field_C = _fProcessingDesktopRaise;
+    d.fProcessingDesktopRaise = _fProcessingDesktopRaise;
 
     RECT rc;
     if (hwnd && GetWindowRect(hwnd, &rc))
@@ -1311,23 +1311,22 @@ LRESULT CTray::_OnCreate(HWND hwnd)
 
 BOOL WINAPI CTray::FullScreenEnumProc(HMONITOR hmon, HDC hdc, LPRECT prc, LPARAM dwData)
 {
-    BOOL fFullScreen;   // Is there a rude app on this monitor?
+    BOOL fFullScreen = FALSE;   // Is there a rude app on this monitor?
 
     PFSEPDATA pd = (PFSEPDATA)dwData;
-    if (pd->hmon == hmon)
+    if (!g_fDesktopRaised && !pd->fProcessingDesktopRaise)
     {
-        fFullScreen = TRUE;
-    }
-    else if (pd->prc)
-    {
-        RECT rc, rcMon;
-        GetMonitorRect(hmon, &rcMon);
-        IntersectRect(&rc, &rcMon, pd->prc);
-        fFullScreen = EqualRect(&rc, &rcMon);
-    }
-    else
-    {
-        fFullScreen = FALSE;
+        if (pd->hmon == hmon)
+        {
+            fFullScreen = TRUE;
+        }
+        else if (pd->prc)
+        {
+            RECT rc, rcMon;
+            GetMonitorRect(hmon, &rcMon);
+            IntersectRect(&rc, &rcMon, pd->prc);
+            fFullScreen = EqualRect(&rc, &rcMon);
+        }
     }
 
     if (hmon == pd->ptray->_hmonStuck)
@@ -1471,9 +1470,22 @@ void CTray::_ResetZorder(BOOL fForce)
     }
     if (hwndZorder != (_IsTopmost() != 0 ? HWND_TOPMOST : HWND_NOTOPMOST) || fForce)
     {
-        SetWindowPos(
-            _stb._hwndStart, hwndZorder, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
-        SHForceWindowZorder(_hwnd, hwndZorder);
+        // XXX(kawapure): Hack to ensure start button always appears on top of the tray. I
+        // don't have a clue how Vista Explorer handles this correctly, but in our case, the
+        // calls need to be ordered in respect to the direction for the z order to be correct.
+        if (hwndZorder == HWND_BOTTOM)
+        {
+            SetWindowPos(
+                _stb._hwndStart, hwndZorder, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+            SHForceWindowZorder(_hwnd, hwndZorder);
+        }
+        else
+        {
+            SHForceWindowZorder(_hwnd, hwndZorder);
+            SetWindowPos(
+                _stb._hwndStart, hwndZorder, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        }
+        
         EnumWindows(s_EnumTooltipWindowsProc, reinterpret_cast<LPARAM>(hwndZorder));
     }
 }
@@ -3998,7 +4010,7 @@ void CTray::_ActAsSwitcher()
                 SwitchToThisWindow(hwnd, 1);
                 SetForegroundWindow(hwnd);
                 Sleep(20);
-                PostMessage(_hwnd, 0x504u, 0, 0);
+                PostMessage(_hwnd, TM_ACTASTASKSW, 0, 0);
             }
         }
         else

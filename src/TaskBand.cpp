@@ -4904,6 +4904,11 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, HTHUMBNAIL* phThumbnail)
     if (*phThumbnail)
     {
         DwmUnregisterThumbnail(*phThumbnail);
+        DWM_THUMBNAIL_PROPERTIES ptnProperties;
+        ptnProperties.dwFlags = DWM_TNP_OPACITY | DWM_TNP_SOURCECLIENTAREAONLY;
+        ptnProperties.opacity = 255;
+        ptnProperties.fSourceClientAreaOnly = TRUE;
+        DwmUpdateThumbnailProperties(*phThumbnail, &ptnProperties);
     }
     if (IsWindow(hwnd) && SUCCEEDED(DwmRegisterThumbnail(_hwndThumbStack[0], hwnd, phThumbnail)))
     {
@@ -4913,6 +4918,14 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, HTHUMBNAIL* phThumbnail)
         tnp.fSourceClientAreaOnly = TRUE;
         DwmUpdateThumbnailProperties(*phThumbnail, &tnp);
     }
+
+    // XXX(kawapure): This query for the thumbnail source size seems to fix
+    // a DWM crash when closing immersive windows when a thumbnail for any
+    // immersive app hasn't been viewed yet during the Explorer session. Why?
+    // I have absolutely no fucking clue.
+    SIZE sizeThumbnail{ 0, 0 };
+    DwmQueryThumbnailSourceSize(*phThumbnail, &sizeThumbnail);
+
     (void)hwnd, (void)phThumbnail; // Skipped telemetry ShellTraceID_RegisterThumbnail_Stop
 }
 
@@ -6609,6 +6622,7 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
         // RegisterShellHookWindow() is called in shell32/.RegisterShellHook()
         return _OnAppCommand(GET_APPCOMMAND_LPARAM(lParam));
     }
+
     return 0;
 }
 
