@@ -139,12 +139,12 @@ protected:
     /* Vista thumbnail-related methods */
     int _CanShowThumbnail();
     void _CreateThumbnailWindows();
-    void _HandleThumbnail(HWND hwnd, NMTBHOTITEM* hotItemInfo, bool fGlommed);
+    void _HandleThumbnail(HWND hwnd, const NMTBHOTITEM* pnmHot, bool fGlommed);
     void _HideThumbnail();
     void _HideThumbnailWindows();
     void _InitializeThumbnailMetrics();
-    void _RegisterThumbnail(HWND hwnd, HTHUMBNAIL *phThumbnailId);
-    void _ShowThumbnail(HWND hWnd, WPARAM wParam, bool fIsGlomMenu);
+    void _RegisterThumbnail(HWND hwnd, HTHUMBNAIL *phThumbnail);
+    void _ShowThumbnail(HWND hwnd, int id, bool fGlom);
     void _UpdateThumbnailBackgroundBrush(DWORD crColorization, BOOL fOpaqueBlend);
     void _UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumbnails);
 
@@ -267,7 +267,7 @@ protected:
     void _ReattachTaskShortcut();
     void _BuildTaskList(CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>>* pDPA);
 
-    int _ShowTooltip(const HWND hWnd);
+    BOOL _ShowTooltip(const HWND hwnd);
 
     static LRESULT CALLBACK s_TaskbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     static LRESULT CALLBACK s_GlomMenuSiteSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
@@ -393,22 +393,11 @@ protected:
     BOOL _fShowThumbnail;
     int field_128;
 
-    struct THUMBNAILDATA // Assumed
-    {
-        HWND hwnd;
-        int iSomething;
-        bool fSomething;
-		BYTE gap135[3];
-        DWORD dwSomething;
-    };
-    THUMBNAILDATA _thumbData;
-
-    // Set in CTaskBand::_HandleThumbnail
-    // HWND _hwndSomething;
-    // int _iSomething;
-    // char _fSomething;
-    // BYTE gap135[3];
-    // DWORD _dwSomething;
+    // Set in CTaskBand::_HandleThumbnail, these could also be a struct or separate fields, not sure.
+    HWND        _hwndPendingThumbnail;
+    int         _idPendingThumbnail;
+    bool        _fPendingThumbnailGlommed;
+    DWORD       _dwPendingThumbnailTick;
 
     DWORD _dwTick;
     HWND field_140;
