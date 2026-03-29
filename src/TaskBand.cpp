@@ -4904,11 +4904,6 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, HTHUMBNAIL* phThumbnail)
     if (*phThumbnail)
     {
         DwmUnregisterThumbnail(*phThumbnail);
-        DWM_THUMBNAIL_PROPERTIES ptnProperties;
-        ptnProperties.dwFlags = DWM_TNP_OPACITY | DWM_TNP_SOURCECLIENTAREAONLY;
-        ptnProperties.opacity = 255;
-        ptnProperties.fSourceClientAreaOnly = TRUE;
-        DwmUpdateThumbnailProperties(*phThumbnail, &ptnProperties);
     }
     if (IsWindow(hwnd) && SUCCEEDED(DwmRegisterThumbnail(_hwndThumbStack[0], hwnd, phThumbnail)))
     {
