@@ -200,6 +200,7 @@ protected:
     LRESULT _HandleSize(WPARAM fwSizeType);
     LRESULT _HandleActivate(HWND hwndActive);
     void _UpdateItemUsage(PTASKITEM pti);
+    void _HandleOtherWindowCreated(HWND hwndCreated);
     void _HandleOtherWindowDestroyed(HWND hwndDestroyed);
     void _HandleGetMinRect(HWND hwndShell, LPPOINTS lprc);
     void _HandleChangeNotify(WPARAM wParam, LPARAM lParam);

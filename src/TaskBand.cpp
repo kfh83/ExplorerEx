@@ -5760,6 +5760,16 @@ LRESULT CTaskBand::_HandleActivate(HWND hwndActive)
     return TRUE;
 }
 
+void CTaskBand::_HandleOtherWindowCreated(HWND hwndCreated)
+{
+    if (_AddWindow(hwndCreated))
+    {
+        _HideThumbnail();
+        KillTimer(_hwnd, 10);
+        _fShowThumbnail = FALSE;
+    }
+}
+
 //---------------------------------------------------------------------------
 void CTaskBand::_HandleOtherWindowDestroyed(HWND hwndDestroyed)
 {
@@ -6354,13 +6364,7 @@ PTASKITEM CTaskBand::_FindItemByHwnd(HWND hwnd)
 
 void CTaskBand::_OnWindowActivated(HWND hwnd, BOOL fSuspectFullscreen)
 {
-    // esi MAPDST
-    // esi MAPDST
-    // eax
-    // [esp-10h] [ebp-34h]
-    // [esp+Ch] [ebp-18h]
-
-    HWND hwndRude; // [esp+1Ch] [ebp-8h] MAPDST
+    HWND hwndRude;
 
     TASKITEM* pti = _FindItemByHwnd(hwnd);
     if (pti && pti->fMarkedFullscreen)
@@ -6409,6 +6413,18 @@ void CTaskBand::_OnWindowActivated(HWND hwnd, BOOL fSuspectFullscreen)
 
     _HandleActivate(hwnd);
     _ptray->HandleFullScreenApp(hwndRude);
+}
+
+BOOL WINAPI IsGhostWindowClass(const HWND hwnd)
+{
+    static ATOM ghostAtom = WORD_MAX;
+    if (ghostAtom == WORD_MAX)
+    {
+        WNDCLASSW wc;
+        ghostAtom = GetClassInfoW(nullptr, L"Ghost", &wc);
+    }
+    ATOM atom = GetClassLongPtrW(hwnd, GCW_ATOM);
+    return atom && atom == ghostAtom;
 }
 
 // We get notification about activation etc here. This saves having
@@ -6461,7 +6477,10 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
         break;
 
     case HSHELL_WINDOWCREATED:
-        _AddWindow(hwnd);
+        if (!IsGhostWindowClass(hwnd))
+        {
+            _HandleOtherWindowCreated(hwnd);
+        }
         break;
 
     case HSHELL_WINDOWDESTROYED:

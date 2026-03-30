@@ -348,15 +348,28 @@ void CTray::_GetSaveStateAndInitRects()
     SIZE size;
 
     // first fill in the defaults
-    SetRect(&rcDisplay, 0, 0, g_cxPrimaryDisplay, g_cyPrimaryDisplay);
+    SetRect(&rcDisplay, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+
+    WCHAR szClassList[260];
+    StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"StartBottom", L"Button");
+
+    HTHEME hTheme = OpenThemeData(nullptr, szClassList);
+    _stb.GetSizeAndFont(hTheme);
+    if (hTheme)
+    {
+        CloseThemeData(hTheme);
+    }
+
+    SIZE sizeStartPadding;
+    _GetStartButtonPadding(&sizeStartPadding);
 
     // size gets defaults
-    size.cx = _stb._sizeStart.cx + 2 * (g_cxDlgFrame + g_cxBorder);
-    size.cy = _stb._sizeStart.cy + 2 * (g_cyDlgFrame + g_cyBorder);
+    size.cx = sizeStartPadding.cx + _stb._sizeStart.cx;
+    size.cy = sizeStartPadding.cy + _stb._sizeStart.cy;
 
     // sStuckWidths gets minimum
-    _sStuckWidths.cx = 2 * (g_cxDlgFrame + g_cxBorder);
-    _sStuckWidths.cy = _stb._sizeStart.cy + 2 * (g_cyDlgFrame + g_cyBorder);
+    _sStuckWidths.cx = size.cx;
+    _sStuckWidths.cy = size.cy;
 
     _uStuckPlace = STICK_BOTTOM;
     dwTrayFlags = _GetDefaultTVSDFlags();
@@ -6419,19 +6432,19 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     case STICK_LEFT:
                         r1.left = r1.right - _iSizingBarHeight;
-                        v18 = PtInRect(&r1, pt) ? HTRIGHT : 0;
+                        v18 = PtInRect(&r1, pt) ? HTRIGHT : 2;
                         break;
                     case STICK_TOP:
                         r1.top = r1.bottom - _iSizingBarHeight;
-                        v18 = PtInRect(&r1, pt) ? HTBOTTOM : 0;
+                        v18 = PtInRect(&r1, pt) ? HTBOTTOM : 2;
                         break;
                     case STICK_RIGHT:
                         r1.right = r1.left + _iSizingBarHeight;
-                        v18 = PtInRect(&r1, pt) ? HTLEFT : 0;
+                        v18 = PtInRect(&r1, pt) ? HTLEFT : 2;
                         break;
                     case STICK_BOTTOM:
                         r1.bottom = r1.top + _iSizingBarHeight;
-                        v18 = PtInRect(&r1, pt) ? HTTOP : 0;
+                        v18 = PtInRect(&r1, pt) ? HTTOP : 2;
                         break;
                     default:
                         return lres;

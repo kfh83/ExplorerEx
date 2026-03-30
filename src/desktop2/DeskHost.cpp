@@ -3764,14 +3764,16 @@ HTHEME CDesktopHost::_GetStartMenuTheme()
         field_1AC |= dwPopupPosition;
     }
 
-    LPCWSTR pszTheme;
+    const WCHAR* pszTheme;
     if (field_1AC == 0x80000000)
     {
         pszTheme = IsCompositionActive() ? L"StartPanelCompositedBottom::StartPanel" : L"StartPanelBottom::StartPanel";
+        wprintf(L"CDesktopHost::_GetStartMenuTheme: Using theme %s\n", pszTheme);
     }
     else
     {
-        pszTheme = IsCompositionActive() ? L"StartPanel" : L"StartPanel";
+        pszTheme = IsCompositionActive() ? L"StartPanelComposited::StartPanel" : L"StartPanel";
+        wprintf(L"CDesktopHost::_GetStartMenuTheme: Using theme %s\n", pszTheme);
     }
     return OpenThemeData(_hwnd, pszTheme);
 }
