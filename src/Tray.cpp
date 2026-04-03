@@ -6193,7 +6193,7 @@ static BOOL g_fShellShutdown = FALSE;
 
 LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#if 1
+#if 0
     static  UINT uDDEExec = 0;
     LRESULT lres = 0;
     MSG msg;
