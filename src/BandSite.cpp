@@ -93,12 +93,7 @@ protected:
 };
 
 LRESULT CALLBACK TaskbarSizingBarSubclassProc(
-    HWND hWnd,
-    UINT uMsg,
-    WPARAM wParam,
-    LPARAM lParam,
-    UINT_PTR uIdSubclass,
-    DWORD_PTR dwRefData)
+    HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
     if (uMsg == WM_NCDESTROY)
     {
@@ -110,24 +105,28 @@ LRESULT CALLBACK TaskbarSizingBarSubclassProc(
         GetWindowRect(hWnd, &rc);
 
         UINT uStuckPlace = c_tray.getStuckPlace();
-        if (uStuckPlace)
+        switch (uStuckPlace)
         {
-            if (uStuckPlace == 1)
+            case STICK_LEFT:
+            {
+                rc.right -= c_tray._iSizingBarHeight;
+                break;
+            }
+            case STICK_TOP:
             {
                 rc.bottom -= c_tray._iSizingBarHeight;
+                break;
             }
-            else if (uStuckPlace == 2)
+            case STICK_RIGHT:
             {
                 rc.left += c_tray._iSizingBarHeight;
+                break;
             }
-            else
+            default:
             {
                 rc.top += c_tray._iSizingBarHeight;
+                break;
             }
-        }
-        else
-        {
-            rc.right -= c_tray._iSizingBarHeight;
         }
 
         POINT pt;
@@ -232,8 +231,6 @@ CTrayBandSite* IUnknownToCTrayBandSite(IUnknown* punk)
     
     punk->QueryInterface(CLSID_TrayBandSite, (void **)&ptbs);
     ASSERT(ptbs);
-    punk->Release();
-
     return ptbs;
 }
 
@@ -246,9 +243,7 @@ CTrayBandSite::~CTrayBandSite()
     if (_pcm)
         _pcm->Release();
 
-    if (_pwzTheme)
-        delete[] _pwzTheme;
-    
+    CoTaskMemFree(_pwzTheme);    
     return;
 }
 

@@ -48,18 +48,15 @@ HRESULT AddMenuItemsCacheTask(IShellTaskScheduler* pSystemScheduler, BOOL fKeepC
 // startmnu.cpp
 void HandleFirstTime();
 
-HWND v_hwndDesktop = NULL;
-HWND v_hwndTray = NULL;
-HWND v_hwndStartPane = NULL;
+HWND v_hwndDesktop = nullptr;
+HWND v_hwndTray = nullptr;
+HWND v_hwndStartPane = nullptr;
 
 BOOL g_fDesktopRaised = FALSE;
 BOOL g_fInSizeMove = FALSE;
 
-UINT _uMsgEnableUserTrackedBalloonTips = 0;
-UINT _uMsgShowOnlyQuickLaunchDeskBand = 0;
-
 void ClearRecentDocumentsAndMRUStuff(BOOL fBroadcastChange);
-void DoTaskBarProperties(HWND hwnd, DWORD dwFlags);
+void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm);
 
 void ClassFactory_Start();
 void ClassFactory_Stop();
@@ -171,6 +168,31 @@ CTray::CTray()
 {
 }
 
+CTray::~CTray()
+{
+    // _responseMonitor.Disconnect();
+}
+
+HRESULT CTray::QueryInterface(REFIID riid, void** ppvObj)
+{
+    const QITAB qit[] =
+    {
+        QITABENT(CTray, ITrayDeskBand),
+        {}
+    };
+    return QISearch(this, qit, riid, ppvObj);
+}
+
+ULONG CTray::AddRef()
+{
+    return 2;
+}
+
+ULONG CTray::Release()
+{
+    return 1;
+}
+
 void CTray::EnableTooltips(BOOL bEnable)
 {
     SendMessage(_hwndTrayTips, TTM_ACTIVATE, bEnable, NULL);
@@ -246,6 +268,7 @@ BOOL CTray::_CreateClockWindow()
     _hwndNotify = _trayNotify.TrayNotifyCreate(_hwnd, IDC_CLOCK, g_hinstCabinet);
     SendMessage(_hwndNotify, TNM_UPDATEVERTICAL, 0, !STUCK_HORIZONTAL(_uStuckPlace));
 
+    _hwndClock = _GetClockWindow();
     return BOOLFROMPTR(_hwndNotify);
 }
 
@@ -557,7 +580,7 @@ HWND CTray::_CreateStartButton()
     return hwndStart;
 }
 
-void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify)
+void CTray::_GetWindowSizes(UINT uStuckPlace, const RECT* prcClient, RECT* prcView, RECT* prcNotify)
 {
 #ifdef DEAD_CODE
     prcView->top = 0;
@@ -590,7 +613,7 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
 #endif
     if ((uStuckPlace & 1) != 0)
     {
-        DWORD_PTR dwNotifySize = SendMessage(this->_hwndNotify, WM_CALCMINSIZE, prcClient->right / 2, prcClient->bottom);
+        DWORD_PTR dwNotifySize = SendMessage(_hwndNotify, WM_CALCMINSIZE, prcClient->right / 2, prcClient->bottom);
         prcNotify->top = 0;
         prcNotify->left = prcClient->right - LOWORD(dwNotifySize);
         prcNotify->bottom = HIWORD(dwNotifySize);
@@ -790,47 +813,32 @@ void CTray::VerifySize(BOOL fWinIni, BOOL fRoundUp /* = FALSE */, BOOL fUpdateSi
     }
 }
 
-HWND CTray::_GetClockWindow(void)
+HWND CTray::_GetClockWindow()
 {
-    return (HWND)SendMessage(_hwndNotify, TNM_GETCLOCK, 0, 0L);
+    return (HWND)SendMessageW(_hwndNotify, TNM_GETCLOCK, 0, 0L);
 }
 
 void CTray::_CreateTrayTips()
 {
-    _hwndTrayTips = CreateWindowEx(WS_EX_TRANSPARENT, TOOLTIPS_CLASS, NULL,
+    _hwndTrayTips = CreateWindowEx(WS_EX_TRANSPARENT, TOOLTIPS_CLASS, nullptr,
         WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
         CW_USEDEFAULT, CW_USEDEFAULT,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        _hwnd, NULL, g_hinstCabinet,
-        NULL);
+        _hwnd, nullptr, g_hinstCabinet,
+    nullptr);
 
     if (_hwndTrayTips)
     {
-        // taskbar windows are themed under Taskbar subapp name
-        SendMessage(_hwndTrayTips, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
+        SendMessageW(_hwndTrayTips, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
 
-        //SetWindowZorder(_hwndTrayTips, HWND_TOPMOST);
-
-        TOOLINFO ti;
-
+        TTTOOLINFOW ti = {};
         ti.cbSize = sizeof(ti);
         ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS | TTF_EXCLUDETOOLAREA;
         ti.hwnd = _hwnd;
         ti.uId = (UINT_PTR)_stb._hwndStart;
-        ti.lpszText = (LPTSTR)MAKEINTRESOURCE(IDS_STARTBUTTONTIP);
+        ti.lpszText = MAKEINTRESOURCEW(IDS_STARTBUTTONTIP);
         ti.hinst = g_hinstCabinet;
-        SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
-
-        // EXEX - VISTA TODO(allison) : Remove this because vista uses a custom clock tooltip.
-        HWND hwndClock = _GetClockWindow();
-        if (hwndClock)
-        {
-            ti.uFlags = TTF_EXCLUDETOOLAREA;
-            ti.uId = (UINT_PTR)hwndClock;
-            ti.lpszText = LPSTR_TEXTCALLBACK;
-            ti.rect.left = ti.rect.top = ti.rect.bottom = ti.rect.right = 0;
-            SendMessage(_hwndTrayTips, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
-        }
+        SendMessageW(_hwndTrayTips, TTM_ADDTOOLW, 0, (LPARAM)&ti);
     }
 }
 
@@ -1290,13 +1298,13 @@ void CTray::_StarterWatermarkCreate(BOOL fCreate)
 }
 
 // EXEX-VISTA: Validated.
-LRESULT CTray::_OnCreate(HWND hwnd)
+LRESULT CTray::_OnCreate()
 {
     LRESULT lres = -1;
-    v_hwndTray = hwnd;
+    v_hwndTray = _hwnd;
 
     // EXEX-VISTA TODO: Uncommented when implemented CSystemMixer
-#if 0
+#ifdef SYSTEM_MIXER
     _pSystemMixer = new (std::nothrow) CSystemMixer(_hwnd);
 #endif
 
@@ -1386,7 +1394,6 @@ int CTray::GetStartButtonMinHeight()
     {
         return SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
     }
-
     return 0;
 }
 
@@ -1403,6 +1410,111 @@ void CTray::SetUnhideTimer(LONG x, LONG y)
 void CTray::OnStartButtonClosing()
 {
     _DoExitWindows(v_hwndDesktop, FALSE, FALSE);
+}
+
+typedef struct tagCONSENTDLGDATA
+{
+    WCHAR field_0[128];
+    GUID field_100;
+    IStream* field_110;
+} CONSENTDLGDATA, *PCONSENTDLGDATA;
+
+HRESULT CTray::ShowDeskBand(REFCLSID clsid)
+{
+    HRESULT hr = E_FAIL;
+
+    if (_pcbm != nullptr)
+    {
+        WCHAR szName[260];
+        BOOL fShow;
+        hr = _pcbm->QueryCatBand(CATID_DeskBand, clsid, -1, szName, ARRAYSIZE(szName), nullptr, &fShow);
+        if (SUCCEEDED(hr))
+        {
+            if (fShow)
+            {
+                hr = S_FALSE;
+            }
+            else
+            {
+                hr = E_OUTOFMEMORY;
+
+                CONSENTDLGDATA* pData = new CONSENTDLGDATA;
+                if (pData)
+                {
+                    hr = E_FAIL;
+
+                    pData->field_100 = clsid;
+#ifdef CONSENT_DIALOG
+                    StringCchCopyW(pData->field_0, ARRAYSIZE(pData->field_0), szName);
+                    if (SUCCEEDED(CoMarshalInterThreadInterfaceInStream(IID_ICatBandManager, _pcbm, &pData->field_110))
+                        && SHCreateThread(s_ConsentDlgProc, pData, CTF_COINIT, nullptr))
+                    {
+                        return S_OK;
+                    }
+#endif
+                    delete pData;
+                }
+            }
+        }
+    }
+    
+    return hr;
+}
+
+HRESULT CTray::HideDeskBand(REFCLSID clsid)
+{
+    HRESULT hr = E_FAIL;
+    if (_pcbm)
+    {
+        hr = _pcbm->HideCatBand(CATID_DeskBand, clsid, -1);
+    }
+    return hr;
+}
+
+HRESULT CTray::IsDeskBandShown(REFCLSID clsid)
+{
+    HRESULT hr = E_FAIL;
+    if (_pcbm)
+    {
+        BOOL fShown;
+        hr = _pcbm->QueryCatBand(CATID_DeskBand, clsid, -1, nullptr, 0, nullptr, &fShown);
+        if (SUCCEEDED(hr))
+        {
+            hr = fShown ? S_FALSE : S_OK;
+        }
+    }
+    return hr;
+}
+
+HRESULT CTray::DeskBandRegistrationChanged()
+{
+    HRESULT hr = E_FAIL;
+    if (_pcbm)
+    {
+        hr = _pcbm->RefreshCatBandCache(CATID_DeskBand);
+    }
+    return hr;
+}
+
+DWORD CTray::HandleInComingCall(
+    DWORD dwCallType, HTASK htaskCaller, DWORD dwTickCount, INTERFACEINFO* lpInterfaceInfo)
+{
+    DWORD dwRet = SERVERCALL_ISHANDLED;
+    if (dwCallType == CALLTYPE_TOPLEVEL_CALLPENDING)
+    {
+        dwRet = IsEqualGUID(lpInterfaceInfo->iid, IID_ITrayDeskBand);
+    }
+    return dwRet;
+}
+
+DWORD CTray::RetryRejectedCall(HTASK htaskCallee, DWORD dwTickCount, DWORD dwRejectType)
+{
+    return -1;
+}
+
+DWORD CTray::MessagePending(HTASK htaskCallee, DWORD dwTickCount, DWORD dwPendingType)
+{
+    return 1;
 }
 
 BOOL CTray::_IsTopmost()
@@ -1633,6 +1745,8 @@ void CTray::_InitBandsite()
 
     SendMessageW(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
 
+    field_38 = 1;
+
     // Now that bandsite is ready, set the correct size
     VerifySize(FALSE, TRUE, FALSE);
     _AccountAllBandsForTaskbarSizingBar();
@@ -1681,13 +1795,13 @@ void CTray::_CreateTrayWindow()
 {
     _InitTrayClass();
 
-    _uMsgEnableUserTrackedBalloonTips = RegisterWindowMessage(ENABLE_BALLOONTIP_MESSAGE);
-    _uMsgShowOnlyQuickLaunchDeskBand = RegisterWindowMessage(TEXT("ShowOnlyQuickLaunchDeskBand"));
+    _uMsgEnableUserTrackedBalloonTips = RegisterWindowMessageW(L"Enable Balloon Tip");
+    _uMsgShowOnlyQuickLaunchDeskBand = RegisterWindowMessageW(L"ShowOnlyQuickLaunchDeskBand");
 
-    _fNoToolbarsOnTaskbarPolicyEnabled = (SHRestricted(REST_NOTOOLBARSONTASKBAR) != 0);
-    _fTaskbarLockAllPolicyEnabled = (SHWindowsPolicy(POLID_TaskbarLockAll) != 0);
-    _fTaskbarNoRedockPolicyEnabled = (SHWindowsPolicy(POLID_TaskbarNoRedock) != 0);
-    _fTaskbarNoResizePolicyEnabled = (SHWindowsPolicy(POLID_TaskbarNoResize) != 0);
+    _fNoToolbarsOnTaskbarPolicyEnabled = SHRestricted(REST_NOTOOLBARSONTASKBAR) != 0;
+    _fTaskbarLockAllPolicyEnabled = SHWindowsPolicy(POLID_TaskbarLockAll) != 0;
+    _fTaskbarNoRedockPolicyEnabled = SHWindowsPolicy(POLID_TaskbarNoRedock) != 0;
+    _fTaskbarNoResizePolicyEnabled = SHWindowsPolicy(POLID_TaskbarNoResize) != 0;
 
     DWORD dwExStyle = WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW;
     // Don't fadein because layered windows suck
@@ -1695,11 +1809,12 @@ void CTray::_CreateTrayWindow()
     dwExStyle |= IS_BIDI_LOCALIZED_SYSTEM() ? dwExStyleRTLMirrorWnd : 0L;
 
     SHFusionCreateWindowEx(
-        dwExStyle, TEXT("Shell_TrayWnd"), nullptr, WS_CLIPCHILDREN | WS_POPUP, 0, 0, 0, 0, nullptr, nullptr,
+        dwExStyle, L"Shell_TrayWnd", nullptr, WS_CLIPCHILDREN | WS_POPUP, 0, 0, 0, 0, nullptr, nullptr,
         g_hinstCabinet, this);
 
     // Fix for DWM borders on classic theme
-    if (!IsAppThemed())
+    BOOL fIsClassic = !IsAppThemed() && !IsCompositionActive();
+    if (fIsClassic)
     {
         DWMNCRENDERINGPOLICY ncrp = DWMNCRP_DISABLED;
         DwmSetWindowAttribute(_hwnd, DWMWA_NCRENDERING_POLICY, &ncrp, sizeof(DWMNCRENDERINGPOLICY));
@@ -1808,7 +1923,7 @@ DWORD CTray::_SyncThreadProc()
         _stb.UpdateStartButton(true);
 
         //_StarterWatermarkUpdate();
-        _bBool679 = true;   // ExplorerEx-Vista
+        field_679 = true;   // ExplorerEx-Vista
 
         //_SignalShellDesktopSwitchEvent();
 
@@ -2691,68 +2806,44 @@ void CTray::SizeWindows()
 
 void CTray::_HandleSize()
 {
-    //
-    // if somehow we got minimized go ahead and un-minimize
-    //
-    if (((GetWindowLong(_hwnd, GWL_STYLE)) & WS_MINIMIZE))
+    if ((GetWindowLongPtrW(_hwnd, GWL_STYLE) & WS_MINIMIZE) != 0)
     {
-        ASSERT(FALSE);
+        ASSERT(FALSE); // 3578
         ShowWindow(_hwnd, SW_RESTORE);
     }
 
-    //
-    // if we are in the move/size loop and are visible then
-    // re-snap the current stuck rect to the new window size
-    //
-    #ifdef DEBUG
-    if (_fSysSizing && (_uAutoHide & AH_HIDING)) {
-        TraceMsg(DM_TRACE, "fSysSize && hiding");
-        ASSERT(0);
-    }
-    #endif
-    if (_fSysSizing &&
-        ((_uAutoHide & (AH_ON | AH_HIDING)) != (AH_ON | AH_HIDING)))
+    if (_fSysSizing)
     {
-        _uStuckPlace = _RecalcStuckPos(NULL);
-        _UpdateVertical(_uStuckPlace);
+        if ((_uAutoHide & AH_HIDING) != 0)
+        {
+            // TraceMsg(DM_TRACE, "fSysSize && hiding");
+            ASSERT(0); // 3590
+        }
+        if (_fSysSizing && (_uAutoHide & (AH_ON | AH_HIDING)) != (AH_ON | AH_HIDING))
+        {
+            _uStuckPlace = _RecalcStuckPos(nullptr);
+            _UpdateVertical(_uStuckPlace);
+        }
     }
 
-    //
-    // if we are in fulldrag or we are not in the middle of a move/size then
-    // we should resize all our child windows to reflect our new size
-    //
-    if (g_fDragFullWindows || !_fSysSizing)
+    if (g_fDragFullWindows || !this->_fSysSizing)
+    {
         SizeWindows();
 
-    //
-    // if we are just plain resized and we are visible we may need re-dock
-    //
-    if (!_fSysSizing && !_fSelfSizing && IsWindowVisible(_hwnd))
-    {
-        if (_uAutoHide & AH_ON)
+        if (!_fSysSizing && !_fSelfSizing && IsWindowVisible(_hwnd))
         {
-            UINT uPlace = _uStuckPlace;
-            HWND hwndOther = _AppBarGetAutoHideBar(uPlace);
-
-            //
-            // we sometimes defer checking for this until after a move
-            // so as to avoid interrupting a full-window-drag in progress
-            // if there is a different autohide window in our slot then whimper
-            //
-            if (hwndOther ?
-                (hwndOther != _hwnd) :
-                !_AppBarSetAutoHideBar2(_hwnd, TRUE, uPlace))
+            if ((_uAutoHide & AH_ON) != 0)
             {
-                _AutoHideCollision();
+                UINT uPlace = _uStuckPlace;
+                HWND hwndOther = _AppBarGetAutoHideBar(uPlace);
+                if (hwndOther ? hwndOther != _hwnd : !_AppBarSetAutoHideBar2(_hwnd, TRUE, uPlace))
+                {
+                    _AutoHideCollision();
+                }
             }
+            _StuckTrayChange();
+            _ClipWindow(TRUE);
         }
-
-        _StuckTrayChange();
-
-        //
-        // make sure we clip to tray to the current monitor (if necessary)
-        //
-        _ClipWindow(TRUE);
     }
 
     _stb.RepositionBalloon();
@@ -2870,15 +2961,21 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
                 lprc->right = rcMax.right;
                 break;
             case STICK_BOTTOM:
+                LONG delta = rcMax.bottom - lprc->bottom;
                 lprc->bottom = rcMax.bottom;
-                lprc->top += rcMax.bottom - lprc->bottom;
+                lprc->top += delta;
                 break;
         }
     }
 
     SIZE sNewWidths;
-    sNewWidths.cx = min(RECTWIDTH(*lprc), RECTWIDTH(rcDisplay) / 2);
-    sNewWidths.cy = min(RECTHEIGHT(*lprc), RECTHEIGHT(rcDisplay) / 2);
+    sNewWidths.cx = lprc->right - lprc->left;
+    if (sNewWidths.cx >= (rcDisplay.right - rcDisplay.left) / 2)
+        sNewWidths.cx = (rcDisplay.right - rcDisplay.left) / 2;
+
+    sNewWidths.cy = lprc->bottom - lprc->top;
+    if (sNewWidths.cy >= (rcDisplay.bottom - rcDisplay.top) / 2)
+        sNewWidths.cy = (rcDisplay.bottom - rcDisplay.top) / 2;
 
     _MakeStuckRect(lprc, &rcDisplay, sNewWidths, uStuckPlace);
     // DebugMsg(DM_TRAYDOCK, TEXT("TRAYDOCK.t_hs starting rect is {%d, %d, %d, %d}"), lprc->left, lprc->top, lprc->right, lprc->bottom);
@@ -2887,7 +2984,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
     _UpdateVertical(uStuckPlace);
 
     IDeskBarClient* pdbc;
-    if (_ptbs && /*dword38 &&*/ SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
+    if (_ptbs && field_38 && SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
     {
         RECT rcClient;
         RECT rcOldClient;
@@ -3820,11 +3917,13 @@ LRESULT CTray::_HandleDestroy()
     _DestroyStartMenu();
 
     // EXEX-VISTA TODO: Uncomment when CSystemMixer is implemented
-    /*if (_pSystemMixer)
+#ifdef SYSTEM_MIXER
+    if (_pSystemMixer)
     {
         _pSystemMixer->Release();
         _pSystemMixer = nullptr;
-    }*/
+    }
+#endif
 
     // Tell the start menu to free all its cached darwin links
     SHRegisterDarwinLink(nullptr, nullptr, TRUE);
@@ -4060,6 +4159,7 @@ void CTray::_OnWinIniChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 
     // Tell shell32 to refresh its cache
     SHSettingsChanged(wParam, lParam);
+    _ToggleQL(-1, _pcbm);
 }
 
 HWND CTray::_HotkeyInUse(WORD wHK)
@@ -4757,8 +4857,7 @@ void CTray::_OpenTaskbarThemeData()
 
 void CTray::_SetBandSiteTheme()
 {
-    LPCWSTR pszTheme;
-
+    const WCHAR* pszTheme;
     BOOL fComposited = IsCompositionActive() && _fGlassEnabled;
 
     if (STUCK_HORIZONTAL(_uStuckPlace))
@@ -4769,7 +4868,7 @@ void CTray::_SetBandSiteTheme()
     {
         pszTheme = fComposited ? c_szTaskbarCompositedThemeVert : c_szTaskbarThemeVert;
     }
-    BandSite_SetWindowTheme(_ptbs, (LPWSTR)pszTheme);
+    BandSite_SetWindowTheme(_ptbs, const_cast<WCHAR*>(pszTheme));
 }
 
 void CTray::_SetRebarTheme()
@@ -4878,6 +4977,7 @@ BOOL IsPosInHwnd(LPARAM lParam, HWND hwnd)
 
 void CTray::_HandleWindowPosChanging(LPWINDOWPOS lpwp)
 {
+#if 0
     //DebugMsg(DM_TRAYDOCK, TEXT("TRAYDOCK.t_hwpc"));
 
     if (_uMoveStuckPlace != (UINT)-1)
@@ -4922,6 +5022,74 @@ void CTray::_HandleWindowPosChanging(LPWINDOWPOS lpwp)
     }
 
     lpwp->flags |= SWP_FRAMECHANGED;
+#else
+    UINT flags; // eax
+    int right; // ecx
+    int bottom; // eax
+    UINT v7; // eax
+    char v8; // bl
+    bool v9; // zf
+    const wchar_t* v10; // eax
+    IBandSite* ptbs; // eax
+    LONG top; // ecx
+    int v13; // edx
+    int v14; // eax
+    struct tagRECT rc; // [esp+Ch] [ebp-10h] BYREF
+    HDC hdc; // [esp+24h] [ebp+8h]
+
+    // _DebugMsgW(1024, L"TRAYDOCK.t_hwpc");
+    if (this->_uMoveStuckPlace != -1)
+    {
+        //_DebugMsgW(1024, L"TRAYDOCK.t_hwpc handling pending move");
+        _DoneMoving(lpwp);
+        goto done;
+    }
+
+    if (this->_fSysSizing)
+    {
+        GetWindowRect(this->_hwnd, &rc);
+        flags = lpwp->flags;
+        if ((flags & 2) == 0)
+        {
+            rc.left = lpwp->x;
+            rc.top = lpwp->y;
+        }
+        if ((flags & 1) != 0)
+        {
+            bottom = rc.bottom;
+            right = rc.right;
+        }
+        else
+        {
+            right = rc.left + lpwp->cx;
+            bottom = rc.top + lpwp->cy;
+            rc.right = right;
+            rc.bottom = bottom;
+        }
+
+        // _DebugMsgW(1024, L"TRAYDOCK.t_hwpc sys sizing to rect {%d, %d, %d, %d}", rc.left, rc.top, right, bottom);
+        _uStuckPlace = CTray::_RecalcStuckPos(&rc);
+        _UpdateVertical(_uStuckPlace);
+    }
+    else if (this->_fSelfSizing)
+    {
+        goto done;
+    }
+
+    _GetDockedRect(&rc, this->_fSysSizing);
+    // _DebugMsgW(1024, L"TRAYDOCK.t_hwpc using rect {%d, %d, %d, %d}", rc.left, rc.top, rc.right, rc.bottom);
+    top = rc.top;
+    v13 = rc.right - rc.left;
+    lpwp->x = rc.left;
+    v14 = rc.bottom - top;
+    lpwp->flags &= ~3u;
+    lpwp->y = top;
+    lpwp->cx = v13;
+    lpwp->cy = v14;
+done:
+    if ((lpwp->flags & 4) == 0)
+        lpwp->hwndInsertAfter = this->_stb._hwndStart;
+#endif
 }
 
 void CTray::_HandlePowerStatus(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -5805,45 +5973,48 @@ BOOL CTray::IsMouseOverStartButton()    // TODO: revise
     return bRet;
 }
 
-BOOL CTray::IsMouseOverClock()  // @TODO: Cleanup
+BOOL CTray::IsMouseOverClock()
 {
-    POINT v8;
-    RECT Rect;
+    BOOL fRet = FALSE;
 
-    BOOL result = 0;
-    if ((_uAutoHide & 2) == 0)
+    if ((_uAutoHide & AH_HIDING) == 0)
     {
-        GetWindowRect(_GetClockWindow(), &Rect);
+        RECT rcClock;
+        GetWindowRect(_hwndClock, &rcClock);
         if (_fCanSizeMove)
         {
-            if (_uStuckPlace)
+            switch (_uStuckPlace)
             {
-                UINT v5 = _uStuckPlace - 1;
-                if (v5)
+                case STICK_LEFT:
                 {
-                    bool v6 = v5 == 1;
-                    LONG v7 = _cyClockMargin;
-                    if (v6)
-                        Rect.left += v7;
-                    else
-                        Rect.top += v7;
+                    rcClock.right -= _iSizingBarHeight;
+                    break;
                 }
-                else
+                case STICK_TOP:
                 {
-                    Rect.bottom -= _cyClockMargin;
+                    rcClock.bottom -= _iSizingBarHeight;
+                    break;
                 }
-            }
-            else
-            {
-                Rect.right -= _cyClockMargin;
+                case STICK_RIGHT:
+                {
+                    rcClock.left += _iSizingBarHeight;
+                    break;
+                }
+                default:
+                {
+                    rcClock.top += _iSizingBarHeight;
+                    break;
+                }
             }
         }
-        LPARAM MessagePos = GetMessagePos();
-        v8.y = GET_Y_LPARAM(MessagePos);
-        v8.x = GET_X_LPARAM(MessagePos);
-        return PtInRect(&Rect, v8);
+
+        DWORD dwPos = GetMessagePos();
+        POINT pt;
+        pt.y = GET_Y_LPARAM(dwPos);
+        pt.x = GET_X_LPARAM(dwPos);
+        fRet = PtInRect(&rcClock, pt);
     }
-    return result;
+    return fRet;
 }
 
 BOOL CTray::IsMouseOverClassicTaskbar()
@@ -5996,6 +6167,19 @@ LRESULT CTray::_OnSessionChange(WPARAM wParam, LPARAM lParam)
     return 1;
 }
 
+HWND TermSoundWindow()
+{
+    // EXEX-VISTA: Uncomment when implemented g_hwndSound
+    return nullptr;
+    /*if (g_hwndSound)
+    {
+        PostMessageW(g_hwndSound, WM_CLOSE, 0, 0);
+        g_hwndSound = 0;
+    }*/
+}
+
+static BOOL g_fShellShutdown = FALSE;
+
 #define SEN_FIRST       (0U-550U)       // ;Internal
 #define SEN_LAST        (0U-559U)       // ;Internal
 
@@ -6009,6 +6193,7 @@ LRESULT CTray::_OnSessionChange(WPARAM wParam, LPARAM lParam)
 
 LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#if 1
     static  UINT uDDEExec = 0;
     LRESULT lres = 0;
     MSG msg;
@@ -6270,7 +6455,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if ((_uAutoHide & AH_ON) == 0)
             {
                 // EXEX-VISTA TODO: Uncomment when implemented _DrawBackupStartButton.
-                //_DrawBackupStartButton(hdc);
+                _DrawBackupStartButton(hdc);
             }
 
             if (wParam == 0)
@@ -6542,7 +6727,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         // EXEX-VISTA: Validated.
         case WM_MOVE:
-            if (_bBool679)
+            if (field_679)
             {
                 _stb.UpdateStartButton(false);
             }
@@ -6550,7 +6735,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         // EXEX-VISTA: Validated.
         case WM_SIZE:
-            if (lParam && _bBool679)
+            if (lParam && field_679)
             {
                 _stb.UpdateStartButton(false);
             }
@@ -7038,43 +7223,1014 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
     return lres;
-}
+#else
+    LRESULT result; // eax
+    LPARAM lParam1; // ecx
+    HDC v11; // edi
+    int* p_iPaddedBorderWidth; // ebx
+    int v18; // eax
+    int v19; // eax
+    bool v20; // zf
+    BOOL idCmd; // eax
+    HWND Focus; // eax
+    MSG msg; // [esp+10h] [ebp-ACh] BYREF
+    tagRECT rcClip; // [esp+2Ch] [ebp-90h] BYREF
+    tagRECT Rect; // [esp+3Ch] [ebp-80h] BYREF
+    LRESULT lres; // [esp+4Ch] [ebp-70h] BYREF
+    WPARAM wParam_1; // [esp+50h] [ebp-6Ch]
+    LPARAM lParam_2; // [esp+54h] [ebp-68h]
+    BOOL bRefresh; // [esp+58h] [ebp-64h] SPLIT BYREF
+    HMENU hmenu; // [esp+58h] [ebp-64h] MAPDST SPLIT
+    PAINTSTRUCT ps; // [esp+60h] [ebp-5Ch] BYREF
+    //CPPEH_RECORD ms_exc; // [esp+A4h] [ebp-18h]
 
-HWND TermSoundWindow()
-{
-    // EXEX-VISTA: Uncomment when implemented g_hwndSound
-    return nullptr;
-    /*if (g_hwndSound)
+    lres = 0;
+
+    msg.hwnd = hwnd;
+    msg.message = uMsg;
+    msg.wParam = wParam;
+    msg.lParam = lParam;
+
+    if (!_stb.TranslateMenuMessage(&msg, &lres))
+        return lres;
+    if (_pmbTasks && !_pmbTasks->TranslateMenuMessage(&msg, &lres))
+        return lres;
+
+    wParam_1 = msg.wParam;
+    lParam1 = msg.lParam;
+    lParam_2 = msg.lParam;
+
+    if (uMsg <= 0x24) // WM_GETMINMAXINFO
     {
-        PostMessageW(g_hwndSound, WM_CLOSE, 0, 0);
-        g_hwndSound = 0;
-    }*/
+        if (uMsg == 0x24) // WM_GETMINMAXINFO
+        {
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.x = g_cxFrame;
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.y = g_cyFrame;
+            return lres;
+        }
+        if (uMsg <= 0x11) // WM_QUERYENDSESSION
+        {
+            if (uMsg == 0x11) // WM_QUERYENDSESSION
+            {
+                // SHTracePerfSQMStreamOneImpl(&ShellTraceId_Taskbar_Glomming_Count, 155, -1u);
+                // SHTracePerfSQMStreamNineImpl(&ShellTraceId_Taskbar_Window_Count, 156, -1u, 0, 0, 0, 0, 0, 0, 0, 0);
+                // g_fEndSessionInitiated = 1;
+                if ((wParam_1 & 1) != 0)
+                {
+                    // CcshellDebugMsgW(2048, "Tray.wp WM_QUERYENDSESSION w/ ENDSESSION_CLOSEAPP");
+                    if (!g_fShellShutdown)
+                    {
+                        _SaveTrayAndDesktop();
+                    }
+                    return _DoExitExplorer();
+                }
+                // CcshellDebugMsgW(2048, "Tray.wp WM_QUERYENDSESSION");
+                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+            }
+            if (uMsg <= 6) // WM_ACTIVATE
+            {
+                switch (uMsg)
+                {
+                    case WM_ACTIVATE: // WM_ACTIVATE
+                        _AppBarActivationChange2(hwnd, _uStuckPlace);
+                        if (wParam != 0)
+                        {
+                            Unhide();
+                        }
+                        else
+                        {
+                            SendMessageW(hwnd, 0x127u, 0x30001u, 0);
+                            IUnknown_UIActivateIO(_ptbs, 0, 0);
+                        }
+                        _ResetZorder(0);
+                        break;
+                    case WM_CREATE:
+                        return _OnCreate();
+                    case WM_DESTROY:
+                        return _HandleDestroy();
+                    case WM_MOVE:
+                        if (field_679)
+                        {
+                            _stb.UpdateStartButton(false);
+                        }
+                        return lres;
+                    case WM_SIZE:
+                        if (msg.lParam)
+                        {
+                            if (field_679)
+                            {
+                                _stb.UpdateStartButton(0);
+                            }
+                        }
+                        _HandleSize();
+                        return lres;
+                }
+                goto L_default;
+            }
+            if (uMsg == WM_SETFOCUS)
+            {
+                IUnknown_UIActivateIO(_ptbs, 1, 0);
+                return lres;
+            }
+            if (uMsg == WM_PAINT)
+            {
+            LABEL_213:
+                HDC hdc = (HDC)wParam;
+                if (!msg.wParam) // if (hdc == 0)
+                {
+                    hdc = BeginPaint(hwnd, &ps);
+                }
+                GetClientRect(hwnd, &Rect); // &rc
+                if (_hTheme)
+                {
+                    if (GetClipBox(hdc, &rcClip) == 1)
+                    {
+                        rcClip = Rect; // rcClip = rc;
+                    }
+                    if (IsCompositionActive())
+                    {
+                        SHFillRectClr(hdc, &rcClip, 0);
+                    }
+                    DrawThemeBackground(_hTheme, hdc, _GetPart(_uStuckPlace), 0, &Rect, &rcClip); // &rc, &rcClip
+                }
+                else
+                {
+                    FillRect(hdc, &Rect, (HBRUSH)16); // &rc, COLOR_3DFACE + 1
+                    MapWindowPoints(nullptr, hwnd, (LPPOINT)&Rect, 2u); // &rc
+                    InflateRect(&Rect, g_cxEdge, g_cyEdge);
+                    DrawEdge(hdc, &Rect, 6u, 3u); // &rc
+                }
+
+                if ((_uAutoHide & 1) == 0)
+                {
+                    _DrawBackupStartButton(hdc);
+                }
+                if (!wParam_1) // if (wParam == 0)
+                {
+                    EndPaint(hwnd, &ps);
+                }
+                return lres;
+            }
+            if (uMsg == 0x10) // WM_CLOSE
+            {
+                _DoExitWindows(v_hwndDesktop, 0, 0);
+                return lres;
+            }
+        L_default:
+            if (_uLogoffUser == uMsg)
+            {
+                ExitWindowsEx(0, 0);
+            }
+            else if (_uMsgEnableUserTrackedBalloonTips == uMsg)
+            {
+                PostMessageW(_hwndNotify, 0x40B, wParam_1, 0);
+            }
+            else if (_uMsgShowOnlyQuickLaunchDeskBand == uMsg)
+            {
+                _ShowOnlyQuickLaunchDeskBand();
+            }
+#ifdef SYSTEM_MIXER
+            else if (_pSystemMixer)
+            {
+                _pSystemMixer->ForwardWindowMessage(uMsg, wParam_1, lParam_2);
+            }
+#endif
+            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+        }
+
+        switch (uMsg)
+        {
+            case WM_ERASEBKGND:
+                if (!_hTheme)
+                {
+                    return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                }
+                if (!_fSkipErase)
+                {
+                    v11 = (HDC)msg.wParam;
+                    GetClientRect(hwnd, &Rect);
+                    if (IsCompositionActive())
+                    {
+                        SHFillRectClr(v11, &Rect, 0);
+                    }
+                    DrawThemeBackground(_hTheme, v11, _GetPart(_uStuckPlace), 0, &Rect, nullptr);
+                    _fSkipErase = 1;
+                }
+                break;
+            case WM_SYSCOLORCHANGE:
+                if (!_fFromStart)
+                {
+                    _OnNewSystemSizes();
+                    BandSite_HandleMessage(_ptbs, hwnd, 0x15u, wParam_1, lParam_2, nullptr);
+                }
+                _PropagateMessage(hwnd, 0x15u, wParam_1, lParam_2);
+                return lres;
+            case WM_ENDSESSION:
+                if (msg.wParam) // if (wParam)
+                {
+                    if (msg.lParam < 0) // if (lParam | ENDSESSION_LOGOFF)
+                    {
+                        _fIsLogoff = 1;
+                        _RecomputeAllWorkareas();
+                    }
+                    _SaveTrayAndDesktop();
+                    ShowWindow(_hwnd, 0);
+                    ShowWindow(v_hwndDesktop, 0);
+                    DestroyWindow(_hwnd);
+                }
+                return lres;
+            case WM_SHOWWINDOW:
+                _StuckTrayChange();
+                return lres;
+            case WM_SETTINGCHANGE:
+                if (!_fFromStart)
+                {
+                    if (!msg.lParam || StrCmpICW((LPCWSTR)msg.lParam, L"SaveTaskbar"))
+                    {
+                        BandSite_HandleMessage(_ptbs, hwnd, 0x1Au, wParam_1, lParam_2, nullptr);
+                        _PropagateMessage(hwnd, 0x1Au, wParam_1, lParam_2);
+                        _OnWinIniChange(hwnd, wParam_1, lParam_2);
+                    }
+                    else
+                    {
+                        _SaveTrayAndDesktop();
+                    }
+                    if (lParam_2) // if (lParam)
+                    {
+                        // CcshellDebugMsgW(2048, "Tray Got: lParam=%s", (const char*)lParam_2);
+                    }
+                }
+                return lres;
+            case WM_TIMECHANGE:
+                _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
+                return lres;
+            case WM_SETCURSOR:
+                if (!_iWaitCount)
+                {
+                    return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                }
+                SetCursor(LoadCursorW(nullptr, IDC_APPSTARTING));
+                break;
+            default:
+                goto L_default;
+        }
+        goto LABEL_147;
+    }
+
+    if (uMsg <= 0x40D)
+    {
+        if (uMsg == 0x40D)
+        {
+            _stb.BuildStartMenu();
+            return lres;
+        }
+        if (uMsg <= WM_TIMER)
+        {
+            if (uMsg == WM_TIMER)
+            {
+                if (msg.wParam < 0xE || msg.wParam > 0xF)
+                {
+                    _HandleTimer(msg.wParam);
+                    return lres;
+                }
+                return _OnTimerService(0x113u, msg.wParam, msg.lParam);
+            }
+            if (uMsg <= WM_NCHITTEST)
+            {
+                if (uMsg == WM_NCHITTEST)
+                {
+                    POINT pt;
+                    pt.x = GET_X_LPARAM(lParam);
+                    pt.y = GET_Y_LPARAM(lParam);
+                    _SetUnhideTimer(pt.x, pt.y);
+
+                    result = 2;
+                    lres = 2;
+                    if ((_uAutoHide & 2) != 0 || !_fCanSizeMove)
+                    {
+                        return result;
+                    }
+
+                    RECT r1;
+                    GetClientRect(hwnd, &r1);
+                    MapWindowPoints(hwnd, nullptr, (LPPOINT)&r1, 2);
+
+                    if (!_hTheme)
+                    {
+                        if (IsMouseOverClassicTaskbar())
+                        {
+                            return 2;
+                        }
+                        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+                    }
+
+                    switch (_uStuckPlace)
+                    {
+                        case STICK_LEFT:
+                        {
+                            r1.left = r1.right - _iSizingBarHeight;
+                            v18 = PtInRect(&r1, pt) ? 9 : 0;
+                            break;
+                        }
+                        case STICK_TOP:
+                        {
+                            r1.top = r1.bottom - _iSizingBarHeight;
+                            v18 = PtInRect(&r1, pt) ? 13 : 0;
+                            break;
+                        }
+                        case STICK_RIGHT:
+                        {
+                            r1.right = r1.left + _iSizingBarHeight;
+                            v18 = PtInRect(&r1, pt) ? 8 : 0;
+                            break;
+                        }
+                        case STICK_BOTTOM:
+                        {
+                            r1.bottom = r1.top + _iSizingBarHeight;
+                            v18 = PtInRect(&r1, pt) ? 10 : 0;
+                            break;
+                        }
+                        default:
+                        {
+                            return lres;
+                        }
+                    }
+                    v19 = v18 + 1;
+                    return v19 + 1;
+                }
+
+                if (uMsg <= 0x4E)
+                {
+                    if (uMsg == 0x4E) // WM_NOTIFY
+                    {
+                        NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
+
+                        if (!BandSite_HandleMessage(_ptbs, hwnd, 0x4E, msg.wParam, msg.lParam, &lres))
+                        {
+                            if (pnm->code == -22)
+                            {
+                                goto LABEL_90;
+                            }
+                            if (pnm->code == NM_ENDWAIT || pnm->code == NM_STARTWAIT) // NM_ENDWAIT || NM_STARTWAIT
+                            {
+                                _OnWaitCursorNotify((NMHDR*)lParam);
+                            }
+                            return lres;
+                        }
+                        return lres;
+                    }
+
+                    if (uMsg >= WM_DRAWITEM)
+                    {
+                        if (uMsg <= WM_MEASUREITEM)
+                        {
+                        LABEL_190:
+                            if (!_stb._nIsOnContextMenu)
+                            {
+                                BandSite_HandleMessage(_ptbs, hwnd, uMsg, msg.wParam, msg.lParam, &lres);
+                            }
+                            return lres;
+                        }
+                        if (uMsg == WM_WINDOWPOSCHANGING)
+                        {
+                            _HandleWindowPosChanging((WINDOWPOS*)msg.lParam);
+                            return lres;
+                        }
+
+                        if (uMsg == 0x47)
+                        {
+                            _AppBarActivationChange2(hwnd, _uStuckPlace);
+                            SendMessageW(_hwndNotify, 0x404u, 0, 0);
+                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                        }
+
+                        if (uMsg == WM_POWER)
+                        {
+                        LABEL_205:
+                            _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
+                            _HandlePowerStatus(uMsg, wParam_1, lParam_2);
+                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                        }
+                        if (uMsg == WM_COPYDATA)
+                        {
+                            if (msg.lParam)
+                            {
+                                if (((COPYDATASTRUCT*)lParam)->dwData == 0) // TCDM_APPBAR
+                                {
+                                    return _OnAppBarMessage((COPYDATASTRUCT*)msg.lParam);
+                                }
+
+                                if (((COPYDATASTRUCT*)lParam)->dwData == 1)
+                                {
+                                    bRefresh = 0;
+                                    lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)msg.wParam, (COPYDATASTRUCT*)msg.lParam, &bRefresh);
+                                    if (bRefresh)
+                                    {
+                                    LABEL_90:
+                                        SizeWindows();
+                                        return lres;
+                                    }
+                                    return lres;
+                                }
+                                if (((COPYDATASTRUCT*)lParam)->dwData == 2) // TCDM_LOADINPROC
+                                {
+                                    return _LoadInProc((tagCOPYDATASTRUCT*)msg.lParam);
+                                }
+
+                                return 0;
+                            }
+                            return 0;
+                        }
+                        goto L_default;
+                    }
+                    goto L_default;
+                }
+
+                if (uMsg == 0x50) // WM_INPUTLANGCHANGEREQUEST
+                {
+                    return 0;
+                }
+
+                if (uMsg == 0x7B) // WM_CONTEXTMENU
+                {
+                LABEL_168:
+                    if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
+                    {
+                        if (IsPosInHwnd(lParam_2, _hwndNotify) || (Focus = GetFocus(), !SHIsChildOrSelf(_hwndNotify, Focus)))
+                        {
+                            _ContextMenu(lParam_2, 1);
+                        }
+                        else
+                        {
+                            BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam_1, lParam_2, &lres);
+                        }
+                    }
+                    return lres;
+                }
+                if (uMsg == 0x7E) // WM_DISPLAYCHANGE
+                {
+                    if (!_fFromStart)
+                    {
+                        _ScreenSizeChange(hwnd);
+                        PostMessageW(_hwnd, 0x40Du, 0, 0);
+                    }
+                    return lres;
+                }
+                if (uMsg == 0x83) // WM_NCCALCSIZE
+                {
+                    p_iPaddedBorderWidth = &_iPaddedBorderWidth;
+                    if (*p_iPaddedBorderWidth <= 0)
+                    {
+                        return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                    }
+                    DefWindowProcW(hwnd, 0x83u, msg.wParam, msg.lParam);
+                    InflateRect((LPRECT)lParam_2, *p_iPaddedBorderWidth, *p_iPaddedBorderWidth);
+                    return 0;
+                }
+                goto L_default;
+            }
+
+            if (uMsg <= 0xA3) // WM_NCLBUTTONDBLCLK
+            {
+                switch (uMsg)
+                {
+                    case WM_NCLBUTTONDBLCLK:
+                        if (!_TryForwardNCToClient(0xA3u, msg.lParam) && IsPosInHwnd(lParam_2, _hwndNotify))
+                        {
+                            ShowClockFlyoutAsNeeded(lParam_2);
+                        }
+                        return lres;
+                    case WM_NCPAINT:
+                        if (!_hTheme)
+                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                        UpdateWindow(_hwnd);
+                        return 0;
+                    case WM_NCACTIVATE:
+                        if (_iPaddedBorderWidth <= 0)
+                        {
+                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                        }
+                    LABEL_147:
+                        v19 = 0;
+                        return v19 + 1;
+                    case WM_NCMOUSEMOVE: // WM_NCMOUSEMOVE
+                        if (IsMouseOverClock())
+                        {
+                            if (_fMouseInTaskbar || _stb.IsButtonPushed())
+                            {
+                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            }
+                            Rect.left = 0x10; // mouseEvent.cbSize
+                            Rect.top = 0x13; // mouseEvent.dwFlags
+                            Rect.right = (LONG)_hwnd; // mouseEvent.hwndTrack
+                            Rect.bottom = GetDoubleClickTime(); // mouseEvent.dwHoverTime
+                        }
+                        else
+                        {
+                            if (!_hTheme
+                                || _fMouseInTaskbar
+                                || _stb.IsButtonPushed()
+                                || !IsMouseOverStartButton())
+                            {
+                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            }
+                            _stb.DrawStartButton(PBS_HOT, true);
+                            Rect.left = 0x10; // mouseEvent.cbSize
+                            Rect.top = 0x12; // mouseEvent.dwFlags
+                            Rect.right = (LONG)_hwnd; // mouseEvent.hwndTrack
+                            Rect.bottom = 0; // mouseEvent.dwHoverTime
+                        }
+                        TrackMouseEvent((LPTRACKMOUSEEVENT)&Rect); // &mouseEvent
+                        _fMouseInTaskbar = true;
+                        return 0;
+                    case WM_NCLBUTTONDOWN: // WM_NCLBUTTONDOWN
+                        if (IsMouseOverStartButton())
+                        {
+                            if (_stb.IsButtonPushed())
+                            {
+                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            }
+                            SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
+                            return 0;
+                        }
+                        if (ShowClockFlyoutAsNeeded(lParam_2))
+                        {
+                            return lres;
+                        }
+                        break;
+                    case WM_NCLBUTTONUP:
+                        break;
+                    default:
+                        goto L_default;
+                }
+
+                v20 = _TryForwardNCToClient(uMsg, lParam_2) == 0;
+            LABEL_134:
+                if (!v20)
+                {
+                    return lres;
+                }
+                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+            }
+            if (uMsg == 0xA5) // WM_NCRBUTTONUP
+            {
+                uMsg = 0x7B;
+                wParam_1 = (WPARAM)_hwndTasks;
+                goto LABEL_168;
+            }
+            if (uMsg == 0x106) // WM_SYSCHAR
+            {
+                if (msg.wParam == ' ')
+                {
+                    SHSetWindowBits(hwnd, -16, 0x80000, 0x80000);
+                    hmenu = GetSystemMenu(hwnd, 0);
+                    if (hmenu)
+                    {
+                        EnableMenuItem(hmenu, SC_RESTORE, MFS_GRAYED);
+                        EnableMenuItem(hmenu, SC_MAXIMIZE, MFS_GRAYED);
+                        EnableMenuItem(hmenu, SC_MINIMIZE, MFS_GRAYED);
+                        EnableMenuItem(hmenu, SC_MOVE, _fCanSizeMove != 0 ? 0 : MFS_GRAYED);
+                        EnableMenuItem(hmenu, SC_SIZE, _fCanSizeMove != 0 ? 0 : MFS_GRAYED);
+                        idCmd = _stb.TrackMenu(hmenu);
+                        if (idCmd)
+                        {
+                            SendMessageW(_hwnd, 0x112u, idCmd, 0);
+                        }
+                    }
+                    SHSetWindowBits(hwnd, -16, 0x80000, 0);
+                }
+                return lres;
+            }
+
+            if (uMsg == 0x111) // WM_COMMAND
+            {
+                if (!BandSite_HandleMessage(_ptbs, hwnd, 0x111u, msg.wParam, msg.lParam, &lres))
+                {
+                    _Command(GET_WM_COMMAND_ID(wParam, lParam), lParam);
+                }
+                return lres;
+            }
+
+            if (uMsg == 0x112)
+            {
+                if ((msg.wParam & 0xFFF0) == 0xF060) // SC_CLOSE
+                {
+                    _DoExitWindows(v_hwndDesktop, 0, 0);
+                    return lres;
+                }
+                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+            }
+            goto L_default;
+        }
+        if (uMsg <= 0x2A0)
+        {
+            if (uMsg == 0x2A0) // WM_NCMOUSEHOVER
+            {
+                SendMessageW(_hwndClock, 0x467u, 1u, 0);
+                return 0;
+            }
+
+            if (uMsg <= WM_MOVING)
+            {
+                if (uMsg == WM_MOVING)
+                {
+                    _HandleMoving(msg.wParam, (RECT*)msg.lParam);
+                    return lres;
+                }
+                if (uMsg == WM_INITMENUPOPUP || uMsg == WM_MENUCHAR)
+                {
+                    goto LABEL_190;
+                }
+                switch (uMsg)
+                {
+                    case WM_ENTERMENULOOP:
+                        _HandleEnterMenuLoop();
+                        return lres;
+                    case WM_EXITMENULOOP:
+                        _HandleExitMenuLoop();
+                        return lres;
+                    case WM_SIZING:
+                        _HandleSizing(msg.wParam, (LPRECT)msg.lParam, _uStuckPlace, _fSelfSizing);
+                        return lres;
+                }
+                goto L_default;
+            }
+
+            if (uMsg == WM_POWERBROADCAST)
+            {
+                goto LABEL_205;
+            }
+
+            if (uMsg == WM_DEVICECHANGE)
+            {
+#ifdef SYSTEM_MIXER
+                if (_pSystemMixer)
+                {
+                    _pSystemMixer->ForwardWindowMessage(0x219u, msg.wParam, msg.lParam);
+                }
+#endif
+                lres = _OnDeviceChange(hwnd, wParam_1, lParam_2);
+                v20 = lres == 0;
+                goto LABEL_134;
+            }
+            if (uMsg == WM_ENTERSIZEMOVE)
+            {
+                // _DebugMsgW(DM_TRAYDOCK, L"Tray -- WM_ENTERSIZEMOVE");
+                g_fInSizeMove = TRUE;
+                GetCursorPos((LPPOINT)&_rcSizeMoveIgnore);
+
+                _rcSizeMoveIgnore.right = _rcSizeMoveIgnore.left;
+                _rcSizeMoveIgnore.bottom = _rcSizeMoveIgnore.top;
+                InflateRect(&_rcSizeMoveIgnore, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON));
+
+                _ClipWindow(FALSE);
+
+                _hmonOld = _hmonStuck;
+                _uMoveStuckPlace = -1;
+                _fSysSizing = TRUE;
+
+                if (!g_fDragFullWindows)
+                {
+                    SendMessageW(_hwndRebar, WM_SETREDRAW, FALSE, 0);
+                }
+                return lres;
+            }
+            if (uMsg == WM_EXITSIZEMOVE)
+            {
+                // _DebugMsgW(DM_TRAYDOCK, L"Tray -- WM_EXITSIZEMOVE");
+
+                _fSysSizing = FALSE;
+                _fDeferedPosRectChange = FALSE;
+
+                if (!g_fDragFullWindows)
+                {
+                    SendMessageW(_hwndRebar, WM_SETREDRAW, TRUE, 0);
+                }
+
+                PostMessageW(hwnd, WM_SIZE, 0, 0);
+                g_fInSizeMove = FALSE;
+                return lres;
+            }
+            goto L_default;
+        }
+
+        if (uMsg <= WM_THEMECHANGED)
+        {
+            if (uMsg == WM_THEMECHANGED)
+            {
+                _OnThemeChanged();
+                return lres;
+            }
+            if (uMsg == WM_NCMOUSELEAVE)
+            {
+                if (!IsPosInHwnd(msg.lParam, _hwndClock))
+                {
+                    SendMessageW(_hwndClock, 0x467u, 0, 0);
+                    if (_hTheme && !_stb.IsButtonPushed() && !IsMouseOverStartButton())
+                    {
+                        _stb.DrawStartButton(PBS_NORMAL, true);
+                    }
+                }
+                _fMouseInTaskbar = false;
+                return 0;
+            }
+            if (uMsg == WM_WTSSESSION_CHANGE)
+            {
+                return _OnSessionChange(msg.wParam, msg.lParam);
+            }
+            if (uMsg == WM_HOTKEY)
+            {
+                if (msg.wParam >= 500) // GHID_FIRST
+                {
+                    _HandleGlobalHotkey(msg.wParam);
+                }
+                else
+                {
+                    _HandleHotKey((WORD)wParam);
+                }
+                return lres;
+            }
+            if (uMsg == WM_PRINTCLIENT)
+            {
+                goto LABEL_213;
+            }
+            goto L_default;
+        }
+        switch (uMsg)
+        {
+            case WM_DWMCOMPOSITIONCHANGED:
+            {
+                _RegisterForGlass();
+                _OnThemeChanged();
+
+                IWinEventHandler* pweh;
+                if (SUCCEEDED(BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARGS(&pweh), nullptr, nullptr)))
+                {
+                    pweh->OnWinEvent(hwnd, uMsg, wParam, lParam, &lres);
+                    pweh->Release();
+                }
+                _stb.DrawStartButton(PBS_NORMAL, true);
+                return lres;
+            }
+            case WM_DWMCOLORIZATIONCOLORCHANGED:
+            {
+                IWinEventHandler* pweh;
+                if (SUCCEEDED(BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARGS(&pweh), nullptr, nullptr)))
+                {
+                    pweh->OnWinEvent(hwnd, uMsg, wParam_1, lParam_2, &lres);
+                    pweh->Release();
+                }
+                return lres;
+            }
+            case 0x3D1:
+            {
+#ifdef SYSTEM_MIXER
+                if (_pSystemMixer)
+                {
+                    _pSystemMixer->ForwardWindowMessage(0x3D1, msg.wParam, msg.lParam);
+                }
+#endif
+                return lres;
+            }
+            case 0x40C:
+            {
+                _stb.CloseStartMenu();
+                return lres;
+            }
+        }
+        goto L_default;
+    }
+
+    if (uMsg <= TM_RELAYPOSCHANGED)
+    {
+        if (uMsg == TM_RELAYPOSCHANGED)
+        {
+            _AppBarNotifyAll((HMONITOR)lParam, 1u, (HWND)wParam, 0);
+            return lres;
+        }
+
+        switch (uMsg)
+        {
+            case 0x4E5:
+                // result = _UpdateHotkey(hwnd, (const ITEMIDLIST_ABSOLUTE*)msg.wParam, (const ITEMIDLIST_ABSOLUTE*)msg.lParam);
+                break;
+            case 0x4E6:
+                result = _RegisterHotkey(hwnd, msg.wParam);
+                break;
+            case 0x4E7:
+                result = _UnregisterHotkey(hwnd, msg.wParam);
+                break;
+            case 0x4E8:
+                result = _SetHotkeyEnable(hwnd, msg.wParam);
+                break;
+            case 0x4E9:
+                result = _ShortcutRegisterHotkey(hwnd, msg.wParam, msg.lParam);
+                break;
+            case 0x4EA:
+                result = _ShortcutUnregisterHotkey(hwnd, msg.wParam);
+                break;
+            case 0x4EB: // WMTRAY_QUERY_MENU
+                ASSERT(!"Nobody should be sending WMTRAY_QUERY_MENU; it never worked anyway"); // 7589
+                return 0;
+            case 0x4EC:
+                result = (LRESULT)_hwndTasks;
+                break;
+            case 0x4ED:
+                result = _ToggleQL(msg.lParam, _pcbm);
+                break;
+            case 0x4EF:
+                // result = QueryUserNotificationState();
+                break;
+            case 0x4F0:
+                result = (LRESULT)_stb._hwndStart;
+                break;
+            case 0x503:
+                result = _OnFactoryMessage(msg.wParam, msg.lParam);
+                break;
+            case 0x504:
+                _ActAsSwitcher();
+                return lres;
+            case 0x505:
+                PostMessageW(hwnd, 0x506, 0, msg.lParam);
+                result = lParam_2;
+                break;
+            case 0x506:
+                if (!_ptbs)
+                {
+                    return 0;
+                }
+                result = _ToggleLanguageBand(msg.lParam);
+                break;
+            default:
+                goto L_default;
+        }
+        return result;
+    }
+
+    switch (uMsg)
+    {
+        case TM_CHANGENOTIFY:
+            _HandleChangeNotify(msg.wParam, msg.lParam);
+            return lres;
+        case TM_BRINGTOTOP:
+            SetWindowPos((HWND)msg.wParam, nullptr, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+            return lres;
+        case TM_WARNNOAUTOHIDE:
+            // _DebugMsgW(DM_TRAYDOCK, L"TRAYDOCK.twp collision UI request");
+
+            if ((!_fSysSizing || !g_fDragFullWindows) && (!wParam_1 || LOWORD(_SetAutoHideState(0))))
+            {
+                ShellMessageBoxW(g_hinstCabinet, hwnd, MAKEINTRESOURCEW(705), MAKEINTRESOURCEW(518), 0x40u);
+            }
+            else
+            {
+                // _DebugMsgW(DM_TRAYDOCK, L"TRAYDOCK.twp blowing off extraneous collision UI request");
+            }
+            return lres;
+        case TM_DOEXITWINDOWS:
+            _DoExitWindows(v_hwndDesktop, 0, 0);
+            return lres;
+        case TM_DESKTOPSTATE:
+            _OnDesktopState(msg.lParam);
+            return lres;
+        case TM_HANDLEDELAYBOOTSTUFF:
+            _HandleDelayBootStuff();
+            return lres;
+        case TM_GETHMONITOR:
+            *((HMONITOR*)lParam) = _hmonStuck;
+            return lres;
+        case 0x55B:
+        case 0x55C:
+        case 0x55D:
+            _OnFocusMsg(uMsg, wParam, lParam);
+            return lres;
+        case 0x55E:
+        {
+            const IID* riid = reinterpret_cast<const IID*>(wParam);
+            IStream* pstm = nullptr;
+            EVAL(SUCCEEDED(CoMarshalInterThreadInterfaceInStream(*riid, c_tray._ptbs, &pstm))); // 8183
+            return reinterpret_cast<LRESULT>(pstm);
+        }
+        case TM_KILLTIMER:
+        case TM_SETTIMER:
+            return _OnTimerService(uMsg, wParam, lParam);
+        case TM_DOTRAYPROPERTIES:
+            switch (msg.wParam)
+            {
+                case 1:
+                    DoProperties(TPF_STARTMENUPAGE);
+                    break;
+                case 2:
+                    DoProperties(TPF_NOTIFICATIONPAGE);
+                    break;
+                case 3:
+                    DoProperties(TPF_INVOKECUSTOMIZE);
+                    break;
+                case 4u:
+                    DoProperties(TPF_TOOLBARSPAGE);
+                    break;
+                default:
+                    DoProperties(TPF_TASKBARPAGE);
+                    break;
+            }
+            return lres;
+        case 0x575: // TM_PRIVATECOMMAND
+            _HandlePrivateCommand(lParam);
+            return lres;
+        case 0x576: // TM_HANDLESTARTUPFAILED
+            _OnHandleStartupFailed();
+            return lres;
+        case 0x578: // TM_STARTUPAPPSLAUNCHED
+            field_618 = 1;
+            PostMessageW(_hwndNotify, 0x40A, 0, 0);
+            return lres;
+        case TM_RAISEDESKTOP:
+            _RaiseDesktop(msg.wParam, msg.lParam);
+            return lres;
+        case TM_SETPUMPHOOK:
+            IUnknown_SafeReleaseAndNullPtr(&_pmbTasks);
+            IUnknown_SafeReleaseAndNullPtr(&_pmpTasks);
+            if (wParam && lParam)
+            {
+                _pmbTasks = reinterpret_cast<IMenuBand*>(wParam);
+                _pmbTasks->AddRef();
+
+                _pmpTasks = reinterpret_cast<IMenuPopup*>(lParam);
+                _pmpTasks->AddRef();
+            }
+            return lres;
+        case TM_WORKSTATIONLOCKED:
+            if (_fIsDesktopLocked == msg.wParam)
+            {
+                return lres;
+            }
+
+            _fIsDesktopLocked = msg.wParam;
+            _fIsLogoff = FALSE;
+            _RecomputeAllWorkareas();
+            PostMessageW(_hwndNotify, 0x440, wParam_1, 0);
+            return lres;
+        case TM_STARTMENUDISMISSED:
+            SetTimer(_hwnd, 24, 180000, nullptr);
+            return lres;
+        case TM_SHOWTRAYBALLOON:
+            PostMessageW(_hwndNotify, 0x45A, msg.wParam, 0);
+            return lres;
+        case 0x5A3:
+            return _fHideClock;
+        case 0x5A9:
+            RunSystemMonitor();
+            return lres;
+        case 0x5B4:
+            _SaveTrayAndDesktop();
+            TermSoundWindow();
+            _DoExitExplorer();
+            return lres;
+        case 0x5B5:
+            field_4B8 = 1;
+            // _SignalShellDesktopSwitchEvent();
+            return 0;
+        case 0x5B6:
+            if (_ptbs)
+            {
+                BandSite_AccountAllBandsForTaskbarSizingBar(_ptbs, msg.wParam);
+            }
+            return lres;
+        case 0x5B7:
+            _RaiseDesktop(g_fDesktopRaised == 0, TRUE);
+            return lres;
+        default:
+            goto L_default;
+    }
+
+#endif
 }
 
-static BOOL g_fShellShutdown = FALSE;
-
-void CTray::_DoExitExplorer()
-{
-    // User cancelled...
-    // The shift key means exit the tray...
-    // ??? - Used to destroy all cabinets...
-    // PostQuitMessage(0);
-    g_fFakeShutdown = TRUE; // Don't blow away session state; the session will survive
-    //TraceMsg(TF_TRAY, "c.dew: Posting quit message for tid=%#08x hwndDesk=%x(IsWnd=%d) hwndTray=%x(IsWnd=%d)", GetCurrentThreadId(),
-    //    v_hwndDesktop, IsWindow(v_hwndDesktop), _hwnd, IsWindow(_hwnd));
-    // 1 means close all the shell windows too
-    PostMessage(v_hwndDesktop, WM_QUIT, 0, 1);
-    PostMessage(_hwnd, WM_QUIT, 0, 0);
-
-    g_fShellShutdown = TRUE;
-}
-
-// EXEX-VISTA: CHANGED since XP. Some new arguments were added. Revalidate later.
-void CTray::_DoExitWindows(HWND hwnd, BOOL fIsRestarting, BOOL fFromNotifArea)
+BOOL CTray::_DoExitExplorer()
 {
     if (!g_fShellShutdown)
     {
-        if (_Restricted(hwnd, REST_NOCLOSE) && !fIsRestarting)
+        g_fFakeShutdown = 1;
+        /*TraceMsg(
+            TF_TRAY, "c.dew: Posting quit message for tid=%#08x hwndDesk=%x(IsWnd=%d) hwndTray=%x(IsWnd=%d)",
+            GetCurrentThreadId(), v_hwndDesktop, IsWindow(v_hwndDesktop), _hwnd, IsWindow(_hwnd));*/
+        PostMessageW(v_hwndDesktop, WM_QUIT, 0, 1);
+        if (PostMessageW(_hwnd, WM_QUIT, 0, 0))
+        {
+            g_fShellShutdown = 1;
+        }
+    }
+    return g_fShellShutdown;
+}
+
+DEFINE_GUID(POLID_NoClose, 0x29B0CC43, 0x2F2B, 0x4D0C, 0xA0, 0x81, 0xA5, 0x28, 0xDD, 0x34, 0x96, 0x31);
+
+// EXEX-VISTA: CHANGED since XP. Some new arguments were added. Revalidate later.
+void CTray::_DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD a4)
+{
+    if (!g_fShellShutdown)
+    {
+        if (_Restricted(hwnd, POLID_NoClose) && !fIsRestarting)
             return;
 
         {
@@ -7133,41 +8289,7 @@ void CTray::_SaveTray(void)
 
 DWORD WINAPI CTray::PropertiesThreadProc(void* pv)
 {
-    return c_tray._PropertiesThreadProc(PtrToUlong(pv));
-}
-
-// EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
-DWORD CTray::_PropertiesThreadProc(DWORD dwFlags)
-{
-    HWND hwnd;
-    RECT rc;
-    DWORD dwExStyle = WS_EX_TOOLWINDOW;
-
-    GetWindowRect(_stb._hwndStart, &rc);
-    dwExStyle |= IS_BIDI_LOCALIZED_SYSTEM() ? dwExStyleRTLMirrorWnd : 0L;
-
-    _hwndProp = hwnd = CreateWindowEx(dwExStyle, TEXT("static"), NULL, 0,
-        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, g_hinstCabinet, NULL);
-
-    #define IDI_STTASKBR 40         // stolen from shell32\ids.h
-    if (_hwndProp)
-    {
-        // Get the Alt+Tab icon right
-        HICON hicoStub = LoadIcon(GetModuleHandle(TEXT("SHELL32")), MAKEINTRESOURCE(IDI_STTASKBR));
-        SendMessage(_hwndProp, WM_SETICON, ICON_BIG, (LPARAM)hicoStub);
-
-        // SwitchToThisWindow(hwnd, TRUE);
-        // SetForegroundWindow(hwnd);
-
-        DoTaskBarProperties(hwnd, dwFlags);
-
-        _hwndProp = NULL;
-        DestroyWindow(hwnd);
-        if (hicoStub)
-            DestroyIcon(hicoStub);
-    }
-
-    return TRUE;
+    return c_tray._PropertiesThreadProc(pv);
 }
 
 // EXEX-VISTA: Move later.
@@ -7175,13 +8297,59 @@ typedef struct tagTRAYPROPTHREADDATA
 {
     DWORD dwFlags;
     RECT rcStartButton;
-    LPSTREAM pCatBandManager;
-} TRAYPROPTHREADDATA, * PTRAYPROPTHREADDATA;
+    IStream* pstm;
+} TRAYPROPTHREADDATA, *PTRAYPROPTHREADDATA;
+
+// EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
+DWORD CTray::_PropertiesThreadProc(void* pv)
+{
+    TRAYPROPTHREADDATA* pData = static_cast<TRAYPROPTHREADDATA*>(pv);
+    if (pData)
+    {
+        RECT rc = pData->rcStartButton;
+        bool fSomething = (pData->dwFlags & 4) != 0;
+        DWORD dwExStyle = (IS_BIDI_LOCALIZED_SYSTEM() ? 0x400000 : 0) | 0x80;
+
+        HWND* p_hwndProp = fSomething ? &_hwndProp : &_hwndProp1;
+        HWND hwnd = SHFusionCreateWindowEx(
+            dwExStyle,
+            L"static",
+            nullptr,
+            0,
+            rc.left,
+            rc.top,
+            RECTWIDTH(rc),
+            RECTHEIGHT(rc),
+            nullptr,
+            nullptr,
+            g_hinstCabinet,
+            nullptr);
+        *p_hwndProp = hwnd;
+        if (hwnd)
+        {
+            HICON hicoStub = LoadIconW(GetModuleHandleW(L"SHELL32"), (LPCWSTR)40);
+            SendMessageW(*p_hwndProp, 0x80, 1, (LPARAM)hicoStub);
+
+            DoTaskBarProperties(*p_hwndProp, pData->dwFlags, pData->pstm);
+
+            *p_hwndProp = nullptr;
+            DestroyWindow(*p_hwndProp);
+            if (hicoStub)
+                DestroyIcon(hicoStub);
+        }
+        delete pData;
+    }
+
+    return 1;
+}
+
+DEFINE_GUID(POLID_NoSetTaskbar, 0xC67F73F8, 0xAB64, 0x422F, 0xB9, 0x52, 0x3C, 0x57, 0xAB, 0xC9, 0xC1, 0x37);
 
 #define RUNWAITSECS 5
+
 void CTray::DoProperties(DWORD dwFlags)
 {
-    if (!_Restricted(_hwnd, REST_NOSETTASKBAR))
+    if (!_Restricted(_hwnd, POLID_NoSetTaskbar))
     {
         int i = RUNWAITSECS;
         while (_hwndProp == ((HWND)-1) && i--)
@@ -7203,27 +8371,22 @@ void CTray::DoProperties(DWORD dwFlags)
         }
         else
         {
-            TRAYPROPTHREADDATA *pParams = new TRAYPROPTHREADDATA();
+            TRAYPROPTHREADDATA* pParams = new(std::nothrow) TRAYPROPTHREADDATA();
             if (pParams)
             {
                 _stb.GetRect(&pParams->rcStartButton);
                 pParams->dwFlags = dwFlags;
 
-                // EXEX-VISTA: Weird thing to understand. Temporary code for now:
-                #if 1 // TEMP
-                pParams->pCatBandManager = nullptr;
-                #endif
-                /*
-                v8 = *(IUnknown **)&this->GAP_67A[2];
-                if ( v8 )
-                  CoMarshalInterThreadInterfaceInStream(&IID_ICatBandManager, v8, &params->pCatBandManager);
-                */
+                if (_pcbm)
+                {
+                    CoMarshalInterThreadInterfaceInStream(IID_ICatBandManager, _pcbm, &pParams->pstm);
+                }
 
                 _hwndProp = (HWND)-1;
-                if (!SHCreateThread(PropertiesThreadProc, pParams, CTF_COINIT, NULL))
+                if (!SHCreateThread(PropertiesThreadProc, pParams, CTF_COINIT, nullptr))
                 {
                     delete pParams;
-                    _hwndProp = NULL;
+                    _hwndProp = nullptr;
                 }
             }
         }
@@ -7935,6 +9098,8 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
     return TRUE;
 }
 
+DEFINE_GUID(POLID_NoRun, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
 //
 // TPS_DEMANDTHREAD - always create a new thread if none currently available.
 // Used in situations where immediate response required
@@ -7961,7 +9126,7 @@ void CTray::_RunDlg(BOOL fCreateEvent)
     HANDLE hEvent;
     void* pvThreadParam;
 
-    if (!_Restricted(_hwnd, REST_NORUN))
+    if (!_Restricted(_hwnd, POLID_NoRun))
     {
         TCHAR szRunDlgTitle[MAX_PATH];
         HWND  hwndOldRun;
@@ -9650,6 +10815,52 @@ void CTray::_SignalShellReadyEvent()
     {
         // Skipped telemetry ShellTraceId_Explorer_KickedOffDelayedBootWork_Info
     }
+}
+
+void CTray::_ShowOnlyQuickLaunchDeskBand()
+{
+    DWORD dwBandID; // [esp+8h] [ebp-4h] BYREF
+
+    UINT v1 = 0;
+    for (int i = _ptbs->EnumBands(0, &dwBandID); i >= 0; i = _ptbs->EnumBands(v1, &dwBandID))
+    {
+        if (BandSite_TestBandCLSID(_ptbs, dwBandID, CLSID_TaskBand) && _ptbs->RemoveBand(dwBandID) >= 0)
+        {
+            --v1;
+        }
+        ++v1;
+    }
+    if (_pcbm)
+    {
+        _pcbm->ShowCatBand(CATID_DeskBand, CLSID_ISFBand, 26);
+    }
+}
+
+int CTray::_ToggleQL(int iVisible, ICatBandManager* pcbm)
+{
+    DWORD dwBandID = -1;
+    if (pcbm)
+    {
+        int v5 = SHWindowsPolicy(POLID_QuickLaunchEnabled);
+        if (v5 != -1)
+        {
+            iVisible = v5;
+        }
+        BOOL fEnable;
+        if (SUCCEEDED(_pcbm->QueryCatBand(CATID_DeskBand, CLSID_ISFBand, 26, nullptr, 0, &dwBandID, &fEnable)))
+        {
+            if (iVisible != -1 && fEnable != iVisible)
+            {
+                pcbm->ToggleCatBand(CATID_DeskBand, CLSID_ISFBand, 26);
+                fEnable = iVisible;
+            }
+            if (!fEnable)
+            {
+                return -1;
+            }
+        }
+    }
+    return static_cast<int>(dwBandID);
 }
 
 //

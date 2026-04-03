@@ -967,7 +967,7 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return _HandleTimeChange();
 
     case WM_NCHITTEST:
-        return(HTTRANSPARENT);
+        return -1;
 
     case WM_SHOWWINDOW:
         if (wParam)

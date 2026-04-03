@@ -54,12 +54,13 @@
 
 #define INVALID_PRIORITY        (THREAD_PRIORITY_LOWEST - 1)
 
-const TCHAR c_szTaskSwClass[] = TEXT("MSTaskSwWClass");
-const TCHAR c_wzTaskBandTheme[] = TEXT("TaskBand");
-const TCHAR c_wzTaskBandCompositedTheme[] = TEXT("TaskBandComposited");
-const TCHAR c_wzTaskBandCompositedThemeVert[] = TEXT("TaskBandCompositedVert");
-const TCHAR c_wzTaskBandThemeVert[] = TEXT("TaskBandVert");
-const TCHAR c_wzTaskBandGroupMenuTheme[] = TEXT("TaskBandGroupMenu");
+const WCHAR c_szTaskSwClass[] = L"MSTaskSwWClass";
+const WCHAR c_szTaskBandTheme[] = L"TaskBand";
+const WCHAR c_szTaskBandCompositedTheme[] = L"TaskBandComposited";
+const WCHAR c_szTaskBandCompositedThemeVert[] = L"TaskBandCompositedVert";
+const WCHAR c_szTaskBandThemeVert[] = L"TaskBandVert";
+const WCHAR c_szTaskBandGroupMenuTheme[] = L"TaskBandGroupMenu";
+const WCHAR c_szTaskBandGroupMenuCompositedTheme[] = L"TaskBandGroupMenuComposited";
 
 typedef struct
 {
@@ -455,7 +456,7 @@ STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmd
 
     if (nCmdID == DBID_SETWINDOWTHEME && pvarargIn && V_VT(pvarargIn) == VT_BSTR && _tb)
     {
-        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
         SetWindowTheme(_hwnd, pszTheme, 0);
         _SetToolbarTheme();
         _BandInfoChanged();
@@ -544,7 +545,7 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
             0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
 
-        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
         wprintf(L"CTaskBand::SetSite using pszTheme: %s\n", pszTheme);
         SetWindowTheme(hwnd, pszTheme, NULL);
     }
@@ -2555,16 +2556,16 @@ void CTaskBand::_SetToolbarTheme()
 {
     if (_hTheme)
     {
-        LPCWSTR pszTheme;
+        const WCHAR* pszTheme;
         if (_IsHorizontal())
         {
-            pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedTheme : c_wzTaskBandTheme;
+            pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
         }
         else
         {
-            pszTheme = _CanGlassifyTaskbar() ? c_wzTaskBandCompositedThemeVert : c_wzTaskBandThemeVert;
+            pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedThemeVert : c_szTaskBandThemeVert;
         }
-        SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
+        SendMessageW(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
     }
 }
 
@@ -4620,8 +4621,7 @@ LRESULT CTaskBand::_HandleCreate()
 
         _OpenTheme();
 		_SetToolbarTheme();
-        //SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
-        
+
         SetWindowSubclass(_tb, (SUBCLASSPROC)CTaskBand::s_TaskbarSubclassProc, 0, (DWORD_PTR)this);
         //SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
 
@@ -5317,9 +5317,8 @@ void CTaskBand::_SetGlomMenuTheme(HWND hwnd)
 {
     if (_hThemeGlomMenu)
     {
-        const WCHAR* pszTheme = IsCompositionActive() ? L"TaskBandGroupMenuComposited" : L"TaskBandGroupMenu";
-        SendMessageW(hwnd, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
-
+        const WCHAR* pszTheme = IsCompositionActive() ? c_szTaskBandGroupMenuCompositedTheme : c_szTaskBandGroupMenuTheme;
+        SendMessageW(hwnd, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
         if (IsCompositionActive())
         {
             SHSetWindowBits(hwnd, GWL_STYLE, 0x8000, 0x8000);
@@ -5366,7 +5365,7 @@ HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
                             IUnknown_GetWindow(_psmPopup, &hwndTB);
                             if (hwndTB)
                             {
-                                SendMessage(hwndTB, TB_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskBandGroupMenuTheme);
+                                SendMessage(hwndTB, TB_SETWINDOWTHEME, 0, (LPARAM)c_szTaskBandGroupMenuTheme);
                             }
                             _psmPopup->SetNoBorder(TRUE);
                         }
@@ -6298,7 +6297,7 @@ HWND CTaskBand::_FindRudeApp(HWND hwndPossible)
     return hwnd;
 }
 
-// handle WM_APPCOMMAND, special case off those that we know are global 
+// handle WM_APPCOMMAND, special case off those that we know are global
 // to the system, these really are not "App" commands ;-)
 
 LRESULT CTaskBand::_OnAppCommand(int cmd)
@@ -6851,32 +6850,33 @@ void CTaskBand::_OpenTheme()
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     if (_hThemeGlomMenu)
     {
         CloseThemeData(_hThemeGlomMenu);
-        _hThemeGlomMenu = NULL;
+        _hThemeGlomMenu = nullptr;
     }
 
     WCHAR szClassList[64];
     if (_CanGlassifyTaskbar())
     {
-        StringCchPrintf(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"TaskBandComposited", L"TaskBand");
-        _hTheme = OpenThemeData(NULL, szClassList);
+        StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", c_szTaskBandCompositedTheme, c_szTaskBandTheme);
+        _hTheme = OpenThemeData(nullptr, szClassList);
+        ASSERT(_hTheme ? IsThemeClassDefined(_hTheme, c_szTaskBandCompositedTheme, c_szTaskBandTheme, FALSE) : TRUE); // 7514
     }
     else
     {
-        _hTheme = OpenThemeData(NULL, L"TaskBand");
+        _hTheme = OpenThemeData(nullptr, c_szTaskBandTheme);
     }
 
-    if (!this->_hTheme)
-        this->field_144 = 0;
+    if (!_hTheme)
+        field_144 = 0;
 
-	LPCWSTR pszClass = IsCompositionActive() ? L"TaskBandGroupMenuComposited" : L"TaskBandGroupMenu";
-    StringCchPrintf(szClassList, ARRAYSIZE(szClassList), L"%s::Toolbar", pszClass);
-	_hThemeGlomMenu = OpenThemeData(NULL, szClassList);
+    const WCHAR* pszClass = IsCompositionActive() ? c_szTaskBandGroupMenuCompositedTheme : c_szTaskBandGroupMenuTheme;
+    StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::Toolbar", pszClass);
+	_hThemeGlomMenu = OpenThemeData(nullptr, szClassList);
 
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
@@ -6884,9 +6884,10 @@ void CTaskBand::_OpenTheme()
     tbm.cyBarPad = 0;
     tbm.cxButtonSpacing = _hTheme ? 0 : 3;
     tbm.cyButtonSpacing = _hTheme ? 0 : 3;
-    _tb.SendMessage(TB_SETMETRICS, 0, (LPARAM)&tbm);
+    _tb.SendMessageW(TB_SETMETRICS, 0, (LPARAM)&tbm);
 
     _CheckSize();
+    _VerifyButtonHeight();
 }
 
 LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

@@ -1799,7 +1799,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
         }
 
     LABEL_15:
-        c_tray.GetTrayViewOpts(&tvo/*, 0*/);
+        c_tray.GetTrayViewOpts(&tvo, nullptr);
         if ((SHWindowsPolicy(POLID_HideSCAVolume) || tvo.rgfHideSCA[SCA_VOLUME]) && IsEqualGUID(SCAID_Volume, pnid->guidItem)
             || (SHWindowsPolicy(POLID_HideSCANetwork) || tvo.rgfHideSCA[SCA_NETWORK]) && IsEqualGUID(SCAID_Network, pnid->guidItem)
             || (SHWindowsPolicy(POLID_HideSCAPower) || tvo.rgfHideSCA[SCA_POWER]) && IsEqualGUID(SCAID_Power, pnid->guidItem))
@@ -3288,8 +3288,8 @@ void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL
         SetWindowPos(_hwndPagerSCA, nullptr, rcPagerSCA.left, rcPagerSCA.top, rcPagerSCA.right - rcPagerSCA.left, rcPagerSCA.bottom - rcPagerSCA.top, 0x104u);
         SetWindowPos(_hwndChevron, nullptr, rcChevron.left, rcChevron.top, rcChevron.right - rcChevron.left, rcChevron.bottom - rcChevron.top, 0x104u);
 
-        SendMessageW(_hwndPager, 200u, 0, 0);
-        SendMessageW(_hwndPagerSCA, 200u, 0, 0);
+        SendMessageW(_hwndPager, 200, 0, 0);
+        SendMessageW(_hwndPagerSCA, 200, 0, 0);
     }
 
     if (_fAnimating)
@@ -3318,26 +3318,24 @@ void CTrayNotify::_SizeWindows(int nMaxHorz, int nMaxVert, LPRECT prcTotal, BOOL
 // EXEX-VISTA(allison): Validated.
 LRESULT CTrayNotify::_CalcMinSize(int nMaxHorz, int nMaxVert)
 {
-    RECT rcTotal;
-
     _nMaxHorz = nMaxHorz;
     _nMaxVert = nMaxVert;
-
-    if (!(GetWindowLongPtr(_hwndClock, GWL_STYLE) & WS_VISIBLE) && !m_TrayItemManager.GetItemCount() && !m_TrayItemManagerSCA.GetItemCount())
+    if ((GetWindowLongPtrW(_hwndClock, GWL_STYLE) & WS_VISIBLE) == 0
+        && !m_TrayItemManager.GetItemCount(-1)
+        && !m_TrayItemManagerSCA.GetItemCount(-1))
     {
-        // If we are visible, but have nothing to show, then hide ourselves
-        ShowWindow(_hwndNotify, SW_HIDE);
-        return 0L;
+        ShowWindow(_hwndNotify, 0);
+        return 0;
     }
-    else if (!IsWindowVisible(_hwndNotify))
+    if (!IsWindowVisible(_hwndNotify))
     {
-        ShowWindow(_hwndNotify, SW_SHOW);
+        ShowWindow(_hwndNotify, 5);
     }
 
-    _SizeWindows(nMaxHorz, nMaxVert, &rcTotal, FALSE);
+    RECT rcTotal;
+    _SizeWindows(nMaxHorz, nMaxVert, &rcTotal, 0);
 
-    // Add on room for borders
-    return(MAKELRESULT(rcTotal.right, rcTotal.bottom));
+    return LOWORD(rcTotal.right) | (LOWORD(rcTotal.bottom) << 16);
 }
 
 LRESULT CTrayNotify::_Size()
@@ -4757,7 +4755,7 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         return _OnKeyDown(wParam, lParam);
 
     case WM_NCHITTEST:
-        return(IsPosInHwnd(lParam, _hwndClock) ? HTTRANSPARENT : HTCLIENT);
+        return -1;
 
     case WM_NOTIFY:
         return(_Notify((LPNMHDR)lParam));
@@ -5278,10 +5276,10 @@ void CTrayNotify::_UpdateVertical(BOOL fVertical)
     _fVertical = fVertical;
 
     SIZE sizeToolBar = { 1, 1 };
-    SendMessage(_hwndToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeToolBar);
+    SendMessageW(_hwndToolbar, TB_GETIDEALSIZE, fVertical, (LPARAM)&sizeToolBar);
 
-    SIZE sizeToolBarSCA = { 1, 1 };
-    SendMessage(_hwndToolbarSCA, TB_GETIDEALSIZE, _fVertical, (LPARAM)&sizeToolBarSCA);
+    sizeToolBar = { 1, 1 };
+    SendMessageW(_hwndToolbarSCA, TB_GETIDEALSIZE, _fVertical, (LPARAM)&sizeToolBar);
 
     _SetTrayNotifyTheme();
     _UpdateChevronState(_fBangMenuOpen, TRUE, TRUE);

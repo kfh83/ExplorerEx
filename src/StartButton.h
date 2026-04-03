@@ -10,33 +10,32 @@ STDAPI DesktopV2_Build(void* pvStartPane);
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
 
 
-
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
 {
-    STDMETHOD(SetFocusToStartButton()) PURE;
-    STDMETHOD(OnContextMenu(HWND hWnd, LPARAM lParam)) PURE;
-    STDMETHOD(CreateStartButtonBalloon(UINT a2, UINT uID)) PURE;
-    STDMETHOD(SetStartPaneActive(BOOL bActive)) PURE;
-    STDMETHOD(OnStartMenuDismissed()) PURE;
-    STDMETHOD(UnlockStartPane()) PURE;
-    STDMETHOD(LockStartPane()) PURE;
-    STDMETHOD(GetPopupPosition(DWORD* out)) PURE;
-    STDMETHOD(GetWindow(HWND* hWndOut)) PURE;
+    virtual HRESULT STDMETHODCALLTYPE SetFocusToStartButton() = 0;
+    virtual HRESULT STDMETHODCALLTYPE OnContextMenu(HWND, LPARAM) = 0;
+    virtual HRESULT STDMETHODCALLTYPE CreateStartButtonBalloon(UINT, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetStartPaneActive(BOOL) = 0;
+    virtual HRESULT STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
+    virtual HRESULT STDMETHODCALLTYPE UnlockStartPane() = 0;
+    virtual HRESULT STDMETHODCALLTYPE LockStartPane() = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetPopupPosition(DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetWindow(HWND*) = 0;
 };
 
-DECLARE_INTERFACE(IStartButtonSite)
+interface DECLSPEC_NOVTABLE IStartButtonSite
 {
-    STDMETHOD_(void, EnableTooltips(BOOL bEnable)) PURE;
-    STDMETHOD_(void, PurgeRebuildRequests()) PURE;
-    STDMETHOD_(BOOL, ShouldUseSmallIcons()) PURE;
-    STDMETHOD_(void, HandleFullScreenApp(HWND)) PURE;
-    STDMETHOD_(void, StartButtonClicked()) PURE;
-    STDMETHOD_(void, OnStartMenuDismissed()) PURE;
-    STDMETHOD_(int, GetStartButtonMinHeight()) PURE;
-    STDMETHOD_(UINT, GetStartMenuStuckPlace()) PURE;
-    STDMETHOD_(void, SetUnhideTimer(LONG, LONG)) PURE;
-    STDMETHOD_(void, OnStartButtonClosing()) PURE;
+    virtual void STDMETHODCALLTYPE EnableTooltips(BOOL) = 0;
+    virtual void STDMETHODCALLTYPE PurgeRebuildRequests() = 0;
+    virtual BOOL STDMETHODCALLTYPE ShouldUseSmallIcons() = 0;
+    virtual void STDMETHODCALLTYPE HandleFullScreenApp(HWND) = 0;
+    virtual void STDMETHODCALLTYPE StartButtonClicked() = 0;
+    virtual void STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
+    virtual int STDMETHODCALLTYPE GetStartButtonMinHeight() = 0;
+    virtual UINT STDMETHODCALLTYPE GetStartMenuStuckPlace() = 0;
+    virtual void STDMETHODCALLTYPE SetUnhideTimer(LONG, LONG) = 0;
+    virtual void STDMETHODCALLTYPE OnStartButtonClosing() = 0;
 };
 
 class CStartButton : public IStartButton, public IServiceProvider
@@ -52,14 +51,14 @@ public:
 
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
-    STDMETHODIMP OnContextMenu(HWND, LPARAM) override;
+    STDMETHODIMP OnContextMenu(HWND hwnd, LPARAM lParam) override;
     STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;
     STDMETHODIMP LockStartPane() override;
-    STDMETHODIMP GetPopupPosition(DWORD* out) override;
-    STDMETHODIMP GetWindow(HWND* out) override;
+    STDMETHODIMP GetPopupPosition(DWORD* pdwPos) override;
+    STDMETHODIMP GetWindow(HWND* phwndStart) override;
     //~ End IStartButton Interface
 
     //~ Begin IServiceProvider Interface
@@ -92,8 +91,8 @@ public:
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
-    LPCWSTR _pszCurrentThemeName;
-    INT _nSomeSize;
+    const WCHAR* _pszThemeName;
+    int _nSomeSize;
     int _mouseOver; // verify
     BOOL _fDisableVisualUpdateFromMouse;
     HWND _hwndStart;
@@ -129,7 +128,7 @@ private:
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 
-    LPCWSTR _GetCurrentThemeName();
+    const WCHAR* _GetCurrentThemeName();
     
     void _HandleDestroy();
     void _OnSettingChanged(UINT a2);

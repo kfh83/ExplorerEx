@@ -778,9 +778,10 @@ void CNotificationsDlg::_ShowComboBox(void)
 class CTaskBarPropertySheet : public CPropertySheetImpl<CTaskBarPropertySheet>
 {
 public:
-    CTaskBarPropertySheet(UINT nStartPage, HWND hwndParent, DWORD dwFlags) : 
-        CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)NULL, nStartPage, hwndParent),
-        _dwFlags(dwFlags)
+    CTaskBarPropertySheet(UINT nStartPage, HWND hwndParent, DWORD dwFlags, ICatBandManager* pcbm)
+        : CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)NULL, nStartPage, hwndParent)
+        , _dwFlags(dwFlags)
+        , _pcbm(pcbm)
     {
         LoadString(g_hinstCabinet, IDS_STARTMENUANDTASKBAR, szPath, ARRAYSIZE(szPath));
         SetTitle(szPath);
@@ -857,6 +858,8 @@ private:
     void _ApplyStartOptionsFromDialog(HWND hDlg);
     void _ApplyNotificationOptionsFromDialog(HWND hDlg);
 
+
+
     // for the old style customize dialog
     SMADVANCED  _Adv;
     //need to keep storage for the title until the property sheet is created
@@ -865,6 +868,7 @@ private:
 
     DWORD _dwFlags;
     HWND _hwndDeskbandsTree;
+    ICatBandManager* _pcbm;
 };
 
 //
@@ -1662,7 +1666,7 @@ BOOL_PTR CTaskBarPropertySheet::s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WP
 void _TaskbarOptions_OnInitDialog(HWND hDlg)
 {
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo);
+    c_tray.GetTrayViewOpts(&tvo, 0);
 
     CheckDlgButton(hDlg, IDC_QUICKLAUNCH, tvo.fShowQuickLaunch);
     CheckDlgButton(hDlg, IDC_TRAYOPTONTOP, tvo.fAlwaysOnTop);
@@ -1991,6 +1995,22 @@ BOOL_PTR CTaskBarPropertySheet::s_DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, 
     return fValue;
 }
 
+BOOL _ToggleDeskbandItem(HWND hwnd, HTREEITEM hti)
+{
+    BOOL fToggled = FALSE;
+
+    TVITEMW tvi = {};
+    tvi.mask = 0x32;
+    tvi.hItem = hti;
+    if (SendMessageW(hwnd, TVM_GETITEMW, 0, (LPARAM)&tvi))
+    {
+        tvi.iImage = tvi.iImage == 0;
+        tvi.iSelectedImage = tvi.iImage;
+        fToggled = SendMessageW(hwnd, TVM_SETITEMW, 0, (LPARAM)&tvi);
+    }
+    return fToggled;
+}
+
 BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 #if 0
@@ -2120,12 +2140,11 @@ void _NotificationOptionsUpdateDisplay(HWND hDlg)
     EnableWindow(::GetDlgItem(hDlg, 1007), ::IsDlgButtonChecked(hDlg, 1000));
 }
 
-#define ICatBandManager void* // Placeholder definition for ICatBandManager
 
-void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager * pCatBandManager = nullptr)
+void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager* pCatBandManager = nullptr)
 {
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo/*, pCatBandManager*/);
+    c_tray.GetTrayViewOpts(&tvo, pCatBandManager);
 
     CheckDlgButton(hDlg, 1108, !tvo.fHideClock);
     if (SHRestricted(REST_HIDECLOCK))
@@ -2214,7 +2233,7 @@ BOOL_PTR CTaskBarPropertySheet::NotificationOptionsDlgProc(HWND hDlg, UINT uMsg,
     }
     if (uMsg == WM_INITDIALOG)
     {
-        _NotificationOptions_OnInitDialog(hDlg, _dwFlags/*, _pCatBandManager*/);
+        _NotificationOptions_OnInitDialog(hDlg, _dwFlags, _pcbm);
         if ((_dwFlags & TPF_INVOKECUSTOMIZE) != 0)
         {
             ::PostMessageW(hDlg, WM_COMMAND, IDC_CUSTOMIZE, 0);
@@ -2258,7 +2277,7 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
     LONG lRet = c_tray._SetAutoHideState(fAutoHide);
 
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo);
+    c_tray.GetTrayViewOpts(&tvo, _pcbm);
     if (!HIWORD(lRet) && fAutoHide)
     {
         // we tried and failed.
@@ -2292,7 +2311,7 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
         SendMessage(c_tray._hwndTasks, 0x43F, 0, v4);
     }
 
-    c_tray.SetTrayViewOpts(&tvo);
+    c_tray.SetTrayViewOpts(&tvo, _pcbm);
 
     c_tray.SizeWindows();
 
@@ -2345,7 +2364,7 @@ BOOL UpdateSCAIcon(HWND hDlg, int i)
 void CTaskBarPropertySheet::_ApplyNotificationOptionsFromDialog(HWND hDlg)
 {
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo/*, _pCatBandManager*/);
+    c_tray.GetTrayViewOpts(&tvo, _pcbm);
 
     tvo.fHideClock = ::IsDlgButtonChecked(hDlg, 1108) == 0;
     for (UINT i = 0; i <= ARRAYSIZE(tvo.rgfHideSCA); i++)
@@ -2361,7 +2380,7 @@ void CTaskBarPropertySheet::_ApplyNotificationOptionsFromDialog(HWND hDlg)
             _UpdateNotifySetting(fNotifySetting);
         }
     }
-    c_tray.SetTrayViewOpts(&tvo/*, _pCatBandManager*/);
+    c_tray.SetTrayViewOpts(&tvo, _pcbm);
     SendMessageW(c_tray._hwndNotify, 0x402u, 0, tvo.fHideClock);
     c_tray.SizeWindows();
     ::SendNotifyMessageW(HWND_BROADCAST, 0x1Au, 0, (LPARAM)L"TraySettings");
@@ -2714,7 +2733,7 @@ BOOL Advanced_OnInitDialog(HWND hwndDlg, SMADVANCED* pAdv)
 
     // since the large icon setting is stored in the tray state, not as a standalone reg key, we need to have a temp reg key for the regtreeop to use...
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo);
+    c_tray.GetTrayViewOpts(&tvo, 0);
     BOOL fLargePrev = !tvo.fSMSmallIcons;
     SHSetValue(HKEY_CURRENT_USER, REGSTR_EXPLORER_ADVANCED, REGSTR_VAL_LARGEICONSTEMP, REG_DWORD, (void*) &fLargePrev, sizeof(fLargePrev));
 
@@ -2811,14 +2830,14 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
                 pAdv->pTO->WalkTree(WALK_TREE_SAVE);
 
                 TRAYVIEWOPTS tvo;
-                c_tray.GetTrayViewOpts(&tvo);
+                c_tray.GetTrayViewOpts(&tvo, nullptr);
                 BOOL fSmallPrev = tvo.fSMSmallIcons;
                 // note that we are loading the classic setting for large icons here....
                 BOOL fSmallNew = !SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, REGSTR_VAL_LARGEICONSTEMP, FALSE, TRUE /* default to large*/);
                 if (fSmallPrev != fSmallNew)
                 {
                     tvo.fSMSmallIcons = fSmallNew;
-                    c_tray.SetTrayViewOpts(&tvo);
+                    c_tray.SetTrayViewOpts(&tvo, nullptr);
                     IMenuPopup_SetIconSize(c_tray.GetStartMenu(), fSmallNew ? BMICON_SMALL : BMICON_LARGE);
                 }
 
@@ -2942,12 +2961,56 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 #define TPF_PAGEFLAGS   (TPF_STARTMENUPAGE | TPF_TASKBARPAGE)
 
-void DoTaskBarProperties(HWND hwnd, DWORD dwFlags)
+void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm)
 {
-    UINT nStartPage = (dwFlags & TPF_TASKBARPAGE) ? 0 : 1;
-    CTaskBarPropertySheet sheet(nStartPage, hwnd, dwFlags);
+    CNotificationsDlg* v4; // esi
 
-    sheet.DoModal(hwnd);
+    if ((dwFlags & 4) != 0)
+    {
+#if 0
+        CNotificationsDlg* pNotificationsDlg = (CNotificationsDlg*)operator new(0x68u);
+        if (pNotificationsDlg)
+            v4 = ATL::CComObject<CNotificationsDlg>::CComObject<CNotificationsDlg>(pNotificationsDlg, 0);
+        else
+            v4 = nullptr;
+        if (v4)
+        {
+            (*(void (__stdcall **)(int*))(v4->field_1C + 4))(&v4->field_1C);
+            ATL::CDialogImpl<CNotificationsDlg, ATL::CWindow>::DoModal((char*)v4, hwnd, 0);
+        }
+#endif
+    }
+    else
+    {
+        ASSERT(
+            ((dwFlags & TPF_PAGEFLAGS) == TPF_TASKBARPAGE)
+            || ((dwFlags & TPF_PAGEFLAGS) == TPF_STARTMENUPAGE)
+            || ((dwFlags & TPF_PAGEFLAGS) == TPF_NOTIFICATIONPAGE)
+            || ((dwFlags & TPF_PAGEFLAGS) == TPF_TOOLBARSPAGE)); // 3073
+
+        UINT nStartPage = 0;
+        if ((dwFlags & 1) == 0)
+        {
+            if ((dwFlags & 2) != 0)
+            {
+                nStartPage = 1;
+            }
+            else if ((dwFlags & 8) != 0)
+            {
+                nStartPage = 2;
+            }
+            else if ((dwFlags & 0x10) != 0)
+            {
+                nStartPage = 3;
+            }
+        }
+
+        ICatBandManager* pcbm = nullptr;
+        CoGetInterfaceAndReleaseStream(pstm, IID_PPV_ARGS(&pcbm));
+        CTaskBarPropertySheet sheet = CTaskBarPropertySheet(nStartPage, hwnd, dwFlags, pcbm);
+
+        sheet.DoModal(hwnd);
+    }
 }
 
 // Passing iResource=0 deletes the bitmap in the control

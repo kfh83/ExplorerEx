@@ -172,9 +172,9 @@ WORD _GetHotkeyFromFolderItem(IShellFolder *psf, PCITEMID_CHILD pidl)
 // Just like shells SHRestricted() only this put up a message if the restricion
 // is in effect.
 // EXEX-VISTA: Changed to use GUID instead of RESTRICTIONS in Vista.
-BOOL _Restricted(HWND hwnd, RESTRICTIONS rest)
+BOOL _Restricted(HWND hwnd, REFGUID rest)
 {
-    if (SHRestricted(rest))
+    if (SHWindowsPolicy(rest))
     {
         ShellMessageBox(g_hinstCabinet, hwnd, MAKEINTRESOURCE(IDS_RESTRICTIONS),
             MAKEINTRESOURCE(IDS_RESTRICTIONSTITLE), MB_OK|MB_ICONSTOP);
@@ -350,6 +350,8 @@ BOOL _CheckAssociations(void)
     return FALSE;
 }
 
+DEFINE_GUID(POLID_NoSetFolders, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
 // EXEX-VISTA: Validated.
 void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore)
 {
@@ -359,7 +361,7 @@ void _ShowFolder(HWND hwnd, UINT csidl, BOOL fExplore)
     shei.fMask      = SEE_MASK_INVOKEIDLIST;
     shei.nShow      = SW_SHOWNORMAL;
 
-    if (_Restricted(hwnd, REST_NOSETFOLDERS))
+    if (_Restricted(hwnd, POLID_NoSetFolders))
         return;
 
     if (fExplore)

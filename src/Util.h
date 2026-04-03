@@ -25,7 +25,7 @@ WORD    _GetHotkeyFromFolderItem(LPSHELLFOLDER psf, LPCITEMIDLIST pidl);
 
 DWORD MsgWaitForMultipleObjectsLoop(HANDLE hEvent, DWORD dwTimeout);
 
-BOOL _Restricted(HWND hwnd, RESTRICTIONS rest);
+BOOL _Restricted(HWND hwnd, REFGUID rest);
 int Window_GetClientGapHeight(HWND hwnd);
 
 

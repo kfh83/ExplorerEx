@@ -5,7 +5,7 @@
 #include "Util.h"
 #include "DeskHost.h"
 
-CStartButton::CStartButton(IStartButtonSite *pStartButtonSite)
+CStartButton::CStartButton(IStartButtonSite* pStartButtonSite)
     : _nSettingsChangeType(true)
     , _pStartButtonSite(pStartButtonSite)
 {
@@ -17,9 +17,8 @@ HRESULT CStartButton::QueryInterface(REFIID riid, void** ppvObject)
     {
         QITABENT(CStartButton, IStartButton),
         QITABENT(CStartButton, IServiceProvider),
-        { 0 },
+        {},
     };
-
     return QISearch(this, qit, riid, ppvObject);
 }
 
@@ -39,108 +38,271 @@ HRESULT CStartButton::SetFocusToStartButton()
     return S_OK;
 }
 
-HRESULT CStartButton::OnContextMenu(HWND hWnd, LPARAM lParam)
+#include <ntstatus.h>
+
+enum LUAUSERTYPE
 {
-    _nIsOnContextMenu = TRUE;
-    _pStartButtonSite->HandleFullScreenApp(nullptr);
-    SetForegroundWindow(hWnd);
+    ADMINTOKEN = 0x0,
+    SPLITADMINTOKEN = 0x1,
+    LUATOKEN = 0x2,
+    LUAUSERTYPE_MAX_NON_UIA = 0x3,
 
-    LPITEMIDLIST pidl = SHCloneSpecialIDList(hWnd, CSIDL_STARTMENU, TRUE);
-    IShellFolder* psf;
-    LPCITEMIDLIST ppidlLast;
-    if (SUCCEEDED(SHBindToParent(pidl, IID_PPV_ARGS(&psf), &ppidlLast)))
+    ADMINTOKEN_UIA = 0x10,
+    SPLITADMINTOKEN_UIA = 0x11,
+    LUATOKEN_UIA = 0x12,
+    LUAUSERTYPE_MAX = 0x13,
+};
+
+extern "C" NTSTATUS NTAPI NtQueryInformationToken(
+    HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, PVOID TokenInformation,
+    ULONG TokenInformationLength, PULONG ReturnLength);
+
+EXTERN_C NTSTATUS LUAIsElevatedToken(HANDLE hToken, BOOL* pfElevatedToken, BOOL* pfSplitToken)
+{
+    *pfSplitToken = TRUE;
+    *pfElevatedToken = FALSE;
+
+    TOKEN_ELEVATION_TYPE ElevationType = TokenElevationTypeDefault;
+    ULONG cbSize;
+    NTSTATUS hr = NtQueryInformationToken(hToken, TokenElevationType, &ElevationType, sizeof(ElevationType), &cbSize);
+    if (hr >= 0)
     {
-        HMENU hMenu = CreatePopupMenu();
-        IContextMenu* pcm;
-        if (SUCCEEDED(psf->GetUIObjectOf(hWnd, 1, &ppidlLast, IID_IContextMenu, NULL, (void**)&pcm)))
+        TOKEN_ELEVATION Elevation;
+        if (ElevationType == TokenElevationTypeFull)
         {
-            if (SUCCEEDED(pcm->QueryContextMenu(hMenu, 0, 2, 32751, CMF_VERBSONLY)))
+            *pfElevatedToken = TRUE;
+        }
+        else if (ElevationType == TokenElevationTypeDefault)
+        {
+            *pfSplitToken = FALSE;
+
+            hr = NtQueryInformationToken(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize);
+            if (hr >= 0 && Elevation.TokenIsElevated)
             {
-                WCHAR szBuffer[260];
-                LoadString(GetModuleHandle(NULL), 720, szBuffer, 260);
-                AppendMenu(hMenu, 0, 32755u, szBuffer);
-                if (!SHRestricted(REST_NOCOMMONGROUPS))
-                {
-                    if (SHGetFolderPath(0, CSIDL_COMMON_STARTMENU, 0, 0, szBuffer) != S_OK)
-                    {
-                        // some LUA crap
-                    }
-                }
+                *pfElevatedToken = TRUE;
+            }
+        }
+    }
 
-                int bResult;
-                if (lParam == -1)
-                {
-                    bResult = TrackMenu(hMenu);
-                }
-                else
-                {
-                    _pStartButtonSite->EnableTooltips(FALSE);
-                    UINT uFlag = TPM_RETURNCMD | TPM_RIGHTBUTTON;
-                    if (IsBiDiLocalizedSystem())
-                    {
-                        uFlag |= TPM_LAYOUTRTL;
-                    }
-                    bResult = TrackPopupMenu(hMenu, uFlag,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) , 0, hWnd, 0);
-                    _pStartButtonSite->EnableTooltips(TRUE);
-                }
+    return hr;
+}
 
-                if (bResult)
+EXTERN_C NTSTATUS LUAIsUIAToken(HANDLE hToken, BOOL* pfUIAToken)
+{
+    *pfUIAToken = FALSE;
+
+    DWORD dwValue;
+    DWORD cbSize = sizeof(DWORD);
+    NTSTATUS hr = NtQueryInformationToken(hToken, TokenUIAccess, &dwValue, sizeof(dwValue), &cbSize);
+    if (SUCCEEDED(hr))
+    {
+        *pfUIAToken = dwValue != 0;
+    }
+
+    return hr;
+}
+
+#define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
+#define NtCurrentThread() ((HANDLE)(LONG_PTR)-2)
+
+EXTERN_C
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenThreadToken(
+    _In_ HANDLE ThreadHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ BOOLEAN OpenAsSelf,
+    _Out_ PHANDLE TokenHandle
+    );
+
+EXTERN_C
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenProcessToken(
+    _In_ HANDLE ProcessHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _Out_ PHANDLE TokenHandle
+    );
+
+EXTERN_C NTSTATUS LUAGetUserType(HANDLE hToken, LUAUSERTYPE* pLuaUserType)
+{
+    NTSTATUS hr = STATUS_SUCCESS;
+    HANDLE hToClose = nullptr;
+
+    if (!hToken)
+    {
+        hr = NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, FALSE, &hToken);
+        if (hr == 0xC000007C)
+        {
+            hr = NtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &hToken);
+        }
+        if (hr >= 0)
+        {
+            hToClose = hToken;
+        }
+        else
+        {
+            return hr;
+        }
+    }
+
+    if (hr >= 0)
+    {
+        BOOL fElevatedToken;
+        BOOL fSplitToken;
+        hr = LUAIsElevatedToken(hToken, &fElevatedToken, &fSplitToken);
+        if (hr >= 0)
+        {
+            *pLuaUserType = fElevatedToken ? ADMINTOKEN : fSplitToken ? SPLITADMINTOKEN : LUATOKEN;
+
+            BOOL fUIAToken;
+            hr = LUAIsUIAToken(hToken, &fUIAToken);
+            if (hr >= 0 && fUIAToken)
+            {
+                LUAUSERTYPE luaUserType = *pLuaUserType;
+                if (*pLuaUserType < ADMINTOKEN_UIA || luaUserType >= LUAUSERTYPE_MAX)
                 {
-                    LPITEMIDLIST ppidl;
-                    switch (bResult)
+                    luaUserType = (LUAUSERTYPE)(luaUserType + 0x10);
+                }
+                *pLuaUserType = luaUserType;
+            }
+        }
+    }
+
+    if (hToClose)
+        NtClose(hToClose);
+    return hr;
+}
+
+HRESULT CStartButton::OnContextMenu(HWND hwnd, LPARAM lParam)
+{
+    _nIsOnContextMenu = 1;
+    _pStartButtonSite->HandleFullScreenApp(nullptr);
+    SetForegroundWindow(hwnd);
+
+    ITEMIDLIST* pidlStart = SHCloneSpecialIDList(hwnd, CSIDL_STARTMENU, TRUE);
+    const ITEMIDLIST* pidlLast;
+    IShellFolder* psf;
+    if (SUCCEEDED(SHBindToParent(pidlStart, IID_PPV_ARGS(&psf), &pidlLast)))
+    {
+        HMENU hmenu = CreatePopupMenu();
+        if (hmenu)
+        {
+            IContextMenu* pcm;
+            if (SUCCEEDED(psf->GetUIObjectOf(hwnd, 1, &pidlLast, IID_IContextMenu, nullptr, (void**)&pcm)))
+            {
+                if (SUCCEEDED(pcm->QueryContextMenu(hmenu, 0, 2, 32751, CMF_VERBSONLY)))
+                {
+                    WCHAR szCommon[260];
+                    LoadStringW(g_hinstCabinet, 720, szCommon, ARRAYSIZE(szCommon));
+                    AppendMenuW(hmenu, 0, 32755, szCommon);
+
+                    if (!SHRestricted(REST_NOCOMMONGROUPS))
                     {
-                        case 32752:
-                            _ExploreCommonStartMenu(FALSE);
-                            break;
-                        case 32753:
-                            _ExploreCommonStartMenu(TRUE);
-                            break;
-                        case 32755:
-                            Tray_DoProperties(TPF_STARTMENUPAGE);
-                            break;
-                        default:
+                        BOOL fAddCommon = SHGetFolderPathW(nullptr, CSIDL_COMMON_STARTMENU, nullptr, 0, szCommon) == S_OK;
+                        if (fAddCommon)
                         {
-                            WCHAR pszStr1[260];
-                            ContextMenu_GetCommandStringVerb(pcm, bResult - 2, pszStr1, 260);
-                            if (StrCmpICW(pszStr1, L"find"))
+                            LUAUSERTYPE luaUserType;
+                            if (LUAGetUserType(nullptr, &luaUserType) == STATUS_SUCCESS
+                                && (luaUserType == ADMINTOKEN
+                                || luaUserType == SPLITADMINTOKEN
+                                || luaUserType == ADMINTOKEN_UIA
+                                || luaUserType == SPLITADMINTOKEN_UIA))
                             {
-                                CHAR pszStr[260];
-                                SHUnicodeToAnsi(pszStr1, pszStr, 260);
-
-                                CMINVOKECOMMANDINFO cmInvokeInfo = {};
-                                cmInvokeInfo.hwnd = hWnd;
-                                cmInvokeInfo.lpVerb = pszStr;
-                                cmInvokeInfo.nShow = SW_NORMAL;
-
-                                CHAR pszPath[260];
-                                SHGetPathFromIDListA(pidl, pszPath);
-                                cmInvokeInfo.fMask |= SEE_MASK_UNICODE;
-                                cmInvokeInfo.lpDirectory = pszPath;
-
-                                pcm->InvokeCommand(&cmInvokeInfo);
+                                fAddCommon = TRUE;
                             }
-                            else if (SUCCEEDED(SHGetKnownFolderIDList(FOLDERID_SearchHome, NULL, 0, &ppidl)))
+                            if (fAddCommon)
                             {
-                                SHELLEXECUTEINFO execInfo = {};
-                                execInfo.lpVerb = L"open";
-                                execInfo.fMask = SEE_MASK_IDLIST;
-                                execInfo.nShow = SW_NORMAL;
-                                execInfo.lpIDList = ppidl;
-                                ShellExecuteEx(&execInfo);
-                                ILFree(ppidl);
+                                AppendMenuW(hmenu, MFT_SEPARATOR, 0, nullptr);
+                                LoadStringW(g_hinstCabinet, 718, szCommon, ARRAYSIZE(szCommon));
+                                AppendMenuW(hmenu, MFT_STRING, 32752, szCommon);
+                                LoadStringW(g_hinstCabinet, 719, szCommon, ARRAYSIZE(szCommon));
+                                AppendMenuW(hmenu, MFT_STRING, 32753, szCommon);
                             }
-                            break;
+                        }
+                    }
+
+                    int idCmd;
+                    if (lParam == -1)
+                    {
+                        idCmd = TrackMenu(hmenu);
+                    }
+                    else
+                    {
+                        _pStartButtonSite->EnableTooltips(FALSE);
+                        UINT uFlags = TPM_RIGHTBUTTON | TPM_RETURNCMD;
+                        if (IsBiDiLocalizedSystem())
+                        {
+                            uFlags |= TPM_LAYOUTRTL;
+                        }
+                        idCmd = TrackPopupMenu(hmenu, uFlags, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, hwnd, nullptr);
+                        _pStartButtonSite->EnableTooltips(TRUE);
+                    }
+                    if (idCmd)
+                    {
+                        switch (idCmd)
+                        {
+                            case 32752:
+                                _ExploreCommonStartMenu(FALSE);
+                                break;
+                            case 32753:
+                                _ExploreCommonStartMenu(TRUE);
+                                break;
+                            case 32755:
+                                Tray_DoProperties(2);
+                                break;
+                            default:
+                                WCHAR szVerb[260];
+                                ContextMenu_GetCommandStringVerb(pcm, idCmd - 2, szVerb, ARRAYSIZE(szVerb));
+                                if (StrCmpICW(szVerb, L"find"))
+                                {
+                                    CMINVOKECOMMANDINFOEX ici = {};
+                                    ici.cbSize = sizeof(ici);
+                                    ici.hwnd = hwnd;
+                                    ici.lpVerb = (const CHAR*)MAKEINTRESOURCE(idCmd - 2);
+                                    ici.nShow = SW_SHOWNORMAL;
+
+                                    CHAR szPathAnsi[260];
+                                    WCHAR szPath[260];
+                                    SHGetPathFromIDListA(pidlStart, szPathAnsi);
+                                    SHGetPathFromIDListW(pidlStart, szPath);
+
+                                    ici.fMask |= CMIC_MASK_UNICODE;
+                                    ici.lpDirectory = szPathAnsi;
+                                    ici.lpDirectoryW = szPath;
+                                    pcm->InvokeCommand(reinterpret_cast<CMINVOKECOMMANDINFO*>(&ici));
+                                }
+                                else
+                                {
+                                    ITEMIDLIST* pidlSearchHome;
+                                    if (SUCCEEDED(SHGetKnownFolderIDList(
+                                        FOLDERID_SearchHome, KF_FLAG_DEFAULT, nullptr, &pidlSearchHome)))
+                                    {
+                                        SHELLEXECUTEINFOW shei = {};
+                                        shei.cbSize = sizeof(shei);
+                                        shei.fMask = SEE_MASK_IDLIST;
+                                        shei.lpVerb = L"open";
+                                        shei.nShow = SW_SHOWNORMAL;
+                                        shei.lpIDList = pidlSearchHome;
+                                        ShellExecuteExW(&shei);
+                                        ILFree(pidlSearchHome);
+                                    }
+                                }
+                                break;
                         }
                     }
                 }
                 pcm->Release();
             }
-            DestroyMenu(hMenu);
+            DestroyMenu(hmenu);
         }
         psf->Release();
     }
-    ILFree(pidl);
-    _nIsOnContextMenu = FALSE;
+
+    ILFree(pidlStart);
+    _nIsOnContextMenu = 0;
     return S_OK;
 }
 
@@ -264,26 +426,34 @@ HRESULT CStartButton::LockStartPane()
     return S_OK;
 }
 
-HRESULT CStartButton::GetPopupPosition(DWORD* out)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::GetPopupPosition(DWORD* pdwPos) // taken from ep_taskbar 7-stuff
 {
     if (!_pStartButtonSite)
         return E_FAIL;
 
-    UINT stuckPlace = _pStartButtonSite->GetStartMenuStuckPlace();
-    switch (stuckPlace)
+    UINT uStuckPlace = _pStartButtonSite->GetStartMenuStuckPlace();
+    switch (uStuckPlace)
     {
-        case 0: *out = MPPF_LEFT; break;
-        case 1: *out = MPPF_TOP; break;
-        case 2: *out = MPPF_RIGHT; break;
-        default: *out = MPPF_BOTTOM; break;
+        case STICK_LEFT:
+            *pdwPos = MPPF_LEFT;
+            break;
+        case STICK_TOP:
+            *pdwPos = MPPF_TOP;
+            break;
+        case STICK_RIGHT:
+            *pdwPos = MPPF_RIGHT;
+            break;
+        default:
+            *pdwPos = MPPF_BOTTOM;
+            break;
     }
 
     return S_OK;
 }
 
-HRESULT CStartButton::GetWindow(HWND* out)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::GetWindow(HWND* phwndStart)  // taken from ep_taskbar 7-stuff
 {
-    *out = _hwndStart;
+    *phwndStart = _hwndStart;
     return S_OK;
 }
 
@@ -458,8 +628,8 @@ void CStartButton::DisplayStartMenu()
 
 	DWORD_PTR exStyle = GetWindowLongPtr(v_hwndTray, GWL_EXSTYLE);
     if ((exStyle & WS_EX_TOPMOST) == 0
-        && _pszCurrentThemeName == TEXT("StartBottom")
-        || _pszCurrentThemeName == TEXT("StartTop"))
+        && _pszThemeName == TEXT("StartBottom")
+        || _pszThemeName == TEXT("StartTop"))
     {
         fMoveTaskbar = true;
         SetWindowPos(v_hwndTray, HWND_TOPMOST, 0, 0, 0, 0, (SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER));
@@ -708,13 +878,13 @@ BOOL CStartButton::InitBackgroundBitmap()
 
 void CStartButton::InitTheme()
 {
-    _pszCurrentThemeName = _GetCurrentThemeName();
-    SetWindowTheme(_hwndStart, _GetCurrentThemeName(), 0);
+    _pszThemeName = _GetCurrentThemeName();
+    SetWindowTheme(_hwndStart, _pszThemeName, nullptr);
 }
 
 BOOL CStartButton::IsButtonPushed()
 {
-    return SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
+    return SendMessageW(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
 }
 
 HRESULT CStartButton::IsMenuMessage(MSG *pmsg)
@@ -740,7 +910,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
     LONG cyFrameHalf = g_cyFrame / 2;
 
-    if (_pszCurrentThemeName == L"StartTop")
+    if (_pszThemeName == L"StartTop")
     {
         pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
 
@@ -749,7 +919,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         else
             pPoint->y = rcTrayWnd.bottom + _nSomeSize - _sizeStart.cy;
     }
-    else if (_pszCurrentThemeName == L"StartBottom")
+    else if (_pszThemeName == L"StartBottom")
     {
         RECT rc;
 
@@ -934,14 +1104,14 @@ HRESULT CStartButton::TranslateMenuMessage(MSG *pmsg, LRESULT *plRet)
 
 void CStartButton::UpdateStartButton(bool a2)
 {
-    if (_hTheme && _GetCurrentThemeName() != _pszCurrentThemeName)
+    if (_hTheme && _GetCurrentThemeName() != _pszThemeName)
     {
-        _pszCurrentThemeName = _GetCurrentThemeName();
-        SetWindowTheme(_hwndStart, _GetCurrentThemeName(), 0);
+        _pszThemeName = _GetCurrentThemeName();
+        SetWindowTheme(_hwndStart, _GetCurrentThemeName(), nullptr);
     }
     else
     {
-        DrawStartButton(1, a2);
+        DrawStartButton(PBS_NORMAL, a2);
     }
 }
 
@@ -1063,7 +1233,7 @@ void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
     }
 }
 
-LPCWSTR CStartButton::_GetCurrentThemeName()
+const WCHAR* CStartButton::_GetCurrentThemeName()
 {
     RECT rc;
     GetWindowRect(v_hwndTray, &rc);
@@ -1122,7 +1292,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     bool bThemeApplied = false;
@@ -1135,7 +1305,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     }
     else if (!bForceUpdate)
     {
-        _pszCurrentThemeName = NULL;
+        _pszThemeName = NULL;
         if (!_nSettingsChangeType)
         {
             StartButtonReset();

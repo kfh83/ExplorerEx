@@ -185,11 +185,11 @@ EXTERN_C void Tray_OnStartMenuDismissed();
 EXTERN_C void Tray_SetStartPaneActive(BOOL fActive);
 
 
-#define TPF_TASKBARPAGE     0x00000001
-#define TPF_STARTMENUPAGE   0x00000002
-#define TPF_INVOKECUSTOMIZE 0x00000004   // start with the "Customize..." sub-dialog open
-#define TPF_NOTIFAREAPAGE   0x00000008
-#define TPF_TOOLBARSPAGE    0x00000010
+#define TPF_TASKBARPAGE         0x00000001
+#define TPF_STARTMENUPAGE       0x00000002
+#define TPF_INVOKECUSTOMIZE     0x00000004   // start with the "Customize..." sub-dialog open
+#define TPF_NOTIFICATIONPAGE    0x00000008
+#define TPF_TOOLBARSPAGE        0x00000010
 
 EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 
@@ -197,7 +197,11 @@ EXTERN_C void Tray_DoProperties(DWORD dwFlags);
 #define AH_ON           0x01
 #define AH_HIDING       0x02
 
-class CTray : public CImpWndProc, public IStartButtonSite
+class CTray
+    : public CImpWndProc
+    , public IStartButtonSite
+    , public ITrayDeskBand
+    , public IMessageFilter
 {
 public:
 
@@ -205,6 +209,13 @@ public:
     // miscellaneous public methods
     //
     CTray();
+    ~CTray();
+
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
 
     //~ Begin IStartButtonSite Interface
     STDMETHODIMP_(void) EnableTooltips(BOOL bEnable) override;
@@ -218,6 +229,20 @@ public:
     STDMETHODIMP_(void) SetUnhideTimer(LONG x, LONG y) override;
     STDMETHODIMP_(void) OnStartButtonClosing() override;
     //~ End IStartButtonSite Interface
+
+    //~ Begin ITrayDeskBand Interface
+    STDMETHODIMP ShowDeskBand(REFCLSID clsid) override;
+    STDMETHODIMP HideDeskBand(REFCLSID clsid) override;
+    STDMETHODIMP IsDeskBandShown(REFCLSID clsid) override;
+    STDMETHODIMP DeskBandRegistrationChanged() override;
+    //~ End ITrayDeskBand Interface
+
+    //~ Begin IMessageFilter Interface
+    STDMETHODIMP_(DWORD) HandleInComingCall(
+        DWORD dwCallType, HTASK htaskCaller, DWORD dwTickCount, INTERFACEINFO* lpInterfaceInfo) override;
+    STDMETHODIMP_(DWORD) RetryRejectedCall(HTASK htaskCallee, DWORD dwTickCount, DWORD dwRejectType) override;
+    STDMETHODIMP_(DWORD) MessagePending(HTASK htaskCallee, DWORD dwTickCount, DWORD dwPendingType) override;
+    //~ End IMessageFilter Interface
 
     void HandleWindowDestroyed(HWND hwnd);
     void RealityCheck();
@@ -249,8 +274,6 @@ public:
     void _ActivateWindowSwitcher();
     void _SetLockState(UINT newVal);
     void _InvokeSearch();
-    bool _fMouseInTaskbar; // ExplorerEx-Vista
-    bool _bBool679; // ExplorerEx-Vista
 
     DWORD CountOfRunningPrograms();
 
@@ -261,7 +284,7 @@ public:
 
     void TellTaskBandWeWantToOpenThisShit();
 
-    void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
+    void GetTrayViewOpts(TRAYVIEWOPTS* ptvo, ICatBandManager* pcbm)
     {
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
@@ -271,7 +294,7 @@ public:
         ptvo->fNoAutoTrayPolicyEnabled = _trayNotify.GetIsNoAutoTrayPolicyEnabled();
         ptvo->fAutoTrayEnabledByUser = _trayNotify.GetIsAutoTrayEnabledByUser();
         ptvo->uAutoHide = _uAutoHide; // AH_HIDING , AH_ON
-        ptvo->fShowQuickLaunch = (-1 != SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)-1));
+        ptvo->fShowQuickLaunch = _ToggleQL(-1, pcbm) != -1;
 
         for (int i = 0; i < ARRAYSIZE(ptvo->rgfHideSCA); ++i) // Iterate through the SCA icons (Volume, Network, Power)
         {
@@ -279,10 +302,10 @@ public:
         }
     }
 
-    void SetTrayViewOpts(const TRAYVIEWOPTS* ptvo)
+    void SetTrayViewOpts(const TRAYVIEWOPTS* ptvo, ICatBandManager* pcbm)
     {
         _UpdateAlwaysOnTop(ptvo->fAlwaysOnTop);
-        SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)ptvo->fShowQuickLaunch);
+        _ToggleQL(ptvo->fShowQuickLaunch, pcbm);
         _fSMSmallIcons = ptvo->fSMSmallIcons;
         _fHideClock = ptvo->fHideClock;
         _fNoThumbnails = ptvo->fNoThumbnails;
@@ -301,9 +324,6 @@ public:
         return _fNoToolbarsOnTaskbarPolicyEnabled;
     }
 
-    STDMETHODIMP_(ULONG) AddRef() { return 2; }
-    STDMETHODIMP_(ULONG) Release() { return 1; }
-
     //
     // miscellaneous public data
     //
@@ -321,9 +341,9 @@ public:
 
     BOOL _fIsLogoff;
 
-    HWND _hwndLastActive;
+    int field_38;
 
-    CStartButton _stb;
+    HWND _hwndLastActive;
 
     IBandSite* _ptbs;
 
@@ -333,6 +353,12 @@ public:
     int _arStuckHeights[4];
 
     CTrayNotify _trayNotify;
+    CStartButton _stb;
+
+    char field_4B8;
+    char field_4B9;
+    char field_4BA;
+    char field_4BB;
 
     // vista composition related - snatched from amr (but is likely this anyway)
     BOOL GlassEnabled();
@@ -357,10 +383,10 @@ protected:
     BOOL _IsPopupMenuVisible();
     BOOL _IsActive();
     void _AlignStartButton();
-    void _GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify);
+    void _GetWindowSizes(UINT uStuckPlace, const RECT* prcClient, RECT* prcView, RECT* prcNotify);
     void _GetStuckDisplayRect(UINT uStuckPlace, LPRECT prcDisplay);
     void _Hide();
-    HWND _GetClockWindow(void);
+    HWND _GetClockWindow();
     HRESULT _LoadInProc(PCOPYDATASTRUCT pcds);
 
     // Vista composition related
@@ -452,13 +478,13 @@ protected:
     void _SaveTray();
     void _SaveTrayAndDesktop();
     void _SlideStep(HWND hwnd, const RECT* prcMonitor, const RECT* prcOld, const RECT* prcNew);
-    void _DoExitExplorer();
-    void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, BOOL fFromNotifArea);
+    BOOL _DoExitExplorer();
+    void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD a4);
 
     void _ResizeStuckRects(RECT* arStuckRects);
 
     static DWORD WINAPI PropertiesThreadProc(void* pv);
-    DWORD _PropertiesThreadProc(DWORD dwFlags);
+    DWORD _PropertiesThreadProc(void* pv);
 
     int _RecomputeWorkArea(HWND hwndCause, HMONITOR hmon, LPRECT prcWork);
 
@@ -473,7 +499,7 @@ protected:
     void _SetStuckMonitor();
     void _GetSaveStateAndInitRects();
     LRESULT _OnCreateAsync();
-    LRESULT _OnCreate(HWND hwnd);
+    LRESULT _OnCreate();
     void _UpdateBandSiteStyle();
     void _InitBandsite();
     void _InitNonzeroGlobals();
@@ -626,7 +652,7 @@ protected:
 
     POINT _ptLastHittest;
 
-    HWND _hwndRun;
+    HWND _hwndProp1;
     HWND _hwndProp;
     HWND _hwndRebar;
 
@@ -705,16 +731,35 @@ protected:
     BOOL _fEarlyStartupFailure;
     BOOL _fStartupTroubleshooterLaunched;
 
+    int field_618;
+
     ULONG _uNotify;
     BOOL _fUseChangeNotifyTimer, _fChangeNotifyTimerRunning;
 
     BOOL _fIsDesktopLocked;
     BOOL _fIsDesktopConnected;
 
-    // CSystemMixer *field_630; // EXEX-VISTA
+#ifdef SYSTEM_MIXER
+    CSystemMixer* _pSystemMixer; // EXEX-VISTA
+#endif
 	int field_634; // EXEX-VISTA
 	int field_638; // EXEX-VISTA
 	DWORD _dwWatermarkPolicy; // EXEX-VISTA
+
+    // ResponseMonitor _responseMonitor;
+    HWND _hwndClock;
+
+    bool _fMouseInTaskbar;
+    bool field_679;
+    char field_67A;
+    char field_67B;
+
+    void _ShowOnlyQuickLaunchDeskBand();
+    int _ToggleQL(int iVisible, ICatBandManager* pcbm);
+    ICatBandManager* _pcbm;
+
+    UINT _uMsgEnableUserTrackedBalloonTips;
+    UINT _uMsgShowOnlyQuickLaunchDeskBand;
 
     // These member variables are used to keep track of downlevel apps
     // which attempt to take over as default web browser
