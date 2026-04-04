@@ -1745,7 +1745,7 @@ void CTray::_InitBandsite()
 
     SendMessageW(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
 
-    field_38 = 1;
+    _fBandSiteReady = 1;
 
     // Now that bandsite is ready, set the correct size
     VerifySize(FALSE, TRUE, FALSE);
@@ -1829,111 +1829,53 @@ DWORD WINAPI CTray::SyncThreadProc(void* pv)
 
 DWORD CTray::_SyncThreadProc()
 {
-    //if (g_dwStopWatchMode)
-    //    StopWatch_StartTimed(SWID_STARTUP, TEXT("_SyncThreadProc"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());
-
-    if (g_dwProfileCAP & 0x00000002)
-        StartCAP();
-
-
+    // Skipped telemetry ShellTraceId_Explorer_CreateTray_Start
     InitializeCriticalSection(&_csHotkey);
 
-    OleInitialize(NULL);    // matched in MainThreadProc()
+    OleInitialize(nullptr);
     ClassFactory_Start();
 
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9c}");
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9d}");
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9e}");
+    // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
 
     _InitNonzeroGlobals();
-    _ssomgr.Init();
-
-    //
-    //  Watch the registry key that tells us which app is the default
-    //  web browser, so we can track it in
-    //  HKLM\Software\Clients\StartMenuInternet.  We have to track it
-    //  ourselves because downlevel browsers won't know about it.
-    //
-    //  We need to do this only if we have write access to the key.
-    //  (If we don't have write access, then we can't change it,
-    //  so there's no point watching for it to change...)
-    //
-    //  Well, okay, even if we only have read access, we have to do
-    //  it once in case it changed while we were logged off.
-    //
-    //  The order of these operations is important...
-    //
-    //      1.  Migrate browser settings.
-    //      2.  Build default MFU.  (Depends on browser settings.)
-    //      3.  Create tray window.  (Relies on value MFU.)
-    //
-
-    _hHTTPEvent = CreateEvent(NULL, FALSE, TRUE, NULL);
-    if (_hHTTPEvent)
-    {
-        //  Make one migration pass immediately so HandleFirstTime
-        //  sees good information.  This also kick-starts the
-        //  registry change notification process if the current user
-        //  has write permission.
-        _MigrateOldBrowserSettings();
-
-        if (RegisterWaitForSingleObject(&_hHTTPWait, _hHTTPEvent,
-            _MigrateOldBrowserSettingsCB, this,
-            INFINITE, WT_EXECUTEDEFAULT))
-        {
-            // Yay, everything is fine.
-        }
-    }
-
-    // Build the default MFU if necessary
     HandleFirstTime();
 
+    // Skipped telemetry ShellTraceId_Explorer_CreateTrayWindow_Start
     _CreateTrayWindow();
+    // Skipped telemetry ShellTraceId_Explorer_CreateTrayWindow_Stop
 
     if (_hwnd && _ptbs)
     {
-        // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later. Partially reversed from Vista.
-
-        _ResetZorder(FALSE); // obey the "always on top" flag
+        _ResetZorder(FALSE);
         _KickStartAutohide();
 
         _InitBandsite();
+        _ClipWindow(TRUE);
 
-        _ClipWindow(TRUE);  // make sure we clip the taskbar to the current monitor before showing it
-
-        // @MOD - Skipped telemetry SHTracePerf(&ShellTraceId_Explorer_InitStartButton_Start)
-
+        // Skipped telemetry ShellTraceId_Explorer_InitStartButton_Start
         _InitStartButtonEtc();
-
-        // @MOD - Skipped telemetry SHTracePerf(&ShellTraceId_Explorer_InitStartButton_Stop)
+        // Skipped telemetry ShellTraceId_Explorer_InitStartButton_Stop
 
         BandSite_HandleDelayInitStuff(_ptbs);
 
-        // it looks really strange for the tray to pop up and rehide at logon
-        // if we are autohide don't activate the tray when we show it
-        // if we aren't autohide do what Win95 did (tray is active by default)
-        ShowWindow(_hwnd, (_uAutoHide & AH_HIDING) ? SW_SHOWNA : SW_SHOW);
-
+        ShowWindow(_hwnd, (_uAutoHide & AH_HIDING) != 0 ? SW_SHOWNA : SW_SHOW);
         UpdateWindow(_hwnd);
-        // _StuckTrayChange(); // seems removed in Vista
 
         ShowWindow(_stb._hwndStart, SW_SHOW);
 
         _stb.InitTheme();
         _stb.UpdateStartButton(true);
 
-        //_StarterWatermarkUpdate();
-        field_679 = true;   // ExplorerEx-Vista
+        // _StarterWatermarkUpdate();
+        field_679 = true;
 
-        //_SignalShellDesktopSwitchEvent();
+        // _SignalShellDesktopSwitchEvent();
+        SetTimer(_hwnd, 8, 5000, nullptr);
 
-        SetTimer(_hwnd, IDT_HANDLEDELAYBOOTSTUFF, 5 * 1000, NULL);
-
-        // get the system background scheduler thread
         if (!Tray_StartPanelEnabled())
         {
-            IShellTaskScheduler *pScheduler;
-            if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&pScheduler))))
+            IShellTaskScheduler* pScheduler;
+            if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, nullptr, CLSCTX_INPROC, IID_PPV_ARGS(&pScheduler))))
             {
                 AddMenuItemsCacheTask(pScheduler, FALSE);
                 pScheduler->Release();
@@ -1941,13 +1883,8 @@ DWORD CTray::_SyncThreadProc()
         }
     }
 
-    if (g_dwProfileCAP & 0x00020000)
-        StopCAP();
-
-    //if (g_dwStopWatchMode)
-    //    StopWatch_StopTimed(SWID_STARTUP, TEXT("_SyncThreadProc"), SPMODE_SHELL | SPMODE_DEBUGOUT, GetPerfTime());
-
-    return FALSE;
+    // Skipped telemetry ShellTraceId_Explorer_CreateTray_Stop
+    return 0;
 }
 
 // the rest of the thread proc that includes the message loop
@@ -2984,7 +2921,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
     _UpdateVertical(uStuckPlace);
 
     IDeskBarClient* pdbc;
-    if (_ptbs && field_38 && SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
+    if (_ptbs && _fBandSiteReady && SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
     {
         RECT rcClient;
         RECT rcOldClient;
@@ -8307,10 +8244,10 @@ DWORD CTray::_PropertiesThreadProc(void* pv)
     if (pData)
     {
         RECT rc = pData->rcStartButton;
-        bool fSomething = (pData->dwFlags & 4) != 0;
+        bool fInvokeCustomize = (pData->dwFlags & TPF_INVOKECUSTOMIZE) != 0;
         DWORD dwExStyle = (IS_BIDI_LOCALIZED_SYSTEM() ? 0x400000 : 0) | 0x80;
 
-        HWND* p_hwndProp = fSomething ? &_hwndProp : &_hwndProp1;
+        HWND* phwndProp = fInvokeCustomize ? &_hwndPropCustomize : &_hwndProp;
         HWND hwnd = SHFusionCreateWindowEx(
             dwExStyle,
             L"static",
@@ -8324,19 +8261,23 @@ DWORD CTray::_PropertiesThreadProc(void* pv)
             nullptr,
             g_hinstCabinet,
             nullptr);
-        *p_hwndProp = hwnd;
-        if (hwnd)
+        *phwndProp = hwnd;
+        if (*phwndProp)
         {
-            HICON hicoStub = LoadIconW(GetModuleHandleW(L"SHELL32"), (LPCWSTR)40);
-            SendMessageW(*p_hwndProp, 0x80, 1, (LPARAM)hicoStub);
+            HICON hicoStub = LoadIconW(GetModuleHandleW(L"SHELL32"), MAKEINTRESOURCEW(40));
+            SendMessageW(*phwndProp, WM_SETICON, ICON_BIG, (LPARAM)hicoStub);
 
-            DoTaskBarProperties(*p_hwndProp, pData->dwFlags, pData->pstm);
+            DoTaskBarProperties(*phwndProp, pData->dwFlags, pData->pstm);
 
-            *p_hwndProp = nullptr;
-            DestroyWindow(*p_hwndProp);
+            *phwndProp = nullptr;
+            DestroyWindow(hwnd);
+
             if (hicoStub)
+            {
                 DestroyIcon(hicoStub);
+            }
         }
+
         delete pData;
     }
 
@@ -8351,23 +8292,25 @@ void CTray::DoProperties(DWORD dwFlags)
 {
     if (!_Restricted(_hwnd, POLID_NoSetTaskbar))
     {
+        HWND* phwndTrayProp = (dwFlags & TPF_INVOKECUSTOMIZE) != 0 ? &_hwndPropCustomize : &_hwndProp;
+
         int i = RUNWAITSECS;
-        while (_hwndProp == ((HWND)-1) && i--)
+        while (*phwndTrayProp == ((HWND)-1) && i--)
         {
             // we're in the process of coming up. wait
             Sleep(1000);
         }
 
         // failed!  blow it off.
-        if (_hwndProp == (HWND)-1)
+        if (*phwndTrayProp == (HWND)-1)
         {
-            _hwndProp = NULL;
+            *phwndTrayProp = nullptr;
         }
 
-        if (_hwndProp)
+        if (*phwndTrayProp)
         {
             // there's a window out there... activate it
-            SwitchToThisWindow(GetLastActivePopup(_hwndProp), TRUE);
+            SwitchToThisWindow(GetLastActivePopup(*phwndTrayProp), TRUE);
         }
         else
         {
@@ -8382,11 +8325,11 @@ void CTray::DoProperties(DWORD dwFlags)
                     CoMarshalInterThreadInterfaceInStream(IID_ICatBandManager, _pcbm, &pParams->pstm);
                 }
 
-                _hwndProp = (HWND)-1;
+                *phwndTrayProp = (HWND)-1;
                 if (!SHCreateThread(PropertiesThreadProc, pParams, CTF_COINIT, nullptr))
                 {
                     delete pParams;
-                    _hwndProp = nullptr;
+                    *phwndTrayProp = nullptr;
                 }
             }
         }
@@ -9945,8 +9888,8 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                     {
                         TileWindows(GetDesktopWindow(), idCmd != 404, nullptr, 0, nullptr);
                     }
-                    this->_fUndoEnabled = 0;
-                    SetTimer(this->_hwnd, 0x12u, 0x1F4u, nullptr);
+                    _fUndoEnabled = 0;
+                    SetTimer(_hwnd, 0x12u, 0x1F4u, nullptr);
                     _AppBarNotifyAll(nullptr, 3u, nullptr, 0);
                 }
             }
@@ -9978,7 +9921,7 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                 }
                 if (!_bMainMenuInit && _stb.IsButtonPushed())
                 {
-                    _SetFocus(this->_stb._hwndStart);
+                    _SetFocus(_stb._hwndStart);
                     _ToolbarMenu();
                 }
                 break;
@@ -9991,7 +9934,7 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
     {
         if (idCmd == 5000)
         {
-            UpdateWindow(this->_hwnd);
+            UpdateWindow(_hwnd);
             Sleep(0x64u);
             DisconnectWindowsDialog(v_hwndDesktop);
             return;

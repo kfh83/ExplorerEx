@@ -341,7 +341,7 @@ public:
 
     BOOL _fIsLogoff;
 
-    int field_38;
+    BOOL _fBandSiteReady;
 
     HWND _hwndLastActive;
 
@@ -652,8 +652,8 @@ protected:
 
     POINT _ptLastHittest;
 
-    HWND _hwndProp1;
     HWND _hwndProp;
+    HWND _hwndPropCustomize;
     HWND _hwndRebar;
 
     HACCEL _hMainAccel;     // Main accel table

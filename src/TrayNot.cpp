@@ -869,7 +869,7 @@ void CTrayNotify::_ShowInfoTip(REFGUID guid, HWND hwnd, UINT uID, BOOL bShow, BO
     DWORD v16; // eax
     // [esp+Ch] [ebp-4h]
 
-    if (this->_fNoTrayItemsDisplayPolicyEnabled)
+    if (_fNoTrayItemsDisplayPolicyEnabled)
         return;
 
     CTrayItemManager* ptim = _GetItemManagerByGuid(guid);
@@ -4654,278 +4654,358 @@ void CTrayNotify::_OnRudeApp(BOOL bRudeApp)
 // virtual v_WndProc, which handles all the messages in the derived class.
 LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    //
-    // protect against re-entrancy after we've been partially destroyed
-    //
-    if (_hwndToolbar == NULL)
+    unsigned int v27;
+    BOOL fHide;
+
+    if (_hwndToolbar && !_hwndToolbarSCA && uMsg != 1 && uMsg != 2)
+        return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+
+    static GUID s_rgSCAGuids[] = { SCAID_Volume, SCAID_Network, SCAID_Power };
+
+    if (uMsg <= 0x318)
     {
-        if (uMsg != WM_CREATE &&
-            uMsg != WM_DESTROY)
+        if (uMsg == 0x318) // WM_PRINTCLIENT
         {
-            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            return _Paint((HDC)wParam);
         }
+
+        if (uMsg <= 0x48) // WM_POWER
+        {
+            if (uMsg == 0x48)
+            {
+                _OnSysChange(uMsg, wParam, lParam);
+                return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            }
+            if (uMsg <= 0xF)
+            {
+                if (uMsg == 0xF)
+                {
+                    return _Paint((HDC)wParam);
+                }
+                switch (uMsg)
+                {
+                    case WM_CREATE:
+                        return _Create(hWnd);
+                    case WM_DESTROY:
+                        return _Destroy();
+                    case WM_SIZE:
+                        _Size();
+                        return 0;
+                }
+
+                if (uMsg == WM_SETFOCUS)
+                {
+                    if (field_340)
+                    {
+                        field_340 = 0;
+                        return 0;
+                    }
+                    if (!_fNoTrayItemsDisplayPolicyEnabled)
+                    {
+                        BOOL bFocusSet = 0; // bFocusSet
+                        if (_pinfo)
+                        {
+                            CTrayItemManager* ptim = _GetItemManagerByGuid(_pinfo->guid);
+                            HWND hwndToolbar = _GetToolbarByGuid(_pinfo->guid);
+                            INT_PTR nIcon = ptim->FindItemAssociatedWithHwndUid(_pinfo->hWnd, _pinfo->uID);
+                            if (nIcon != -1 && ToolBar_IsVisible(hwndToolbar, nIcon))
+                            {
+                                _SetToolbarHotItem(hwndToolbar, nIcon);
+                                _fChevronSelected = 0;
+                                bFocusSet = 1; // bFocusSet
+                            }
+                        }
+
+                        if (bFocusSet) // bFocusSet
+                            return 0;
+
+                        if (_fHaveDemoted)
+                        {
+                            SetFocus(_hwndChevron);
+                            _fChevronSelected = 1;
+                            bFocusSet = 1; // bFocusSet
+                        }
+
+                        if (bFocusSet) // bFocusSet
+                            return 0;
+
+                        INT_PTR nToolbarIcon = _GetToolbarFirstVisibleItem(_hwndToolbar, 0);
+                        if (nToolbarIcon != -1)
+                        {
+                            _SetToolbarHotItem(_hwndToolbar, nToolbarIcon);
+                            _fChevronSelected = 0;
+                            return 0;
+                        }
+                        INT_PTR nToolbarSCAIcon = _GetToolbarFirstVisibleItem(_hwndToolbarSCA, 0);
+                        if (nToolbarSCAIcon != -1)
+                        {
+                            _SetToolbarHotItem(_hwndToolbarSCA, nToolbarSCAIcon);
+                            _fChevronSelected = 0;
+                            return 0;
+                        }
+                    }
+                    SetFocus(_hwndClock);
+                    _fChevronSelected = 0;
+                    return 0;
+                }
+
+                if (uMsg == WM_SETREDRAW)
+                {
+                    return _SetRedraw(wParam);
+                }
+                return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            }
+
+            if (uMsg == WM_ERASEBKGND)
+            {
+                if (_hTheme)
+                {
+                    return 1;
+                }
+                _Paint((HDC)wParam);
+                return 0;
+            }
+            if (uMsg == WM_SETTINGCHANGE || uMsg == WM_TIMECHANGE)
+            {
+                _OnSysChange(uMsg, wParam, lParam);
+                return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            }
+            if (uMsg == WM_WINDOWPOSCHANGED)
+            {
+                if (field_2AC)
+                {
+                    // _ActivateChevronTrackingTooltip(0);
+                }
+                return DefWindowProcW(hWnd, 0x47, wParam, lParam);
+            }
+            return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+        }
+        if (uMsg <= 0x113) // WM_TIMER
+        {
+            switch (uMsg)
+            {
+                case WM_TIMER:
+                    _OnTimer(wParam);
+                    break;
+                case WM_NOTIFY:
+                    return _Notify((NMHDR*)lParam);
+                case WM_NCHITTEST:
+                    return -1;
+                case WM_KEYDOWN:
+                    return _OnKeyDown(wParam, lParam);
+                case WM_COMMAND:
+                    if (!_fNoTrayItemsDisplayPolicyEnabled)
+                    {
+                        _OnCommand(hWnd, wParam, lParam);
+                    }
+                    break;
+                default:
+                    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            }
+            return 0;
+        }
+        if (uMsg == WM_LBUTTONDOWN || uMsg == WM_RBUTTONDOWN || uMsg == WM_MBUTTONDOWN)
+        {
+            _InfoTipMouseClick(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), uMsg == WM_RBUTTONDOWN);
+            return 0;
+        }
+        if (uMsg == WM_POWERBROADCAST)
+        {
+            _OnSysChange(uMsg, wParam, lParam);
+            return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+        }
+        return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg <= 0x409)
+    {
+        if (uMsg == 0x409) // TNM_NOTIFY
+        {
+            ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 4246
+            CNotificationItem* pni = (CNotificationItem*)lParam;
+            if (pni)
+            {
+                if (_pNotifyCB)
+                {
+                    _pNotifyCB->Notify(wParam, pni);
+                    if (wParam == NIM_ADD)
+                    {
+                        _TickleForTooltip(pni);
+                    }
+                }
+                delete pni;
+            }
+        }
+        else if (uMsg <= 0x404)
+        {
+            switch (uMsg)
+            {
+                case 0x404:
+                    if (_pinfo && !_fNoTrayItemsDisplayPolicyEnabled)
+                    {
+                        PostMessageW(_hwndNotify, 0x406u, 0, 0);
+                    }
+                    break;
+                case 0x31A: // WM_THEMECHANGED
+                    _OpenTheme();
+                    break;
+                case 0x401:
+                    return reinterpret_cast<LRESULT>(_hwndClock);
+                case 0x402:
+                    ShowWindow(_hwndClock, lParam != 0 ? 0 : 5);
+                    break;
+                case 0x403:
+                    if (lParam && IsWindowVisible(_hwndClock))
+                    {
+                        SendMessageW(_hwndClock, 0x465u, 0, 0);
+                    }
+                    break;
+                default:
+                    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            }
+        }
+        else
+        {
+            switch (uMsg)
+            {
+                case 0x405: // TNM_ASYNCINFOTIP
+                    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 4237
+                    if (_pinfo && _pinfo->hWnd == (HWND)wParam && _pinfo->uID == lParam)
+                    {
+                        _ShowInfoTip(_pinfo->guid, (HWND)wParam, lParam, 1, 0, 0);
+                    }
+                    break;
+                case 0x406: // TNM_ASYNCINFOTIPPOS
+                    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 4232
+                    _PositionInfoTip();
+                    break;
+                case 0x407: // TNM_RUDEAPP
+                    _OnRudeApp(wParam);
+                    break;
+                default:
+                    if (!_fNoTrayItemsDisplayPolicyEnabled)
+                    {
+                        _SetUsedTime();
+
+                        DWORD dwData = 0;
+                        DWORD cbData = sizeof(dwData);
+                        SHRegGetUSValueW(
+                            L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\NotificationCustomization",
+                            L"DontSaveNotificationCustomization", nullptr, &dwData, &cbData, 0, nullptr, 0);
+                        if (!dwData)
+                        {
+                            m_TrayItemRegistry.InitTrayItemStream(1, GetTrayItemCB, this);
+                        }
+                    }
+                    break;
+            }
+        }
+        return 0;
+    }
+
+    if (uMsg <= 0x43D)
+    {
+        switch (uMsg)
+        {
+            case 1085: // TNM_ICONDEMOTETIMER
+                ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 4286
+                _OnIconDemoteTimer(wParam, lParam);
+                return 0;
+            case 1034: // TNM_STARTUPAPPSLAUNCHED
+                _bStartupIcon = 0;
+                return 0;
+            case 1035: // TNM_ENABLEUSERTRACKINGINFOTIPS
+                if (!wParam && !_fNoTrayItemsDisplayPolicyEnabled && _fEnableUserTrackedInfoTips && _pinfo)
+                {
+                    _fEnableUserTrackedInfoTips = 0;
+                    _beLastBalloonEvent = BALLOONEVENT_NONE;
+                    _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, NIN_BALLOONHIDE);
+                }
+                _fEnableUserTrackedInfoTips = wParam;
+                return 0;
+            case 1036:
+            case 1037:
+            case 1038:
+            {
+                INT_PTR nItem = m_TrayItemManagerSCA.FindItemAssociatedWithGuid(s_rgSCAGuids[uMsg - 1036]);
+                if (nItem != -1)
+                {
+                    CTrayItem* pti = m_TrayItemManagerSCA.GetItemDataByIndex(nItem);
+                    if (pti)
+                    {
+                        DWORD dwUserPref = pti->dwUserPref;
+                        int v26 = lParam;
+                        if ((dwUserPref & 4) != lParam)
+                        {
+                            if (lParam)
+                            {
+                                v27 = dwUserPref | 4;
+                                fHide = 1;
+                            }
+                            else
+                            {
+                                v27 = dwUserPref & ~4u;
+                                fHide = 0;
+                            }
+                            pti->dwUserPref = v27;
+                            pti->SetHidden(fHide);
+
+                            m_TrayItemManagerSCA.SetTBBtnStateHelper(nItem, TBSTATE_HIDDEN, v26);
+                            m_TrayItemManagerSCA.SetTBBtnStateHelper(nItem, TBSTATE_ENABLED, v26 == 0);
+                        }
+                    }
+                }
+                return 0;
+            }
+            case 1039:
+            case 1040:
+            case 1041:
+            {
+                WPARAM uState = 2;
+                INT_PTR nItem = m_TrayItemManagerSCA.FindItemAssociatedWithGuid(s_rgSCAGuids[uMsg - 1039]);
+                if (nItem != -1)
+                {
+                    CTrayItem* pti = m_TrayItemManagerSCA.GetItemDataByIndex(nItem);
+                    if (!pti)
+                    {
+                        break;
+                    }
+                    uState = (pti->dwUserPref & 4) != 0 ? 0 : 1;
+                }
+                return uState;
+            }
+        }
+        return DefWindowProcW(hWnd, uMsg, wParam, lParam);
     }
 
     switch (uMsg)
     {
-    case WM_CREATE:
-        return _Create(hWnd);
-
-    case WM_DESTROY:
-        return _Destroy();
-
-    case WM_COMMAND:
-        if (!_fNoTrayItemsDisplayPolicyEnabled)
-        {
-            _OnCommand(hWnd, wParam, lParam);
-        }
-        break;
-
-    case WM_SETFOCUS:
-        {
-            if (_fNoTrayItemsDisplayPolicyEnabled)
+        case 0x43F: // TNM_UPDATEVERTICAL
+            _UpdateVertical(lParam);
+            return 0;
+        case 0x440: // TNM_WORKSTATIONLOCKED
+            _OnWorkStationLocked(wParam);
+            return 0;
+        case 0x45A: // TNM_SHOWTRAYBALLOON
+            if (wParam)
             {
-                SetFocus(_hwndClock);
-                _fChevronSelected = FALSE;
+                if (!_fNoTrayItemsDisplayPolicyEnabled && !_bStartMenuAllowsTrayBalloon)
+                {
+                    SetTimer(_hwndNotify, 5, 3000, nullptr);
+                }
             }
             else
             {
-                BOOL bFocusSet = FALSE;
-                //
-                // if there's a balloon tip up, start with focus on that icon
-                //
-                if (_pinfo)
-                {
-                    INT_PTR nIcon = m_TrayItemManager.FindItemAssociatedWithHwndUid(_pinfo->hWnd, _pinfo->uID);
-                    if (nIcon != -1 && ToolBar_IsVisible(_hwndToolbar, nIcon))
-                    {
-                        _SetToolbarHotItem(_hwndToolbar, nIcon);
-                        _fChevronSelected = FALSE;
-                        bFocusSet = TRUE;
-                    }
-                }
-                if (!bFocusSet && _fHaveDemoted)
-                {
-                    SetFocus(_hwndChevron);
-                    _fChevronSelected = TRUE;
-                    bFocusSet = TRUE;
-                }
-
-                if (!bFocusSet)
-                {
-                    INT_PTR nToolbarIcon = _GetToolbarFirstVisibleItem(_hwndToolbar, FALSE);
-                    if (nToolbarIcon != -1)
-                    {
-                        _SetToolbarHotItem(_hwndToolbar, nToolbarIcon);
-                        _fChevronSelected = FALSE;
-                    }
-                    else
-                    {
-                        SetFocus(_hwndClock);
-                        _fChevronSelected = FALSE;
-                    }
-                }
+                KillTimer(_hwndNotify, 5);
+                _bStartMenuAllowsTrayBalloon = 0;
             }
-        }
-        break;
-
-    case WM_SETREDRAW:
-        return _SetRedraw((BOOL) wParam);
-
-    case WM_ERASEBKGND:
-        if (_hTheme)
-        {
-            return 1;
-        }
-        else
-        {
-            _Paint((HDC)wParam);
-        }
-        break;
-
-
-    case WM_PAINT:
-    case WM_PRINTCLIENT:
-        return _Paint((HDC)wParam);
-
-    case WM_CALCMINSIZE:
-        return _CalcMinSize((int)wParam, (int)lParam);
-
-    case WM_KEYDOWN:
-        return _OnKeyDown(wParam, lParam);
-
-    case WM_NCHITTEST:
-        return -1;
-
-    case WM_NOTIFY:
-        return(_Notify((LPNMHDR)lParam));
-
-    case TNM_GETCLOCK:
-        return (LRESULT)_hwndClock;
-
-    case TNM_TRAYHIDE:
-        if (lParam && IsWindowVisible(_hwndClock))
-            SendMessage(_hwndClock, TCM_RESET, 0, 0);
-        break;
-
-    case TNM_HIDECLOCK:
-        ShowWindow(_hwndClock, lParam ? SW_HIDE : SW_SHOW);
-        break;
-
-    case TNM_TRAYPOSCHANGED:
-        if (_pinfo && !_fNoTrayItemsDisplayPolicyEnabled)
-            PostMessage(_hwndNotify, TNM_ASYNCINFOTIPPOS, 0, 0);
-        break;
-
-    case TNM_ASYNCINFOTIPPOS:
-        ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        _PositionInfoTip();
-        break;
-
-    case TNM_ASYNCINFOTIP:
-        ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        if (_pinfo && _pinfo->hWnd == (HWND)wParam && _pinfo->uID == lParam)
-        {
-            _ShowInfoTip(_pinfo->guid, (HWND)wParam, lParam, TRUE, FALSE, 0);
-        }
-        break;
-
-    case TNM_NOTIFY:
-        {
-        return (LRESULT)_pNotifyCB;
-		//ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-		//CNotificationItem* pni = (CNotificationItem*)lParam;
-		//if (pni)
-		//{
-		//    if (_pNotifyCB)
-		//    {
-		//        INotificationCB* cb = 0;
-		//        if (SUCCEEDED(_pNotifyCB->QueryInterface(&cb)))
-		//        {
-		//            try {
-		//			    _pNotifyCB->Notify((UINT)wParam,pni);
-		//
-		//            }
-		//            catch (...)
-		//            {
-		//
-		//            }
-		//			if (wParam == NIM_ADD)
-		//			{
-		//				//_TickleForTooltip(pni);
-		//			}
-		//        }
-		//
-		//    }
-		//    delete pni;
-		//}
-        }
-        break;
-
-    case WM_SIZE:
-        _Size();
-        break;
-
-    case WM_TIMER:
-        _OnTimer(wParam);
-        break;
-
-    case TNM_UPDATEVERTICAL:
-        {
-            _UpdateVertical((BOOL)lParam);
-        }
-        break;
-
-    // only button down, mouse move msgs are forwarded down to us from info tip
-    //case WM_LBUTTONUP:
-    //case WM_MBUTTONUP:
-    //case WM_RBUTTONUP:
-    case WM_LBUTTONDOWN:
-    case WM_MBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-        _InfoTipMouseClick(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (uMsg == WM_RBUTTONDOWN));
-        break;
-
-    case TNM_ICONDEMOTETIMER:
-        ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        _OnIconDemoteTimer(wParam, lParam);
-        break;
-
-    case TNM_INFOTIPTIMER:
-        ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-        _OnInfoTipTimer();
-        break;
-
-    case TNM_SAVESTATE:
-        if (!_fNoTrayItemsDisplayPolicyEnabled)
-        {
-            _SetUsedTime();
-            m_TrayItemRegistry.InitTrayItemStream(STGM_WRITE, GetTrayItemCB, this);
-        }
-        break;
-
-    case TNM_STARTUPAPPSLAUNCHED:
-        _bStartupIcon = FALSE;
-        break;
-
-    // This message is sent by a shimmed Winstone app, to prevent the launching of
-    // user-tracked balloons. These "new" balloons last till the user has been at
-    // the machine for a minimum of 10 seconds. But automated Winstone tests cause
-    // this balloon to stay up forever, and screws up the tests. So we shim Winstone
-    // to pass us this message, and allow normal balloon tips for such a machine.
-    case TNM_ENABLEUSERTRACKINGINFOTIPS:
-        if ((BOOL)wParam == FALSE && !_fNoTrayItemsDisplayPolicyEnabled && _fEnableUserTrackedInfoTips && _pinfo)
-        {
-            _fEnableUserTrackedInfoTips = FALSE;
-            _beLastBalloonEvent = BALLOONEVENT_NONE;
-            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
-        }
-        _fEnableUserTrackedInfoTips = wParam;
-        break;
-
-    case TNM_WORKSTATIONLOCKED:
-        _OnWorkStationLocked((BOOL)wParam);
-        break;
-
-    case TNM_RUDEAPP:
-        _OnRudeApp((BOOL)wParam);
-        break;
-
-    case TNM_SHOWTRAYBALLOON:
-        // If we enable display of tray balloons...
-        if (wParam)
-        {
-            // If we had disabled display of tray balloons earlier...
-            if (!_bStartMenuAllowsTrayBalloon)
-            {
-                SetTimer(_hwndNotify, TID_BALLOONSHOW, TT_BALLOONSHOW_INTERVAL, 0);
-            }
-        }
-        else
-        {
-            KillTimer(_hwndNotify, TID_BALLOONSHOW);
-            _bStartMenuAllowsTrayBalloon = FALSE;
-
-            // TO DO : Should we hide the balloon ?
-        }
-        break;
-
-    case WM_THEMECHANGED:
-        _OpenTheme();
-        break;
-
-    case WM_TIMECHANGE:
-    case WM_WININICHANGE:
-    case WM_POWERBROADCAST:
-    case WM_POWER:
-        _OnSysChange(uMsg, wParam, lParam);
-        // Fall through...
-
-    default:
-        return (DefWindowProc(hWnd, uMsg, wParam, lParam));
+            return 0;
     }
-
-    return 0;
+    if (uMsg == 0x464) // WM_CALCMINSIZE
+    {
+        return _CalcMinSize(wParam, lParam);
+    }
+    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
 INT_PTR CTrayNotify::_GetToolbarFirstVisibleItem(HWND hWndToolbar, BOOL bFromLast)

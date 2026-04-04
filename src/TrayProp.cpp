@@ -986,11 +986,11 @@ void HandleClearButtonClick(HWND hwndClear);
 void SetDocButton(HWND hDlg, int id);
 
 //This is the property sheet for the "Customize Simple Start Menu" dlg
-class CCustomizeSPPropSheet : public CPropertySheetImpl<CCustomizeSPPropSheet>
+class CCustomizeStartMenuDlg : public CPropertySheetImpl<CCustomizeStartMenuDlg>/*, IServiceProvider*/
 {
 public:
-    CCustomizeSPPropSheet(HWND hwndParent) :
-        CPropertySheetImpl<CCustomizeSPPropSheet>((LPCTSTR)NULL, 0, hwndParent)
+    CCustomizeStartMenuDlg(HWND hwndParent) :
+        CPropertySheetImpl<CCustomizeStartMenuDlg>((const WCHAR*)nullptr, 0, hwndParent)
       , _fInsideInit(FALSE)
     {
         HPROPSHEETPAGE hpage;
@@ -1028,7 +1028,7 @@ public:
 
     };
 
-    ~CCustomizeSPPropSheet()
+    ~CCustomizeStartMenuDlg() override
     {
         //ASSERT(!_prto);     // should be gone by now
         if (_pph)
@@ -1093,20 +1093,20 @@ private:
     BOOL  _fInsideInit;
 };
 
-BOOL_PTR CCustomizeSPPropSheet::s_GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL_PTR CCustomizeStartMenuDlg::s_GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CCustomizeSPPropSheet* self = NULL;
+    CCustomizeStartMenuDlg* self = NULL;
 
     if (uMsg == WM_INITDIALOG)
     {
         ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CCustomizeSPPropSheet*) ((PROPSHEETPAGE*)lParam)->lParam;
+        self = (CCustomizeStartMenuDlg*) ((PROPSHEETPAGE*)lParam)->lParam;
     }
     else
     {
         PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
         if (psp)
-            self = (CCustomizeSPPropSheet*)psp->lParam;
+            self = (CCustomizeStartMenuDlg*)psp->lParam;
     }
 
     if (self)
@@ -1119,20 +1119,20 @@ BOOL_PTR CCustomizeSPPropSheet::s_GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM
     }
 }
 
-BOOL_PTR CCustomizeSPPropSheet::s_AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL_PTR CCustomizeStartMenuDlg::s_AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CCustomizeSPPropSheet* self = NULL;
+    CCustomizeStartMenuDlg* self = NULL;
 
     if (uMsg == WM_INITDIALOG)
     {
         ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CCustomizeSPPropSheet*) ((PROPSHEETPAGE*)lParam)->lParam;
+        self = (CCustomizeStartMenuDlg*) ((PROPSHEETPAGE*)lParam)->lParam;
     }
     else
     {
         PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
         if (psp)
-            self = (CCustomizeSPPropSheet*)psp->lParam;
+            self = (CCustomizeStartMenuDlg*)psp->lParam;
     }
 
     if (self)
@@ -1145,7 +1145,7 @@ BOOL_PTR CCustomizeSPPropSheet::s_AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARA
     }
 }
 
-BOOL_PTR CCustomizeSPPropSheet::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL_PTR CCustomizeStartMenuDlg::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
@@ -1181,7 +1181,7 @@ BOOL_PTR CCustomizeSPPropSheet::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM w
     return FALSE;
 }
 
-BOOL CCustomizeSPPropSheet::GeneralTabInit(HWND hDlg)
+BOOL CCustomizeStartMenuDlg::GeneralTabInit(HWND hDlg)
 {
     _fInsideInit = TRUE; //We are getting inside initilization!
 
@@ -1282,7 +1282,7 @@ void AdjustNumOfProgsOnStartMenu(HWND hwndDlg, UINT Id)
 
 // NOTE - shared WM_COMMAND handler
 //
-BOOL CCustomizeSPPropSheet::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg)
+BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg)
 {
     switch (id)
     {
@@ -1343,7 +1343,7 @@ BOOL CCustomizeSPPropSheet::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwn
     return TRUE;
 }
 
-BOOL CCustomizeSPPropSheet::OnGeneralApply(HWND hDlg)
+BOOL CCustomizeStartMenuDlg::OnGeneralApply(HWND hDlg)
 {
 
     _WriteStartPageSetting(REGSTR_VAL_DV2_LARGEICONS,  _bLargeIcons);
@@ -1372,7 +1372,7 @@ BOOL CCustomizeSPPropSheet::OnGeneralApply(HWND hDlg)
     return TRUE;
 }
 
-BOOL_PTR CCustomizeSPPropSheet::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
+BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 {
     ::SetWindowLongPtr( hwndDlg, DWLP_MSGRESULT, 0); // handled
     switch (pnm->code)
@@ -1449,7 +1449,7 @@ BOOL_PTR CCustomizeSPPropSheet::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
     return TRUE;
 }
 
-BOOL_PTR CCustomizeSPPropSheet::OnAdvancedHelp(HWND hDlg, HELPINFO *phi)
+BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedHelp(HWND hDlg, HELPINFO *phi)
 {
     if (phi->iCtrlId != IDC_STARTMENUSETTINGS)
     {
@@ -1481,7 +1481,7 @@ BOOL_PTR CCustomizeSPPropSheet::OnAdvancedHelp(HWND hDlg, HELPINFO *phi)
     return TRUE;
 }
 
-BOOL_PTR CCustomizeSPPropSheet::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL_PTR CCustomizeStartMenuDlg::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
@@ -1517,7 +1517,7 @@ int DefaultNetPlacesValue()
 // which, by default, turn on when there are n or more items in the folder.  But they can also be customized by the
 // user to force them on or off.
 
-void CCustomizeSPPropSheet::_InitMagicEntries()
+void CCustomizeStartMenuDlg::_InitMagicEntries()
 {
     BOOL bNewNetPlaces;
     BOOL bNewNetConn;
@@ -1544,7 +1544,7 @@ void CCustomizeSPPropSheet::_InitMagicEntries()
     _WriteStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP, iAdminToolsTemp);
 }
 
-void CCustomizeSPPropSheet::_SaveMagicEntries()
+void CCustomizeStartMenuDlg::_SaveMagicEntries()
 {
     BOOL bNewNetPlaces = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETPL, FALSE);
     BOOL bNewNetConn   = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETCONN, FALSE);
@@ -1580,7 +1580,7 @@ void CCustomizeSPPropSheet::_SaveMagicEntries()
     _ClearStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP);
 }
 
-BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
+BOOL CCustomizeStartMenuDlg::AdvancedTabInit(HWND hDlg)
 {
     if (SUCCEEDED(CoCreateInstanceHook(CLSID_CRegTreeOptions, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_prto))))
     {
@@ -1594,7 +1594,7 @@ BOOL CCustomizeSPPropSheet::AdvancedTabInit(HWND hDlg)
         // HACKHACK - IRegTreeOptions is ANSI, so we temporarily turn off UNICODE
         #undef TEXT
         #define TEXT(s) s
-        hr = _prto->InitTree(hwndTV, HKEY_LOCAL_MACHINE, REGSTR_PATH_SMADVANCED "\\StartPanelXP", NULL);
+        hr = _prto->InitTree(hwndTV, HKEY_LOCAL_MACHINE, REGSTR_PATH_SMADVANCED "\\StartPanelVista", NULL);
 
         #undef TEXT
         #define TEXT(s) __TEXT(s)
@@ -1857,7 +1857,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
 
             case IDC_NEWSTARTCUSTOMIZE:
             {
-                CCustomizeSPPropSheet *pps = new CCustomizeSPPropSheet(hDlg);
+                CCustomizeStartMenuDlg *pps = new CCustomizeStartMenuDlg(hDlg);
                 if (pps)
                 {
                     if (pps->DoModal() == IDOK)
@@ -1940,7 +1940,7 @@ int _TaskbarPickBitmap(HWND hDlg, int iBmpBase, const CONTROLBITMAP* pca, int cc
 {
     for (int i = 0; i < cca; i++)
     {
-        if (!IsDlgButtonChecked(hDlg, pca[i].idc))
+        if (IsDlgButtonChecked(hDlg, pca[i].idc))
         {
             iBmpBase += pca[i].iAdd;
         }
@@ -2141,7 +2141,7 @@ void _NotificationOptionsUpdateDisplay(HWND hDlg)
 }
 
 
-void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager* pCatBandManager = nullptr)
+void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager* pCatBandManager)
 {
     TRAYVIEWOPTS tvo;
     c_tray.GetTrayViewOpts(&tvo, pCatBandManager);
@@ -2164,37 +2164,29 @@ void _NotificationOptions_OnInitDialog(HWND hDlg, DWORD dwFlags, ICatBandManager
         CheckDlgButton(hDlg, 1000, tvo.fAutoTrayEnabledByUser);
     }
 
-    LRESULT v8;
-    int v9;
-    HWND v10;
-    int nIDDlgItem = 1109;
-    int v16 = 3;
-    do
+    int nDlgId = 1109;
+
+    for (int i = 0; i < ARRAYSIZE(tvo.rgfHideSCA); ++i)
     {
-        v8 = SendMessageW(c_tray.GetTrayNotifyHWND(), nIDDlgItem - 70, 0, 0);
-        if (!v8)
+        LRESULT v8 = SendMessageW(c_tray.GetTrayNotifyHWND(), nDlgId - 70, 0, 0);
+        switch (v8)
         {
-            goto LABEL_12;
+            case 0: // Unchecked
+                CheckDlgButton(hDlg, nDlgId, FALSE);
+                break;
+
+            case 1: // Checked
+                CheckDlgButton(hDlg, nDlgId, TRUE);
+                break;
+
+            case 2: // Disabled + Unchecked
+                EnableWindow(GetDlgItem(hDlg, nDlgId), FALSE);
+                CheckDlgButton(hDlg, nDlgId, FALSE);
+                break;
         }
-        v9 = v8 - 1;
-        if (v9)
-        {
-            if (v9 != 1)
-            {
-                goto LABEL_13;
-            }
-            v10 = GetDlgItem(hDlg, nIDDlgItem);
-            EnableWindow(v10, 0);
-        LABEL_12:
-            CheckDlgButton(hDlg, nIDDlgItem, 0);
-            goto LABEL_13;
-        }
-        CheckDlgButton(hDlg, nIDDlgItem, 1);
-    LABEL_13:
-        ++nIDDlgItem;
-        --v16;
+
+        ++nDlgId;
     }
-    while (v16);
 
     if (SHWindowsPolicy(POLID_HideSCAVolume))   EnableWindow(GetDlgItem(hDlg, 1109), 0);
     if (SHWindowsPolicy(POLID_HideSCANetwork))  EnableWindow(GetDlgItem(hDlg, 1110), 0);

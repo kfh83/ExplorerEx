@@ -19,6 +19,14 @@
 #define TNM_STARTUPAPPSLAUNCHED     (WM_USER + 10)
 #define TNM_ENABLEUSERTRACKINGINFOTIPS      (WM_USER + 11)
 
+// New in Vista.
+#define TNM_PLUSTWELVE              (WM_USER + 12)
+#define TNM_PLUSTHIRTEEN            (WM_USER + 13)
+#define TNM_PLUSFOURTEEN            (WM_USER + 14)
+#define TNM_HIDESCAVOLUME           (WM_USER + 15)
+#define TNM_HIDESCANETWORK          (WM_USER + 16)
+#define TNM_HIDESCAPOWER            (WM_USER + 17)
+
 #define TNM_BANGICONMESSAGE         (WM_USER + 50)
 #define TNM_ICONDEMOTETIMER         (WM_USER + 61)
 #define TNM_INFOTIPTIMER            (WM_USER + 62)
@@ -332,6 +340,8 @@ private:
     BOOL            _fChevronSelected;
     BOOL            _fNoTrayItemsDisplayPolicyEnabled;
     BOOL            _fHasFocus;
+
+    int             field_2AC;
     
     RECT            _rcAnimateTotal;
     RECT            _rcAnimateCurrent;
@@ -378,6 +388,7 @@ public: // @Temp for letting CTray access members directly
 
 private:
     SIZE                _sizeTrayNotify;
+    int                 field_340;
 };
 #pragma optimize( "", off )
 //

@@ -545,9 +545,9 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
             0, 0, 0, 0, hwndParent, NULL, g_hinstCabinet, (void*)(CImpWndProc*)this);
 
-        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
+        const WCHAR* pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
         wprintf(L"CTaskBand::SetSite using pszTheme: %s\n", pszTheme);
-        SetWindowTheme(hwnd, pszTheme, NULL);
+        SetWindowTheme(hwnd, pszTheme, nullptr);
     }
 
     //ATOMICRELEASE(_punkSite);

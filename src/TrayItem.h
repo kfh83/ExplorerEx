@@ -47,6 +47,8 @@ class CTrayItem
 
         BOOL IsIconTimerCurrent()   { return (uIconDemoteTimerID != 0); }
 
+        // @Note: Assumed based on new Vista usage in v_WndProc
+        void SetHidden(BOOL bHidden) { _SetIconState(TIF_HIDDEN, bHidden); }
         void SetDemoted(BOOL bDemoted) { _SetIconState(TIF_DEMOTED, bDemoted); }
         void SetStartupIcon(BOOL bIsStartupIcon) { _SetIconState(TIF_STARTUPICON, bIsStartupIcon); }
         void SetSharedIconSource(BOOL bSharedIconSource) 
