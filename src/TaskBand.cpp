@@ -57,7 +57,6 @@
 const WCHAR c_szTaskSwClass[] = L"MSTaskSwWClass";
 const WCHAR c_szTaskBandTheme[] = L"TaskBand";
 const WCHAR c_szTaskBandCompositedTheme[] = L"TaskBandComposited";
-const WCHAR c_szTaskBandCompositedThemeVert[] = L"TaskBandCompositedVert";
 const WCHAR c_szTaskBandThemeVert[] = L"TaskBandVert";
 const WCHAR c_szTaskBandGroupMenuTheme[] = L"TaskBandGroupMenu";
 const WCHAR c_szTaskBandGroupMenuCompositedTheme[] = L"TaskBandGroupMenuComposited";
