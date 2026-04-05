@@ -1,11 +1,8 @@
-#ifndef _OPENBOX_H_
-#define _OPENBOX_H_
+#pragma once
 
 #include "desktop2.h"
 #include "HostUtil.h"
 #include "COWSite.h"
-
-#define WC_OPENBOXHOST TEXT("Desktop OpenBox Host")
 
 interface IShellSearchScope; // We dont need this, just a forward decl
 
@@ -25,17 +22,17 @@ DEFINE_ENUM_FLAG_OPERATORS(SHELLSEARCHNOTIFY);
 
 //MIDL_INTERFACE("E47C387F-113E-4820-A900-4C1EC5D85BC6") // Vista GUID
 MIDL_INTERFACE("9A7A94F5-FBF1-49A8-B0D9-44667635FE97")
-IShellSearchTarget : public IUnknown
+IShellSearchTarget : IUnknown
 {
-	STDMETHOD(Search)(LPCWSTR, DWORD) PURE;
-	STDMETHOD(OnSearchTextNotify)(LPCWSTR, LPCWSTR, SHELLSEARCHNOTIFY) PURE;
-	STDMETHOD(GetSearchText)(LPWSTR, UINT) PURE;
-	STDMETHOD(GetPromptText)(LPWSTR, UINT) PURE;
-	STDMETHOD(GetMenu)(HMENU*) PURE;
-	STDMETHOD(InitMenuPopup)(HMENU) PURE;
-	STDMETHOD(OnMenuCommand)(DWORD) PURE;
-	STDMETHOD(Enter)(IShellSearchScope*) PURE;
-	STDMETHOD(Exit)() PURE;
+	virtual HRESULT STDMETHODCALLTYPE Search(const WCHAR*, DWORD) = 0;
+	virtual HRESULT STDMETHODCALLTYPE OnSearchTextNotify(const WCHAR*, const WCHAR*, SHELLSEARCHNOTIFY) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetSearchText(WCHAR*, UINT) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetPromptText(WCHAR*, UINT) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetMenu(HMENU*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE InitMenuPopup(HMENU) = 0;
+	virtual HRESULT STDMETHODCALLTYPE OnMenuCommand(DWORD) = 0;
+	virtual HRESULT STDMETHODCALLTYPE Enter(IShellSearchScope*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE Exit() = 0;
 };
 
 static const IID IID_IShellSearchTarget = __uuidof(IShellSearchTarget);
@@ -88,18 +85,18 @@ DEFINE_ENUM_FLAG_OPERATORS(SSCTEXTFLAGS);
 MIDL_INTERFACE("111f7c32-0546-4227-8b7f-c53a0b114a0f")
 IShellSearchControl : IUnknown
 {
-	virtual HRESULT STDMETHODCALLTYPE Initialize(HWND, const RECT *) = 0;
+	virtual HRESULT STDMETHODCALLTYPE Initialize(HWND, const RECT*) = 0;
 	virtual HRESULT STDMETHODCALLTYPE SetFlags(SSCSTATEFLAGS) = 0;
 	virtual HRESULT STDMETHODCALLTYPE SetPopupFlags(SEARCH_BOX_SUGGEST_POPUP_SETTING) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetFlags(SSCSTATEFLAGS *) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetFlags(SSCSTATEFLAGS*) = 0;
 	virtual HRESULT STDMETHODCALLTYPE SetMRULocation(REFGUID) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetCueAndTooltipText(const WCHAR *, const WCHAR *) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetLocation(IShellItem *) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetDesiredSize(SIZE *) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetCueAndTooltipText(const WCHAR*, const WCHAR*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetLocation(IShellItem*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetDesiredSize(SIZE*) = 0;
 	virtual HRESULT STDMETHODCALLTYPE UpdateWidth(int, SSC_WIDTH_FLAGS) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetText(WCHAR *, UINT) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetText(const WCHAR *, SSCTEXTFLAGS) = 0;
-	virtual HRESULT STDMETHODCALLTYPE DoesEditBoxHaveFocus(int *) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetText(WCHAR*, UINT) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetText(const WCHAR*, SSCTEXTFLAGS) = 0;
+	virtual HRESULT STDMETHODCALLTYPE DoesEditBoxHaveFocus(int*) = 0;
 	virtual HRESULT STDMETHODCALLTYPE HasSuggestions() = 0;
 	virtual HRESULT STDMETHODCALLTYPE HideSuggestions() = 0;
 	virtual HRESULT STDMETHODCALLTYPE KillSelection() = 0;
@@ -114,46 +111,54 @@ class COpenBoxHost
 	, public IInputObjectSite
 {
 public:
-	// *** IUnknown ***
+	//~ Begin IUnknown Interface
 	STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
 	STDMETHODIMP_(ULONG) AddRef() override;
 	STDMETHODIMP_(ULONG) Release() override;
+	//~ End IUnknown Interface
 
-	// *** IAccessible ***
+	//~ Begin IAccessible Interface
 	STDMETHODIMP get_accRole(VARIANT varChild, VARIANT* pvarRole) override;
 	STDMETHODIMP get_accState(VARIANT varChild, VARIANT* pvarState) override;
 	STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR* pszDefAction) override;
 	STDMETHODIMP accDoDefaultAction(VARIANT varChild) override;
+	//~ End IAccessible Interface
 
-	// *** IServiceProvider ***
+	//~ Begin IServiceProvider Interface
 	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
+	//~ End IServiceProvider Interface
 
-	// *** IObjectWithSite ***
+	//~ Begin IObjectWithSite Interface
 	STDMETHODIMP SetSite(IUnknown* punkSite) override;
+	//~ End IObjectWithSite Interface
 
-	// *** IOleCommandTarget ***
+	//~ Begin IOleCommandTarget Interface
 	STDMETHODIMP QueryStatus(const GUID* pguidCmdGroup,
 		ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT* pCmdText) override;
 	STDMETHODIMP Exec(const GUID* pguidCmdGroup, 
 		DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut) override;
+	//~ End IOleCommandTarget Interface
 
-	// *** IShellSearchTarget ***
-	STDMETHODIMP Search(LPCWSTR a2, DWORD a3) override;
-	STDMETHODIMP OnSearchTextNotify(LPCWSTR a2, LPCWSTR a3, SHELLSEARCHNOTIFY a4) override;
-	STDMETHODIMP GetSearchText(LPWSTR pszText, UINT cchText) override;
-	STDMETHODIMP GetPromptText(LPWSTR pszText, UINT cchText) override;
+	//~ Begin IShellSearchTarget Interface
+	STDMETHODIMP Search(const WCHAR* pszSearchText, DWORD dwCommand) override;
+	STDMETHODIMP OnSearchTextNotify(
+		const WCHAR* pszSearchText, const WCHAR* pszStrippedText, SHELLSEARCHNOTIFY sn) override;
+	STDMETHODIMP GetSearchText(WCHAR* pszSearchText, UINT cch) override;
+	STDMETHODIMP GetPromptText(WCHAR* pszPromptText, UINT cch) override;
 	STDMETHODIMP GetMenu(HMENU* phMenu) override;
 	STDMETHODIMP InitMenuPopup(HMENU hhenu) override;
 	STDMETHODIMP OnMenuCommand(DWORD dwCmd) override;
 	STDMETHODIMP Enter(IShellSearchScope* pScope) override;
 	STDMETHODIMP Exit() override;
+	//~ End IShellSearchTarget Interface
 
-	// *** IInputObjectSite ***
+	//~ Begin IInputObjectSite Interface
 	STDMETHODIMP OnFocusChangeIS(IUnknown* punk, BOOL fSetFocus) override;
+	//~ End IInputObjectSite Interface
 
 private:
 	COpenBoxHost(HWND hwnd);
-	~COpenBoxHost();
+	~COpenBoxHost() override;
 
 	static LRESULT CALLBACK s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT _OnNCCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -178,7 +183,5 @@ private:
 	COLORREF _clrBk;
 	int field_48;
 	int field_4C;
-	LPWSTR _pszSearchQuery;
+	WCHAR* _pszSearchQuery;
 };
-
-#endif

@@ -5,6 +5,7 @@
 #include "cabinet.h"
 #include <propvarutil.h>
 #include "SFTHost.h"
+#include "shstr.h"
 
 HRESULT COpenBoxHost::QueryInterface(REFIID riid, void** ppvObj)
 {
@@ -88,8 +89,8 @@ HRESULT COpenBoxHost::QueryStatus(const GUID* pguidCmdGroup,
 	return E_NOTIMPL;
 }
 
-HRESULT COpenBoxHost::Exec(const GUID *pguidCmdGroup,
-    DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut)
+HRESULT COpenBoxHost::Exec(
+    const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut)
 {
     HRESULT hr = E_INVALIDARG;
 
@@ -97,62 +98,77 @@ HRESULT COpenBoxHost::Exec(const GUID *pguidCmdGroup,
     {
         switch (nCmdID)
         {
-        case 300:
-            return _UpdateSearch();
-        case 306:
-        {
-            ASSERT(pvarargIn->vt == VT_BYREF); // 627
-            HWND hwnd = (HWND)pvarargIn->byref;
-            ASSERT(pvarargOut->vt == VT_BYREF); // 629
-            if (SHIsChildOrSelf(_hwnd, hwnd) == S_OK)
-                pvarargOut->byref = _hwnd;
-            goto LABEL_32;
-        }
-        case 307:
-            WCHAR szSearchQuery[MAX_PATH];
-            _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
-            if (szSearchQuery[0])
+            case 300:
             {
-                _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
-                pvarargOut->iVal = 0;
+                return _UpdateSearch();
             }
-            return 0;
-        case 308:
-            ASSERT(pvarargOut); // 618
-            WCHAR szSearchQuery2[MAX_PATH];
-            _pssc->GetText(szSearchQuery2, ARRAYSIZE(szSearchQuery2));
-            return InitVariantFromString(szSearchQuery2, pvarargOut);
-        case 315:
-            ASSERT(pvarargIn->vt == VT_BYREF); // 608
-            field_48 = 1;
-            field_4C = 0;
-            _pssc->SetText(pvarargIn->bstrVal, SSCTEXT_DEFAULT);
-            field_48 = 0;
-            return hr;
-        case 319:
-            OnMenuCommand(2);
-            goto LABEL_32;
-        case 320:
-            OnMenuCommand(1);
-            goto LABEL_32;
-        case 321:
-            OnMenuCommand(3);
-            goto LABEL_32;
-        case 322:
-            OnMenuCommand(4);
-        LABEL_32:
-            hr = 0;
-            break;
-        default:
-            return hr;
+            case 306:
+            {
+                ASSERT(pvarargIn->vt == VT_BYREF); // 627
+                HWND hwnd = (HWND)pvarargIn->byref;
+                ASSERT(pvarargOut->vt == VT_BYREF); // 629
+                if (SHIsChildOrSelf(_hwnd, hwnd) == S_OK)
+                {
+                    pvarargOut->byref = _hwnd;
+                }
+                hr = S_OK;
+                break;
+            }
+            case 307:
+            {
+                WCHAR szSearchQuery[260];
+                _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
+                if (szSearchQuery[0])
+                {
+                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
+                    pvarargOut->iVal = 0;
+                }
+                return S_OK;
+            }
+            case 308:
+            {
+                ASSERT(pvarargOut); // 618
+                WCHAR szSearchQuery[260];
+                _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
+                return InitVariantFromString(szSearchQuery, pvarargOut);
+            }
+            case 315:
+            {
+                WCHAR szSearchQuery[260];
+                _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
+                if (szSearchQuery[0])
+                {
+                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
+                    pvarargOut->iVal = 0;
+                }
+                return S_OK;
+            }
+            case 319:
+                OnMenuCommand(2);
+                hr = S_OK;
+                break;
+            case 320:
+                OnMenuCommand(1);
+                hr = S_OK;
+                break;
+            case 321:
+                OnMenuCommand(3);
+                hr = S_OK;
+                break;
+            case 322:
+                OnMenuCommand(4);
+                hr = S_OK;
+                break;
+            default:
+                return hr;
         }
     }
     return hr;
 }
 
-HRESULT COpenBoxHost::Search(LPCWSTR a2, DWORD a3)
+HRESULT COpenBoxHost::Search(const WCHAR* pszSearchText, DWORD dwCommand)
 {
-    if (!a3)
+    if (!dwCommand)
     {
         // SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_WordWheel_Activated, 36);
         return E_NOTIMPL;
@@ -162,52 +178,35 @@ HRESULT COpenBoxHost::Search(LPCWSTR a2, DWORD a3)
 LONG g_nOpenBoxCharThreadId;
 FILETIME g_ftOpenBoxChar;
 
-HRESULT COpenBoxHost::OnSearchTextNotify(LPCWSTR a2, LPCWSTR a3, SHELLSEARCHNOTIFY a4)
+HRESULT COpenBoxHost::OnSearchTextNotify(const WCHAR* pszSearchText, const WCHAR* pszStrippedText, SHELLSEARCHNOTIFY sn)
 {
-#if 1
     HRESULT hr = 0;
 
-    if ((a4 & 9) != 0 && !field_48)
+    if ((sn & 9) != 0 && !field_48)
     {
         int v4 = field_4C;
         field_4C = 1;
         if (v4)
         {
-            if (a2 && a2[0])
+            if (pszSearchText && pszSearchText[0])
             {
                 DWORD dwThreadId = GetCurrentThreadId();
                 InterlockedExchange(&g_nOpenBoxCharThreadId, dwThreadId);
                 GetSystemTimeAsFileTime(&g_ftOpenBoxChar);
                 // SHTracePerf(&ShellTraceId_Explorer_StartPane_OpenBox_Char_Info);
             }
-            hr = COpenBoxHost::_UpdateSearch();
+            hr = _UpdateSearch();
         }
     }
     return hr;
-#else
-    HRESULT hr = S_OK;
-
-    if ((a4 & (SSC_KEYPRESS | SSC_FORCE)) != 0 && !field_48)
-    {
-        if (a2 && a2[0])
-        {
-            // InterlockedExchange(&g_nOpenBoxCharThreadId, GetCurrentThreadId());
-            // GetSystemTimeAsFileTime(&g_ftOpenBoxChar);
-            // Skipped telemetry Explorer_StartPane_OpenBox_Char_Info
-        }
-        hr = _UpdateSearch();
-    }
-
-    return hr;
-#endif
 }
 
-HRESULT COpenBoxHost::GetSearchText(LPWSTR pszText, UINT cchText)
+HRESULT COpenBoxHost::GetSearchText(LPWSTR pszSearchText, UINT cch)
 {
     return E_NOTIMPL;
 }
 
-HRESULT COpenBoxHost::GetPromptText(LPWSTR pszText, UINT cchText)
+HRESULT COpenBoxHost::GetPromptText(LPWSTR pszPromptText, UINT cch)
 {
     return E_NOTIMPL;
 }
@@ -224,9 +223,141 @@ HRESULT COpenBoxHost::InitMenuPopup(HMENU hhenu)
     return S_OK;
 }
 
-HRESULT WWMenuCommand(LPCWSTR pszText, DWORD dwCmd, DWORD a3)
+const struct
 {
-    return S_OK;
+    WCHAR ch;
+    const WCHAR* pszEscaped;
+} c_rgEscapeCharacters[] =
+{
+    { L' ', L"%20" },
+    { L'%', L"%25" },
+    { L'&', L"%26" },
+    { L'/', L"%2F" },
+    { L':', L"%3A" },
+    { L'=', L"%3D" },
+    { L'\\', L"%5C" }
+};
+
+HRESULT AppendSearchParsingNameEscaped(const WCHAR* pszSearchQuery, SHSTRW* pstrParsingName)
+{
+    HRESULT hr = S_OK;
+    for (const WCHAR* pchCurrent = pszSearchQuery; SUCCEEDED(hr) && *pchCurrent; ++pchCurrent)
+    {
+        BOOL bEscaped = FALSE;
+        for (UINT i = 0; i < ARRAYSIZE(c_rgEscapeCharacters); ++i)
+        {
+            if (*pchCurrent == c_rgEscapeCharacters[i].ch)
+            {
+                bEscaped = TRUE;
+                hr = pstrParsingName->Append(c_rgEscapeCharacters[i].pszEscaped);
+                break;
+            }
+        }
+
+        if (!bEscaped)
+        {
+            hr = pstrParsingName->Append(*pchCurrent);
+        }
+    }
+
+    return hr;
+}
+
+HRESULT _InvokeDefaultBrowserSearch(const WCHAR* pszSearchQuery)
+{
+    WCHAR szName[260];
+    DWORD cchName = ARRAYSIZE(szName);
+    HRESULT hr = AssocQueryStringW(ASSOCF_NONE, ASSOCSTR_EXECUTABLE, L"http", L"open", szName, &cchName);
+    if (SUCCEEDED(hr))
+    {
+        WCHAR szBuf[260];
+        StringCchPrintfW(szBuf, ARRAYSIZE(szBuf), L"\"? %s\"", pszSearchQuery);
+
+        SHELLEXECUTEINFOW shei = {};
+        shei.cbSize = sizeof(shei);
+        shei.lpFile = szName;
+        shei.lpParameters = szBuf;
+        shei.nShow = SW_SHOWNORMAL;
+        if (!ShellExecuteExW(&shei))
+        {
+            hr = E_FAIL;
+        }
+    }
+    return hr;
+}
+
+HRESULT _InvokeInternetSearchExtension(const WCHAR* pszSearchQuery, HWND hwnd)
+{
+    HRESULT hr = E_FAIL;
+
+    WCHAR szAction[2084];
+    DWORD cbData = sizeof(szAction);
+    if (_SHRegGetValueFromHKCUHKLM(
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\SearchExtensions",
+        L"InternetExtensionAction", SRRF_RT_ANY, nullptr, szAction, &cbData) == ERROR_SUCCESS)
+    {
+        if (StrCmpNICW(szAction, L"http://", lstrlenW(L"http://")) == 0 || StrCmpNICW(szAction, L"https://", lstrlenW(L"https://")) == 0)
+        {
+            WCHAR* pszSubstitute = StrStrIW(szAction, L"%w");
+            if (pszSubstitute)
+            {
+                WCHAR szFile[2048];
+                StringCchCopyNW(szFile, ARRAYSIZE(szFile), szAction, pszSubstitute - szAction);
+                StringCchCatW(szFile, ARRAYSIZE(szFile), pszSearchQuery);
+                StringCchCatW(szFile, ARRAYSIZE(szFile), &pszSubstitute[lstrlenW(L"%w")]);
+
+                SHELLEXECUTEINFOW shei = {};
+                shei.cbSize = sizeof(shei);
+                shei.hwnd = hwnd;
+                shei.lpFile = szFile;
+                shei.nShow = SW_SHOWNORMAL;
+                hr = ShellExecuteExW(&shei) ? S_OK : E_FAIL;
+            }
+        }
+    }
+
+    return hr;
+}
+
+HRESULT WWMenuCommand(const WCHAR* pszSearchQuery, DWORD dwCmd, HWND hwnd)
+{
+    HRESULT hr = E_FAIL;
+
+    switch (dwCmd)
+    {
+        case 1:
+        case 4:
+        {
+            SHSTRW strSearchQuery;
+            hr = strSearchQuery.SetStr(L"search:query=");
+            if (SUCCEEDED(hr))
+            {
+                hr = AppendSearchParsingNameEscaped(pszSearchQuery, &strSearchQuery);
+            }
+            if (SUCCEEDED(hr))
+            {
+                SHELLEXECUTEINFOW shei = {};
+                shei.cbSize = sizeof(shei);
+                shei.hwnd = hwnd;
+                shei.lpFile = strSearchQuery.GetStr();
+                shei.nShow = SW_SHOWNORMAL;
+                hr = ShellExecuteExW(&shei) ? S_OK : E_FAIL;
+            }
+            break;
+        }
+        case 2:
+        {
+            hr = _InvokeDefaultBrowserSearch(pszSearchQuery);
+            break;
+        }
+        case 3:
+        {
+            hr = _InvokeInternetSearchExtension(pszSearchQuery, hwnd);
+            break;
+        }
+    }
+
+    return hr;
 }
 
 HRESULT COpenBoxHost::OnMenuCommand(DWORD dwCmd)
@@ -235,15 +366,15 @@ HRESULT COpenBoxHost::OnMenuCommand(DWORD dwCmd)
     HRESULT hr = _pssc->GetText(szText, ARRAYSIZE(szText));
     if (SUCCEEDED(hr))
     {
-        hr = WWMenuCommand(szText, dwCmd, 0);
+        hr = WWMenuCommand(szText, dwCmd, nullptr);
         if (SUCCEEDED(hr))
         {
             RECT rc;
             GetWindowRect(_hwnd, &rc);
-            MapWindowRect(_hwnd, NULL, &rc);
+            MapWindowRect(_hwnd, nullptr, &rc);
 
-            NMHDR nm;
-            _SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &nm);
+            SMNMCOMMANDINVOKED ci;
+            _SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &ci.hdr);
         }
     }
     return hr;
@@ -533,27 +664,27 @@ BOOL COpenBoxHost::_Mark(PSMNDIALOGMESSAGE pdm, UINT a2)
     return 0;
 }
 
-DWORD SHExpandEnvironmentStringsW(const WCHAR *pszIn, WCHAR *pszOut, DWORD cchOut);
+DWORD SHExpandEnvironmentStringsW(const WCHAR* pszIn, WCHAR* pszOut, DWORD cchOut);
 
 HRESULT COpenBoxHost::_UpdateSearch()
 {
-    WCHAR pszStr1[260];
-    HRESULT hr = this->_pssc->GetText(pszStr1, ARRAYSIZE(pszStr1));
-    if (hr >= 0 && (!this->_pszSearchQuery || StrCmpC(pszStr1, this->_pszSearchQuery)))
+    WCHAR szSearchQuery[260];
+    HRESULT hr = _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
+    if (SUCCEEDED(hr) && (!_pszSearchQuery || StrCmpCW(szSearchQuery, _pszSearchQuery)))
     {
-        CoTaskMemFree(this->_pszSearchQuery);
-        SHStrDupW(pszStr1, &this->_pszSearchQuery);
+        CoTaskMemFree(_pszSearchQuery);
+        SHStrDupW(szSearchQuery, &_pszSearchQuery);
 
-        WCHAR pszPath[260];
-        SHExpandEnvironmentStringsW(pszStr1, pszPath, 260);
-        PathRemoveBlanksW(pszPath);
+        WCHAR szPath[260];
+        SHExpandEnvironmentStringsW(szSearchQuery, szPath, ARRAYSIZE(szPath));
+        PathRemoveBlanksW(szPath);
 
         VARIANTARG varg;
-        hr = InitVariantFromString(pszPath, &varg);
-        if (hr >= 0)
+        hr = InitVariantFromString(szPath, &varg);
+        if (SUCCEEDED(hr))
         {
-            hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 300, 0, &varg, 0);
-            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 300, 0, 0, &varg);
+            hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 300, 0, &varg, nullptr);
+            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 300, 0, nullptr, &varg);
             VariantClear(&varg);
         }
     }
@@ -562,15 +693,14 @@ HRESULT COpenBoxHost::_UpdateSearch()
 
 BOOL OpenBoxHost_RegisterClass()
 {
-    WNDCLASSEX wcex;
-	ZeroMemory(&wcex, sizeof(wcex));
+    WNDCLASSEX wcex = {};
 
     wcex.cbSize = sizeof(wcex);
     wcex.style = CS_GLOBALCLASS;
-    wcex.lpfnWndProc = (WNDPROC)COpenBoxHost::s_WndProc;
+    wcex.lpfnWndProc = COpenBoxHost::s_WndProc;
     wcex.hInstance = g_hinstCabinet;
-    wcex.hbrBackground = 0;
-    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wcex.lpszClassName = WC_OPENBOXHOST;
-    return RegisterClassEx(&wcex);
+    wcex.hbrBackground = nullptr;
+    wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wcex.lpszClassName = L"Desktop OpenBox Host";
+    return RegisterClassExW(&wcex);
 }
