@@ -1519,17 +1519,17 @@ int CTaskBand::_GetIdealWidth(int *iRemainder)
     {
         // window width that can be used for non-animating items
         iWinWidth -= (_GetAnimationWidth() + (_dsaAII.GetItemCount() * tbm.cxButtonSpacing));
-        iWinWidth = max(0, iWinWidth);
+        iWinWidth = std::max<int>(0, iWinWidth);
 
         // find number of non-animating items
         cItems -= _dsaAII.GetItemCount();
-        cItems = max(1, cItems);
+        cItems = std::max<int>(1, cItems);
     }
         
     // We need to round up so that iCols is the smallest number such that
     // iCols*iRows >= cItems
     int iCols = (cItems + iRows - 1) / iRows;
-    iCols = max(1, iCols);
+    iCols = std::max<int>(1, iCols);
 
     // calculate the ideal width
     iIdeal = (iWinWidth / iCols);
@@ -1546,13 +1546,13 @@ int CTaskBand::_GetIdealWidth(int *iRemainder)
         iMin *= 1.8;
     }
     iMin += _GetTextSpace();
-    iIdeal = min(iMax, iIdeal);
+    iIdeal = std::min<int>(iMax, iIdeal);
    
     // calculate the remainder
     if (_IsHorizontal() && (iIdeal != iMax) && (iRows == 1) && (iIdeal >= iMin))
     {
         *iRemainder = iWinWidth - (iCols * (iIdeal + tbm.cxButtonSpacing));
-        *iRemainder = max(0, *iRemainder);
+        *iRemainder = std::max<int>(0, *iRemainder);
     }
     
     return iIdeal;
@@ -1561,46 +1561,62 @@ int CTaskBand::_GetIdealWidth(int *iRemainder)
 
 void CTaskBand::_GetNumberOfRowsCols(int* piRows, int* piCols, BOOL fCurrentSize)
 {
-    RECT  rcWin;
-    RECT  rcItem;
-    RECT  rcTB;
-    int   iIndexVisible = _GetLastVisibleItem();
-
-    GetWindowRect(_hwnd, &rcWin);
-    int cxTB = RECTWIDTH(rcWin);
-    int cyTB = RECTHEIGHT(rcWin);
-
-    if (fCurrentSize)
+    int iIndexVisible = _GetLastVisibleItem();
+    if (iIndexVisible == -1)
     {
-        GetWindowRect(_tb, &rcTB);
-        DWORD dwStyle = GetWindowLong(_hwnd, GWL_STYLE);
-        if (dwStyle & WS_HSCROLL)
-        {
-            cyTB = RECTHEIGHT(rcTB);
-        }
-        else if (dwStyle & WS_VSCROLL)
-        {
-            cxTB = RECTWIDTH(rcTB);
-        }
+        if (piRows)
+            *piRows = 1;
+        if (piCols)
+            *piCols = 1;
     }
-
-    _tb.GetItemRect(iIndexVisible, &rcItem);
-
-    TBMETRICS tbm;
-    _GetToolbarMetrics(&tbm);
-
-    if (piRows)
+    else
     {
-        int cyRow = RECTHEIGHT(rcItem) + tbm.cyButtonSpacing;
-        *piRows = (cyTB + tbm.cyButtonSpacing) / cyRow;
-        *piRows = max(*piRows, 1);
-    }
+        RECT rcWin;
+        GetWindowRect(_hwnd, &rcWin);
+        int cyTB = RECTHEIGHT(rcWin);
+        int cxTB = RECTWIDTH(rcWin);
 
-    if (piCols && RECTWIDTH(rcItem))
-    {
-        int cxCol = RECTWIDTH(rcItem) + tbm.cxButtonSpacing;
-        *piCols = (cxTB + tbm.cxButtonSpacing) / cxCol;
-        *piCols = max(*piCols, 1);
+        if (fCurrentSize)
+        {
+            RECT rcTB;
+            GetWindowRect(_tb, &rcTB);
+
+            DWORD dwStyle = GetWindowLongPtrW(_hwnd, GWL_STYLE);
+            if ((dwStyle & WS_HSCROLL) != 0)
+            {
+                cyTB = RECTHEIGHT(rcTB);
+            }
+            else if ((dwStyle & WS_VSCROLL) != 0)
+            {
+                cxTB = RECTWIDTH(rcTB);
+            }
+        }
+
+        RECT rcItem;
+        _tb.GetItemRect(iIndexVisible, &rcItem);
+
+        TBMETRICS tbm;
+        _GetToolbarMetrics(&tbm);
+
+        if (piRows)
+        {
+            int cyRow = std::max<int>(RECTHEIGHT(rcItem) + tbm.cyButtonSpacing, 1);
+            *piRows = (tbm.cyButtonSpacing + cyTB) / cyRow;
+            *piRows = std::max<int>(*piRows, 1);
+        }
+        if (piCols)
+        {
+            if (rcItem.right != rcItem.left)
+            {
+                int cxCol = std::max<int>(RECTWIDTH(rcItem) + tbm.cxButtonSpacing, 1);
+                *piCols = (tbm.cxButtonSpacing + cxTB) / cxCol;
+                *piCols = std::max<int>(*piCols, 1);
+            }
+            else
+            {
+                *piCols = 0;
+            }
+        }
     }
 }
 
@@ -5065,8 +5081,7 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
                             xPos = rcItem.right + cx;
                         }
                     }
-
-                    yPos = std::max<int>(cyToolTip + rcMonitor.top + _sizeThumbnailTooltipMargin.cy, yPos); // @MOD Don't use macro
+                    yPos = std::max<int>(yPos, cyToolTip + rcMonitor.top + _sizeThumbnailTooltipMargin.cy); // @MOD Don't use macro
 
                     _UpdateThumbnailBackgroundBrush(0, true);
                     SetWindowPos(_hwndThumbStack[0], nullptr, xPos, yPos, cxWnd, cyWnd, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
@@ -6608,11 +6623,11 @@ LRESULT CTaskBand::_HandleSettingChange(WPARAM wParam, LPARAM lParam, BOOL fOnCr
 
 void CTaskBand::_VerifyButtonHeight()
 {
-    // force toolbar to get new sizes
-    SIZE size = {0, 0};
+    SIZE size = { 0, 0 };
     _tb.SetButtonSize(size);
 
     _BandInfoChanged();
+    c_tray.SizeWindows();
 }
 
 int CTaskBand::_GetCurButtonHeight()
@@ -6620,10 +6635,12 @@ int CTaskBand::_GetCurButtonHeight()
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
 
+    int cyClamped = g_cySize + tbm.cyPad;
     int cyButtonHeight = HIWORD(_tb.GetButtonSize());
-    if (!cyButtonHeight)
-        cyButtonHeight = tbm.cyPad + g_cySize;
-
+    if (cyButtonHeight == 0 || cyButtonHeight > cyClamped * ((_dwViewMode & DBIF_VIEWMODE_VERTICAL) == 0 ? 2 : 1))
+    {
+        return cyClamped;
+    }
     return cyButtonHeight;
 }
 
@@ -7003,6 +7020,10 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     case TBC_BUTTONHEIGHT:
+        if (lParam)
+        {
+            _GetToolbarMetrics((TBMETRICS*)lParam);
+        }
         return _GetCurButtonHeight();
 
     case 0x43F:

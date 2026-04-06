@@ -2783,27 +2783,15 @@ void CTray::_HandleMoving(WPARAM wParam, LPRECT lprc)
 // store the tray size when dragging is finished
 void CTray::_SnapshotStuckRectSize(UINT uPlace)
 {
-    RECT rcDisplay, * prc = &_arStuckRects[uPlace];
-
-    //
-    // record the width of this stuck rect
-    //
-    if (STUCK_HORIZONTAL(uPlace))
-        _sStuckWidths.cy = RECTHEIGHT(*prc);
+    if ((uPlace & STICK_TOP) != 0)
+        _sStuckWidths.cy = _arStuckRects[uPlace].bottom - _arStuckRects[uPlace].top;
     else
-        _sStuckWidths.cx = RECTWIDTH(*prc);
+        _sStuckWidths.cx = _arStuckRects[uPlace].right - _arStuckRects[uPlace].left;
 
-    //
-    // we only present a horizontal or vertical size to the end user
-    // so update the StuckRect on the other side of the screen to match
-    //
+    RECT rcDisplay;
     _GetStuckDisplayRect(uPlace, &rcDisplay);
-
-    uPlace += 2;
-    uPlace %= 4;
-    prc = &_arStuckRects[uPlace];
-
-    _MakeStuckRect(prc, &rcDisplay, _sStuckWidths, uPlace);
+    UINT u_stick = (uPlace - 2) & 3;
+    _MakeStuckRect(&_arStuckRects[u_stick], &rcDisplay, _sStuckWidths, u_stick);
 }
 
 
@@ -2914,38 +2902,40 @@ SIZE *CTray::_GetStartButtonPadding(SIZE *pSize)
     return pSize;
 }
 
-// EXEX-VISTA: Validated.
-static int _GetRebarMinHeight(HWND hWnd)
+int _GetRebarMinHeight(const HWND hwnd)
 {
-    int iResult = 0;
+    int iMinHeight = 0;
 
-    if (hWnd)
+    if (hwnd)
     {
-        UINT cyMinChild = 0;
-        DWORD numBands = SendMessageW(hWnd, RB_GETBANDCOUNT, 0, 0);
+        REBARBANDINFOW rbbi;
 
-        for (int i = 0; i < numBands; i++)
+        UINT cyMinChild = 0;
+
+        int cBands = SendMessageW(hwnd, RB_GETBANDCOUNT, 0, 0);
+        for (int i = 0; i < cBands; ++i)
         {
-            REBARBANDINFO rbbi;
             rbbi.cbSize = sizeof(rbbi);
-            rbbi.fMask = 33;
-            SendMessageW(hWnd, RB_GETBANDINFOW, i, (LPARAM)&rbbi);
+            rbbi.fMask = RBBIM_STYLE | RBBIM_CHILDSIZE;
+            SendMessageW(hwnd, RB_GETBANDINFOW, i, (LPARAM)&rbbi);
             if ((rbbi.fStyle & 8) == 0)
             {
                 if ((rbbi.fStyle & 1) != 0)
                 {
-                    iResult += cyMinChild;
+                    iMinHeight += cyMinChild;
                     cyMinChild = 0;
                 }
                 if (cyMinChild < rbbi.cyMinChild)
+                {
                     cyMinChild = rbbi.cyMinChild;
+                }
             }
         }
 
-        iResult += cyMinChild;
+        iMinHeight += cyMinChild;
     }
 
-    return iResult;
+    return iMinHeight;
 }
 
 // EXEX-VISTA: Validated.
@@ -3066,9 +3056,13 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
             if (STUCK_HORIZONTAL(uStuckPlace))
             {
                 int iMinButtonHeight = 1;
-                if (rcNotify.bottom + SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0) >= 1)
+
+                RECT rc = { 0 };
+                LRESULT tbButtonHeight1 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&rc);
+                if (rcNotify.bottom + tbButtonHeight1 >= 1)
                 {
-                    iMinButtonHeight = rcNotify.bottom + SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
+                    LRESULT tbButtonHeight2 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&rc);
+                    iMinButtonHeight = rcNotify.bottom + tbButtonHeight2;
                 }
 
                 int iMinStuckHeight;

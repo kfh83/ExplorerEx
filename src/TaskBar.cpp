@@ -199,44 +199,35 @@ HRESULT CTaskBar::IsRestricted(const GUID * pguidID, DWORD dwRestrictAction, VAR
 // *** IDeskBar ***
 HRESULT CTaskBar::OnPosRectChangeDB(LPRECT prc)
 {
-    // if we haven't fully initialized the tray, don't resize in response to (bogus) rebar sizes
-    // OR we're in the moving code, don't do this stuff..
-    if (!c_tray._stb._hbmpStartBkg  || c_tray._fDeferedPosRectChange)
-    {
-        return S_FALSE;
-    }
+    HRESULT hr = S_FALSE;
 
-    BOOL fHiding = (c_tray._uAutoHide & AH_HIDING);
-
-    if (fHiding) 
+    if (c_tray._stb._fBackgroundBitmapInitialized && !c_tray._fDeferedPosRectChange)
     {
-        c_tray.InvisibleUnhide(FALSE);
-    }
+        BOOL fHiding = c_tray._uAutoHide & AH_ON;
+        hr = S_OK;
 
-    if ((c_tray._uAutoHide & (AH_ON | AH_HIDING)) != (AH_ON | AH_HIDING))
-    {
-        // during 'bottom up' resizes (e.g. isfband View.Large), we don't
-        // get WM_ENTERSIZEMOVE/WM_EXITSIZEMOVE.  so we send it here.
-        // this fixes two bugs:
-        // - nt5:168643: btm-of-screen on-top tray mmon clipping not updated
-        // after view.large
-        // - nt5:175287: top-of-screen on-top tray doesn't resize workarea
-        // (obscuring top of 'my computer' icon) after view.large
-        if (!g_fInSizeMove)
+        if ((c_tray._uAutoHide & AH_ON) != 0)
+        {
+            c_tray.InvisibleUnhide(FALSE);
+        }
+
+        if ((c_tray._uAutoHide & (AH_ON | AH_HIDING)) != (AH_ON | AH_HIDING) && !g_fInSizeMove)
         {
             c_tray._fSelfSizing = TRUE;
+
             RECT rc;
             GetWindowRect(v_hwndTray, &rc);
-            SendMessage(v_hwndTray, WM_SIZING, WMSZ_TOP, (LPARAM)&rc);
-            SetWindowPos(v_hwndTray, NULL, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+            SendMessageW(v_hwndTray, WM_SIZING, WMSZ_TOP, reinterpret_cast<LPARAM>(&rc));
+            SetWindowPos(
+                v_hwndTray, nullptr, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
             c_tray._fSelfSizing = FALSE;
         }
-    }
 
-    if (fHiding) 
-    {
-        c_tray.InvisibleUnhide(TRUE);
+        if (fHiding)
+        {
+            c_tray.InvisibleUnhide(TRUE);
+        }
     }
-
-    return S_OK;
+    return hr;
 }
