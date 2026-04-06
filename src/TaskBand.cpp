@@ -456,11 +456,13 @@ STDMETHODIMP CTaskBand::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmd
 
     if (nCmdID == DBID_SETWINDOWTHEME && pvarargIn && V_VT(pvarargIn) == VT_BSTR && _tb)
     {
-        LPCWSTR pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
-        SetWindowTheme(_hwnd, pszTheme, 0);
+        const WCHAR* pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedTheme : c_szTaskBandTheme;
+        SetWindowTheme(_hwnd, pszTheme, nullptr);
+
         _SetToolbarTheme();
         _BandInfoChanged();
     }
+
     return S_OK;
 }
 
@@ -562,21 +564,18 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
 }
 
 
-HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode, 
-                                DESKBANDINFO* pdbi) 
+HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode, DESKBANDINFO* pdbi)
 {
     _dwBandID = dwBandID;
 
     pdbi->ptMaxSize.y = -1;
-    pdbi->ptActual.y =  g_cySize + 2*g_cyEdge;
+    pdbi->ptActual.y = g_cySize + 2 * g_cyEdge;
 
     LONG lButHeight = _GetCurButtonHeight();
-
-    if (fViewMode & DBIF_VIEWMODE_VERTICAL)
+    if ((fViewMode & DBIF_VIEWMODE_VERTICAL) != 0)
     {
         pdbi->ptMinSize.x = lButHeight;
-        // The 1.2 gives us enough space for the dropdown arrow
-        pdbi->ptMinSize.y = lButHeight * (_fGlom ? 1.2 : 1);
+        pdbi->ptMinSize.y = static_cast<int>(static_cast<double>(lButHeight) * (_fGlom ? 1.2 : 1.0));
         pdbi->ptIntegral.y = 1;
     }
     else
@@ -584,18 +583,17 @@ HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode,
         TBMETRICS tbm;
         _GetToolbarMetrics(&tbm);
 
-        pdbi->ptMinSize.x = lButHeight * (_hTheme ? 3.6 : 5.0);
+        pdbi->ptMinSize.x = static_cast<int>(static_cast<double>(lButHeight) * (_hTheme ? 3.6 : 5.0));
         pdbi->ptMinSize.y = lButHeight;
         pdbi->ptIntegral.y = lButHeight + tbm.cyButtonSpacing;
     }
 
+    pdbi->dwMask &= ~DBIM_TITLE;
     pdbi->dwModeFlags = DBIMF_VARIABLEHEIGHT | DBIMF_UNDELETEABLE | DBIMF_TOPALIGN;
-    pdbi->dwMask &= ~DBIM_TITLE;    // no title for us (ever)
 
     DWORD dwOldViewMode = _dwViewMode;
     _dwViewMode = fViewMode;
-
-    if (_tb && (_dwViewMode != dwOldViewMode))
+    if (_tb && _dwViewMode != dwOldViewMode)
     {
         _SetToolbarTheme();
         _CheckSize();
@@ -2565,7 +2563,8 @@ void CTaskBand::_SetToolbarTheme()
         {
             pszTheme = _CanGlassifyTaskbar() ? c_szTaskBandCompositedThemeVert : c_szTaskBandThemeVert;
         }
-        SendMessageW(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)pszTheme);
+        SendMessageW(_tb, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
+        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)); // 8239
     }
 }
 
@@ -5328,7 +5327,6 @@ void CTaskBand::_SetGlomMenuTheme(HWND hwnd)
 
 HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
 {
-#ifdef DEAD_CODE
     HRESULT hr = E_FAIL;
 
     CToolTipCtrl ttc = _tb.GetToolTips();
@@ -5362,91 +5360,34 @@ HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
                         if (_hTheme)
                         {
                             HWND hwndTB;
-                            IUnknown_GetWindow(_psmPopup, &hwndTB);
-                            if (hwndTB)
-                            {
-                                SendMessage(hwndTB, TB_SETWINDOWTHEME, 0, (LPARAM)c_szTaskBandGroupMenuTheme);
-                            }
-                            _psmPopup->SetNoBorder(TRUE);
-                        }
-
-                        hr = _pmpPopup->Popup(ppt, prcl, MPPF_BOTTOM);
-                    }
-                }
-                pbs->Release();
-            }
-        }
-        ptbc->Release();
-    }
-
-    if (FAILED(hr))
-    {
-        ttc.Activate(TRUE);
-        _FreePopupMenu();
-    }
-
-    return hr;
-#else
-	HRESULT hr = E_FAIL;
-
-    CToolTipCtrl ttc = _tb.GetToolTips();
-    ttc.Activate(FALSE);
-    SetActiveWindow(v_hwndTray);
-
-    CTaskBandSMC *ptbc = new CTaskBandSMC(this);
-    if (ptbc)
-    {
-        if (SUCCEEDED(CoCreateInstanceHook(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmPopup))) &&
-            SUCCEEDED(_psmPopup->Initialize(ptbc, 0, 0, SMINIT_CUSTOMDRAW | SMINIT_VERTICAL | SMINIT_TOPLEVEL)) &&
-            SUCCEEDED(CoCreateInstanceHook(CLSID_MenuDeskBar, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pmpPopup))) &&
-            SUCCEEDED(_psmPopup->SetMenu(_menuPopup, _hwnd, SMSET_USEPAGER | SMSET_NOPREFIX)) &&
-            SUCCEEDED(_psmPopup->QueryInterface(IID_PPV_ARGS(&_pmbPopup))))
-        {
-			_psmPopup->SetMinWidth(RECTWIDTH(*prcl));
-
-            IBandSite *pbs;
-            if (SUCCEEDED(CoCreateInstanceHook(CLSID_MenuBandSite, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pbs))))
-            {
-                if (SUCCEEDED(_pmpPopup->SetClient(pbs)))
-                {
-					IDeskBand *pdb;
-                    if (SUCCEEDED(_psmPopup->QueryInterface(IID_PPV_ARGS(&pdb))))
-                    {
-                        pbs->AddBand(pdb);
-                        pdb->Release();
-
-                        SendMessage(v_hwndTray, TM_SETPUMPHOOK, (WPARAM)_pmbPopup, (LPARAM)_pmpPopup);
-
-                        if (_hTheme)
-                        {
-                            HWND hwndTB;
                             if (IUnknown_GetWindow(_psmPopup, &hwndTB) >= 0)
                             {
                                 _SetGlomMenuTheme(hwndTB);
 
                                 if (_hTheme && _CanShowThumbnail())
                                 {
-                                    HWND hwndTooltip = (HWND)SendMessage(hwndTB, TB_GETTOOLTIPS, 0, 0);
+                                    HWND hwndTooltip = (HWND)SendMessageW(hwndTB, TB_GETTOOLTIPS, 0, 0);
                                     if (hwndTooltip)
                                     {
-                                        SendMessage(hwndTooltip, TTM_SETDELAYTIME, (WPARAM)TTDT_INITIAL, MAKELPARAM(_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime, 0));
-                                        SendMessage(hwndTooltip, TTM_SETDELAYTIME, (WPARAM)TTDT_AUTOPOP, MAKELPARAM(_dwAutoPopTooltipDelayTime, 0));
+                                        SendMessageW(hwndTooltip, TTM_SETDELAYTIME, TTDT_INITIAL, MAKELPARAM(_dwInitialThumbDelayTime + _dwInitialTooltipDelayTime, 0));
+                                        SendMessageW(hwndTooltip, TTM_SETDELAYTIME, TTDT_AUTOPOP, MAKELPARAM(_dwAutoPopTooltipDelayTime, 0));
                                     }
                                 }
-                                SetWindowSubclass(hwndTB, s_GlomMenuToolbarSubclassProc, 0, (DWORD_PTR)this);
+
+                                SetWindowSubclass(hwndTB, s_GlomMenuToolbarSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
                             }
 
-                            IUnknown *punk;
-                            if (IUnknown_GetSite(_psmPopup, IID_PPV_ARGS(&punk)) >= 0)
+                            IUnknown* punk;
+                            if (SUCCEEDED(IUnknown_GetSite(_psmPopup, IID_PPV_ARGS(&punk))))
                             {
-                                HWND hWnd;
-                                if (IUnknown_GetWindow(punk, &hWnd) >= 0)
+                                HWND hwndGlomMenu;
+                                if (SUCCEEDED(IUnknown_GetWindow(punk, &hwndGlomMenu)))
                                 {
-                                    SetWindowSubclass(hWnd, (SUBCLASSPROC)s_GlomMenuSiteSubclassProc, 0, (DWORD_PTR)this);
+                                    SetWindowSubclass(hwndGlomMenu, s_GlomMenuSiteSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
+
                                     if (_hThemeGlomMenu && IsCompositionActive())
                                     {
-
-                                        HWND hwndRoot = GetAncestor(hWnd, GA_ROOT);
+                                        HWND hwndRoot = GetAncestor(hwndGlomMenu, GA_ROOT);
                                         if (hwndRoot)
                                         {
                                             DWM_BLURBEHIND blurBehind;
@@ -5472,15 +5413,14 @@ HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
         }
         ptbc->Release();
     }
-    
+
     if (FAILED(hr))
     {
-		ttc.Activate(TRUE);
+        ttc.Activate(TRUE);
         _FreePopupMenu();
     }
 
     return hr;
-#endif
 }
 
 void CTaskBand::_AddItemToDropDown(int iIndex)

@@ -779,11 +779,11 @@ class CTaskBarPropertySheet : public CPropertySheetImpl<CTaskBarPropertySheet>
 {
 public:
     CTaskBarPropertySheet(UINT nStartPage, HWND hwndParent, DWORD dwFlags, ICatBandManager* pcbm)
-        : CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)NULL, nStartPage, hwndParent)
+        : CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)nullptr, nStartPage, hwndParent)
         , _dwFlags(dwFlags)
         , _pcbm(pcbm)
     {
-        LoadString(g_hinstCabinet, IDS_STARTMENUANDTASKBAR, szPath, ARRAYSIZE(szPath));
+        LoadStringW(g_hinstCabinet, IDS_STARTMENUANDTASKBAR, szPath, ARRAYSIZE(szPath));
         SetTitle(szPath);
 
         HPROPSHEETPAGE hpage;
@@ -799,7 +799,7 @@ public:
             psp.pszTemplate = MAKEINTRESOURCEW(DLG_TRAY_OPTIONS);
             psp.pfnDlgProc = s_TaskbarOptionsDlgProc;
             psp.lParam = reinterpret_cast<LPARAM>(this);
-            hpage = CreatePropertySheetPage(&psp);
+            hpage = CreatePropertySheetPageW(&psp);
             if (hpage)
                 AddPage(hpage);
         }
@@ -808,7 +808,7 @@ public:
         psp.pszTemplate = MAKEINTRESOURCEW(DLG_START);
         psp.pfnDlgProc = s_StartMenuDlgProc;
         psp.lParam = reinterpret_cast<LPARAM>(this);
-        hpage = CreatePropertySheetPage(&psp);
+        hpage = CreatePropertySheetPageW(&psp);
         if (hpage)
             AddPage(hpage);
 
@@ -985,239 +985,185 @@ void RegClearClientComboBox(HWND hDlg, UINT idc)
 void HandleClearButtonClick(HWND hwndClear);
 void SetDocButton(HWND hDlg, int id);
 
-//This is the property sheet for the "Customize Simple Start Menu" dlg
-class CCustomizeStartMenuDlg : public CPropertySheetImpl<CCustomizeStartMenuDlg>/*, IServiceProvider*/
+DWORD ReadStartPageSetting(const WCHAR* pszVal, DWORD dwDefault)
+{
+    DWORD dw;
+    DWORD cb = sizeof(dw);
+    if (_SHRegGetValueFromHKCUHKLM(
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        pszVal, SRRF_RT_DWORD, nullptr, &dw, &cb) == ERROR_SUCCESS)
+    {
+        return dw;
+    }
+    return dwDefault;
+}
+
+BOOL WriteStartPageSetting(const WCHAR* pszVal, DWORD dwVal)
+{
+    return SHSetValueW(
+        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", pszVal, REG_DWORD,
+        &dwVal, sizeof(dwVal)) == ERROR_SUCCESS;
+}
+
+BOOL ClearStartPageSetting(const WCHAR* pszVal)
+{
+    return SHDeleteValueW(
+        HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", pszVal) == ERROR_SUCCESS;
+}
+
+class CCustomizeStartMenuDlg : public CDialogImpl<CCustomizeStartMenuDlg>, IServiceProvider
 {
 public:
-    CCustomizeStartMenuDlg(HWND hwndParent) :
-        CPropertySheetImpl<CCustomizeStartMenuDlg>((const WCHAR*)nullptr, 0, hwndParent)
-      , _fInsideInit(FALSE)
+    enum { IDD = DLG_PAGE_SMADVANCED };
+
+    CCustomizeStartMenuDlg(HWND hwndParent)
+        : _cRef(1)
+        , _hwndParent(hwndParent)
     {
-        HPROPSHEETPAGE hpage;
-        PROPSHEETPAGE psp;
-
-        // We are heap-allocated so these should be pre-initialized properly
-        //ASSERT(_bDirtyTree == FALSE);
-        //ASSERT(_prto == NULL);
-        //ASSERT(_pph == NULL);
-
-        LoadString(g_hinstCabinet, IDS_SPCUST_TITLE, _szTitle, ARRAYSIZE(_szTitle));
-        SetTitle(_szTitle);
-
-        m_psh.dwFlags |= PSH_NOAPPLYNOW;
-
-        psp.dwSize = sizeof(psp);
-        psp.dwFlags = PSP_DEFAULT;
-        psp.hInstance = g_hinstCabinet;
-
-        //General page
-        psp.pszTemplate = MAKEINTRESOURCE(DLG_PAGE_SMGENERAL);
-        psp.pfnDlgProc = s_GeneralTabDlgProc;
-        psp.lParam = (LPARAM) this;
-        hpage = CreatePropertySheetPage(&psp);
-        if (hpage)
-            AddPage(hpage);
-
-        //Advanced page
-        psp.pszTemplate = MAKEINTRESOURCE(DLG_PAGE_SMADVANCED);
-        psp.pfnDlgProc = s_AdvancedTabDlgProc;
-        psp.lParam = (LPARAM) this;
-        hpage = CreatePropertySheetPage(&psp);
-        if (hpage)
-            AddPage(hpage);
-
+        ASSERT(_bDirtyTree == FALSE); // 1101
+        ASSERT(_prto == nullptr); // 1102
+        ASSERT(_fInsideInit == FALSE); // 1103
     };
 
     ~CCustomizeStartMenuDlg() override
     {
-        //ASSERT(!_prto);     // should be gone by now
+        ASSERT(!_prto); // 1115
         if (_pph)
+        {
             delete _pph;
+        }
     }
 
-private:
+    BEGIN_MSG_MAP(CCustomizeStartMenuDlg)
+        AdvancedTabDlgProc(hWnd, uMsg, wParam, lParam);
+    END_MSG_MAP()
 
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
+
+    //~ Begin IServiceProvider Interface
+    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
+    //~ End IServiceProvider Interface
+
+private:
     // dlgproc's for the various pages
-    static BOOL_PTR s_GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    static BOOL_PTR s_AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    BOOL_PTR GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL_PTR AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    BOOL GeneralTabInit(HWND hDlg);
     BOOL AdvancedTabInit(HWND hDlg);
 
     BOOL OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg); // shared command handler
-    BOOL OnGeneralApply(HWND hwndDlg);
     BOOL_PTR OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm);
-    BOOL_PTR OnAdvancedHelp(HWND hDlg, HELPINFO *phi);
 
     void _InitMagicEntries();
     void _SaveMagicEntries();
 
-    //helpers
-    DWORD _ReadStartPageSetting(LPCTSTR pszVal, DWORD dwDefault)
-    {
-        DWORD dw, cb=sizeof(dw), dwType;
-        SHRegGetUSValue(REGSTR_PATH_STARTPANE_SETTINGS, pszVal, &dwType, &dw, &cb, FALSE, &dwDefault, sizeof(dwDefault));
-        return dw; // since we passed a default value, above fn will return our default on failure
-    }
-    BOOL _ReadStartPageCUSetting(LPCTSTR pszVal, DWORD *pdw) // returns TRUE/FALSE for present under CU or not, actual value in pdw
-    {
-        DWORD cb=sizeof(*pdw), dwType;
-        return NO_ERROR == SHGetValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal, &dwType, pdw, &cb);
-    }
-    BOOL _WriteStartPageSetting(LPCTSTR pszVal, DWORD dwVal)
-    {
-        return SHSetValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal, REG_DWORD, &dwVal, sizeof(dwVal)) == NO_ERROR;
-    }
-    BOOL _ClearStartPageSetting(LPCTSTR pszVal)
-    {
-        return SHDeleteValue(HKEY_CURRENT_USER, REGSTR_PATH_STARTPANE_SETTINGS, pszVal) == NO_ERROR;
-    }
+    LONG _cRef;
+    IRegTreeOptions* _prto;
+    BOOL _bDirtyTree;
+    BOOL _bDirtyClients;
+    BOOL _bDirtyPinList;
+    BOOL _fInsideInit;
+    CPinHelper* _pph;
+    HWND _hwndParent;
 
-    // State
-    BOOL _bLargeIcons;
-    IRegTreeOptions *_prto;
-
-    // Dirty Flags
-    BOOL _bDirtyTree;       // to avoid saving the tree if we don't need to
-    BOOL _bDirtyClients;    // to avoid saving the clients if we don't need to
-    BOOL _bDirtyPinList;    // to avoid re-persisting the pin list (and possibly changing the order)
-    BOOL _bCustNetPlaces;   // Did the user previously have net places customized?
-    BOOL _bCustNetConn;     // Did the user previously have net connections customized?
-
-    // random bits
-    CPinHelper *_pph;
-    TCHAR _szTitle[80];      // needed for the propsheet title...
-
-    // We need this to take care of initialization!
-    BOOL  _fInsideInit;
+    friend class CTaskBarPropertySheet;
 };
 
-BOOL_PTR CCustomizeStartMenuDlg::s_GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+HRESULT CCustomizeStartMenuDlg::QueryInterface(REFIID riid, void** ppvObject)
 {
-    CCustomizeStartMenuDlg* self = NULL;
-
-    if (uMsg == WM_INITDIALOG)
+    static const QITAB qit[] =
     {
-        ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CCustomizeStartMenuDlg*) ((PROPSHEETPAGE*)lParam)->lParam;
-    }
-    else
-    {
-        PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
-        if (psp)
-            self = (CCustomizeStartMenuDlg*)psp->lParam;
-    }
-
-    if (self)
-    {
-        return self->GeneralTabDlgProc(hDlg, uMsg, wParam, lParam);
-    }
-    else
-    {
-        return FALSE;
-    }
+        QITABENT(CCustomizeStartMenuDlg, IServiceProvider),
+        {}
+    };
+    return QISearch(this, qit, riid, ppvObject);
 }
 
-BOOL_PTR CCustomizeStartMenuDlg::s_AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+ULONG CCustomizeStartMenuDlg::AddRef()
 {
-    CCustomizeStartMenuDlg* self = NULL;
-
-    if (uMsg == WM_INITDIALOG)
-    {
-        ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CCustomizeStartMenuDlg*) ((PROPSHEETPAGE*)lParam)->lParam;
-    }
-    else
-    {
-        PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
-        if (psp)
-            self = (CCustomizeStartMenuDlg*)psp->lParam;
-    }
-
-    if (self)
-    {
-        return self->AdvancedTabDlgProc(hDlg, uMsg, wParam, lParam);
-    }
-    else
-    {
-        return FALSE;
-    }
+    return ++_cRef;
 }
 
-BOOL_PTR CCustomizeStartMenuDlg::GeneralTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+ULONG CCustomizeStartMenuDlg::Release()
 {
-    switch (uMsg)
+    LONG cRef = _cRef;
+    if ( _cRef-- == 1 )
     {
-        case WM_INITDIALOG:
-            return GeneralTabInit(hDlg);
-        case WM_COMMAND:
-            return OnCommand(LOWORD(wParam), HIWORD(wParam), (HWND) lParam, hDlg);
-        case WM_DESTROY:
-            {
-                SetDlgItemIcon(hDlg, IDC_SPCUST_ICONSMALL, NULL);
-                SetDlgItemIcon(hDlg, IDC_SPCUST_ICONLARGE, NULL);
-                RegClearClientComboBox(hDlg, IDC_SPCUST_EMAILCB);
-                RegClearClientComboBox(hDlg, IDC_SPCUST_INTERNETCB);
-                break;
-            }
-        case WM_NOTIFY:
-            switch (((NMHDR*)lParam)->code)
-            {
-                case PSN_APPLY:
-                    return OnGeneralApply(hDlg);
-
-            }
-            break;
-
-        case WM_HELP:
-            ::SHWinHelp((HWND)((LPHELPINFO) lParam)->hItemHandle, NULL, HELP_WM_HELP, (ULONG_PTR)(LPTSTR) aStartCustGeneralTabHelpIDs);
-            break;
-
-        case WM_CONTEXTMENU:
-            ::SHWinHelp((HWND) wParam, NULL, HELP_CONTEXTMENU, (ULONG_PTR)(void *)aStartCustGeneralTabHelpIDs);
-            break;
+        delete this;
+        return 0;
     }
-    return FALSE;
+    return cRef;
 }
 
-BOOL CCustomizeStartMenuDlg::GeneralTabInit(HWND hDlg)
+class CStaticDoesCsidlExist : IRegTreeItem
 {
-    _fInsideInit = TRUE; //We are getting inside initilization!
+public:
+    CStaticDoesCsidlExist(int csidl) : _csidl(csidl) {}
 
-    ::SendMessage(::GetDlgItem(hDlg, IDC_SPCUST_MINPROGS_ARROW), UDM_SETRANGE, 0, (LPARAM)MAKELONG(MAX_PROGS_ALLOWED, 0));
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
 
-    // set up icon size
-    _bLargeIcons = _ReadStartPageSetting(REGSTR_VAL_DV2_LARGEICONS, /*bDefault*/ TRUE);
-    ::CheckDlgButton(hDlg, IDC_SPCUST_LARGE, _bLargeIcons);
-    ::CheckDlgButton(hDlg, IDC_SPCUST_SMALL, !_bLargeIcons);
+    //~ Begin IRegTreeItem Interface
+    STDMETHODIMP GetCheckState(BOOL* pbCheck) override;
+    STDMETHODIMP SetCheckState(BOOL bCheck) override;
+    //~ End IRegTreeItem Interface
 
-    SetProgramIcon(hDlg, IDC_SPCUST_ICONLARGE, IDC_SPCUST_ICONSMALL);
+private:
+    int _csidl;
+};
 
-    // Set up the Number of programs dropdown
-    DWORD dwMinMFU = _ReadStartPageSetting(REGSTR_VAL_DV2_MINMFU, REGSTR_VAL_DV2_MINMFU_DEFAULT);
-    ::SetDlgItemInt(hDlg, IDC_SPCUST_MINPROGS, dwMinMFU, FALSE);
-
-    // Set up internet, email checkboxes and comboboxes
-    BOOL bInternet=FALSE, bMail=FALSE;
-    RegPopulateComboBox(::GetDlgItem(hDlg, IDC_SPCUST_EMAILCB), TEXT("SOFTWARE\\Clients\\mail"));
-    RegPopulateComboBox(::GetDlgItem(hDlg, IDC_SPCUST_INTERNETCB), TEXT("SOFTWARE\\Clients\\StartMenuInternet"));
-
-    // if this fails, its not fatal, we just won't be able to persist the pin info
-    _pph = new CPinHelper();
-    if (_pph)
+HRESULT CStaticDoesCsidlExist::QueryInterface(REFIID riid, void** ppvObject)
+{
+    static const QITAB qit[] =
     {
-        _pph->GetPinInfo(&bInternet, &bMail);
-    }
+        QITABENT(CStaticDoesCsidlExist, IRegTreeItem),
+        {}
+    };
+    return QISearch(this, qit, riid, ppvObject);
+}
 
-    ::CheckDlgButton(hDlg, IDC_SPCUST_INTERNET, bInternet);
-    ::CheckDlgButton(hDlg, IDC_SPCUST_EMAIL,    bMail);
-    ::EnableWindow(::GetDlgItem(hDlg, IDC_SPCUST_INTERNETCB), bInternet);
-    ::EnableWindow(::GetDlgItem(hDlg, IDC_SPCUST_EMAILCB),   bMail);
+ULONG CStaticDoesCsidlExist::AddRef()
+{
+    return 2;
+}
 
-    _fInsideInit = FALSE;  //We are done initializing.
+ULONG CStaticDoesCsidlExist::Release()
+{
+    return 1;
+}
 
-    return TRUE;
+HRESULT CStaticDoesCsidlExist::GetCheckState(BOOL* pbCheck)
+{
+    WCHAR szPath[260];
+    *pbCheck = SHGetFolderPathW(nullptr, _csidl, nullptr, 0, szPath) == 0;
+    return S_OK;
+}
+
+HRESULT CStaticDoesCsidlExist::SetCheckState(BOOL bCheck)
+{
+    return E_NOTIMPL;
+}
+
+DEFINE_GUID(stru_100AE6C, 0xE098BCD5, 0x7A3C, 0x456F, 0xB1, 0x43, 0x84, 0xDF, 0x65, 0xC1, 0x23, 0x37);
+
+CStaticDoesCsidlExist c_MyPicturesExists(CSIDL_MYPICTURES);
+
+DEFINE_GUID(stru_100AE7C, 0xB5FF6591, 0x8776, 0x42A2, 0xA7, 0x04, 0x25, 0x62, 0xC7, 0xAA, 0x5A, 0x3F);
+
+CStaticDoesCsidlExist c_MyMusicExists(CSIDL_MYMUSIC);
+
+HRESULT CCustomizeStartMenuDlg::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
+{
+    if (IsEqualGUID(guidService, stru_100AE6C))
+        return c_MyPicturesExists.QueryInterface(riid, ppvObject);
+    if (IsEqualGUID(guidService, stru_100AE7C))
+        return c_MyMusicExists.QueryInterface(riid, ppvObject);
+    return E_FAIL;
 }
 
 // Temp until the new UEM code gets in...
@@ -1289,7 +1235,7 @@ BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hw
         ////// General Tab Controls
         case IDC_SPCUST_LARGE:
         case IDC_SPCUST_SMALL:
-            _bLargeIcons = (id == IDC_SPCUST_LARGE);
+            //_bLargeIcons = (id == IDC_SPCUST_LARGE);
             SendPSMChanged(hwndDlg);
             return FALSE;
         case IDC_SPCUST_MINPROGS:
@@ -1343,35 +1289,6 @@ BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hw
     return TRUE;
 }
 
-BOOL CCustomizeStartMenuDlg::OnGeneralApply(HWND hDlg)
-{
-
-    _WriteStartPageSetting(REGSTR_VAL_DV2_LARGEICONS,  _bLargeIcons);
-
-    if (_pph && _bDirtyPinList)
-    {
-        BOOL bInternet  = ::IsDlgButtonChecked(hDlg, IDC_SPCUST_INTERNET);
-        BOOL bMail      = ::IsDlgButtonChecked(hDlg, IDC_SPCUST_EMAIL);
-        _pph->Save(bMail, bInternet);
-    }
-    if (_bDirtyClients)
-    {
-        // persist Internet, Mail comboboxes
-        RegSaveDefaultClient(::GetDlgItem(hDlg, IDC_SPCUST_EMAILCB), TEXT("Software\\Clients\\mail"));
-        RegSaveDefaultClient(::GetDlgItem(hDlg, IDC_SPCUST_INTERNETCB), TEXT("SOFTWARE\\Clients\\StartMenuInternet"));
-    }
-
-    BOOL bTranslated;
-    DWORD dwMinMFU = ::GetDlgItemInt(hDlg, IDC_SPCUST_MINPROGS, &bTranslated, FALSE);
-    if (EVAL(bTranslated))
-    {
-        dwMinMFU = min(max(dwMinMFU, 0), MAX_PROGS_ALLOWED);
-        _WriteStartPageSetting(REGSTR_VAL_DV2_MINMFU, dwMinMFU);
-    }
-
-    return TRUE;
-}
-
 BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 {
     ::SetWindowLongPtr( hwndDlg, DWLP_MSGRESULT, 0); // handled
@@ -1383,9 +1300,9 @@ BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
                 _prto->WalkTree(WALK_TREE_SAVE);
             }
 
-            _WriteStartPageSetting(REGSTR_VAL_DV2_SHOWRECDOCS,  ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_RECENT) ? 2 : 0);  // 2 so that it cascades
-            _WriteStartPageSetting(REGSTR_VAL_DV2_AUTOCASCADE,  ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_HOVEROPEN));
-            _WriteStartPageSetting(REGSTR_VAL_DV2_NOTIFYNEW,    ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_NOTIFYNEW));
+            WriteStartPageSetting(REGSTR_VAL_DV2_SHOWRECDOCS,  ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_RECENT) ? 2 : 0);  // 2 so that it cascades
+            WriteStartPageSetting(REGSTR_VAL_DV2_AUTOCASCADE,  ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_HOVEROPEN));
+            WriteStartPageSetting(REGSTR_VAL_DV2_NOTIFYNEW,    ::IsDlgButtonChecked(hwndDlg, IDC_SPCUST_NOTIFYNEW));
             // fall through to PSN_RESET case...
 
         case PSN_RESET:
@@ -1449,56 +1366,34 @@ BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
     return TRUE;
 }
 
-BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedHelp(HWND hDlg, HELPINFO *phi)
-{
-    if (phi->iCtrlId != IDC_STARTMENUSETTINGS)
-    {
-        ::SHWinHelp((HWND)(phi->hItemHandle), NULL, HELP_WM_HELP, (ULONG_PTR)(LPTSTR)aStartCustAdvancedTabHelpIDs);
-    }
-    else
-    {
-        HTREEITEM hItem;
-        HWND hwndTree = ::GetDlgItem(hDlg, IDC_STARTMENUSETTINGS);
-
-        //Is this help invoked throught F1 key
-        if (GetAsyncKeyState(VK_F1) < 0)
-        {
-            // Yes. WE need to give help for the currently selected item
-            hItem = TreeView_GetSelection(hwndTree);
-        }
-        else
-        {
-            //No, We need to give help for the item at the cursor position
-            TV_HITTESTINFO ht;
-            ht.pt = phi->MousePos;
-            ::ScreenToClient(hwndTree, &ht.pt); // Translate it to our window
-            hItem = TreeView_HitTest(hwndTree, &ht);
-        }
-
-        if (hItem)
-            _prto->ShowHelp(hItem, HELP_WM_HELP);
-    }
-    return TRUE;
-}
-
 BOOL_PTR CCustomizeStartMenuDlg::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
+        case WM_DESTROY:
+            RegClearClientComboBox(hDlg, IDC_SPCUST_MINPROGS);
+            RegClearClientComboBox(hDlg, IDC_SPCUST_LARGE);
+            break;
+        case WM_NOTIFY:
+            return OnAdvancedNotify(hDlg, (NMHDR*)lParam);
         case WM_INITDIALOG:
             return AdvancedTabInit(hDlg);
         case WM_COMMAND:
-            return OnCommand(LOWORD(wParam), HIWORD(wParam), (HWND) lParam, hDlg);
-        case WM_NOTIFY:
-            return OnAdvancedNotify(hDlg, (NMHDR*)lParam);
-        case WM_HELP:
-            return OnAdvancedHelp(hDlg, (HELPINFO*) lParam);
-            break;
-        case WM_CONTEXTMENU:
-            ::SHWinHelp((HWND) wParam, NULL, HELP_CONTEXTMENU, (ULONG_PTR)(void *)aStartCustAdvancedTabHelpIDs);
-            break;
+            return OnCommand(LOWORD(wParam), HIWORD(wParam), (HWND)lParam, hDlg);
     }
-    return FALSE;
+    if (uMsg == WM_RBUTTONDOWN && (HWND)wParam == ::GetDlgItem(hDlg, IDC_STARTMENUSETTINGS))
+    {
+        POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        ::ScreenToClient((HWND)wParam, &pt);
+
+        HTREEITEM hti = TreeView_HitTest(reinterpret_cast<HWND>(wParam), &pt);
+        if (hti)
+        {
+            TreeView_SelectItem(reinterpret_cast<HWND>(wParam), hti);
+        }
+        return 1;
+    }
+    return 0;
 }
 
 int DefaultNetConValue()
@@ -1513,56 +1408,26 @@ int DefaultNetPlacesValue()
     return 0;
 }
 
-// These two "magic" functions maintain the proper behavior of the network places and network connections settings
-// which, by default, turn on when there are n or more items in the folder.  But they can also be customized by the
-// user to force them on or off.
-
 void CCustomizeStartMenuDlg::_InitMagicEntries()
 {
-    BOOL bNewNetPlaces;
-    BOOL bNewNetConn;
-
-    _bCustNetPlaces = _ReadStartPageCUSetting(REGSTR_VAL_DV2_SHOWNETPL, (DWORD*) &bNewNetPlaces);
-    _bCustNetConn = _ReadStartPageCUSetting(REGSTR_VAL_DV2_SHOWNETCONN, (DWORD*) &bNewNetConn);
-    // if the user didn't previously customize these settings, then use the auto-magic setting
-    if (!_bCustNetPlaces)
-        bNewNetPlaces = DefaultNetPlacesValue();
-    if (!_bCustNetConn)
-        bNewNetConn   = DefaultNetConValue();
-
-    // Write it out, so the rgtreeoption control will reflect either the user's customization, or the magic value
-    _WriteStartPageSetting(REGSTR_VAL_DV2_SHOWNETPL, bNewNetPlaces);
-    _WriteStartPageSetting(REGSTR_VAL_DV2_SHOWNETCONN, bNewNetConn);
-
     // for the admin tools radio buttons:
     // 0 = don't show anywhere
     // 1 = display in all programs (StartMenuAdminTools = 1, Start_AdminToolsRoot = 0)
     // 2 = display in all programs and root (StartMenuAdminTools = 1, Start_AdminToolsRoot = 2)
-    int iAdminToolsTemp = _ReadStartPageSetting(REGSTR_VAL_DV2_ADMINTOOLSROOT, FALSE) ? 2 :
-                          (_ReadStartPageSetting(TEXT("StartMenuAdminTools"), FALSE) ? 1 : 0);
+    int iAdminToolsTemp;
+    if (ReadStartPageSetting(L"Start_AdminToolsRoot", FALSE))
+        iAdminToolsTemp = 2;
+    else
+        iAdminToolsTemp = ReadStartPageSetting(L"StartMenuAdminTools", FALSE) ? 1 : 0;
 
-    _WriteStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP, iAdminToolsTemp);
+    WriteStartPageSetting(L"Start_AdminToolsTemp", iAdminToolsTemp);
 }
 
 void CCustomizeStartMenuDlg::_SaveMagicEntries()
 {
-    BOOL bNewNetPlaces = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETPL, FALSE);
-    BOOL bNewNetConn   = _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWNETCONN, FALSE);
-
-    // if the user previously had it customized, then we don't need to clear it since it will either
-    // contain the original value we loaded in _InitMagicEntries, or the updated value if the user changed it.
-    // if it wasn't originally customized, then we need to clear it if the tree isn't even dirty, or the current value is the magic value we loaded
-
-    if (!_bCustNetPlaces && (!_bDirtyTree || bNewNetPlaces == DefaultNetPlacesValue()))
-        _ClearStartPageSetting(REGSTR_VAL_DV2_SHOWNETPL);
-
-    if (!_bCustNetConn && (!_bDirtyTree || bNewNetConn == DefaultNetConValue()))
-        _ClearStartPageSetting(REGSTR_VAL_DV2_SHOWNETCONN);
-
     if (_bDirtyTree)
     {
-        // see comment above for how this should work
-        int iAdminToolsTemp = _ReadStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP, FALSE);
+        int iAdminToolsTemp = ReadStartPageSetting(L"Start_AdminToolsTemp", FALSE);
         int iATRoot = 0;
         int iATPrograms = 0;
 
@@ -1574,52 +1439,67 @@ void CCustomizeStartMenuDlg::_SaveMagicEntries()
                 iATRoot = 2;
             }
         }
-        _WriteStartPageSetting(REGSTR_VAL_DV2_ADMINTOOLSROOT, iATRoot);
-        _WriteStartPageSetting(TEXT("StartMenuAdminTools"), iATPrograms);
+
+        WriteStartPageSetting(L"Start_AdminToolsRoot", iATRoot);
+        WriteStartPageSetting(L"StartMenuAdminTools", iATPrograms);
     }
-    _ClearStartPageSetting(REGSTR_VAL_ADMINTOOLSTEMP);
+
+    ClearStartPageSetting(L"Start_AdminToolsTemp");
 }
 
 BOOL CCustomizeStartMenuDlg::AdvancedTabInit(HWND hDlg)
 {
-    if (SUCCEEDED(CoCreateInstanceHook(CLSID_CRegTreeOptions, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_prto))))
+    BOOL bInternet = FALSE;
+    BOOL bMail = FALSE;
+    _fInsideInit = TRUE;
+
+    RegPopulateComboBox(::GetDlgItem(hDlg, 1304), L"SOFTWARE\\Clients\\Mail");
+    RegPopulateComboBox(::GetDlgItem(hDlg, 1302), L"SOFTWARE\\Clients\\StartMenuInternet");
+
+    SendMessageW(::GetDlgItem(hDlg, 1305), 0x465, 0, 30);
+
+    ::SetDlgItemInt(hDlg, 1307, ReadStartPageSetting(L"Start_MinMFU", 9), 0);
+
+    if (!::IsDlgButtonChecked(_hwndParent, 1136))
     {
-        HRESULT hr;
-        HWND hwndTV = ::GetDlgItem(hDlg, IDC_STARTMENUSETTINGS);
+        ::SetDlgItemInt(hDlg, 1307, 0, 0);
+        ::EnableWindow(::GetDlgItem(hDlg, 1307), 0);
+    }
+    if (!SHRestricted(REST_NOSMPINNEDLIST))
+    {
+        _pph = new(std::nothrow) CPinHelper();
+        if (_pph)
+        {
+            _pph->GetPinInfo(&bInternet, &bMail);
+        }
+    }
+    else
+    {
+        ::EnableWindow(::GetDlgItem(hDlg, 1301), 0);
+        ::EnableWindow(::GetDlgItem(hDlg, 1303), 0);
+    }
 
-        // Compute the magic entries before we init the RegTreeOptions
-        // (so we will have correct information for him!)
+    ::CheckDlgButton(hDlg, 1301, bInternet);
+    ::CheckDlgButton(hDlg, 1303, bMail);
+    ::EnableWindow(::GetDlgItem(hDlg, 1302), bInternet);
+    ::EnableWindow(::GetDlgItem(hDlg, 1304), bMail);
+
+    if (SUCCEEDED(CoCreateInstance(CLSID_CRegTreeOptions, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_prto))))
+    {
+        HWND hwndTV = ::GetDlgItem(hDlg, 1123);
+
         _InitMagicEntries();
+        IUnknown_SetSite(_prto, static_cast<IServiceProvider*>(this));
 
-        // HACKHACK - IRegTreeOptions is ANSI, so we temporarily turn off UNICODE
-        #undef TEXT
-        #define TEXT(s) s
-        hr = _prto->InitTree(hwndTV, HKEY_LOCAL_MACHINE, REGSTR_PATH_SMADVANCED "\\StartPanelVista", NULL);
-
-        #undef TEXT
-        #define TEXT(s) __TEXT(s)
+        _prto->InitTree(
+            hwndTV,HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartMenu\\StartPanelVista",
+            nullptr);
 
         TreeView_SelectSetFirstVisible(hwndTV, TreeView_GetRoot(hwndTV));
-
-        ::CheckDlgButton(hDlg, IDC_SPCUST_RECENT,   _ReadStartPageSetting(REGSTR_VAL_DV2_SHOWRECDOCS, IsOS(OS_PERSONAL) ? FALSE : TRUE));
-        ::CheckDlgButton(hDlg, IDC_SPCUST_HOVEROPEN,_ReadStartPageSetting(REGSTR_VAL_DV2_AUTOCASCADE, TRUE));
-        ::CheckDlgButton(hDlg, IDC_SPCUST_NOTIFYNEW,_ReadStartPageSetting(REGSTR_VAL_DV2_NOTIFYNEW, TRUE));
-
-        if(SHRestricted(REST_NORECENTDOCSMENU))
-        {
-            //Since this policy is present, hide all the relevant controls
-            ::ShowWindow(::GetDlgItem(hDlg, IDC_SPCUST_RECENT_GROUPBOX), FALSE);// Group box
-            ::ShowWindow(::GetDlgItem(hDlg, IDC_SPCUST_RECENT_TEXT), FALSE);    // Description Text.
-            ::ShowWindow(::GetDlgItem(hDlg, IDC_SPCUST_RECENT), FALSE);         // Check box
-            ::ShowWindow(::GetDlgItem(hDlg, IDB_SPCUST_CLEARDOCS), FALSE);      // Clear button.
-        }
-
-        SetDocButton(hDlg, IDB_SPCUST_CLEARDOCS);
-
         return TRUE;
     }
 
-
+    _fInsideInit = FALSE;
     return FALSE;
 }
 
@@ -1865,7 +1745,8 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
                         // if anything changed, let the propsheet know
                         SendPSMChanged(hDlg);
                     }
-                    delete pps;
+                    IUnknown_SetSite(pps->_prto, nullptr);
+                    pps->Release();
                 }
                 break;
             }
@@ -1876,7 +1757,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
                     break;
                 }
 
-                if (DialogBoxParam(g_hinstCabinet, MAKEINTRESOURCE(DLG_STARTMENU_CONFIG), hDlg, AdvancedOptDlgProc, (LPARAM)&_Adv))
+                if (::SHFusionDialogBoxParam(g_hinstCabinet, MAKEINTRESOURCE(DLG_STARTMENU_CONFIG), hDlg, AdvancedOptDlgProc, (LPARAM)&_Adv))
                 {
                     // if anything changed, let the propsheet know
                     SendPSMChanged(hDlg);

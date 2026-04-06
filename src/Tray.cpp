@@ -329,14 +329,9 @@ HFONT CTray::_CreateStartFont(HWND hwndTray)
     return hfontStart;
 }
 
-// Set the stuck monitor for the tray window
 void CTray::_SetStuckMonitor()
 {
-    // use STICK_LEFT because most of the multi-monitors systems are set up
-    // side by side. use DEFAULTTONULL because we don't want to get the wrong one
-    // use the center point to call again in case we failed the first time.
-    _hmonStuck = MonitorFromRect(&_arStuckRects[STICK_LEFT],
-        MONITOR_DEFAULTTONULL);
+    _hmonStuck = MonitorFromRect(_arStuckRects, MONITOR_DEFAULTTONULL);
     if (!_hmonStuck)
     {
         POINT pt;
@@ -346,6 +341,14 @@ void CTray::_SetStuckMonitor()
     }
 
     _hmonOld = _hmonStuck;
+    _SetStuckMonitorState();
+}
+
+void CTray::_SetStuckMonitorState()
+{
+    MONITORINFO mi = { sizeof(mi) };
+    _fIsPrimaryMonitor = GetMonitorInfoW(_hmonStuck, &mi)
+        && (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
 }
 
 DWORD _GetDefaultTVSDFlags()
@@ -364,10 +367,10 @@ DWORD _GetDefaultTVSDFlags()
 // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_GetSaveStateAndInitRects()
 {
+#if 0
     TVSDCOMPAT tvsd;
     RECT rcDisplay;
     DWORD dwTrayFlags;
-    UINT uStick;
     SIZE size;
 
     // first fill in the defaults
@@ -484,11 +487,119 @@ void CTray::_GetSaveStateAndInitRects()
     //
     // initialize stuck rects
     //
-    for (uStick = STICK_LEFT; uStick <= STICK_BOTTOM; uStick++)
+    for (UINT uStick = STICK_LEFT; uStick <= STICK_BOTTOM; uStick++)
         _MakeStuckRect(&_arStuckRects[uStick], &rcDisplay, _sStuckWidths, uStick);
 
     _UpdateVertical(_uStuckPlace);
     // Determine which monitor the tray is on using its stuck rectangles
+    _SetStuckMonitor();
+#endif
+    RECT rcDisplay;
+    SetRect(&rcDisplay, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+
+    WCHAR szClassList[260];
+    StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"StartBottom", L"Button");
+
+    HTHEME hTheme = OpenThemeData(nullptr, szClassList);
+    _stb.GetSizeAndFont(hTheme);
+    if (hTheme)
+        CloseThemeData(hTheme);
+
+    SIZE sizeStartPadding;
+    _GetStartButtonPadding(&sizeStartPadding);
+
+    SIZE size;
+    size.cx = sizeStartPadding.cx + _stb._sizeStart.cx;
+    size.cy = sizeStartPadding.cy + _stb._sizeStart.cy;
+    _sStuckWidths.cx = size.cx;
+    _sStuckWidths.cy = size.cy;
+
+    _uStuckPlace = STICK_BOTTOM;
+    DWORD dwTrayFlags = _GetDefaultTVSDFlags();
+    _uAutoHide = AH_OFF;
+
+    TVSDCOMPAT tvsd;
+    DWORD cbData1 = sizeof(tvsd);
+    DWORD cbData2 = sizeof(tvsd);
+    if (Reg_GetStruct(g_hkeyExplorer, L"StuckRectsXP2", L"Settings", &tvsd, &cbData1)
+        || Reg_GetStruct(g_hkeyExplorer, L"StuckRectsXP", L"Settings", &tvsd, &cbData2))
+    {
+        if (IS_CURRENT_TVSD(tvsd.t) && tvsd.t.uStuckPlace <= 3)
+        {
+            _GetDisplayRectFromRect(&rcDisplay, &tvsd.t.rcLastStuck, MONITOR_DEFAULTTONEAREST);
+
+            size = tvsd.t.sStuckWidths;
+            _uStuckPlace = tvsd.t.uStuckPlace;
+            dwTrayFlags = tvsd.t.dwFlags;
+        }
+        else if (tvsd.t.dwSize == 56 && tvsd.w95.uStuckPlace <= 3)
+        {
+            _uStuckPlace = tvsd.w95.uStuckPlace;
+            dwTrayFlags = tvsd.w95.dwFlags;
+            if ((tvsd.w95.uAutoHide & 1) != 0)
+                dwTrayFlags = tvsd.w95.dwFlags | 1;
+
+            switch (_uStuckPlace)
+            {
+                case STICK_LEFT:
+                {
+                    size.cx = tvsd.w95.dxLeft;
+                    break;
+                }
+                case STICK_TOP:
+                {
+                    size.cy = tvsd.t.sStuckWidths.cy;
+                    break;
+                }
+                case STICK_RIGHT:
+                {
+                    size.cx = tvsd.t.sStuckWidths.cx;
+                    break;
+                }
+                case STICK_BOTTOM:
+                {
+                    size.cy = tvsd.t.rcLastStuck.left;
+                    break;
+                }
+            }
+        }
+    }
+
+    ASSERT(IsValidSTUCKPLACE(_uStuckPlace)); // 587
+
+    if (_sStuckWidths.cx < size.cx)
+        _sStuckWidths.cx = size.cx;
+
+    if (_sStuckWidths.cy < size.cy)
+        _sStuckWidths.cy = size.cy;
+
+    _fAlwaysOnTop = (dwTrayFlags >> 1) & 1;
+    _fSMSmallIcons = (dwTrayFlags >> 2) & 1;
+
+    DWORD v11 = SHRestricted(REST_HIDECLOCK);
+    if (v11 || (dwTrayFlags & 8) != 0)
+        v11 = 1;
+    _fHideClock = v11;
+
+    BOOL v12 = SHWindowsPolicy(POLID_TaskbarNoThumbnail);
+    if (v12 || (dwTrayFlags & 0x80u) != 0)
+        v12 = 1;
+    _fNoThumbnails = v12;
+
+    _rgfHideSCA[SCA_VOLUME] = (dwTrayFlags >> 4) & 1;
+    _rgfHideSCA[SCA_NETWORK] = (dwTrayFlags >> 5) & 1;
+    _rgfHideSCA[SCA_POWER] = (dwTrayFlags >> 6) & 1;
+
+    _uAutoHide = (dwTrayFlags & 1) != 0 ? 3 : 0;
+    _RefreshSettings();
+
+    UINT uStick = STICK_LEFT;
+    RECT* arStuckRects = _arStuckRects;
+    do
+        _MakeStuckRect(arStuckRects++, &rcDisplay, _sStuckWidths, uStick++);
+    while (uStick <= 3);
+
+    _UpdateVertical(_uStuckPlace);
     _SetStuckMonitor();
 }
 
@@ -680,15 +791,13 @@ HMONITOR CTray::_GetDisplayRectFromRect(LPRECT prcDisplay, LPCRECT prcIn, UINT u
     return hmon;
 }
 
-// Get the display (monitor) rectangle where the taskbar is currently on,
-// if that monitor is invalid, get the nearest one.
-void CTray::_GetStuckDisplayRect(UINT uStuckPlace, LPRECT prcDisplay)
+void CTray::_GetStuckDisplayRect(UINT uStuckPlace, RECT* prcDisplay)
 {
-    ASSERT(prcDisplay);
-    BOOL fValid = GetMonitorRect(_hmonStuck, prcDisplay);
-
-    if (!fValid)
+    ASSERT(prcDisplay); // 1312
+    if (!GetMonitorRects(_hmonStuck, prcDisplay, FALSE))
+    {
         _GetDisplayRectFromRect(prcDisplay, &_arStuckRects[uStuckPlace], MONITOR_DEFAULTTONEAREST);
+    }
 }
 
 // Snap a StuckRect to the edge of a containing rectangle
@@ -927,7 +1036,7 @@ LRESULT CTray::_CreateWindows()
     SetWindowStyle(_hwndRebar, 0x10u, 1);
 
     if (!SHRestricted(REST_NOLOWDISKSPACECHECKS))
-        SetTimer(_hwnd, 0x15u, 0xEA60u, nullptr);
+        SetTimer(_hwnd, 21, 60000, nullptr);
 
     LPITEMIDLIST pidlStaging;
     if (!SHRestricted(REST_NOCDBURNING) && SHGetFolderLocation(nullptr, 0x803B, nullptr, 0, &pidlStaging) >= 0 && ILRemoveLastID(pidlStaging))
@@ -946,9 +1055,12 @@ LRESULT CTray::_CreateWindows()
         DWORD cbData = sizeof(dwValue);
         if (!SHRegGetValueW(HKEY_LOCAL_MACHINE, SZ_EXPLORER_REGKEY, L"RestartTimer", 16, nullptr, &dwValue, &cbData) && dwValue)
         {
-            SetTimer(_hwnd, 0x1Au, 3600000 * dwValue, nullptr);
+            SetTimer(_hwnd, 26, 3600000 * dwValue, nullptr);
         }
     }
+
+    _pcbm = BandSite_GetCatBandManager(_ptbs);
+
     return 1;
 }
 
@@ -2763,7 +2875,7 @@ void CTray::_HandleSize()
         }
     }
 
-    if (g_fDragFullWindows || !this->_fSysSizing)
+    if (g_fDragFullWindows || !_fSysSizing)
     {
         SizeWindows();
 
@@ -7360,7 +7472,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     _OnNewSystemSizes();
                     BandSite_HandleMessage(_ptbs, hwnd, 0x15u, wParam_1, lParam_2, nullptr);
                 }
-                _PropagateMessage(hwnd, 0x15u, wParam_1, lParam_2);
+                _PropagateMessage(hwnd, 0x15, wParam_1, lParam_2);
                 return lres;
             case WM_ENDSESSION:
                 if (msg.wParam) // if (wParam)

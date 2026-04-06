@@ -2871,6 +2871,9 @@ bool SHUndocInit(void)
     LOAD_FUNCTION(user32, GhostWindowFromHungWindow);
     LOAD_FUNCTION_NO_FAIL(user32, GetWindowBand);
 
+    LOAD_MODULE(uxtheme);
+    LOAD_ORDINAL(uxtheme, IsThemeClassDefined, 50);
+
     LOAD_MODULE(msi);
     LOAD_FUNCTION(msi, MsiDecomposeDescriptorW);
 

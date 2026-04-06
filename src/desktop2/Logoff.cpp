@@ -175,7 +175,7 @@ private:
     MARGINS _margins;
     HFONT _hfMarlett;
     int field_58;
-    int field_5C;
+    int _fSplitButtonHot;
     HIMAGELIST _himl;
     int field_64;
     int field_68;
@@ -377,7 +377,7 @@ int CLogoffPane::_GetThemeBitmapSize(int iPartId, int iStateId, int id)
     if (_hTheme && iPartId)
     {
         SIZE siz;
-        if (GetThemePartSize(_hTheme, 0, iPartId, iStateId, 0, TS_TRUE, &siz) >= 0)
+        if (GetThemePartSize(_hTheme, nullptr, iPartId, iStateId, nullptr, TS_TRUE, &siz) >= 0)
         {
             cx = siz.cx;
         }
@@ -869,9 +869,9 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
             break;
         case NM_KILLFOCUS:
         LABEL_29:
-            if (field_5C || _GetCurPressedButton() == 99)
+            if (_fSplitButtonHot || _GetCurPressedButton() == 99)
             {
-                field_5C = 0;
+                _fSplitButtonHot = 0;
                 SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
                 InvalidateRect(_hwndSplit, nullptr, 0);
             }
@@ -1020,11 +1020,10 @@ LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
             {
                 _DoSplitButtonContextMenu(0);
             }
-            else if (HIWORD(wParam) == 7 && (field_5C || _GetCurPressedButton() == 99))
+            else if (HIWORD(wParam) == 7 && (_fSplitButtonHot || _GetCurPressedButton() == 99))
             {
-                HWND hwndSplit = _hwndSplit;
-                field_5C = 0;
-                SendMessageW(hwndSplit, BM_SETSTATE, 0, 0);
+                _fSplitButtonHot = 0;
+                SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
                 InvalidateRect(_hwndSplit, NULL, 0);
             }
             return 0;
@@ -1091,7 +1090,7 @@ LRESULT CLogoffPane::_OnCustomDraw(NMTBCUSTOMDRAW* pnmtbcd)
         {
             if ((pnmtbcd->nmcd.uItemState & CDIS_HOT) != 0)
             {
-                if (field_5C)
+                if (_fSplitButtonHot)
                 {
                     pnmtbcd->nmcd.uItemState = pnmtbcd->nmcd.uItemState & 0xFFFFFFBF;
                 }
@@ -1132,7 +1131,7 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
                 {
                     rc.right = imageInfo.rcImage.right;
                 }
-                if (field_5C)
+                if (_fSplitButtonHot)
                 {
                     SHFillRectClr(pdis->hDC, &rc, GetSysColor(COLOR_HIGHLIGHT));
                 }
@@ -1155,7 +1154,7 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
                 WCHAR chOut = fRTL ? 'w' : '8';
                 DrawTextW(pdis->hDC, &chOut, 1, &rc, dtFlags);
                 SetTextColor(
-                    pdis->hDC, SetTextColor(pdis->hDC, GetSysColor(field_5C != 0 ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT)));
+                    pdis->hDC, SetTextColor(pdis->hDC, GetSysColor(_fSplitButtonHot != 0 ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT)));
                 SelectObject(pdis->hDC, hfMarlett);
             }
             if (iOldMode)
@@ -1165,7 +1164,7 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
         }
         else
         {
-            int iState = field_5C != 0 ? SPLS_HOT : SPLS_NORMAL;
+            int iState = _fSplitButtonHot != 0 ? SPLS_HOT : SPLS_NORMAL;
             if ((pdis->itemState & ODS_SELECTED) != 0)
             {
                 iState = SPLS_PRESSED;
@@ -1230,7 +1229,7 @@ LABEL_12:
 
 int CLogoffPane::_GetCurButton()
 {
-    if (field_5C)
+    if (_fSplitButtonHot)
     {
         return 99;
     }
@@ -1365,9 +1364,9 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
                     }
                 }
                 IsPtInDropDownSplit = _IsPtInDropDownSplit(pdm->hwnd, pdm->pt);
-                if (IsPtInDropDownSplit != this->field_5C)
+                if (IsPtInDropDownSplit != this->_fSplitButtonHot)
                 {
-                    this->field_5C = IsPtInDropDownSplit;
+                    this->_fSplitButtonHot = IsPtInDropDownSplit;
                     if (!IsPtInDropDownSplit)
                         SendMessageW(this->_hwndSplit, 0xF3u, 0, 0);
                     goto LABEL_7;
@@ -1376,9 +1375,9 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             else
             {
                 pdm->flags &= ~0x100u;
-                if (this->field_5C)
+                if (this->_fSplitButtonHot)
                 {
-                    this->field_5C = 0;
+                    this->_fSplitButtonHot = 0;
                 LABEL_7:
                     InvalidateRect(this->_hwndSplit, 0, 0);
                 }
@@ -1400,10 +1399,10 @@ LRESULT CLogoffPane::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             pdm->pt.x = 0;
             pdm->pt.y = 0;
         }
-        if (this->field_5C)
+        if (this->_fSplitButtonHot)
         {
             v14 = this->_hwndSplit;
-            this->field_5C = 0;
+            this->_fSplitButtonHot = 0;
             SendMessageW(v14, 0xF3u, 0, 0);
             InvalidateRect(this->_hwndSplit, 0, 0);
         }

@@ -61,6 +61,7 @@ public:
     }
     
     IContextMenu3* GetContextMenu();
+    ICatBandManager* GetCatBandManager();
     void SetInner(IUnknown* punk);
     void SetLoaded(BOOL fLoaded) {_fLoaded = fLoaded;}
     BOOL HandleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *plres);
@@ -85,6 +86,7 @@ protected:
 
     // bandsite context menu
     IContextMenu3* _pcm;
+    ICatBandManager* _pcbm;
     HWND _hwnd;
     BOOL _fLoaded;
     BOOL _fDelayBootStuffHandled;
@@ -242,6 +244,9 @@ CTrayBandSite::~CTrayBandSite()
 {
     if (_pcm)
         _pcm->Release();
+
+    if (_pcbm)
+        _pcbm->Release();
 
     CoTaskMemFree(_pwzTheme);    
     return;
@@ -447,13 +452,16 @@ HRESULT CTrayBandSite::GetBandSiteInfo (BANDSITEINFO * pbsinfo)
 HRESULT CTrayBandSite::_AddRequiredBands()
 {
     IDeskBand* pdb;
-    HRESULT hr = CoCreateInstanceHook(CLSID_TaskBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pdb));
+    HRESULT hr = CoCreateInstanceHook(CLSID_TaskBand, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pdb));
     if (SUCCEEDED(hr))
     {
         hr = AddBand(pdb);
         pdb->Release();
     }
-
+    if (_pcbm)
+    {
+        _pcbm->ShowCatBand(CATID_DeskBand, CLSID_ISFBand, 26);
+    }
     return hr;
 }
 
@@ -640,6 +648,36 @@ void BandSite_HandleMenuCommand(IUnknown* punk, UINT idCmd)
         pcm->InvokeCommand((LPCMINVOKECOMMANDINFO)&ici);
         pcm->Release();
     }
+}
+
+ICatBandManager* CTrayBandSite::GetCatBandManager()
+{
+    if (!_pcbm)
+    {
+        IContextMenu3* pcm = GetContextMenu();
+        if (pcm)
+        {
+            pcm->QueryInterface(IID_PPV_ARGS(&_pcbm));
+            pcm->Release();
+        }
+    }
+    if (_pcbm)
+    {
+        _pcbm->AddRef();
+    }
+    return _pcbm;
+}
+
+ICatBandManager* BandSite_GetCatBandManager(IUnknown* punk)
+{
+    ICatBandManager* pcbm = nullptr;
+
+    CTrayBandSite* ptbs = IUnknownToCTrayBandSite(punk);
+    if (ptbs)
+    {
+        pcbm = ptbs->GetCatBandManager();
+    }
+    return pcbm;
 }
 
 void CTrayBandSite::SetInner(IUnknown* punk)

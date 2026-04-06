@@ -20,6 +20,7 @@ HRESULT BandSite_TestBandCLSID(IBandSite *pbs, DWORD idBand, REFIID riid);
 BOOL WINAPI BandSite_FixUpCompositionForBand(IUnknown *punk);
 void WINAPI BandSite_FixUpComposition(IBandSite *pbs);
 void BandSite_AccountAllBandsForTaskbarSizingBar(IBandSite* pbs, BOOL bSomething);
+ICatBandManager* BandSite_GetCatBandManager(IUnknown* punk);
 
 HRESULT IUnknown_SimulateDrop(IUnknown* punk, IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, LPDWORD pdwEffect);
 

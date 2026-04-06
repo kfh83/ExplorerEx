@@ -5398,8 +5398,6 @@ void CTrayNotify::_SetChevronTheme()
     }
 }
 
-extern HANDLE (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const WCHAR* pszClassId, BOOL fAllowInheritance);
-
 void CTrayNotify::_SetClockToolbarThemes()
 {
     if (_hTheme)

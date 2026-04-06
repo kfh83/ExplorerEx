@@ -264,7 +264,7 @@ public:
     HWND GetTaskWindow() { return _hwndTasks; }
     HWND GetTrayTips() { return _hwndTrayTips; }
     IDeskTray* GetDeskTray() { return &_desktray; }
-    IMenuPopup* GetStartMenu() { return _pmpStartMenu; };
+    IMenuPopup* GetStartMenu() { return _stb._pmpStartMenu; };
     BOOL IsTaskbarFading() { return _fTaskbarFading; };
     void GetStuckMonitorRect(RECT* prcStuck);
     BOOL IsMouseOverStartButton();
@@ -384,7 +384,7 @@ protected:
     BOOL _IsActive();
     void _AlignStartButton();
     void _GetWindowSizes(UINT uStuckPlace, const RECT* prcClient, RECT* prcView, RECT* prcNotify);
-    void _GetStuckDisplayRect(UINT uStuckPlace, LPRECT prcDisplay);
+    void _GetStuckDisplayRect(UINT uStuckPlace, RECT* prcDisplay);
     void _Hide();
     HWND _GetClockWindow();
     HRESULT _LoadInProc(PCOPYDATASTRUCT pcds);
@@ -497,6 +497,7 @@ protected:
     HWND _CreateStartButton();
     BOOL _InitTrayClass();
     void _SetStuckMonitor();
+    void _SetStuckMonitorState();
     void _GetSaveStateAndInitRects();
     LRESULT _OnCreateAsync();
     LRESULT _OnCreate();
@@ -675,12 +676,10 @@ protected:
     // these two must  go together for save reasons
     RECT _rcOldTray;     // last place we stuck ourselves (for work area diffs)
     HMONITOR _hmonStuck; // The current HMONITOR we are on
-    HMONITOR _hmonOld;   // The last hMonitor we were on 
-    IMenuBand* _pmbStartMenu;  //For Message translation.
-    IMenuPopup* _pmpStartMenu;  //For start menu cache
-    IMenuBand* _pmbStartPane; // For Message translation.
-    IMenuPopup* _pmpStartPane; // For navigating the start pane
-    void* _pvStartPane;  // For delayed initilization
+    HMONITOR _hmonOld;   // The last hMonitor we were on
+
+    int _fIsPrimaryMonitor;
+
     IStartMenuPin* _psmpin;    // For drag/drop to Start Button
     IMenuBand* _pmbTasks;      //For Message translation.
     IMenuPopup* _pmpTasks;

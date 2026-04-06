@@ -214,9 +214,9 @@ public:
     }
 
 	// Taken from ep_taskbar by @amrsatrio
-    LPCWSTR GetItemName() const
-    { 
-        return _pszTarget == SFD_SEPARATOR ? NULL : _pszTarget;
+    const WCHAR* GetItemName() const
+    {
+        return _pszTarget == SFD_SEPARATOR ? nullptr : _pszTarget;
     }
 
     // Taken from ep_taskbar by @amrsatrio
@@ -428,7 +428,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoUserFolderInStartMenu,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowUser"),
+        /* _pszShow */                      L"Start_ShowUser",
         /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -438,7 +438,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _iToolTip */                     0,
         /* _CustomTooltipCallback */        &CMenuDescriptor::UserTooltip,
         /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          TEXT("{59031a47-3f72-44a7-89c5-5595fe6b30ee}"),
+        /* _pszCanHideOnDesktop */          L"{59031a47-3f72-44a7-89c5-5595fe6b30ee}",
         /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenProfile*/
         /* _iEventId */                     582,
         /* _dwEventFlags */                 0
@@ -452,7 +452,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoSMMyDocs,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowMyDocs"),
+        /* _pszShow */                      L"Start_ShowMyDocs",
         /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -476,7 +476,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoSMMyPictures,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowMyPics"),
+        /* _pszShow */                      L"Start_ShowMyPics",
         /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -500,7 +500,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoStartMenuMyMusic,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowMyMusic"),
+        /* _pszShow */                      L"Start_ShowMyMusic",
         /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -524,7 +524,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoStartMenuMyGames,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowMyGames"),
+        /* _pszShow */                      L"Start_ShowMyGames",
         /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -548,10 +548,10 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoFavoritesMenu,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("StartMenuFavorites"),
+        /* _pszShow */                      L"StartMenuFavorites",
         /* _uFlags */                       0x8 | 0x10 | 0x80 | 0x200 | 0x800 | 0x1000,
         /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Favorites"),
+        /* _pszCustomizeKey */              L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Favorites",
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                IDS_STARTPANE_FAVORITES,
@@ -592,11 +592,11 @@ static CMenuDescriptor s_rgsfd[] =
         /* _kfId */                         FOLDERID_Recent,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  TEXT("::{0c39a5cf-1a7a-40c8-ba74-8900e6df5fcd}"),
+        /* _pszIconPath */                  L"::{0c39a5cf-1a7a-40c8-ba74-8900e6df5fcd}",
         /* _pguidPolicyHide */              &POLID_NoRecentDocsMenu,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_TrackDocs"),
+        /* _pszShow */                      L"Start_TrackDocs",
         /* _uFlags */                       0x2 | 0x8 | 0x10 | 0x80,
         /* _CreateShellMenuCallback */      CRecentShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
@@ -620,7 +620,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoMyComputerIcon,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowMyComputer"),
+        /* _pszShow */                      L"Start_ShowMyComputer",
         /* _uFlags */                       0x1 | 0x8 | 0x400,
         /* _CreateShellMenuCallback */      CMyComputerShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
@@ -630,7 +630,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _iToolTip */                     IDS_CUSTOMTIP_MYCOMP,
         /* _CustomTooltipCallback */        nullptr,
         /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          TEXT("{20D04FE0-3AEA-1069-A2D8-08002B30309D}"),
+        /* _pszCanHideOnDesktop */          L"{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
         /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenComputer*/
         /* _iEventId */                     522,
         /* _dwEventFlags */                 0x1
@@ -644,7 +644,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoStartMenuNetworkPlaces,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowNetPlaces"),
+        /* _pszShow */                      L"Start_ShowNetPlaces",
         /* _uFlags */                       SFD_SHOW,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -660,7 +660,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _dwEventFlags */                 0x100
     },
     { // Network Connections (10)
-        /* _pszTarget */                    TEXT("::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}"),
+        /* _pszTarget */                    L"::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,
@@ -668,7 +668,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoNetworkConnections,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowNetConn"),
+        /* _pszShow */                      L"Start_ShowNetConn",
         /* _uFlags */                       SFD_SHOW,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -708,7 +708,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _dwEventFlags */                 0
     },
     { // Control Panel (12)
-        /* _pszTarget */                    TEXT("::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"),
+        /* _pszTarget */                    L"::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     FOLDERID_ControlPanelFolder,
@@ -716,7 +716,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoControlPanel,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowControlPanel"),
+        /* _pszShow */                      L"Start_ShowControlPanel",
         /* _uFlags */                       0x1 | 0x8 | 0x80,
         /* _CreateShellMenuCallback */      nullptr, //CNoSubMenuShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
@@ -726,13 +726,13 @@ static CMenuDescriptor s_rgsfd[] =
         /* _iToolTip */                     IDS_CUSTOMTIP_CTRLPANEL,
         /* _CustomTooltipCallback */        nullptr,
         /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          TEXT("{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"),
+        /* _pszCanHideOnDesktop */          L"{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}",
         /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_ControlPanel_Launch*/
         /* _iEventId */                     128,
         /* _dwEventFlags */                 0x2
     },
     { // Set Program Access and Defaults (13)
-        /* _pszTarget */                    TEXT("::{E44E5D18-0652-4508-A4E2-8A090067BCB0}"),
+        /* _pszTarget */                    L"::{E44E5D18-0652-4508-A4E2-8A090067BCB0}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,
@@ -740,7 +740,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoSMConfigurePrograms,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowSetProgramAccessAndDefaults"),
+        /* _pszShow */                      L"Start_ShowSetProgramAccessAndDefaults",
         /* _uFlags */                       SFD_SHOW,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -758,13 +758,13 @@ static CMenuDescriptor s_rgsfd[] =
     { // Administrative Tools (14)
         /* _pszTarget */                    nullptr,
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      TEXT("Microsoft.AdministrativeTools"),
+        /* _pszPath */                      L"Microsoft.AdministrativeTools",
         /* _kfMenuId */                     GUID_NULL,
         /* _pszIconPath */                  nullptr,
         /* _pguidPolicyHide */              nullptr,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_AdminToolsRoot"),
+        /* _pszShow */                      L"Start_AdminToolsRoot",
         /* _uFlags */                       0x8 | 0x10,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -782,13 +782,13 @@ static CMenuDescriptor s_rgsfd[] =
     { // Printers (15)
         /* _pszTarget */                    nullptr,
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      TEXT("Microsoft.Printers"),
+        /* _pszPath */                      L"Microsoft.Printers",
         /* _kfMenuId */                     GUID_NULL,
         /* _pszIconPath */                  nullptr,
         /* _pguidPolicyHide */              nullptr,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowPrinters"),
+        /* _pszShow */                      L"Start_ShowPrinters",
         /* _uFlags */                       0,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -804,7 +804,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _dwEventFlags */                 0x400
     },
     { // Help (16)
-        /* _pszTarget */                    TEXT("::{2559a1f1-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _pszTarget */                    L"::{2559a1f1-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,
@@ -812,7 +812,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoSMHelp,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      TEXT("Start_ShowHelp"),
+        /* _pszShow */                      L"Start_ShowHelp",
         /* _uFlags */                       0x1 | 0x80,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -828,7 +828,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _dwEventFlags */                 0x8
     },
     { // Run (17)
-        /* _pszTarget */                    TEXT("::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _pszTarget */                    L"::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,
@@ -836,7 +836,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyHide */              &POLID_NoRun,
         /* _pguidPolicyRestrict */          nullptr,
         /* _pguidPolicyForceShow */         &POLID_ForceRunOnStartMenu,
-        /* _pszShow */                      TEXT("Start_ShowRun"),
+        /* _pszShow */                      L"Start_ShowRun",
         /* _uFlags */                       0x80,
         /* _CreateShellMenuCallback */      nullptr,
         /* _pszCustomizeKey */              nullptr,
@@ -876,7 +876,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _dwEventFlags */                 nullptr
     },
     { // Windows Security (19)
-        /* _pszTarget */                    TEXT("::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}"),
+        /* _pszTarget */                    L"::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      nullptr,
         /* _kfMenuId */                     GUID_NULL,

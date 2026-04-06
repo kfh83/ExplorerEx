@@ -51,7 +51,6 @@
 #define IDC_STARTMENUPREVIEW            1134
 #define IDC_NEWSCHOOLDESCRIPTION        1135
 
-#define DLG_PAGE_SMGENERAL              1135
 #define DLG_PAGE_SMADVANCED             1036
 
 #define IDC_SPCUST_ICONSMALL            1300

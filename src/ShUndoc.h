@@ -1571,3 +1571,5 @@ BOOL GetInfoTip(IShellFolder *psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTe
 
 inline HRESULT (*SHGetFolderPathEx)(REFKNOWNFOLDERID rfid, DWORD flags, HANDLE token, LPWSTR path, DWORD len);
 inline HMENU(*SHLoadMenuPopup)(HINSTANCE hinst, UINT id);
+
+inline BOOL (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const WCHAR* pszClassId, BOOL fAllowInheritance);

@@ -331,8 +331,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 			for (int i = 0; i < ARRAYSIZE(_aopa); i++)
 			{
-				SMNGETMINSIZE nmgms = { 0 };
-
+				SMNGETMINSIZE nmgms = {};
 				nmgms.hdr.hwndFrom = pnmgs->hdr.hwndFrom;
 				nmgms.siz = pnmgs->siz;
 				nmgms.hdr.code = pnmgs->hdr.code;

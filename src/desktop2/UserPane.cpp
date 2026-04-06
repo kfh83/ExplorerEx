@@ -14,23 +14,23 @@ CUserPane::CUserPane()
     , _fadeA(-1)
     , _fadeB(-1)
 {
-    ASSERT(_hwnd == NULL); // 19
-    ASSERT(_hbmUserPicture == NULL); // 20
+    ASSERT(_hwnd == nullptr); // 19
+    ASSERT(_hbmUserPicture == nullptr); // 20
 
     DWORD cbData = sizeof(DWORD);
     _dwFadeIn = 350;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEIN, SRRF_RT_ANY, NULL, &_dwFadeIn, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEIN, SRRF_RT_ANY, nullptr, &_dwFadeIn, &cbData);
 
     cbData = sizeof(DWORD);
     _dwFadeOut = 250;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEOUT, SRRF_RT_ANY, NULL, &_dwFadeOut, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEOUT, SRRF_RT_ANY, nullptr, &_dwFadeOut, &cbData);
 
     cbData = sizeof(DWORD);
     _dwFadeDelay = 400;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEDELAY, SRRF_RT_ANY, NULL, &_dwFadeDelay, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEDELAY, SRRF_RT_ANY, nullptr, &_dwFadeDelay, &cbData);
 }
 
 CUserPane::~CUserPane()
@@ -42,13 +42,14 @@ CUserPane::~CUserPane()
         delete _pgdipImage;
 }
 
-HRESULT CUserPane::QueryInterface(REFIID riid, void **ppvObj)
+HRESULT CUserPane::QueryInterface(REFIID riid, void** ppvObj)
 {
-    static const QITAB qit[] = {
+    static const QITAB qit[] =
+    {
         QITABENT(CUserPane, IServiceProvider),
         QITABENT(CUserPane, IOleCommandTarget),
         QITABENT(CUserPane, IObjectWithSite),
-        { 0 },
+        {},
     };
     return QISearch(this, qit, riid, ppvObj);
 }
@@ -69,12 +70,12 @@ ULONG CUserPane::Release()
     return lRef;
 }
 
-HRESULT CUserPane::SetSite(IUnknown *punkSite)
+HRESULT CUserPane::SetSite(IUnknown* punkSite)
 {
     return CObjectWithSite::SetSite(punkSite);
 }
 
-HRESULT CUserPane::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
+HRESULT CUserPane::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
 {
     if (IsEqualGUID(guidService, SID_SM_UserPane))
     {
@@ -109,7 +110,7 @@ HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexeco
                 {
                     _fadeC = lVal;
                     KillTimer(_hwndStatic, 1);
-                    SetTimer(_hwndStatic, 1, _dwFadeDelay, 0);
+                    SetTimer(_hwndStatic, 1, _dwFadeDelay, nullptr);
                 }
                 break;
             }
@@ -117,13 +118,13 @@ HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexeco
                 ASSERT(V_VT(pvarargIn) == VT_BYREF); // 310
                 _himl = (HIMAGELIST)pvarargIn->byref;
                 break;
-            case 323u:
+            case 323:
                 _HidePictureWindow();
                 break;
             default:
                 return hr;
         }
-        return 0;
+        hr = S_OK;
     }
     return hr;
 }

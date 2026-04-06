@@ -1,4 +1,4 @@
-#include "pch.h"
+#pragma once
 
 #include "COWSite.h"
 
@@ -42,37 +42,38 @@ class CUserPane
 {
 public:
     CUserPane();
-    ~CUserPane();
+    ~CUserPane() override;
 
-	// *** IUnknown ***
-	STDMETHODIMP QueryInterface(REFIID riid, void **ppvObj);
-	STDMETHODIMP_(ULONG) AddRef();
-	STDMETHODIMP_(ULONG) Release();
+    // *** IUnknown ***
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
 
-	// *** IObjectWithSite ***
-	STDMETHODIMP SetSite(IUnknown *punkSite);
+    // *** IObjectWithSite ***
+    STDMETHODIMP SetSite(IUnknown* punkSite) override;
 
-	// *** IServiceProvider ***
-	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void **ppvObject);
+    // *** IServiceProvider ***
+    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
 
-	// *** IOleCommandTarget ***
-	STDMETHODIMP QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT *pCmdText);
-	STDMETHODIMP Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut);
+    // *** IOleCommandTarget ***
+    STDMETHODIMP QueryStatus(const GUID* pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT* pCmdText) override;
+    STDMETHODIMP Exec(
+        const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut) override;
 
     static LRESULT CALLBACK s_WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT CALLBACK WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	static LRESULT CALLBACK s_WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT CALLBACK WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK s_WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT CALLBACK WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     LRESULT _OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	
+
     LRESULT OnSize();
     void _UpdatePictureWindow(BYTE a2, BYTE a3);
-	void _PaintPictureWindow(HDC hdc, BYTE a2, BYTE a3);
+    void _PaintPictureWindow(HDC hdc, BYTE a2, BYTE a3);
     HWND _GetPictureWindowPrevHnwd();
     void _UpdateDC(HDC hdc, int iIndex, BYTE a3);
-	void _HidePictureWindow();
+    void _HidePictureWindow();
     void _FadePictureWindow();
     void _DoFade();
 
@@ -80,8 +81,8 @@ public:
 
 private:
     HRESULT _UpdateUserInfo(int a2);
-	HRESULT _CreateUserPicture();
-    void _UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture);
+    HRESULT _CreateUserPicture();
+    void _UpdateUserImage(Gdiplus::Image* pgdiImageUserPicture);
 	
     HWND _hwnd;
     HWND _hwndStatic;
@@ -98,7 +99,7 @@ private:
     UINT _uidChangeRegister;
 
     HBITMAP _hbmUserPicture;
-	LONG _lRef;
+    LONG _lRef;
     LONG _fadeA;
     LONG _fadeB;
     LONG _fadeC;
@@ -107,7 +108,7 @@ private:
     DWORD _dwFadeIn;
     DWORD _dwFadeOut;
     DWORD _dwFadeDelay;
-    Gdiplus::Image *_pgdipImage;
+    Gdiplus::Image* _pgdipImage;
     TCHAR _szUserName[UNLEN + 1];
 
     enum { UPM_CHANGENOTIFY = WM_USER };
