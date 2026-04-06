@@ -3057,12 +3057,12 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
             {
                 int iMinButtonHeight = 1;
 
-                RECT rc = { 0 };
-                LRESULT tbButtonHeight1 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&rc);
-                if (rcNotify.bottom + tbButtonHeight1 >= 1)
+                TBMETRICS tbm;
+                LRESULT tbButtonHeight1 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                if (tbm.cyButtonSpacing + tbButtonHeight1 >= 1)
                 {
-                    LRESULT tbButtonHeight2 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&rc);
-                    iMinButtonHeight = rcNotify.bottom + tbButtonHeight2;
+                    LRESULT tbButtonHeight2 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                    iMinButtonHeight = tbm.cyButtonSpacing + tbButtonHeight2;
                 }
 
                 int iMinStuckHeight;
@@ -3072,10 +3072,11 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
                 }
                 else
                 {
-                    iMinStuckHeight = (rcNotify.bottom + rcView.bottom) / iMinButtonHeight;
+                    iMinStuckHeight = (tbm.cyButtonSpacing + rcView.bottom) / iMinButtonHeight;
                     _arStuckHeights[uStuckPlace] = iMinStuckHeight;
                 }
-                rcView.bottom = max(iMinButtonHeight * iMinStuckHeight - rcNotify.bottom, iRebarMinHeight);
+                rcView.bottom = std::max<int>(
+                    iMinButtonHeight * iMinStuckHeight - tbm.cyButtonSpacing, iRebarMinHeight); // @MOD Don't use macro
             }
             else if (rcView.right <= iRebarMinHeight)
             {
