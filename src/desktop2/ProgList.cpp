@@ -295,7 +295,7 @@ class CByUsageItem : public PaneItem
 public:
     LPITEMIDLIST _pidl;     // relative pidl
     CByUsageDir *_pdir;      // Parent directory
-    UEMINFO _uei;           /* Usage info (for sorting) */
+    UAINFO _uei;           /* Usage info (for sorting) */
     LPITEMIDLIST _pidl1;    // Vista - NEW
 
     static CByUsageItem *Create(CByUsageShortcut *pscut);
@@ -353,8 +353,8 @@ class CByUsageAppInfo // "papp"
 public:
     CByUsageShortcut *_pscutBest;// best candidate so far
     CByUsageShortcut *_pscutBestSM;// best candidate so far on Start Menu (excludes Desktop)
-    UEMINFO _ueiBest;           // info about best candidate so far
-    UEMINFO _ueiTotal;          // cumulative information
+    UAINFO _ueiBest;           // info about best candidate so far
+    UAINFO _ueiTotal;          // cumulative information
     LPTSTR  _pszAppPath;        // path to app in question
     FILETIME _ftCreated;        // when was file created?
     bool    _fNew;              // is app new?
@@ -459,7 +459,7 @@ public:
 
     inline LPTSTR GetAppPath() const { return _pszAppPath; }
 
-    void GetUAInfo(OUT UEMINFO *puei)
+    void GetUAInfo(OUT UAINFO *puei)
     {
 #ifdef DEBUG
         PRINT_UEMINFO(*puei);
@@ -467,7 +467,7 @@ public:
 		_GetUAInfo(&UAIID_APPLICATIONS, _pszAppPath, puei);
     }
 
-    void CombineUAInfo(IN const UEMINFO *pueiNew, BOOL fNew = TRUE, BOOL fIsDesktop = FALSE, BOOL a5 = TRUE /*Guess*/)
+    void CombineUAInfo(IN const UAINFO *pueiNew, BOOL fNew = TRUE, BOOL fIsDesktop = FALSE, BOOL a5 = TRUE /*Guess*/)
     {
         if (a5)
         {
@@ -487,7 +487,7 @@ public:
     //  The app UEM info is "old" if the execution time is more
     //  than an hour after the install time.
     //
-    inline BOOL _IsUAINFONew(const UEMINFO *puei)
+    inline BOOL _IsUAINFONew(const UAINFO *puei)
     {
         return FILETIMEtoInt64(puei->ftExecute) <
                FILETIMEtoInt64(_ftCreated) + ByUsage::FT_NEWAPPGRACEPERIOD();
@@ -620,7 +620,7 @@ public:
 
     CByUsageItem *CreatePinnedItem(int iPinPos);
 
-    HRESULT GetUAInfo(OUT UEMINFO *puei)
+    HRESULT GetUAInfo(OUT UAINFO *puei)
     {
         HRESULT hr = E_OUTOFMEMORY;
 
@@ -2226,10 +2226,10 @@ HRESULT ByUsage::_GetShortcutExeTarget(IShellFolder *psf, LPCITEMIDLIST pidl, LP
     return hr;
 }
 
-void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut)
+void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UAINFO *pueiOut)
 {
-    ZeroMemory(pueiOut, sizeof(UEMINFO));
-    pueiOut->cbSize = sizeof(UEMINFO);
+    ZeroMemory(pueiOut, sizeof(UAINFO));
+    pueiOut->cbSize = sizeof(UAINFO);
     pueiOut->dwMask = 0x11;
 
     UAQueryEntry(pguidGrp, pszPath, pueiOut);
@@ -2240,10 +2240,10 @@ void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut)
     }
 }
 
-void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, UEMINFO *pueiOut)
+void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, UAINFO *pueiOut)
 {
-    ZeroMemory(pueiOut, sizeof(UEMINFO));
-    pueiOut->cbSize = sizeof(UEMINFO);
+    ZeroMemory(pueiOut, sizeof(UAINFO));
+    pueiOut->cbSize = sizeof(UAINFO);
     pueiOut->dwMask = UEIM_HIT | UEIM_FILETIME;
 
     //
@@ -2527,7 +2527,7 @@ CByUsageAppInfo* CMenuItemsCache::GetAppInfo(LPTSTR pszAppPath, bool fIgnoreTime
     // Note that we test the easiest things first, to avoid hitting
     // the disk too much.
 
-bool ByUsage::_IsShortcutNew(CByUsageShortcut *pscut, CByUsageAppInfo *papp, const UEMINFO *puei)
+bool ByUsage::_IsShortcutNew(CByUsageShortcut *pscut, CByUsageAppInfo *papp, const UAINFO *puei)
 {
     //
     //  Shortcut is new if...
@@ -2599,7 +2599,7 @@ void ByUsage::EnumFolderFromCache()
             // application.
             //
             //
-            UEMINFO uei;
+            UAINFO uei;
             pscut->GetUEMInfo(&uei);
 
             // See if this shortcut is still new.  If the app is no longer new,
@@ -2665,7 +2665,7 @@ void ByUsage::EnumFolderFromCache()
 
                 CByUsageAppInfo *papp = pscut->App();
 
-                UEMINFO uei;
+                UAINFO uei;
                 if (papp && pscut->GetUAInfo(&uei) >= 0)
                 {
 #ifdef DEBUG
@@ -2749,7 +2749,7 @@ BOOL ByUsage::_AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei)
 
     if (!papp->IsBlank() && papp->_pscutBest)
     {
-        UEMINFO uei;
+        UAINFO uei;
         papp->GetUAInfo(&uei);
         papp->CombineUAInfo(&uei, papp->_IsUAINFONew(&uei));
 
@@ -2850,7 +2850,7 @@ BOOL ByUsage::_AfterEnumCB(CByUsageAppInfo *papp, AFTERENUMINFO *paei)
 #else
     if (!papp->IsBlank() && papp->_pscutBest)
     {
-        UEMINFO puei;
+        UAINFO puei;
         papp->GetUAInfo(&puei);
         papp->CombineUAInfo(&puei, papp->_IsUAINFONew(&puei), 0, 1);
 
@@ -3097,7 +3097,7 @@ BOOL CMenuItemsCache::_IsExcludedDirectory(LPCITEMIDLIST a2, IShellFolder *psf, 
         || (dwAttributes & 0x40000000) == 0
         || (dwAttributes & 0x10000) != 0
         || !SHGetPathFromIDListW(a2, pszPath)
-        || DisplayNameOf(psf, pidl, 0x8000, String2, 260u) < 0
+        || DisplayNameOfW(psf, pidl, 0x8000, String2, 260u) < 0
         || !lstrcmpiW(pszPath, String2)
         || !PathIsPrefixW(pszPath, String2);
 #endif
@@ -4530,7 +4530,7 @@ int ByUsage::CompareItems(PaneItem *p1, PaneItem *p2)
 }
 
 // Sort by most frequently used - break ties by most recently used
-int ByUsage::CompareUAInfo(const UEMINFO *puei1, const UEMINFO *puei2)
+int ByUsage::CompareUAInfo(const UAINFO *puei1, const UAINFO *puei2)
 {
     float flResult = puei2->R - puei1->R;
     if (flResult < 0.0f)
@@ -4568,64 +4568,55 @@ HRESULT ByUsage::GetFolderAndPidl(PaneItem *p, IShellFolder **ppsfOut, LPCITEMID
     }
 }
 
-HRESULT ByUsage::ContextMenuDeleteItem(PaneItem *p, IContextMenu *pcm, CMINVOKECOMMANDINFOEX *pici)
+HRESULT ByUsage::ContextMenuDeleteItem(PaneItem* p, IContextMenu* pcm, CMINVOKECOMMANDINFOEX* pici)
 {
-    IShellFolder *psf;
+    IShellFolder* psf;
     LPCITEMIDLIST pidlItem;
-    CByUsageItem *pitem = static_cast<CByUsageItem *>(p);
+    CByUsageItem* pitem = static_cast<CByUsageItem*>(p);
 
     HRESULT hr = GetFolderAndPidl(pitem, &psf, &pidlItem);
     if (SUCCEEDED(hr))
     {
-        // Unpin the item - we go directly to the IStartMenuPin because
-        // the context menu handler might decide not to support pin/unpin
-        // for this item because it doesn't satisfy some criteria or other.
-        LPITEMIDLIST pidlFull = pitem->CreateFullPidl();
+        ITEMIDLIST* pidlFull = pitem->CreateFullPidl();
         if (pidlFull)
         {
-            _psmpin->Modify(pidlFull, NULL); // delete from pin list
+            _psmpin->Modify(pidlFull, nullptr);
             ILFree(pidlFull);
         }
 
-        // Set hit count for shortcut to zero
-        UEMINFO uei;
-        ZeroMemory(&uei, sizeof(UEMINFO));
-        uei.cbSize = sizeof(UEMINFO);
-        uei.dwMask = UEIM_HIT;
-        uei.cLaunches = 0;
-
-        _SetUEMPidlInfo(psf, pidlItem, &uei);
-
-        // Set hit count for target app to zero
-        TCHAR szPath[MAX_PATH];
+        WCHAR szPath[260];
+        if (SUCCEEDED(DisplayNameOfW(psf, pidlItem, SHGDN_FORPARSING, szPath, ARRAYSIZE(szPath))))
+        {
+            UADeleteEntry(&UAIID_SHORTCUTS, szPath);
+        }
         if (SUCCEEDED(_GetShortcutExeTarget(psf, pidlItem, szPath, ARRAYSIZE(szPath))))
         {
-            _SetUEMPathInfo(szPath, &uei);
+            UADeleteEntry(&UAIID_APPLICATIONS, szPath);
         }
 
-        // Set hit count for Darwin target to zero
         CByUsageHiddenData hd;
         hd.Get(pidlItem, CByUsageHiddenData::BUHD_MSIPATH);
         if (hd._pwszMSIPath && hd._pwszMSIPath[0])
         {
-            _SetUEMPathInfo(hd._pwszMSIPath, &uei);
+            UADeleteEntry(&UAIID_APPLICATIONS, szPath);
         }
         hd.Clear();
 
-        psf->Release();
-
-        if (IsSpecialPinnedItem(pitem))
+        if (IsSpecialPinnedItem(pitem) && !IsOS(OS_SERVERADMINUI))
         {
-            // EXEX-VISTA(isabella): Disabled temporarily.
-            // c_tray.CreateStartButtonBalloon(0, IDS_STARTPANE_SPECIALITEMSTIP);
+            SMNGETISTARTBUTTON nmgis = {};
+            _SendNotify(_hwnd, 218, &nmgis.hdr);
+            if (nmgis.pstb)
+            {
+                nmgis.pstb->CreateStartButtonBalloon(0, 8230);
+                nmgis.pstb->Release();
+            }
         }
 
-        // If the item wasn't pinned, then all we did was dork some usage
-        // counts, which does not trigger an automatic refresh.  So do a
-        // manual one.
         _pByUsageUI->Invalidate();
-        PostMessage(_pByUsageUI->_hwnd, ByUsageUI::SFTBM_REFRESH, TRUE, 0);
+        PostMessageW(_pByUsageUI->_hwnd, ByUsageUI::SFTBM_REFRESH, TRUE, 0);
 
+        psf->Release();
     }
 
     return hr;
@@ -4734,7 +4725,7 @@ HRESULT ByUsage::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewName)
                 // second person who does the move sees cHit=0 and skips
                 // the operation.
                 //
-                UEMINFO uei;
+                UAINFO uei;
                 _GetUEMPidlInfo(psf, pidlItem, &uei);
                 if (uei.cLaunches > 0)
                 {

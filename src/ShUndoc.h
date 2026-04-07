@@ -193,28 +193,19 @@ typedef struct
 {
     CLSID clsid;
     DWORD dwFlags;
-} LOADINPROCDATA, * PLOADINPROCDATA;
-/*
-typedef struct
-{
-    DWORD   cbSize;     // SIZEOF
-    DWORD   dwMask;     // INOUT requested/given (UEIM_*)
-    int     cHit;       // profile count
-    DWORD   dwAttrs;    // attributes (UEIA_*)
-    FILETIME ftExecute; // Last execute filetime
-} UEMINFO, * LPUEMINFO;
-*/
+} LOADINPROCDATA, *PLOADINPROCDATA;
 
-typedef struct tagUEMINFO {
-    DWORD cbSize;           // SIZEOF
-	DWORD dwMask;           // INOUT requested/given (UEIM_*)
-	FLOAT R;                // recency
-	UINT cLaunches;         // profile count
-	UINT cSwitches;         // number of times app was switched to
-	DWORD dwTime;           // total time app has been used (in seconds)
-	FILETIME ftExecute;     // Last execute filetime
-	BOOL fExcludeFromMFU;   // exclude from most frequently used lists
-} UEMINFO, *LPUEMINFO;
+typedef struct tagUEMINFO
+{
+    DWORD cbSize;
+    DWORD dwMask;
+    float R;
+    UINT cLaunches;
+    UINT cSwitches;
+    DWORD dwTime;
+    FILETIME ftExecute;
+    BOOL fExcludeFromMFU;
+} UAINFO, *LPUAINFO;
 
 typedef struct _SHShortcutInvokeAsIDList {
     USHORT  cb;
@@ -1376,7 +1367,7 @@ typedef DWORD OBJCOMPATFLAGS;
 
 HRESULT SHGetNameAndFlags(LPCITEMIDLIST pidl, DWORD dwFlags, LPTSTR pszName, UINT cchName, DWORD* pdwAttribs);
 DWORD SHGetAttributes(IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwAttribs);
-HRESULT DisplayNameOf(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR psz, UINT cch);
+HRESULT DisplayNameOfW(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR psz, UINT cch);
 #define SHGetAttributesOf(pidl, prgfInOut) SHGetNameAndFlags(pidl, 0, NULL, 0, prgfInOut)
 #define ToolBar_CommandToIndex(hwnd, idBtn)  \
     (BOOL)SNDMSG((hwnd), TB_COMMANDTOINDEX, (WPARAM)(idBtn), 0)

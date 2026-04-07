@@ -4139,7 +4139,7 @@ HRESULT SHBeginLabelEdit(IShellFolder *psf, LPCITEMIDLIST pidl, HWND hwndEdit, i
 
         WCHAR szName[260];
         WCHAR szNameNew[260];
-        if (DisplayNameOf(psf, pidl, 0x1001, szName, 260u) >= 0 && DisplayNameOf(psf, pidl, 0x8001, szNameNew, 260u) >= 0)
+        if (DisplayNameOfW(psf, pidl, 0x1001, szName, 260u) >= 0 && DisplayNameOfW(psf, pidl, 0x8001, szNameNew, 260u) >= 0)
         {
             SetWindowText(hwndEdit, szName);
             if ((dwAttribs & 0x20400000) != 0x20000000 && !StrCmpW(szNameNew, szName))

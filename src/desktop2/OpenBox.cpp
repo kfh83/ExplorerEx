@@ -158,7 +158,7 @@ HRESULT COpenBoxHost::Exec(
                 hr = S_OK;
                 break;
             default:
-                return hr;
+                break;
         }
     }
 

@@ -2163,7 +2163,7 @@ DWORD SHGetAttributes(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD dwAttribs)
     return dw;
 }
 
-HRESULT DisplayNameOf(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR psz, UINT cch)
+HRESULT DisplayNameOfW(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD flags, LPTSTR psz, UINT cch)
 {
     *psz = 0;
     STRRET sr;
@@ -2195,7 +2195,7 @@ HRESULT SHGetNameAndFlags(LPCITEMIDLIST pidl, DWORD dwFlags, LPTSTR pszName, UIN
     if (SUCCEEDED(hr))
     {
         if (pszName)
-            hr = DisplayNameOf(psf, pidlLast, dwFlags, pszName, cchName);
+            hr = DisplayNameOfW(psf, pidlLast, dwFlags, pszName, cchName);
 
         if (SUCCEEDED(hr) && pdwAttribs)
         {

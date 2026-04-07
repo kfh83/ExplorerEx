@@ -32,8 +32,8 @@ MIDL_INTERFACE("49B36D57-5FD2-45A7-981B-06028D577A47")
 IShellUserAssist : IUnknown
 {
 	virtual HRESULT STDMETHODCALLTYPE FireEvent(const GUID * pguidGrp, UAEVENT eCmd, const WCHAR * pszPath, DWORD dwTimeElapsed) = 0;
-	virtual HRESULT STDMETHODCALLTYPE QueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UEMINFO* pui) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetEntry(const GUID* pguidGrp, const WCHAR* pszPath, UEMINFO* pui) = 0;
+	virtual HRESULT STDMETHODCALLTYPE QueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui) = 0;
 	virtual HRESULT STDMETHODCALLTYPE RenameEntry(const GUID* pguidGrp, const WCHAR* pszPathOld, const WCHAR* pszPathNew) = 0;
 	virtual HRESULT STDMETHODCALLTYPE DeleteEntry(const GUID* pguidGrp, const WCHAR* pszPath) = 0;
 	virtual HRESULT STDMETHODCALLTYPE Enable(BOOL bEnable) = 0;
@@ -107,7 +107,7 @@ HRESULT UEMFireEvent(const GUID* pguidGrp, int eCmd, DWORD dwFlags, WPARAM wPara
 	return hr;
 }
 
-HRESULT UEMQueryEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui)
+HRESULT UEMQueryEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui)
 {
 	printf("UEMQueryEvent: %d\n",eCmd);
 	HRESULT hr = E_FAIL;
@@ -133,7 +133,7 @@ HRESULT UEMQueryEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lPar
 
 // these are useless (doesnt get called)
 
-HRESULT UEMSetEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui)
+HRESULT UEMSetEvent(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui)
 {
 	printf("UEMSetEvent : %d\n",eCmd);
 	// same as queryevent kinda
@@ -176,7 +176,7 @@ void UEMEvalMsg(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam)
 	return;
 }
 
-BOOL UEMGetInfo(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui)
+BOOL UEMGetInfo(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui)
 {
 	printf("UEMGetInfo\n");
 	HRESULT hr;
@@ -184,7 +184,6 @@ BOOL UEMGetInfo(const GUID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LP
 	hr = UEMQueryEvent(pguidGrp, eCmd, wParam, lParam, pui);
 	return SUCCEEDED(hr);
 }
-
 
 // shlwapi.dll ordinal 236
 typedef HMODULE(*SHPinDllOfCLSID_t)(REFCLSID rclsid);
@@ -223,35 +222,46 @@ IShellUserAssist* GetUserAssistWorker(REFCLSID clsidUserAssist)
 	return g_uempUa != (IShellUserAssist*)-1 ? g_uempUa : nullptr;
 }
 
-HRESULT UAQueryEntry(const GUID* pguidGrp, LPCWSTR pszPath, UEMINFO* pueiOut)
-{
-	HRESULT hr = E_FAIL;
-	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
-	if (pua)
-	{
-		hr = pua->QueryEntry(pguidGrp, pszPath, pueiOut);
-	}
-	return hr;
-}
-
-HRESULT UARegisterNotify(UACallback a1, void* a2, int a3)
-{
-	HRESULT hr = E_FAIL;
-	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
-	if (pua)
-	{
-		hr = pua->RegisterNotify(a1, a2, a3);
-	}
-	return hr;
-}
-
-HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed)
+EXTERN_C HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed)
 {
 	HRESULT hr = E_FAIL;
 	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
 	if (pua)
 	{
 		hr = pua->FireEvent(pguidGrp, eCmd, pszPath, dwTimeElapsed);
+	}
+	return hr;
+}
+
+EXTERN_C HRESULT UAQueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->QueryEntry(pguidGrp, pszPath, pui);
+	}
+	return hr;
+}
+
+EXTERN_C HRESULT UADeleteEntry(const GUID* pgudGrp, const WCHAR* pszPath)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->DeleteEntry(pgudGrp, pszPath);
+	}
+	return hr;
+}
+
+EXTERN_C HRESULT UARegisterNotify(UACallback a1, void* a2, int a3)
+{
+	HRESULT hr = E_FAIL;
+	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
+	if (pua)
+	{
+		hr = pua->RegisterNotify(a1, a2, a3);
 	}
 	return hr;
 }

@@ -294,7 +294,7 @@ public:        // Methods required by SFTBarHost
     virtual void EnumItems();
     virtual LPITEMIDLIST GetFullPidl(PaneItem *p);
 
-    static int CompareUAInfo(const UEMINFO *puei1, const UEMINFO *puei2);
+    static int CompareUAInfo(const UAINFO *puei1, const UAINFO *puei2);
 
     virtual int CompareItems(PaneItem *p1, PaneItem *p2);
 
@@ -355,7 +355,7 @@ private:
     static int UANotifyCB(void *param, const GUID *pguidGrp, const WCHAR *, UAEVENT eCmd);
 
     BOOL _GetExcludedDirectories();
-    bool _IsShortcutNew(CByUsageShortcut *pscut, CByUsageAppInfo *papp, const UEMINFO *puei);
+    bool _IsShortcutNew(CByUsageShortcut *pscut, CByUsageAppInfo *papp, const UAINFO *puei);
     void _DestroyExcludedDirectories();
     LRESULT _ModifySMInfo(PSMNMMODIFYSMINFO pmsi);
 

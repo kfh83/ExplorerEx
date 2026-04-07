@@ -2349,7 +2349,7 @@ HRESULT CNoFontsShellMenuCallback::QueryInterface(REFIID riid, void **ppvObj)
 BOOL _IsFontsFolderShortcut(IShellFolder *psf, LPCITEMIDLIST pidl)
 {
     TCHAR sz[MAX_PATH];
-    return SUCCEEDED(DisplayNameOf(psf, pidl, SHGDN_FORPARSING | SHGDN_INFOLDER, sz, ARRAYSIZE(sz))) &&
+    return SUCCEEDED(DisplayNameOfW(psf, pidl, SHGDN_FORPARSING | SHGDN_INFOLDER, sz, ARRAYSIZE(sz))) &&
            lstrcmpi(sz, TEXT("::{D20EA4E1-3957-11d2-A40B-0C5020524152}")) == 0;
 }
 

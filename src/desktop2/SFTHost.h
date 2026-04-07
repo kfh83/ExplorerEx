@@ -921,7 +921,7 @@ _inline SMPANEDATA* PaneDataFromCreateStruct(LPARAM lParam)
 //  Helper functions for messing with UEM info
 //
 
-void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, UEMINFO *pueiOut);
+void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, UAINFO *pueiOut);
 
 #define _GetUEMPidlInfo(psf, pidl, pueiOut)                 \
         _GetUEMInfo(&UEMIID_SHELL, UEME_RUNPIDL,            \
@@ -950,7 +950,7 @@ void _GetUEMInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, U
                 reinterpret_cast<LPARAM>(pidl))
 
 
-void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UEMINFO *pueiOut);
+void _GetUAInfo(const GUID *pguidGrp, LPCWSTR pszPath, UAINFO *pueiOut);
 
 //****************************************************************************
 //

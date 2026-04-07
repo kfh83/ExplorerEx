@@ -2015,7 +2015,7 @@ BOOL TaskShortcut::_PromotePidl(LPCITEMIDLIST pidl, BOOL fForce)
             GetSystemTimeAsFileTime(&ftSession);
             DecrementFILETIME(&ftSession, (__int64)10000 * s_msSession);
 
-            UEMINFO uei;
+            UAINFO uei;
             uei.cbSize = sizeof(uei);
             uei.dwMask = UEIM_FILETIME;
             SetFILETIMEfromInt64(&uei.ftExecute, 0);

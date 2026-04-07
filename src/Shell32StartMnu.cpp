@@ -903,7 +903,7 @@ void DBUEMQueryEvent(const IID* pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam
 #if 1
     return;
 #else
-    UEMINFO uei;
+    UAINFO uei;
 
     uei.cbSize = sizeof(uei);
     uei.dwMask = ~0;    // UEIM_HIT etc.
@@ -1570,7 +1570,7 @@ HRESULT CStartMenuCallback::_Demote(LPSMDATA psmd)
         (psmd->uIdAncestor == IDM_PROGRAMS ||
             psmd->uIdAncestor == IDM_FAVORITES))
     {
-        UEMINFO uei;
+        UAINFO uei;
         uei.cbSize = sizeof(uei);
         uei.dwMask = UEIM_HIT;
         uei.cLaunches = 0;
@@ -1611,7 +1611,7 @@ HRESULT CStartMenuCallbackBase::_HandleNew(LPSMDATA psmd)
         (psmd->uIdAncestor == IDM_PROGRAMS ||
             psmd->uIdAncestor == IDM_FAVORITES))
     {
-        UEMINFO uei;
+        UAINFO uei;
         uei.cbSize = sizeof(uei);
         uei.dwMask = UEIM_HIT;
         uei.cLaunches = UEM_NEWITEMCOUNT;
@@ -2383,7 +2383,7 @@ HRESULT CStartMenuCallback::_GetHmenuInfo(SMDATA* psmd, SMINFO* psminfo)
 
 DWORD CStartMenuCallback::_GetDemote(SMDATA* psmd)
 {
-    UEMINFO uei;
+    UAINFO uei;
     DWORD dwFlags = 0;
 
     uei.cbSize = sizeof(uei);
@@ -2485,7 +2485,7 @@ HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut)
 void UEMRenamePidl(const GUID* pguidGrp1, IShellFolder* psf1, LPCITEMIDLIST pidl1,
     const GUID* pguidGrp2, IShellFolder* psf2, LPCITEMIDLIST pidl2)
 {
-    UEMINFO uei;
+    UAINFO uei;
     uei.cbSize = sizeof(uei);
     uei.dwMask = UEIM_HIT | UEIM_FILETIME;
     if (SUCCEEDED(UEMQueryEvent(pguidGrp1,
@@ -2506,7 +2506,7 @@ void UEMRenamePidl(const GUID* pguidGrp1, IShellFolder* psf1, LPCITEMIDLIST pidl
 //                   When modifying this, rev that one as well.
 void UEMDeletePidl(const GUID* pguidGrp, IShellFolder* psf, LPCITEMIDLIST pidl)
 {
-    UEMINFO uei;
+    UAINFO uei;
     uei.cbSize = sizeof(uei);
     uei.dwMask = UEIM_HIT;
     uei.cLaunches = 0;
@@ -2621,7 +2621,7 @@ HRESULT CStartMenuCallbackBase::_ProcessChangeNotify(SMDATA* psmd, LONG lEvent,
 
         if (SUCCEEDED(SHBindToParent(pidl1, IID_PPV_ARG(IShellFolder, &psf), &pidl)))
         {
-            UEMINFO uei;
+            UAINFO uei;
             uei.cbSize = sizeof(uei);
             uei.dwMask = UEIM_HIT;
             uei.cLaunches = UEM_NEWITEMCOUNT;
@@ -3191,7 +3191,7 @@ HRESULT CStartMenuCallbackBase::_FilterPidl(UINT uParent, IShellFolder* psf, LPC
     if (uParent == IDM_PROGRAMS || uParent == IDM_TOPLEVELSTARTMENU)
     {
         TCHAR szChild[MAX_PATH];
-        if (SUCCEEDED(DisplayNameOf(psf, pidl, SHGDN_INFOLDER | SHGDN_FORPARSING, szChild, ARRAYSIZE(szChild))))
+        if (SUCCEEDED(DisplayNameOfW(psf, pidl, SHGDN_INFOLDER | SHGDN_FORPARSING, szChild, ARRAYSIZE(szChild))))
         {
             // HACKHACK (lamadio): This code assumes that the Display name
             // of the Programs and Commons Programs folders are the same. It

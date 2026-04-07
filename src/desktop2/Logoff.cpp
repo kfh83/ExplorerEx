@@ -214,9 +214,10 @@ private:
 
 CLogoffPane::CLogoffPane()
 {
-    ASSERT(_hwndTB == NULL);
-    ASSERT(_hwndTT == NULL);
+    ASSERT(_hwndTB == nullptr); // 313
+    ASSERT(_hwndTT == nullptr); // 314
     _clr = CLR_INVALID;
+    ASSERT(_psdc == nullptr);   // 316
 }
 
 CLogoffPane::~CLogoffPane()
@@ -1202,7 +1203,7 @@ LRESULT CLogoffPane::_NextVisibleButton(PSMNDIALOGMESSAGE pdm, int i, int direct
     v4 = i;
     if (i == 99)
         v4 = 3;
-    while (1)
+    while (true)
     {
         v4 += direction;
         if (v4 < 0)
@@ -1210,7 +1211,7 @@ LRESULT CLogoffPane::_NextVisibleButton(PSMNDIALOGMESSAGE pdm, int i, int direct
         v5 = v4 == 3;
         if ((unsigned int)v4 >= 3)
             goto LABEL_12;
-        if (!CLogoffPane::_IsButtonHiddenOrDisabled(v4, 0x80000000))
+        if (!_IsButtonHiddenOrDisabled(v4, 0x80000000))
         {
             pdm->itemID = v4;
             return 1;
@@ -1592,34 +1593,34 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
         return 0;
     case 2u:
         if ((flags & 0x10000) == 0)
-            return CLogoffPane::_NextVisibleButton(pdm, -1, 1);
-        return CLogoffPane::_NextVisibleButton(pdm, 3, -1);
+            return _NextVisibleButton(pdm, -1, 1);
+        return _NextVisibleButton(pdm, 3, -1);
     case 3u:
-        return CLogoffPane::_NextVisibleButton(pdm, -1, 1);
+        return _NextVisibleButton(pdm, -1, 1);
     case 4u:
-        VisibleButton = CLogoffPane::_NextVisibleButton(pdm, 3, -1);
+        VisibleButton = _NextVisibleButton(pdm, 3, -1);
         if (VisibleButton)
         {
             if (pdm->itemID == 99)
-                CLogoffPane::_DoSplitButtonContextMenu(1);
+                _DoSplitButtonContextMenu(1);
         }
         return VisibleButton;
     case 5u:
         if (pdm->pmsg->wParam == 37)
         {
-            CurButton = CLogoffPane::_GetCurButton();
-            if (!CLogoffPane::_NextVisibleButton(pdm, CurButton, -1))
+            CurButton = _GetCurButton();
+            if (!_NextVisibleButton(pdm, CurButton, -1))
                 return 0;
             goto LABEL_21;
         }
         if (pdm->pmsg->wParam == 39)
         {
-            v9 = CLogoffPane::_GetCurButton();
-            if (CLogoffPane::_NextVisibleButton(pdm, v9, 1))
+            v9 = _GetCurButton();
+            if (_NextVisibleButton(pdm, v9, 1))
             {
                 if (pdm->itemID == 99)
                 {
-                    CLogoffPane::_DoSplitButtonContextMenu(1);
+                    _DoSplitButtonContextMenu(1);
                     pdm->flags &= ~0x100u;
                 }
             LABEL_21:
@@ -1638,7 +1639,7 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
         if (v11 == 99)
         {
-            if (CLogoffPane::_GetCurPressedButton() != 99)
+            if (_GetCurPressedButton() != 99)
                 PostMessageW(this->_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
             return 1;
         }
@@ -1658,7 +1659,7 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             pmsg = pdm->pmsg;
             if (pmsg)
             {
-                if (pmsg->message == 0x201 && CLogoffPane::_GetCurPressedButton() != 99)
+                if (pmsg->message == 0x201 && _GetCurPressedButton() != 99)
                     PostMessageW(this->_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
             }
         }
@@ -1667,9 +1668,9 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
         pdm->flags = flags & 0xFFFFFEFF;
         return 1;
     case 0xAu:
-        if (CLogoffPane::_GetCurButton() != 99)
+        if (_GetCurButton() != 99)
             return 0;
-        CLogoffPane::_DoSplitButtonContextMenu(1);
+        _DoSplitButtonContextMenu(1);
         return 1;
     default:
         ASSERT(!"Unknown SMNDM command"); // 1767

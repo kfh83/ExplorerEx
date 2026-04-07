@@ -436,7 +436,7 @@ void CreateInitialMFU(BOOL fReset)
 
         // Now build up the new MFU given this information
 
-        UEMINFO uei;
+        UAINFO uei;
         uei.cbSize = sizeof(uei);
         uei.dwMask = UEIM_HIT | UEIM_FILETIME;
         GetSystemTimeAsFileTime(&uei.ftExecute);

@@ -104,8 +104,8 @@ DEFINE_GUID(UAIID_SHORTCUTS, 0xF4E57C4B, 0x2036, 0x45f0, 0xa9, 0xab, 0x44, 0x3b,
 //  FEATURE rename to UA* (from UEM*)
 BOOL UEMIsLoaded();
 HRESULT UEMFireEvent(const GUID *pguidGrp, int eCmd, DWORD dwFlags, WPARAM wParam, LPARAM lParam);
-HRESULT UEMQueryEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui);
-HRESULT UEMSetEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui);
+HRESULT UEMQueryEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui);
+HRESULT UEMSetEvent(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui);
 
 // *** NEW User Assist functions from Windows 7 build 6519 ***
 
@@ -118,11 +118,12 @@ typedef enum tagUAEVENT
     UAE_EXCLUDEAPP = 4,
 } UAEVENT;
 
-typedef int(CALLBACK *UACallback)(void *, const GUID *, LPCWSTR, UAEVENT);
+typedef int (CALLBACK *UACallback)(void*, const GUID*, const WCHAR*, UAEVENT);
 
-HRESULT UAQueryEntry(const GUID* pguidGrp, LPCWSTR pszPath, LPUEMINFO pui);
-HRESULT UARegisterNotify(UACallback a1, void* a2, int a3);
-HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed);
+EXTERN_C HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed);
+EXTERN_C HRESULT UAQueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui);
+EXTERN_C HRESULT UADeleteEntry(const GUID* pgudGrp, const WCHAR* pszPath);
+EXTERN_C HRESULT UARegisterNotify(UACallback a1, void* a2, int a3);
 
 
 
@@ -141,7 +142,7 @@ void UEMEvalMsg(const GUID *pguidGrp, int uemCmd, WPARAM wParam, LPARAM lParam);
 
 #define UEIA_RARE       0x01    // rare (demotion candidate)
 
-BOOL UEMGetInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUEMINFO pui);
+BOOL UEMGetInfo(const GUID *pguidGrp, int eCmd, WPARAM wParam, LPARAM lParam, LPUAINFO pui);
 #endif // }
 
 // }
