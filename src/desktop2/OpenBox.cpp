@@ -105,7 +105,7 @@ HRESULT COpenBoxHost::Exec(
             case 306:
             {
                 ASSERT(pvarargIn->vt == VT_BYREF); // 627
-                HWND hwnd = (HWND)pvarargIn->byref;
+                HWND hwnd = static_cast<HWND>(pvarargIn->byref);
                 ASSERT(pvarargOut->vt == VT_BYREF); // 629
                 if (SHIsChildOrSelf(_hwnd, hwnd) == S_OK)
                 {
@@ -134,14 +134,12 @@ HRESULT COpenBoxHost::Exec(
             }
             case 315:
             {
-                WCHAR szSearchQuery[260];
-                _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
-                if (szSearchQuery[0])
-                {
-                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
-                    pvarargOut->iVal = 0;
-                }
-                return S_OK;
+                ASSERT(pvarargIn->vt == VT_BYREF); // 608
+                _fInSetText = TRUE;
+                field_4C = 0;
+                _pssc->SetText((const WCHAR*)pvarargIn->byref, SSCTEXT_DEFAULT);
+                _fInSetText = FALSE;
+                return hr;
             }
             case 319:
                 OnMenuCommand(2);
@@ -163,6 +161,7 @@ HRESULT COpenBoxHost::Exec(
                 return hr;
         }
     }
+
     return hr;
 }
 
@@ -182,7 +181,7 @@ HRESULT COpenBoxHost::OnSearchTextNotify(const WCHAR* pszSearchText, const WCHAR
 {
     HRESULT hr = 0;
 
-    if ((sn & 9) != 0 && !field_48)
+    if ((sn & 9) != 0 && !_fInSetText)
     {
         int v4 = field_4C;
         field_4C = 1;
@@ -395,7 +394,7 @@ HRESULT COpenBoxHost::OnFocusChangeIS(IUnknown* punk, BOOL fSetFocus)
     VARIANT vt;
     vt.vt = VT_INT;
     vt.lVal = fSetFocus ? 0x20000 : 0;
-    return IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, NULL);
+    return IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, nullptr);
 }
 
 COpenBoxHost::COpenBoxHost(HWND hwnd)

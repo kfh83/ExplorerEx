@@ -181,7 +181,7 @@ private:
 	LONG _lRef;
 	HTHEME _hTheme;
 	COLORREF _clrBk;
-	int field_48;
+	BOOL _fInSetText;
 	int field_4C;
 	WCHAR* _pszSearchQuery;
 };
