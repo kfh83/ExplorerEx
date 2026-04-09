@@ -1947,6 +1947,10 @@ DWORD CTray::_SyncThreadProc()
     OleInitialize(nullptr);
     ClassFactory_Start();
 
+    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9c}");
+    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9d}");
+    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9e}");
+
     // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
 
     _InitNonzeroGlobals();
