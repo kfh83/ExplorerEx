@@ -2471,16 +2471,8 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
             {
                 pnmdm->field_24 = ::GetWindow(hwnd, GW_CHILD);
             }
-
-            // Logging the HWND and window text
-            TCHAR szTitle[128] = { 0 };
-            GetWindowText(pnmdm->field_24, szTitle, ARRAYSIZE(szTitle));
-            TCHAR szLog[256];
-            wsprintf(szLog, TEXT("SetFocus to HWND: 0x%p, Title: \"%s\"\n"), pnmdm->field_24, szTitle);
-            OutputDebugString(szLog);
-
             SetFocus(pnmdm->field_24);
-            field_48 = 0;
+            field_48 = nullptr;
         }
     }
     
@@ -2873,17 +2865,6 @@ int CDesktopHost::_FilterMouseMove(MSG *pmsg, HWND hwndTarget)
 // EXEX-VISTA(allison): Validated. Still needs very minor cleanup.
 void CDesktopHost::_FilterMouseLeave(MSG* pmsg, HWND hwndTarget)
 {
-#ifdef DEAD_CODE
-    _fMouseEntered = FALSE;
-    _hwndLastMouse = NULL;
-
-    // If we got a WM_MOUSELEAVE due to a menu popping up, don't
-    // give up the focus since it really didn't leave yet.
-    if (!_ppmTracking)
-    {
-        _RemoveSelection(hwndTarget);
-    }
-#else
     _fMouseEntered = FALSE;
 
     if (!_ppmTracking && field_64 == pmsg->hwnd)
@@ -2892,34 +2873,34 @@ void CDesktopHost::_FilterMouseLeave(MSG* pmsg, HWND hwndTarget)
         nm.hwndFrom = hwndTarget;
         nm.idFrom = GetDlgCtrlID(hwndTarget);
         nm.code = 225;
-        if (!SendMessage(hwndTarget, WM_NOTIFY, nm.idFrom, (LPARAM)&nm))
+        if (!SendMessageW(hwndTarget, WM_NOTIFY, nm.idFrom, (LPARAM)&nm))
         {
             _RemoveSelection(hwndTarget);
-            if (hwndTarget != _spm.panes[2].hwnd && _DoesOpenBoxHaveFocus())
+            if (hwndTarget != _spm.panes[SMPANETYPE_OPENBOX].hwnd && _DoesOpenBoxHaveFocus())
             {
                 VARIANT vt;
                 vt.vt = VT_INT;
                 vt.lVal = 0x20000;
-                IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, NULL);
+                IUnknown_QueryServiceExec(
+                    static_cast<IMenuBand*>(this), SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, nullptr);
             }
         }
     }
-    
-    _hwndLastMouse = NULL;
+
+    _hwndLastMouse = nullptr;
     _lParamLastMouse = 0;
-    field_64 = NULL;
-#endif
+    field_64 = nullptr;
 }
 
 // EXEX-Vista(allison): Validated.
-void CDesktopHost::_FilterMouseHover(MSG *pmsg, HWND hwndTarget)
+void CDesktopHost::_FilterMouseHover(MSG* pmsg, HWND hwndTarget)
 {
     SMNDIALOGMESSAGE nmdm;
     nmdm.hwnd = pmsg->hwnd;
     nmdm.pmsg = pmsg;
     nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
     nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
-    CDesktopHost::_FindChildItem(hwndTarget, &nmdm, SMNDM_OPENCASCADE);
+    _FindChildItem(hwndTarget, &nmdm, SMNDM_OPENCASCADE);
 }
 
 //

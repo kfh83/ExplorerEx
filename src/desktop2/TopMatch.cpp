@@ -5,8 +5,6 @@
 #include <propvarutil.h>
 #include "SFTHost.h"
 
-#ifdef COMPILE_TOPMATCH
-
 CTopMatch::CTopMatch(HWND hwnd)
 	: _hwnd(hwnd)
 	, _lRef(1)
@@ -444,7 +442,7 @@ LRESULT CTopMatch::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 	LRESULT lres = _OnSMNFindItemWorker(pdm);
 	if (lres)
 	{
-		if ((pdm->flags & 0x100 | 0x800) != 0)
+		if ((pdm->flags & (0x100 | 0x800)) != 0)
 		{
 			field_464 = 1;
 			ListView_SetItemState(_hwndList, pdm->itemID, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
@@ -626,12 +624,12 @@ LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 	HRESULT hr = E_FAIL;
 	// Skipped telemetry StartMenu_Search_TopResult_Launch (585)
 
-	LVITEM lvi = {};
+	LVITEMW lvi = {};
 	lvi.iItem = iItem;
 	lvi.mask = LVIF_PARAM;
 	if (SendMessageW(_hwndList, LVM_GETITEMW, 0, (LPARAM)&lvi))
 	{
-		if (!lvi.lParam)
+		if (lvi.lParam == 0)
 		{
 			if (SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu))
 			{
@@ -659,8 +657,8 @@ LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 		}
 		if (SUCCEEDED(hr))
 		{
-			NMHDR nm;
-			_SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &nm);
+			SMNMCOMMANDINVOKED ci;
+			_SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &ci.hdr);
 		}
 	}
 	return SUCCEEDED(hr);
@@ -673,16 +671,12 @@ int CTopMatch::_GetLVCurSel()
 
 BOOL TopMatch_RegisterClass()
 {
-	WNDCLASSEX wc;
-	ZeroMemory(&wc, sizeof(wc));
-
+	WNDCLASSEXW wc = {};
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_GLOBALCLASS;
 	wc.lpfnWndProc = CTopMatch::s_WndProc;
 	wc.hInstance = g_hinstCabinet;
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wc.lpszClassName = WC_TOPMATCH;
-	return RegisterClassEx(&wc);
+	return RegisterClassExW(&wc);
 }
-
-#endif

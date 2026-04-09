@@ -4462,7 +4462,7 @@ LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 
     if (lres)
     {
-        if ((pdm->flags & 0x100 | 0x800))
+        if ((pdm->flags & (0x100 | 0x800)) != 0)
         {
             UINT state = LVIS_SELECTED;
             if ((pdm->flags & SMNDM_SELECT))

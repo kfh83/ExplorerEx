@@ -1,6 +1,10 @@
 #include "pch.h"
-#include "cabinet.h"
+
 #include "mixer.h"
+
+#include "cabinet.h"
+
+#include <mmdeviceapi.h>
 
 ///////////////////////////////////////
 // External interface
@@ -906,4 +910,250 @@ Routine Description:
 void Mixer_MMDeviceChange( void )
 {
     Mixer_Refresh();
+}
+
+CSystemMixer::CSystemMixer(HWND hwndCallback)
+    : _cRef(1)
+    , _hMixer(nullptr)
+    , _hwndCallback(hwndCallback)
+    , _pszDeviceInterface(nullptr)
+    , _pdblCacheMix(nullptr)
+    , _pdwLastVolume(nullptr)
+    , _fMixerStartup(TRUE)
+    , _fMixerPresent(FALSE)
+{
+    _rgdwControlType[MMHID_VOLUME_CONTROL]      = MIXERCONTROL_CONTROLTYPE_VOLUME;
+    _rgdwControlType[MMHID_BASS_CONTROL]        = MIXERCONTROL_CONTROLTYPE_BASS;
+    _rgdwControlType[MMHID_TREBLE_CONTROL]      = MIXERCONTROL_CONTROLTYPE_TREBLE;
+    _rgdwControlType[MMHID_BALANCE_CONTROL]     = MIXERCONTROL_CONTROLTYPE_PAN;
+    _rgdwControlType[MMHID_MUTE_CONTROL]        = MIXERCONTROL_CONTROLTYPE_MUTE;
+    _rgdwControlType[MMHID_LOUDNESS_CONTROL]    = MIXERCONTROL_CONTROLTYPE_LOUDNESS;
+    _rgdwControlType[MMHID_BASSBOOST_CONTROL]   = MIXERCONTROL_CONTROLTYPE_BASS_BOOST;
+
+    _rgfControlPresent[MMHID_VOLUME_CONTROL]    = FALSE;
+    _rgfControlPresent[MMHID_BASS_CONTROL]      = FALSE;
+    _rgfControlPresent[MMHID_TREBLE_CONTROL]    = FALSE;
+    _rgfControlPresent[MMHID_BALANCE_CONTROL]   = FALSE;
+    _rgfControlPresent[MMHID_MUTE_CONTROL]      = FALSE;
+    _rgfControlPresent[MMHID_LOUDNESS_CONTROL]  = FALSE;
+    _rgfControlPresent[MMHID_BASSBOOST_CONTROL] = FALSE;
+
+    _uWinMM_DeviceChange = RegisterWindowMessageW(L"winmm_devicechange");
+}
+
+MMRESULT CSystemMixer::AdjustTreble(int increment)
+{
+    if (_CheckMissing())
+        return MMSYSERR_NODRIVER;
+
+    MMRESULT mmr = MMSYSERR_NOERROR;
+
+    LONG lLevel = 0;
+
+    if (_rgfControlPresent[MMHID_TREBLE_CONTROL])
+    {
+        MIXERCONTROLDETAILS mxcd;
+        mxcd.cbStruct = sizeof(mxcd);
+        mxcd.dwControlID = _rgmxctrl[MMHID_TREBLE_CONTROL].dwControlID;
+
+        mxcd.cChannels = 1;
+        mxcd.cMultipleItems = 0;
+        mxcd.cbDetails = sizeof(lLevel);
+        mxcd.paDetails = static_cast<void*>(&lLevel);
+        mmr = mixerGetControlDetailsW(reinterpret_cast<HMIXEROBJ>(_hMixer), &mxcd, 0x80000000);
+        if (mmr == MMSYSERR_NOERROR)
+        {
+            lLevel += increment != 0 ? 2621 : -2621;
+            lLevel = std::min<LONG>(65535, lLevel); // @MOD Don't use macro
+            lLevel = std::max<LONG>(0, lLevel);     // @MOD Don't use macro
+
+            mxcd.cChannels = 1;
+            mxcd.cMultipleItems = 0;
+            mxcd.cbDetails = sizeof(lLevel);
+            mxcd.paDetails = static_cast<void*>(&lLevel);
+            mmr = mixerSetControlDetails(reinterpret_cast<HMIXEROBJ>(_hMixer), &mxcd, 0x80000000);
+        }
+    }
+
+    return mmr;
+}
+
+void CSystemMixer::_RefreshMixCache(const DWORD* padwVolume)
+{
+    DWORD dwMaxVol = 0;
+
+    if (padwVolume && _mxlDst.cChannels)
+    {
+        if (!_pdblCacheMix)
+        {
+            _pdblCacheMix = static_cast<double*>(LocalAlloc(LPTR, _mxlDst.cChannels * sizeof(double)));
+        }
+        if (_pdblCacheMix)
+        {
+            for (UINT uiIndx = 0; uiIndx < _mxlDst.cChannels; ++uiIndx)
+            {
+                dwMaxVol = std::max<DWORD>(dwMaxVol, padwVolume[uiIndx]); // @MOD Don't use macro
+            }
+
+            for (UINT uiIndx = 0; uiIndx < _mxlDst.cChannels; ++uiIndx)
+            {
+                DWORD dwVolume = padwVolume[uiIndx];
+
+                if (dwMaxVol == dwVolume)
+                {
+                    _pdblCacheMix[uiIndx] = 1.0;
+                }
+                else
+                {
+                    _pdblCacheMix[uiIndx] = static_cast<double>(dwVolume) / static_cast<double>(dwMaxVol);
+                }
+            }
+        }
+    }
+}
+
+MMRESULT CSystemMixer::_GetVolume(DWORD* padwVolume)
+{
+    if (!_rgfControlPresent[MMHID_VOLUME_CONTROL])
+        return MIXERR_INVALCONTROL;
+
+    MIXERCONTROLDETAILS mxcd;
+    mxcd.cbStruct = sizeof(mxcd);
+    mxcd.dwControlID = _rgmxctrl[MMHID_VOLUME_CONTROL].dwControlID;
+    mxcd.cChannels = _mxlDst.cChannels;
+    mxcd.cMultipleItems = 0;
+    mxcd.cbDetails = sizeof(DWORD);
+    mxcd.paDetails = static_cast<void*>(padwVolume);
+    return mixerGetControlDetailsW(
+        reinterpret_cast<HMIXEROBJ>(_hMixer), &mxcd, MIXER_OBJECTF_HANDLE | MIXER_GETCONTROLDETAILSF_VALUE);
+}
+
+MMRESULT CSystemMixer::_GetDefaultMixerID(int* pid)
+{
+    MMRESULT mmr = MMSYSERR_NODRIVER;
+
+    if (waveOutGetNumDevs() != 0)
+    {
+        UINT uWaveID;
+        DWORD dwFlags;
+        mmr = waveOutMessage((HWAVEOUT)WAVE_MAPPER, 0x2015, (DWORD_PTR)&uWaveID, (DWORD_PTR)&dwFlags);
+        if (mmr == MMSYSERR_NOERROR)
+        {
+            if (uWaveID != -1)
+            {
+                UINT uMxID;
+                mmr = mixerGetID((HMIXEROBJ)uWaveID, &uMxID, 0x10000000);
+                if (mmr == MMSYSERR_NOERROR)
+                {
+                    *pid = uMxID;
+                }
+            }
+            else
+            {
+                mmr = MMSYSERR_NODRIVER;
+            }
+        }
+    }
+
+    return mmr;
+}
+
+BOOL CSystemMixer::_GetDestLine()
+{
+    _mxlDst.cbStruct = sizeof(_mxlDst);
+    _mxlDst.dwComponentType = MIXERLINE_COMPONENTTYPE_DST_SPEAKERS;
+    return mixerGetLineInfoW(
+        reinterpret_cast<HMIXEROBJ>(_hMixer), &_mxlDst, MIXER_GETLINEINFOF_COMPONENTTYPE | MIXER_OBJECTF_HANDLE) == 0;
+}
+
+void CSystemMixer::_GetLineControls()
+{
+    MIXERLINECONTROLSW mxlc;
+
+    for (int i = 0; i < 7; ++i)
+    {
+        mxlc.cbStruct = sizeof(mxlc);
+        mxlc.dwLineID = _mxlDst.dwLineID;
+        mxlc.dwControlID = _rgdwControlType[i];
+        mxlc.cControls = 1;
+        mxlc.cbmxctrl = sizeof(MIXERCONTROLW);
+        mxlc.pamxctrl = &_rgmxctrl[i];
+
+        _rgfControlPresent[i] = mixerGetLineControlsW(reinterpret_cast<HMIXEROBJ>(_hMixer), &mxlc, 0x80000002) == 0;
+    }
+}
+
+BOOL CSystemMixer::_Open()
+{
+}
+
+void CSystemMixer::_Close()
+{
+    LocalFree(_pszDeviceInterface);
+    _pszDeviceInterface = nullptr;
+
+    LocalFree(_pdblCacheMix);
+    _pdblCacheMix = nullptr;
+
+    LocalFree(_pdwLastVolume);
+    _pdwLastVolume = nullptr;
+
+    if (_hMixer)
+    {
+        ASSERT(MMSYSERR_NOERROR == mixerClose(_hMixer)); // 552
+        _hMixer = nullptr;
+    }
+    if (_hdevnotify)
+    {
+        UnregisterDeviceNotification(_hdevnotify);
+        _hdevnotify = nullptr;
+    }
+}
+
+void CSystemMixer::_Refresh()
+{
+    _Close();
+    _fMixerPresent = _Open();
+}
+
+BOOL CSystemMixer::_CheckMissing()
+{
+    if (_fMixerStartup)
+    {
+        _fMixerStartup = FALSE;
+        _Refresh();
+    }
+    return !_fMixerPresent;
+}
+
+HRESULT CSystemMixer::_CreateVolumeObject(IAudioEndpointVolume** ppVolume)
+{
+    ASSERT(nullptr != ppVolume); // 173
+    *ppVolume = nullptr;
+
+    IMMDeviceEnumerator* pEnum = nullptr;
+    HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pEnum));
+    if (SUCCEEDED(hr))
+    {
+        IMMDevice* pDevice = nullptr;
+        hr = pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+        if (SUCCEEDED(hr))
+        {
+            IAudioEndpointVolume* pVolume = nullptr;
+            hr = pDevice->Activate(
+                __uuidof(IAudioEndpointVolume),
+                CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_LOCAL_SERVER | CLSCTX_REMOTE_SERVER,
+                nullptr, reinterpret_cast<void**>(&pVolume));
+            if (SUCCEEDED(hr))
+            {
+                *ppVolume = pVolume;
+                (*ppVolume)->AddRef();
+                pVolume->Release();
+            }
+            pDevice->Release();
+        }
+        pEnum->Release();
+    }
+
+    return hr;
 }

@@ -1,9 +1,5 @@
 #ifndef _SRCHVIEW_H_
-#define _SRCHVIEW_H_
-
-#define COMPILE_SRCHVIEW
-
-#ifdef COMPILE_SRCHVIEW
+#define _SRCHVIEW_H
 
 #include "desktop2.h"
 
@@ -320,8 +316,8 @@ public:
 
 	// *** IUnknown ***
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppvObj);
-	STDMETHODIMP_(ULONG) AddRef(void);
-	STDMETHODIMP_(ULONG) Release(void);
+	STDMETHODIMP_(ULONG) AddRef();
+	STDMETHODIMP_(ULONG) Release();
 
 	// *** IServiceProvider ***
 	STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void **ppvObject);
@@ -379,7 +375,7 @@ public:
 	STDMETHODIMP GetSearchBoxTimerDelay(UINT *puiDelay) { return S_OK; }
 
 	HRESULT Initialize(HWND hwnd);
-	HRESULT AddPathCompletionTask(LPCWSTR pszPath);
+	HRESULT AddPathCompletionTask(const WCHAR* pszPath);
 
 private:
 	static DWORD WINAPI s_ExecuteCommandLine(LPVOID pv);
@@ -492,5 +488,3 @@ private:
 };
 
 #endif // COMPILE_SRCHVIEW
-
-#endif

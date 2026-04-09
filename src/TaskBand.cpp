@@ -4922,6 +4922,14 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, HTHUMBNAIL* phThumbnail)
         tnp.fSourceClientAreaOnly = TRUE;
         DwmUpdateThumbnailProperties(*phThumbnail, &tnp);
     }
+#ifdef EXEX_DLL
+    // XXX(kawapure): This query for the thumbnail source size seems to fix
+    // a DWM crash when closing immersive windows when a thumbnail for any
+    // immersive app hasn't been viewed yet during the Explorer session. Why?
+    // I have absolutely no fucking clue.
+    SIZE sizeThumbnail{ 0, 0 };
+    DwmQueryThumbnailSourceSize(*phThumbnail, &sizeThumbnail);
+#endif
     (void)hwnd, (void)phThumbnail; // Skipped telemetry ShellTraceID_RegisterThumbnail_Stop
 }
 

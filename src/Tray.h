@@ -1,12 +1,13 @@
 #pragma once
 
-#include "trayp.h"
-#include "cwndproc.h"
+#include "TrayP.h"
+#include "CWndProc.h"
+#include "Mixer.h"
 
-#include "traynot.h"
+#include "TrayNot.h"
 #include "ssomgr.h"
 
-#include "shundoc.h"
+#include "ShUndoc.h"
 
 #include "StartButton.h"
 
@@ -738,12 +739,10 @@ protected:
     BOOL _fIsDesktopLocked;
     BOOL _fIsDesktopConnected;
 
-#ifdef SYSTEM_MIXER
-    CSystemMixer* _pSystemMixer; // EXEX-VISTA
-#endif
-	int field_634; // EXEX-VISTA
-	int field_638; // EXEX-VISTA
-	DWORD _dwWatermarkPolicy; // EXEX-VISTA
+    CSystemMixer* _pSystemMixer;    // EXEX-VISTA
+	int field_634;                  // EXEX-VISTA
+	int field_638;                  // EXEX-VISTA
+	DWORD _dwWatermarkPolicy;       // EXEX-VISTA
 
     // ResponseMonitor _responseMonitor;
     HWND _hwndClock;

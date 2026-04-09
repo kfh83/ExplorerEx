@@ -1556,6 +1556,9 @@ inline HRESULT(*SHCreateLeafConditionEx)(
     LPCWSTR pszLocaleName, IRichChunk *pPropertyNameTerm, IRichChunk *pOperationTerm, IRichChunk *pValueTerm,
     interface IConditionFactory2 *ppf, REFIID riid, void **ppv);
 
+inline HRESULT(*SHCreateAndOrConditionEx)(
+    BOOL fAnd, IObjectArray *poaConditions, interface IConditionFactory2 *ppf, REFIID riid, void **ppv);
+
 enum FC_FLAGS;
 inline HRESULT(*SHCreateFilter)(const WCHAR *pszName, const WCHAR *pszInFolder, REFPROPERTYKEY propkey, FC_FLAGS fcFlags, ICondition *pc, REFIID riid, void **ppv);
 BOOL GetInfoTip(IShellFolder *psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTextMax);

@@ -2835,8 +2835,9 @@ bool SHUndocInit(void)
     LOAD_ORDINAL(shell32, CheckWinIniForAssocs, 711);
     LOAD_ORDINAL(shell32, CheckDiskSpace, 733);
     LOAD_ORDINAL(shell32, CheckStagingArea, 753);
+    LOAD_ORDINAL(shell32, SHCreateLeafConditionEx, 814);
     LOAD_ORDINAL(shell32, SHCreateFilter, 818);
-    LOAD_ORDINAL(shell32, SHCreateConditionFactory, 849)
+    LOAD_ORDINAL(shell32, SHCreateConditionFactory, 849);
 
     //shunimpld
     //LOAD_ORDINAL(shell32, DDECreatePostNotify, 82);
