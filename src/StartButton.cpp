@@ -1066,7 +1066,7 @@ void CStartButton::StartButtonReset()
 {
     GetSizeAndFont(_hTheme);
     RecalcSize();
-    // EXEX-VISTA TODO(isabella): c_tray.UpdateStuckRect();
+    c_tray.UpdateStuckRect();
 }
 
 int CStartButton::TrackMenu(HMENU hMenu)

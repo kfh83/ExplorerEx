@@ -361,8 +361,7 @@ public:
     char field_4BA;
     char field_4BB;
 
-    // vista composition related - snatched from amr (but is likely this anyway)
-    BOOL GlassEnabled();
+    void UpdateStuckRect();
 
 protected:
     // protected methods
@@ -394,6 +393,7 @@ protected:
     BOOL _fGlassEnabled;
 
 public:
+    BOOL GlassEnabled();
     void EnableGlass(BOOL bEnable);
 
 protected:

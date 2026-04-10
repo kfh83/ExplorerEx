@@ -1933,6 +1933,36 @@ void CTray::_CreateTrayWindow()
     }
 }
 
+void CTray::UpdateStuckRect()
+{
+    RECT rcDisplay;
+    _GetDisplayRectFromRect(&rcDisplay, &_arStuckRects[_uStuckPlace], MONITOR_DEFAULTTONEAREST);
+
+    SIZE sizeStartPadding;
+    _GetStartButtonPadding(&sizeStartPadding);
+    if ((_uStuckPlace & STICK_TOP) != 0)
+    {
+        int cyStart = sizeStartPadding.cy + _stb._sizeStart.cy;
+        if (cyStart > _sStuckWidths.cy)
+        {
+            _sStuckWidths.cy = cyStart;
+            _MakeStuckRect(&_arStuckRects[_uStuckPlace], &rcDisplay, _sStuckWidths, _uStuckPlace);
+        }
+    }
+    else
+    {
+        int cxStart = sizeStartPadding.cx + _stb._sizeStart.cx;
+        if (cxStart > _sStuckWidths.cx)
+        {
+            SIZE size;
+            size.cy = _sStuckWidths.cy;
+            _sStuckWidths.cx = cxStart;
+            size.cx = cxStart;
+            _MakeStuckRect(&_arStuckRects[_uStuckPlace], &rcDisplay, size, _uStuckPlace);
+        }
+    }
+}
+
 DWORD WINAPI CTray::SyncThreadProc(void* pv)
 {
     CTray* ptray = (CTray*)pv;
