@@ -90,8 +90,9 @@ HRESULT CTrayBandSiteService_CreateInstance(IUnknown* punkOuter, IUnknown** ppun
 HRESULT CTrayNotifyStub_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 
 //these are defined in shell32startmnu.cpp
-HRESULT CStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
-HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
+EXTERN_C HRESULT CStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
+EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
+EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 
 HRESULT CStartMenu_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
 {
@@ -110,9 +111,10 @@ HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
 {
     return CProgramsFolder_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
 }
-HRESULT CStartMenuFastItems_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
+
+HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
 {
-    return CStartMenuFastItems_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
+    return CProgramsFolderAndFastItems_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
 }
 
 static const struct
@@ -125,14 +127,16 @@ c_ClassParams[] =
     { &CLSID_TaskBand,            CTaskBand_CreateInstance },
     { &CLSID_TrayBandSiteService, CTrayBandSiteService_CreateInstance },
     { &CLSID_TrayNotify,          CTrayNotifyStub_CreateInstance },
-    { &CLSID_StartMenu ,          CStartMenu_CreateInstance },
-    { &CLSID_PersonalStartMenu,          CPersonalStartMenu_CreateInstance },
-    { &CLSID_ProgramsFolderAndFastItems,          CStartMenuFolder_CreateInstance },
-    { &CLSID_ProgramsFolder,          CProgramsFolder_CreateInstance },
-    { &CLSID_StartMenuFastItems,          CStartMenuFastItems_CreateInstance },
+
+    // @Note: Custom to ExplorerEx, these would normally be instantiated inside shell32
+    { &CLSID_StartMenu,                     CStartMenu_CreateInstance },
+    { &CLSID_PersonalStartMenu,             CPersonalStartMenu_CreateInstance },
+    { &CLSID_StartMenuFolder,               CStartMenuFolder_CreateInstance },
+    { &CLSID_ProgramsFolder,                CProgramsFolder_CreateInstance },
+    { &CLSID_ProgramsFolderAndFastItems,    CProgramsFolderAndFastItems_CreateInstance },
 };
 
-CDynamicClassFactory* g_rgpcf[ARRAYSIZE(c_ClassParams)] = {0};
+CDynamicClassFactory* g_rgpcf[ARRAYSIZE(c_ClassParams)] = {};
 
 
 void ClassFactory_Start()
@@ -213,29 +217,60 @@ Cleanup:
 void SetupMergedFolderKeys(LPCTSTR clsid)
 {
     WCHAR subKey[255];
+    WCHAR subKeyClsid[255];
     WCHAR subKeyShellFolder[255];
 
-    wcscpy_s(subKey, pszCLSID);
-    wcsncat_s(subKey,clsid,255);
+    wcscpy_s(subKeyClsid, pszCLSID);
+    wcsncat_s(subKeyClsid, clsid, 255);
 
-    wcscpy_s(subKeyShellFolder, subKey);
+    wcscpy_s(subKey, subKeyClsid);
+    wcscpy_s(subKeyShellFolder, subKeyClsid);
 
+    wcsncat_s(subKey, L"\\InProcServer32", 255);
+    wcsncat_s(subKeyShellFolder, L"\\ShellFolder", 255);
 
-    wcsncat_s(subKey,L"\\InProcServer32", 255);
-    wcsncat_s(subKeyShellFolder,L"\\ShellFolder", 255);
-
-    wprintf(L"subkey %s\n",subKey);
+    wprintf(L"subkey %s\n", subKey);
     wprintf(L"subKeyShellFolder %s\n", subKeyShellFolder);
 
     HKEY mainKeyToUse = HKEY_CURRENT_USER;
     if (IsProcessElevated())
         mainKeyToUse = HKEY_LOCAL_MACHINE;
 
+    const WCHAR* pszDisplayName = nullptr;
+    if (_wcsicmp(clsid, L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}") == 0)
+        pszDisplayName = L"Programs Folder and Fast Items";
+    else if (_wcsicmp(clsid, L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}") == 0)
+        pszDisplayName = L"Programs Folder";
+    else if (_wcsicmp(clsid, L"{48e7caab-b918-4e58-a94d-505519c795dc}") == 0)
+        pszDisplayName = L"Start Menu Folder";
+
     HKEY res;
-    bool bHasKey = RegOpenKeyW(mainKeyToUse, subKey, &res) == S_OK;
+    bool bHasKey = RegOpenKeyW(mainKeyToUse, subKeyClsid, &res) == S_OK;
     if (!bHasKey)
     {
-        bHasKey = RegCreateKeyW(mainKeyToUse,subKey,&res) == S_OK;
+        bHasKey = RegCreateKeyW(mainKeyToUse, subKeyClsid, &res) == S_OK;
+    }
+
+    if (!bHasKey)
+    {
+        wprintf(L"FAILED TO CREATE THE KEY!!!!\n");
+        return;
+    }
+
+    if (pszDisplayName)
+    {
+        bool bWrote = RegSetValueExW(res, nullptr, 0, REG_SZ,
+            (const BYTE*)pszDisplayName, (DWORD)((wcslen(pszDisplayName) + 1) * sizeof(WCHAR))) == S_OK;
+        if (!bWrote)
+            wprintf(L"FAILED TO WRITE CLSID DISPLAY NAME!!");
+    }
+
+    RegCloseKey(res);
+
+    bHasKey = RegOpenKeyW(mainKeyToUse, subKey, &res) == S_OK;
+    if (!bHasKey)
+    {
+        bHasKey = RegCreateKeyW(mainKeyToUse, subKey, &res) == S_OK;
     }
 
     if (!bHasKey)
@@ -251,7 +286,7 @@ void SetupMergedFolderKeys(LPCTSTR clsid)
 
     WCHAR exePath[MAX_PATH];
     DWORD size = sizeof(exePath);
-    bool bRead = RegQueryValueExW(res,0,0,0,(LPBYTE)exePath,&size) == S_OK;
+    bool bRead = RegQueryValueExW(res, 0, 0, 0, (LPBYTE)exePath, &size) == S_OK;
     if (bRead)
     {
         //there is something different there!
@@ -263,9 +298,11 @@ void SetupMergedFolderKeys(LPCTSTR clsid)
     }
 
     //otherwise we overwrite
-    bool bWrote = RegSetValueExW(res,0,0,REG_SZ,(LPBYTE)localExePath,sizeof(localExePath)) == S_OK;
+    bool bWrote = RegSetValueExW(res, 0, 0, REG_SZ, (LPBYTE)localExePath, sizeof(localExePath)) == S_OK;
     if (!bWrote)
         wprintf(L"FAILED TO WRITE!!");
+
+    RegCloseKey(res);
 
 	bHasKey = RegOpenKeyW(mainKeyToUse, subKeyShellFolder, &res) == S_OK;
 	if (!bHasKey)
@@ -273,11 +310,14 @@ void SetupMergedFolderKeys(LPCTSTR clsid)
 		bHasKey = RegCreateKeyW(mainKeyToUse, subKeyShellFolder, &res) == S_OK;
 	}
 
-    //DWORD attributes = SFGAO_CANRENAME | SFGAO_CANDELETE | SFGAO_HASPROPSHEET | SFGAO_FOLDER;
-    DWORD attributes = SFGAO_BROWSABLE;
-	bWrote = RegSetValueExW(res, L"Attributes", 0, REG_DWORD, (LPBYTE)&attributes, sizeof(DWORD)) == S_OK;
-	if (!bWrote)
-		wprintf(L"FAILED TO WRITE!!");
+    // CLSID_ProgramsFolder = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
+    // CLSID_ProgramsFolderAndFastItems = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
+    DWORD attributes = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
+    bWrote = RegSetValueExW(res, L"Attributes", 0, REG_DWORD, (LPBYTE)&attributes, sizeof(DWORD)) == S_OK;
+    if (!bWrote)
+        wprintf(L"FAILED TO WRITE!!");
+
+    RegCloseKey(res);
 }
 
 void ComServer_Stop(LPCTSTR clsid)

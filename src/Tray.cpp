@@ -1977,9 +1977,14 @@ DWORD CTray::_SyncThreadProc()
     OleInitialize(nullptr);
     ClassFactory_Start();
 
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9c}");
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9d}");
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9e}");
+    // CLSID_ProgramsFolderAndFastItems
+    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}");
+
+    // CLSID_ProgramsFolder
+    SetupMergedFolderKeys(L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}");
+
+    // CLSID_StartMenuFolder
+    SetupMergedFolderKeys(L"{48e7caab-b918-4e58-a94d-505519c795dc}");
 
     // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
 

@@ -121,7 +121,7 @@ HRESULT CNSCHost::OnGetToolTip(IShellItem *psi, LPWSTR pszTip, int cchTip)
 		return S_OK;
 
 	IQueryInfo *pqi;
-	HRESULT hr = psi->BindToHandler(NULL, BHID_SFUIObject, IID_PPV_ARGS(&pqi));
+	HRESULT hr = psi->BindToHandler(nullptr, BHID_SFUIObject, IID_PPV_ARGS(&pqi));
 	if (SUCCEEDED(hr))
 	{
 		LPWSTR pszInfoTip;
@@ -302,12 +302,12 @@ HRESULT CNSCHost::OnDragLeave(IShellItem *psiOver)
 	return S_OK;
 }
 
-HRESULT CNSCHost::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
+HRESULT CNSCHost::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
 {
 	HRESULT hr = E_FAIL;
 	if (IsEqualGUID(guidService, SID_SM_NSCHOST))
 	{
-		return QueryInterface(riid, ppvObject);
+		hr = QueryInterface(riid, ppvObject);
 	}
 	return hr;
 }
@@ -327,21 +327,21 @@ HRESULT CNSCHost::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecop
 		{
 			if (nCmdexecopt == 1 && (!pvarargIn || pvarargIn->boolVal != VARIANT_TRUE))
 			{
-				IShellItem *psiFirstVisible = NULL;
+				IShellItem* psiFirstVisible = nullptr;
 				BOOL bNeedEnsureVisible = TRUE;
 				if (_pns)
 				{
-					if (SUCCEEDED(_pns->GetNextItem(0, NSTCGNI_FIRSTVISIBLE, &psiFirstVisible)))
+					if (SUCCEEDED(_pns->GetNextItem(nullptr, NSTCGNI_FIRSTVISIBLE, &psiFirstVisible)))
 					{
-						if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &SID_SM_DV2ControlHost, 311, 0, NULL, NULL) == S_OK)
+						if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &SID_SM_DV2ControlHost, 311, 0, nullptr, nullptr) == S_OK)
 						{
-							IShellItem *psiCurrent = psiFirstVisible;
+							IShellItem* psiCurrent = psiFirstVisible;
 							psiCurrent->AddRef();
 
-							IShellItem *psiNext;
+							IShellItem* psiNext;
 							while (bNeedEnsureVisible && _pns->GetNextItem(psiCurrent, NSTCGNI_NEXT, &psiNext) == S_OK)
 							{
-								IUnknown_Set((IUnknown **)&psiCurrent, psiNext);
+								IUnknown_Set((IUnknown**)&psiCurrent, psiNext);
 
 								hr = _IsNewItem(psiCurrent);
 								if (hr == S_OK)
@@ -382,7 +382,7 @@ void WINAPI InitClipboardFormats()
 {
 	if (!g_cfPreferredEffect)
 	{
-		g_cfPreferredEffect = RegisterClipboardFormat(TEXT("Preferred DropEffect"));
+		g_cfPreferredEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
 	}
 }
 
@@ -401,56 +401,56 @@ CNSCHost::~CNSCHost()
 
 LRESULT CNSCHost::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	CNSCHost *self = reinterpret_cast<CNSCHost *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	CNSCHost* self = reinterpret_cast<CNSCHost*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 
-	if (uMsg > 0x46)
+	if (uMsg <= 0x46)
 	{
 		switch (uMsg)
 		{
-			case WM_NOTIFY:
-			{
-				HRESULT hr = self->_OnNotify(hwnd, uMsg, wParam, lParam);
-				if (SUCCEEDED(hr))
-				{
-					return hr;
-				}
-				return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);	
-			}
-			case WM_NCCREATE:
-				return self->_OnNCCreate(hwnd, uMsg, wParam, lParam);
-			case WM_NCDESTROY:
-				return self->_OnNCDestroy(hwnd, uMsg, wParam, lParam);
-			case WM_PALETTECHANGED:
-				return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);
+			case WM_WINDOWPOSCHANGING:
+				return self->_OnSize(hwnd, uMsg, wParam, lParam);
+			case WM_CREATE:
+				return self->_OnCreate(hwnd, uMsg, wParam, lParam);
+			case WM_DESTROY:
+				return self->_OnDestroy(hwnd, uMsg, wParam, lParam);
+			case WM_ERASEBKGND:
+				return self->_OnEraseBkGnd(hwnd, uMsg, wParam, lParam);
 		}
-		if (uMsg == WM_APP)
+		if (uMsg == WM_SYSCOLORCHANGE || uMsg == WM_SETTINGCHANGE)
 		{
-			return self->_CollapseAll();
+			return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);
 		}
-		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 	}
 	switch (uMsg)
 	{
-		case WM_WINDOWPOSCHANGING:
-			return self->_OnSize(hwnd, uMsg, wParam, lParam);
-		case WM_CREATE:
-			return self->_OnCreate(hwnd, uMsg, wParam, lParam);
-		case WM_DESTROY:
-			return self->_OnDestroy(hwnd, uMsg, wParam, lParam);
-		case WM_ERASEBKGND:
-			return self->_OnEraseBkGnd(hwnd, uMsg, wParam, lParam);
+		case WM_NOTIFY:
+		{
+			HRESULT hr = self->_OnNotify(hwnd, uMsg, wParam, lParam);
+			if (SUCCEEDED(hr))
+			{
+				return hr;
+			}
+			return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);
+		}
+		case WM_NCCREATE:
+			return self->_OnNCCreate(hwnd, uMsg, wParam, lParam);
+		case WM_NCDESTROY:
+			return self->_OnNCDestroy(hwnd, uMsg, wParam, lParam);
+		case WM_PALETTECHANGED:
+			return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);
 	}
-	if (uMsg == WM_SYSCOLORCHANGE || uMsg == WM_SETTINGCHANGE)
+	if (uMsg == WM_APP)
 	{
-		return self->_OnWinEvent(hwnd, uMsg, wParam, lParam);
+		return self->_CollapseAll();
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CNSCHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
-	SMPANEDATA *psmpd = (SMPANEDATA *)lpcs->lpCreateParams;
+	CREATESTRUCTW* lpcs = (CREATESTRUCTW*)lParam;
+	SMPANEDATA* psmpd = (SMPANEDATA*)lpcs->lpCreateParams;
 
 	IUnknown_Set(&psmpd->punk, SAFECAST(this, IServiceProvider*));
 	_hTheme = psmpd->hTheme;
@@ -459,7 +459,7 @@ LRESULT CNSCHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		GetThemeColor(_hTheme, SPP_NSCHOST, 0, TMT_INFOTEXT, &_clrText);
 		GetThemeColor(_hTheme, SPP_NSCHOST, 0, TMT_INFOBK, &_clrTextBk);
 
-		GetThemeMargins(_hTheme, NULL, SPP_NSCHOST, 0, TMT_CONTENTMARGINS, NULL, &_margins);
+		GetThemeMargins(_hTheme, nullptr, SPP_NSCHOST, 0, TMT_CONTENTMARGINS, nullptr, &_margins);
 	}
 	else
 	{
@@ -474,7 +474,7 @@ LRESULT CNSCHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		HDC hdc = GetDC(_hwnd);
 		if (hdc)
 		{
-			GetThemePartSize(_hTheme, hdc, SPP_PROGLISTSEPARATOR, 0, NULL, TS_DRAW, &siz);
+			GetThemePartSize(_hTheme, hdc, SPP_PROGLISTSEPARATOR, 0, nullptr, TS_DRAW, &siz);
 			ReleaseDC(_hwnd, hdc);
 		}
 		field_68 = siz.cy;
@@ -493,7 +493,7 @@ LRESULT CNSCHost::_OnDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		_pns->TreeUnadvise(_dwCookie);
 	}
 
-	IUnknown_SetSite(_pns, NULL);
+	IUnknown_SetSite(_pns, nullptr);
 
 	IUnknown_SafeReleaseAndNullPtr(&_pns);
 	IUnknown_SafeReleaseAndNullPtr(&_pweh);
@@ -517,8 +517,7 @@ LRESULT CNSCHost::_OnEraseBkGnd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	}
 	else
 	{
-		DWORD SysColor = GetSysColor(COLOR_MENU);
-		SHFillRectClr((HDC)wParam, &rc, SysColor);
+		SHFillRectClr((HDC)wParam, &rc, GetSysColor(COLOR_MENU));
 	}
 
 	rc.left += SHGetSystemMetricsScaled(SM_CXEDGE) + _margins.cxLeftWidth;
@@ -595,8 +594,10 @@ LRESULT CNSCHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
 LRESULT CNSCHost::_OnSMNGetMinSize(PSMNGETMINSIZE psmngms)
 {
-	LRESULT lres = SendMessage(_hwnd, 0x1110, 0, 0);
-	psmngms->siz.cy = _margins.cyTopHeight + _margins.cyBottomHeight + lres * SendMessage(_hwnd, 0x111C, 0, 0);
+	UINT cVisibleItems = TreeView_GetVisibleCount(_hwnd);
+	psmngms->siz.cy = _margins.cyTopHeight
+		+ _margins.cyBottomHeight
+		+ cVisibleItems * TreeView_GetItemHeight(_hwnd);
 	return 0;
 }
 
@@ -643,7 +644,7 @@ BOOL CNSCHost::_AreChangesRestricted()
 }
 
 // Thanks to ep_taskbar by @amrsatrio
-HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIST_ABSOLUTE **pidlOut)
+HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut)
 {
 	if (psfOut)
 		*psfOut = nullptr;
@@ -653,7 +654,7 @@ HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIS
 	WCHAR szPath[47] = L"shell:::";
 	StringFromGUID2(rclsid, &szPath[8], 39);
 
-	ITEMIDLIST_ABSOLUTE *pidl;
+	ITEMIDLIST_ABSOLUTE* pidl;
 	HRESULT hr = SHILCreateFromPath(szPath, &pidl, nullptr);
 	if (SUCCEEDED(hr))
 	{
@@ -674,9 +675,9 @@ HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder **psfOut, ITEMIDLIS
 	return hr;
 }
 
-HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
+#include "CoCreateInstanceHook.h"
 
-#define FALLBACK_ALLPROGRAMS_LIST
+EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
 
 HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 {
@@ -690,12 +691,13 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 		hr = _pns->TreeAdvise(static_cast<INameSpaceTreeControlEvents*>(this), &_dwCookie);
 		if (SUCCEEDED(hr))
 		{
-			NSTCSTYLE nsctsFlags = NSTCS_FULLROWSELECT | NSTCS_NOREPLACEOPEN | NSTCS_RICHTOOLTIP | NSTCS_FAVORITESMODE | NSTCS_AUTOHSCROLL | NSTCS_EMPTYTEXT;
+			NSTCSTYLE nsctsFlags = NSTCS_FULLROWSELECT | NSTCS_NOREPLACEOPEN | NSTCS_RICHTOOLTIP |
+				NSTCS_FAVORITESMODE | NSTCS_AUTOHSCROLL | NSTCS_EMPTYTEXT;
 			if (_AreChangesRestricted())
 			{
 				nsctsFlags |= NSTCS_DISABLEDRAGDROP;
 			}
-			if (_SHRegGetBoolValueFromHKCUHKLM(REGSTR_PATH_STARTPANE_SETTINGS, TEXT("Start_SortByName"), TRUE))
+			if (_SHRegGetBoolValueFromHKCUHKLM(REGSTR_PATH_STARTPANE_SETTINGS, L"Start_SortByName", TRUE))
 			{
 				nsctsFlags |= NSTCS_NOORDERSTREAM;
 			}
@@ -703,7 +705,7 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 			hr = _pns->Initialize(hwnd, nullptr, nsctsFlags);
 			if (SUCCEEDED(hr))
 			{
-				LPITEMIDLIST pidl;
+				ITEMIDLIST_ABSOLUTE* pidl;
 				hr = BindToGetFolderAndPidl(CLSID_ProgramsFolderAndFastItems, nullptr, &pidl);
 				if (SUCCEEDED(hr))
 				{
@@ -711,7 +713,7 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 					hr = SHCreateItemFromIDList(pidl, IID_PPV_ARGS(&psi));
 					if (SUCCEEDED(hr))
 					{
-						HRESULT hrCreate = CoCreateInstance(CLSID_PersonalStartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
+						HRESULT hrCreate = CoCreateInstanceHook(CLSID_PersonalStartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psif));
 						if (_psif)
 						{
 							IUnknown_SetSite(_psif, static_cast<IServiceProvider*>(this));
@@ -727,37 +729,25 @@ HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 					ILFree(pidl);
 				}
 
-				LPCWSTR pszTheme = IsCompositionActive() ? L"StartMenuHoverComposited" : L"StartMenuHover";
+				const WCHAR* pszTheme = IsCompositionActive() ? L"StartMenuHoverComposited" : L"StartMenuHover";
 				_pns->SetTheme(pszTheme);
-
-#ifdef FALLBACK_ALLPROGRAMS_LIST
-				WCHAR szFallback[MAX_PATH];
-				ExpandEnvironmentStringsW(L"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs", szFallback, MAX_PATH);
-				IShellItem* psi = nullptr;
-				if (SUCCEEDED(SHCreateItemFromParsingName(szFallback, nullptr, IID_PPV_ARGS(&psi))))
-				{
-					_pns->AppendRoot(psi, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS, NSTCRS_HIDDEN | NSTCRS_EXPANDED, nullptr);
-					psi->Release();
-				}
-#endif
 			}
 		}
 	}
+
 	return hr;
 }
 
 HRESULT CNSCHost::_CollapseAll()
 {
 	if (_pns)
-	{
 		_pns->CollapseAll();
-	}
 	return S_FALSE;
 }
 
-HRESULT CNSCHost::_GetSelectedItem(IShellItem **ppsi)
+HRESULT CNSCHost::_GetSelectedItem(IShellItem** ppsi)
 {
-	IShellItemArray *psia;
+	IShellItemArray* psia;
 	HRESULT hr = _pns->GetSelectedItems(&psia);
 	if (SUCCEEDED(hr))
 	{
@@ -774,32 +764,30 @@ void CNSCHost::_NotifyCaptureInput(BOOL fBlock)
 	_SendNotify(GetParent(_hwnd), SMN_BLOCKMENUMODE, &nmb.hdr);
 }
 
-HRESULT CNSCHost::_Invoke(IShellItem *psi, BOOL fKeyboard)
+HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fKeyboard)
 {
 	return E_NOTIMPL; // EXEX-Vista(allison): TODO.
 }
 
-HRESULT CNSCHost::_IsItemMSIAds(IShellItem *psi)
+HRESULT CNSCHost::_IsItemMSIAds(IShellItem* psi)
 {
 	return E_NOTIMPL; // EXEX-Vista(allison): TODO.
 }
 
-HRESULT CNSCHost::_IsNewItem(IShellItem *psi)
+HRESULT CNSCHost::_IsNewItem(IShellItem* psi)
 {
 	return E_NOTIMPL; // EXEX-Vista(allison): TODO.
 }
 
 BOOL NSCHost_RegisterClass()
 {
-	WNDCLASS wc;
-	ZeroMemory(&wc, sizeof(wc));
-
+	WNDCLASSW wc = {};
 	wc.style = CS_GLOBALCLASS;
 	wc.cbWndExtra = sizeof(CNSCHost*);
 	wc.lpfnWndProc = CNSCHost::s_WndProc;
 	wc.hInstance = g_hinstCabinet;
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wc.lpszClassName = WC_NSCHOST;
-	return RegisterClass(&wc);
+	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+	wc.lpszClassName = L"Desktop NSCHost";
+	return RegisterClassW(&wc);
 	//return SHRegisterClass(&wc);
 }

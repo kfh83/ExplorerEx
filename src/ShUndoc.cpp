@@ -2830,7 +2830,31 @@ bool SHUndocInit(void)
     LOAD_ORDINAL(shell32, SHMapIDListToSystemImageListIndexAsync, 787);
     LOAD_ORDINAL(shell32, SHGetUserPicturePath, 261);
     LOAD_FUNCTION(shell32, SHUpdateRecycleBinIcon);
-    LOAD_ORDINAL(shell32, SHGetFolderPathEx, 369);
+
+    // Keep SHGetFolderPathEx, but avoid shell32's stub path on modern builds.
+    // 1) Prefer the concrete host (windows.storage.dll)
+    // 2) Then try the API-set contract
+    // 3) Finally fall back to shell32 (needed on older systems)
+    HMODULE hMod_windowsStorage = LoadLibraryW(L"windows.storage.dll");
+    if (hMod_windowsStorage)
+    {
+        *(FARPROC*)&SHGetFolderPathEx = GetProcAddress(hMod_windowsStorage, "SHGetFolderPathEx");
+    }
+
+    if (!SHGetFolderPathEx)
+    {
+        HMODULE hMod_storageExportsInternal = LoadLibraryW(L"api-ms-win-storage-exports-internal-l1-1-0.dll");
+        if (hMod_storageExportsInternal)
+        {
+            *(FARPROC*)&SHGetFolderPathEx = GetProcAddress(hMod_storageExportsInternal, "SHGetFolderPathEx");
+        }
+    }
+
+    if (!SHGetFolderPathEx)
+    {
+        LOAD_FUNCTION(shell32, SHGetFolderPathEx);
+    }
+
     LOAD_ORDINAL(shell32, SHMapIDListToSystemImageListIndex, 790);
     LOAD_ORDINAL(shell32, CheckWinIniForAssocs, 711);
     LOAD_ORDINAL(shell32, CheckDiskSpace, 733);

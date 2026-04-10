@@ -1449,14 +1449,14 @@ HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut);
 inline void(*CheckWinIniForAssocs)();
 inline HRESULT(*CheckDiskSpace)();
 inline HRESULT(*CheckStagingArea)();
-DEFINE_GUID(CLSID_ProgramsFolderAndFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9C);
-DEFINE_GUID(CLSID_ProgramsFolder, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9D);
-DEFINE_GUID(CLSID_StartMenuFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9E);
-HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-HRESULT CStartMenuFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 
-//DEFINE_GUID(CLSID_UserAssist, 0xDD313E04, 0xFEFF, 0x11D1, 0x8E, 0xCD, 0x00, 0x00, 0xF8, 0x7A, 0x47, 0x0C);
+DEFINE_GUID(CLSID_ProgramsFolderAndFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9A);
+DEFINE_GUID(CLSID_ProgramsFolder, 0x7BE9D83C, 0xA729, 0x4D97, 0xB5, 0xA7, 0x1B, 0x73, 0x13, 0xC3, 0x9E, 0x0A);
+DEFINE_GUID(CLSID_StartMenuFolder, 0x48E7CAAB, 0xB918, 0x4E58, 0xA9, 0x4D, 0x50, 0x55, 0x19, 0xC7, 0x95, 0xDC);
+
+EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 
 #include "interfacesp.inc"
 
@@ -1563,7 +1563,7 @@ enum FC_FLAGS;
 inline HRESULT(*SHCreateFilter)(const WCHAR *pszName, const WCHAR *pszInFolder, REFPROPERTYKEY propkey, FC_FLAGS fcFlags, ICondition *pc, REFIID riid, void **ppv);
 BOOL GetInfoTip(IShellFolder *psf, LPCITEMIDLIST pidl, LPTSTR pszText, int cchTextMax);
 
-inline HRESULT (*SHGetFolderPathEx)(REFKNOWNFOLDERID rfid, DWORD flags, HANDLE token, LPWSTR path, DWORD len);
+inline HRESULT (WINAPI *SHGetFolderPathEx)(REFKNOWNFOLDERID rfid, DWORD flags, HANDLE token, LPWSTR path, DWORD len);
 inline HMENU(*SHLoadMenuPopup)(HINSTANCE hinst, UINT id);
 
 inline BOOL (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const WCHAR* pszClassId, BOOL fAllowInheritance);
