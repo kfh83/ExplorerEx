@@ -345,83 +345,9 @@ ISetFolderEnumRestriction : IUnknown
     virtual HRESULT SetEnumRestriction(DWORD dwRequired, DWORD dwForbidden) PURE;
 };
 
-HRESULT GetMergedFolder(IShellFolder** ppsf, LPITEMIDLIST* ppidl,
-    LPCMERGEDFOLDERINFO rgmfi, UINT cmfi)
-{
-    *ppidl = NULL;
-    *ppsf = NULL;
-
-    IShellFolder2* psf;
-    IAugmentedShellFolder2* pasf;
-    HRESULT hr = CoCreateInstance(CLSID_MergedFolder, 0LL, 1u, IID_IAugmentedFolder, (LPVOID*)&pasf);
-
-    for (UINT imfi = 0; SUCCEEDED(hr) && imfi < cmfi; imfi++)
-    {
-        // If this is a common group and common groups are restricted, then
-        // skip this item
-        if ((rgmfi[imfi].uANSFlags & ASFF_COMMON) &&
-            SHRestricted(REST_NOCOMMONGROUPS))
-        {
-            continue;
-        }
-
-        psf = NULL;    // in/out param below
-        hr = SHCacheTrackingFolder(MAKEINTIDLIST(rgmfi[imfi].csidl), rgmfi[imfi].csidl, &psf);
-
-        if (SUCCEEDED(hr))
-        {
-            // If this is a Start Menu folder, then apply the
-            // "do not enumerate subfolders" restriction if the policy says so.
-            // In which case, we cannot use the tracking folder cache.
-            // (Perf note: We compare pointers directly.)
-            if (rgmfi[imfi].pguidObj == &CLSID_StartMenu)
-            {
-                if (SHRestricted(REST_NOSTARTMENUSUBFOLDERS))
-                {
-                    ISetFolderEnumRestriction* prest;
-                    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&prest))))
-                    {
-                        prest->SetEnumRestriction(0, SHCONTF_FOLDERS); // disallow subfolders
-                        prest->Release();
-                    }
-                }
-            }
-            else
-            {
-                // If this assert fires, then our perf optimization above failed.
-                ASSERT(rgmfi[imfi].pguidObj == NULL ||
-                    !IsEqualGUID(*rgmfi[imfi].pguidObj, CLSID_StartMenu));
-            }
-
-
-            hr = pasf->AddNameSpace(rgmfi[imfi].pguidObj, psf, NULL, rgmfi[imfi].uANSFlags, 2);
-            if (SUCCEEDED(hr))
-            {
-                if (rgmfi[imfi].uANSFlags & ASFF_DEFNAMESPACE_DISPLAYNAME)
-                {
-                    // If this assert fires, it means somebody marked two
-                    // folders as ASFF_DEFNAMESPACE_DISPLAYNAME, which is
-                    // illegal (you can have only one default)
-                    ASSERT(*ppidl == NULL);
-                    hr = SHGetIDListFromUnk(psf, ppidl);    // copy out the pidl for this guy
-                }
-            }
-
-            psf->Release();
-        }
-    }
-
-    if (SUCCEEDED(hr))
-        *ppsf = pasf;   // copy out the ref
-    else
-        ATOMICRELEASE(pasf);
-
-    return hr;
-}
-
 DEFINE_GUID(POLID_NoStartMenuSubFolders, 0x78627E11, 0xEC80, 0x49A3, 0xB3, 0xB7, 0x6A, 0xBE, 0x73, 0x96, 0x93, 0xFC);
 
-HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut);
+EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut);
 
 DEFINE_GUID(CLSID_StartMenuCommon,      0x2981C306, 0x09EA, 0x405D, 0x9D, 0x0F, 0x83, 0x33, 0x78, 0x27, 0xBD, 0x35);
 DEFINE_GUID(CLSID_ProgramsFolderCommon, 0xFC1EE10B, 0x7EF6, 0x41B5, 0xBB, 0x60, 0x98, 0xD2, 0x6D, 0xD9, 0xFC, 0xD1);
@@ -441,39 +367,41 @@ HRESULT CreateMergedFolderHelper(REFCLSID rclsid, const MERGEDFOLDERINFO* rgmfi,
             for (UINT i = 0; SUCCEEDED(hr) && i < cmfi; ++i)
             {
                 const MERGEDFOLDERINFO* prgmfi = &rgmfi[i];
-                if ((prgmfi->uANSFlags & 4) == 0 || !SHRestricted(REST_NOCOMMONGROUPS))
+                if ((prgmfi->uANSFlags & 4) != 0 && SHRestricted(REST_NOCOMMONGROUPS))
                 {
-                    PERSIST_FOLDER_TARGET_INFO pfti = {};
-                    pfti.dwAttributes = 20;
-                    pfti.csidl = prgmfi->csidl | 0x4000;
+                    continue;
+                }
 
-                    IShellFolder2* psf;
-                    hr = CFSFolder_CreateFolder(nullptr, nullptr, pidl, &pfti, IID_PPV_ARGS(&psf));
-                    if (SUCCEEDED(hr))
+                PERSIST_FOLDER_TARGET_INFO pfti = {};
+                pfti.dwAttributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY;
+                pfti.csidl = prgmfi->csidl | CSIDL_FLAG_PFTI_TRACKTARGET;
+
+                IShellFolder2* psf;
+                hr = CFSFolder_CreateFolder(nullptr, nullptr, pidl, &pfti, IID_PPV_ARGS(&psf));
+                if (SUCCEEDED(hr))
+                {
+                    if (prgmfi->pguidObj == &CLSID_StartMenu || prgmfi->pguidObj == &CLSID_StartMenuCommon)
                     {
-                        if (prgmfi->pguidObj != &CLSID_StartMenu && prgmfi->pguidObj != &CLSID_StartMenuCommon)
+                        ISetFolderEnumRestriction* prest;
+                        if (SHWindowsPolicy(POLID_NoStartMenuSubFolders) && SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&prest))))
                         {
-                            ASSERT(rgmfi[i].pguidObj == nullptr || !IsEqualGUID(*rgmfi[i].pguidObj, CLSID_StartMenu)
-                                && !IsEqualGUID(*rgmfi[i].pguidObj, CLSID_StartMenuCommon)); // 370
+                            prest->SetEnumRestriction(0, SHCONTF_FOLDERS);
+                            prest->Release();
                         }
-                        else
-                        {
-                            ISetFolderEnumRestriction* prest;
-                            if (SHWindowsPolicy(POLID_NoStartMenuSubFolders) && SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&prest))))
-                            {
-                                prest->SetEnumRestriction(0, 0x20);
-                                prest->Release();
-                            }
-                        }
-
-                        hr = pasf->AddNameSpace(rgmfi[i].pguidObj, psf, nullptr, rgmfi[i].uANSFlags, rgmfi[i].field_C);
-                        psf->Release();
                     }
+                    else
+                    {
+                        ASSERT(rgmfi[i].pguidObj == nullptr || !IsEqualGUID(*rgmfi[i].pguidObj, CLSID_StartMenu)
+                            && !IsEqualGUID(*rgmfi[i].pguidObj, CLSID_StartMenuCommon)); // 370
+                    }
+
+                    hr = pasf->AddNameSpace(rgmfi[i].pguidObj, psf, nullptr, rgmfi[i].uANSFlags, rgmfi[i].field_C);
+                    psf->Release();
                 }
             }
             ILFree(pidl);
 
-            if (hr >= 0)
+            if (SUCCEEDED(hr))
             {
                 hr = pasf->QueryInterface(riid, ppv);
             }

@@ -2,10 +2,11 @@
 
 #include "NSCHost.h"
 
-#include "cabinet.h"
-
+#include "Cabinet.h"
+#include "CoCreateInstanceHook.h"
 #include "HostUtil.h"
 #include "SFTHost.h"
+#include "Shell32Util.h"
 #include "shguidp.h"
 #include "ShUndoc.h"
 
@@ -642,42 +643,6 @@ BOOL CNSCHost::_AreChangesRestricted()
 {
 	return IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOCHANGESTARMENU, L"Advanced", L"Start_EnableDragDrop", 0);
 }
-
-// Thanks to ep_taskbar by @amrsatrio
-HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut)
-{
-	if (psfOut)
-		*psfOut = nullptr;
-
-	*pidlOut = nullptr;
-
-	WCHAR szPath[47] = L"shell:::";
-	StringFromGUID2(rclsid, &szPath[8], 39);
-
-	ITEMIDLIST_ABSOLUTE* pidl;
-	HRESULT hr = SHILCreateFromPath(szPath, &pidl, nullptr);
-	if (SUCCEEDED(hr))
-	{
-		if (psfOut)
-		{
-			hr = SHBindToObject(nullptr, pidl, nullptr, IID_PPV_ARGS(psfOut));
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			*pidlOut = pidl;
-			pidl = nullptr;
-		}
-
-		ILFree(pidl);
-	}
-
-	return hr;
-}
-
-#include "CoCreateInstanceHook.h"
-
-EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
 
 HRESULT CNSCHost::_InitializeNSC(HWND hwnd)
 {
