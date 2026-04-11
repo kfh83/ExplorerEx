@@ -2903,7 +2903,7 @@ HRESULT CStartMenuCallback::InitializeFastItemsShellMenu(IShellMenu* psm)
             HKEY hMenuKey = nullptr;
             RegCreateKeyExW(
                 HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Start Menu",
-                0, nullptr, 0, 0x2001Fu, nullptr, &hMenuKey, nullptr);
+                0, nullptr, REG_OPTION_NON_VOLATILE, (KEY_READ | KEY_WRITE), nullptr, &hMenuKey, nullptr);
 
             //CcshellDebugMsgW(0x2000000, "Root Start Menu Key Is %d", hMenuKey);
             hr = psm->SetShellFolder(psf, pidl, hMenuKey, 0x10000004);

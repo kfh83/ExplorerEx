@@ -262,8 +262,10 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		RemapSizeForHighDPI(&_aopa[i].size);
 
-		HWND hwndPane = CreateWindowExW(0, _aopa[i].pszClassName, nullptr, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i), nullptr, &_aopa[i]);
-		if (!hwndPane || !GetWindowLongPtr(hwnd, GWL_STYLE))
+		HWND hwndPane = CreateWindowExW(
+			0, _aopa[i].pszClassName, nullptr, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i),
+			nullptr, &_aopa[i]);
+		if (!hwndPane || !GetWindowLongPtrW(hwnd, GWL_STYLE))
 			return -1;
 
 		_aopa[i].hwnd = hwndPane;
@@ -272,16 +274,16 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		nmss.hdr.hwndFrom = hwndPane;
 		nmss.hdr.idFrom = GetDlgCtrlID(hwndPane);
 		nmss.hdr.code = 223;
-		nmss.punkSite = static_cast<IServiceProvider *>(this);
-		SendMessage(hwndPane, WM_NOTIFY, nmss.hdr.idFrom, (LPARAM)&nmss);
+		nmss.punkSite = static_cast<IServiceProvider*>(this);
+		SendMessageW(hwndPane, WM_NOTIFY, nmss.hdr.idFrom, (LPARAM)&nmss);
 	}
 	return 0;
 }
 
 LRESULT COpenViewHost::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-	LRESULT lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
+	SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+	LRESULT lRes = DefWindowProcW(hwnd, uMsg, wParam, lParam);
 	if (this)
 		Release();
 	return lRes;
@@ -336,7 +338,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 				nmgms.siz = pnmgs->siz;
 				nmgms.hdr.code = pnmgs->hdr.code;
 
-				SendMessage(_aopa[i].hwnd, WM_NOTIFY, nmgms.hdr.idFrom, (LPARAM)&nmgms);
+				SendMessageW(_aopa[i].hwnd, WM_NOTIFY, nmgms.hdr.idFrom, (LPARAM)&nmgms);
 
 				// int cy = nmgms.siz.cy;
 				if (i < 2)
@@ -368,7 +370,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 			{
 				if (field_18 < 2)
 				{
-					return SendMessage(_aopa[3].hwnd, uMsg, wParam, lParam);
+					return SendMessageW(_aopa[3].hwnd, uMsg, wParam, lParam);
 				}
 				return 0;
 			}
@@ -380,31 +382,31 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 					{
 						return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
 					}
-					return SendMessage(_aopa[field_18].hwnd, uMsg, wParam, lParam);
+					return SendMessageW(_aopa[field_18].hwnd, uMsg, wParam, lParam);
 				}
 			LABEL_15:
-				_SetCurrentView(0, NULL);
+				_SetCurrentView(0, nullptr);
 				SHPropagateMessage(_hwnd, uMsg, wParam, lParam, SPM_POST | SPM_ONELEVEL);
 				return 0;
 			}
-			_SetCurrentView(0, NULL);
+			_SetCurrentView(0, nullptr);
 		}
 		return 0;
 	}
 
 	if (pnm->hwndFrom == _hwnd)
 	{
-		HWND hwndInner = ::GetWindow(_aopa[field_18].hwnd, GW_CHILD);
+		HWND hwndInner = GetWindow(_aopa[field_18].hwnd, GW_CHILD);
 		pnm->hwndFrom = hwndInner;
 		pnm->idFrom = GetDlgCtrlID(hwndInner);
-		return SendMessage(_aopa[field_18].hwnd, WM_NOTIFY, pnm->idFrom, lParam);
+		return SendMessageW(_aopa[field_18].hwnd, WM_NOTIFY, pnm->idFrom, lParam);
 	}
 
 	if (pnm->code == 202 || pnm->code == 204 || pnm->code == 207 || pnm->code == 209 || pnm->code == 212 || pnm->code == 218)
 	{
-		return SendMessage(GetParent(_hwnd), uMsg, wParam, lParam);
+		return SendMessageW(GetParent(_hwnd), uMsg, wParam, lParam);
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 void COpenViewHost::_Layout(int cx, int cy)

@@ -63,7 +63,8 @@ public:
     // *** misc public methods ***
     HRESULT Register()
     {
-        return CoRegisterClassObject(*_pclsid, this, CLSCTX_LOCAL_SERVER, REGCLS_MULTIPLEUSE, &_dwClassObject);
+        return CoRegisterClassObject(
+            *_pclsid, this, CLSCTX_INPROC_SERVER | CLSCTX_LOCAL_SERVER, REGCLS_MULTIPLEUSE, &_dwClassObject);
     }
 
     HRESULT Revoke()
