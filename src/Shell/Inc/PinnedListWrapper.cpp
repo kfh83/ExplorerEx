@@ -1,7 +1,8 @@
 #include "pch.h"
-#include "shundoc.h"
+#include "ShUndoc.h"
+#include "PinnedListWrapper.h"
 
-CPinnedListWrapper::CPinnedListWrapper(IUnknown *punk, const GUID &riid)
+CPinnedListWrapper::CPinnedListWrapper(IUnknown* punk, const GUID& riid)
 {
 	if (riid == IID_IPinnedList3)
 	{
@@ -67,7 +68,12 @@ STDMETHODIMP_(ULONG __stdcall) CPinnedListWrapper::Release(void)
 	if (m_pinnedList3)
 		cref = m_pinnedList3->Release();
 	if (cref == 0)
-		free((void*)this); // <- This is probably very stupid.
+	{
+		m_pinnedList25 = nullptr;
+		m_flexList = nullptr;
+		m_pinnedList3 = nullptr;
+		delete this;
+	}
 	return cref;
 }
 
@@ -169,6 +175,7 @@ STDMETHODIMP_(HRESULT __stdcall) CPinnedListWrapper::GetAppIDForPinnedItem(PCIDL
 		return m_pinnedList3->GetAppIDForPinnedItem(p1, p2);
 	return S_OK;
 }
+
 STDMETHODIMP_(HRESULT __stdcall) CPinnedListWrapper::ItemChangeNotify(PCIDLIST_ABSOLUTE p1, PCIDLIST_ABSOLUTE p2)
 {
 	if (m_pinnedList25)
@@ -179,6 +186,7 @@ STDMETHODIMP_(HRESULT __stdcall) CPinnedListWrapper::ItemChangeNotify(PCIDLIST_A
 		return m_pinnedList3->ItemChangeNotify(p1, p2);
 	return S_OK;
 }
+
 STDMETHODIMP_(HRESULT __stdcall) CPinnedListWrapper::UpdateForRemovedItemsAsNecessary(VOID)
 {
 	if (m_pinnedList25)
