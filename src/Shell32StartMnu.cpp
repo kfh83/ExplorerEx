@@ -486,22 +486,22 @@ HRESULT CreateMergedFolderHelper(REFCLSID rclsid, const MERGEDFOLDERINFO* rgmfi,
 
 const MERGEDFOLDERINFO c_rgmfiStartMenu[] =
 {
-    { 32779u, 65282u, &CLSID_StartMenu, 1 },
-    { 22u, 6u, &CLSID_StartMenuCommon, 1 }
+    { 0x800B, 0xFF02, &CLSID_StartMenu, 1 },
+    { 0x0016, 0x0006, &CLSID_StartMenuCommon, 1 }
 };
 
 const MERGEDFOLDERINFO c_rgmfiProgramsFolder[] =
 {
-    { 32770u, 65282u, &CLSID_ProgramsFolder, 2 },
-    { 23u, 6u, &CLSID_ProgramsFolderCommon, 2 }
+    { 0x8002u, 0xFF02u, &CLSID_ProgramsFolder, 2 },
+    { 0x0017u, 0x0006u, &CLSID_ProgramsFolderCommon, 2 }
 };
 
 const MERGEDFOLDERINFO c_rgmfiProgramsFolderAndFastItems[] =
 {
-    { 32770u, 65290u, &CLSID_ProgramsFolder, 2 },
-    { 23u, 14u, &CLSID_ProgramsFolderCommon, 2 },
-    { 32779u, 10u, &CLSID_StartMenu, 1 },
-    { 22u, 14u, &CLSID_StartMenu, 1 }
+    { 0x8002u, 0xFF0Au, &CLSID_ProgramsFolder, 2 },
+    { 0x0017u, 0x000Eu, &CLSID_ProgramsFolderCommon, 2 },
+    { 0x800Bu, 0x000Au, &CLSID_StartMenu, 1 },
+    { 0x0016u, 0x000Eu, &CLSID_StartMenu, 1 }
 };
 
 EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
@@ -2741,129 +2741,53 @@ BOOL IsStartMenuChangeNotAllowed(BOOL fStartPanel)
 
 HRESULT CStartMenuCallback::InitializeProgramsShellMenu(IShellMenu* psm)
 {
-    HKEY hkeyPrograms = NULL;
-    LPITEMIDLIST pidl = NULL;
+    HKEY hkeyPrograms = nullptr;
+    ITEMIDLIST* pidl = nullptr;
 
-    DWORD dwInitFlags = SMINIT_VERTICAL;
-    if (!FeatureEnabled(_fIsStartPanel ? TEXT("Start_ScrollPrograms") : TEXT("StartMenuScrollPrograms")))
-        dwInitFlags |= SMINIT_MULTICOLUMN;
-
+    DWORD dwInitFlags = 0x10000000;
+    if (!FeatureEnabled(L"StartMenuScrollPrograms") && !_fIsStartPanel)
+        dwInitFlags = 0x50000000;
     if (IsStartMenuChangeNotAllowed(_fIsStartPanel))
-        dwInitFlags |= SMINIT_RESTRICT_DRAGDROP | SMINIT_RESTRICT_CONTEXTMENU;
-
+        dwInitFlags |= 0x3;
     if (_fIsStartPanel)
-        dwInitFlags |= SMINIT_TOPLEVEL;
+        dwInitFlags |= 0x20004;
 
-    HRESULT hr = psm->Initialize(this, IDM_PROGRAMS, IDM_PROGRAMS, dwInitFlags);
+    HRESULT hr = psm->Initialize(this, 504, 504, dwInitFlags);
     if (SUCCEEDED(hr))
     {
         _InitializePrograms();
+        const WCHAR* pszOrderKey =
+            _fIsStartPanel
+                ? L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Start Menu2\\Programs"
+                : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Start Menu\\Programs";
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER, pszOrderKey, 0, nullptr, REG_OPTION_NON_VOLATILE, (KEY_READ | KEY_WRITE),
+            nullptr, &hkeyPrograms, nullptr);
 
-        LPCTSTR pszOrderKey = _fIsStartPanel ?
-            STRREG_STARTMENU2 "XP" TEXT("\\Programs") :
-            STRREG_STARTMENU "XP" TEXT("\\Programs");
-
-        auto hr = RegCreateKeyEx(HKEY_CURRENT_USER, pszOrderKey, NULL, NULL,
-            REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE,
-            NULL, &hkeyPrograms, NULL);
-
-        if (hr != S_OK)
-        {
-            printf("FAILED TO CREATE REG KEY\n");
-        }
-
-        IShellFolder* psf = 0;
-        BOOL fOptimize = FALSE;
+        IShellFolder* psf;
         DWORD dwSmset = SMSET_TOP;
-
         if (_fIsStartPanel)
         {
-            // Start Panel: Menu:  The Programs section is a merge of the
-            // Fast Items and Programs folders with a separator between them.
-            
-            dwSmset |= SMSET_SEPARATEMERGEFOLDER;
-
-			//hr = GetMergedFolder(&psf, &pidl, c_rgmfiProgramsFolderAndFastItems,
-			//	ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems));
-            //hr = CreateMergedFolderHelper(c_rgmfiProgramsFolderAndFastItems,ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems),IID_PPV_ARGS(&psf));
-
-			pidl = ILCreateFromPathW(L"shell:::{865e5e76-ad83-4dca-a109-50dc2113ce9a}");
-			if (pidl)
-			{
-			    if (SUCCEEDED(SHBindToObject(0LL, pidl, 0, IID_IShellFolder, (void**)&psf)))
-			    {
-			        printf("success\n");
-			    }
-			    else
-			    {
-			        printf("FAILED TO BIND OBJECT\n");
-			    }
-			
-			}
-			else
-			    printf("FAILED TO BIND OBJECT\n");
+            dwSmset |= 0x200;
+            hr = BindToGetFolderAndPidl(CLSID_ProgramsFolderAndFastItems, &psf, &pidl);
         }
         else
         {
-            // Classic Start Menu:  The Programs section is just the per-user
-            // and common Programs folders merged together
-			//hr = GetMergedFolder(&psf, &pidl, c_rgmfiProgramsFolder,
-			//    ARRAYSIZE(c_rgmfiProgramsFolder));
-
-			pidl = ILCreateFromPathW(L"shell:::{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}");
-			if (pidl)
-			{
-				if (SUCCEEDED(SHBindToObject(0LL, pidl, 0, IID_IShellFolder, (void**)&psf)))
-				{
-					printf("success\n");
-				}
-				else
-				{
-					printf("FAILED TO BIND OBJECT\n");
-				}
-
-			}
-			else
-				printf("FAILED TO BIND OBJECT\n");
-
-            // We used to register for change notify at CSIDL_STARTMENU and assumed
-            // that CSIDL_PROGRAMS was a child of CSIDL_STARTMENU. Since this wasn't always the 
-            // case, I removed the optimization.
-
-            // Both panes are registered recursive. So, When CSIDL_PROGRAMS _IS_ a 
-            // child of CSIDL_STARTMENU we can enter a code path where when destroying 
-            // CSIDL_PROGRAMS, we unregister it. This will flush the change nofiy queue 
-            // of CSIDL_STARTMENU, and blow away all of the children, including CSIDL_PROGRAMS, 
-            // while we are in the middle of destroying it... See the problem? I have been adding 
-            // reentrance "Blockers" but this only delayed where we crashed. 
-            // What was needed was to determine if Programs was a child of the Start Menu directory.
-            // if it was we need to add the optmimization. If it's not we don't have a problem.
-
-            // WINDOWS BUG 135156(tybeam): If one of the two is redirected, then this will get optimized
-            // we can't do better than this because both are registed recursive, and this will fault...
-            fOptimize = IsCSIDLChild(CSIDL_STARTMENU, CSIDL_PROGRAMS)
-                || IsCSIDLChild(CSIDL_COMMON_STARTMENU, CSIDL_COMMON_PROGRAMS);
-            if (fOptimize)
-            {
-                dwSmset |= SMSET_DONTREGISTERCHANGENOTIFY;
-            }
+            hr = BindToGetFolderAndPidl(CLSID_ProgramsFolder, &psf, &pidl);
         }
-
         if (SUCCEEDED(hr))
         {
-			// We should have a pidl from CSIDL_Programs
-			ASSERT(pidl);
-
-			// We should have a shell folder from the bind.
-			ASSERT(psf);
-
-			hr = psm->SetShellFolder(psf, pidl, hkeyPrograms, dwSmset);
-			psf->Release();
-			ILFree(pidl);
+            ASSERT(pidl); // 2189
+            ASSERT(psf); // 2192
+            hr = psm->SetShellFolder(psf, pidl, hkeyPrograms, dwSmset);
+            psf->Release();
+            ILFree(pidl);
         }
 
         if (FAILED(hr))
+        {
             RegCloseKey(hkeyPrograms);
+        }
     }
 
     return hr;
