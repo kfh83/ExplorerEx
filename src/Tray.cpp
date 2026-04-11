@@ -1969,6 +1969,13 @@ DWORD WINAPI CTray::SyncThreadProc(void* pv)
     return ptray->_SyncThreadProc();
 }
 
+const WCHAR* const c_rgpszMergedFolderCLSIDs[] =
+{
+    L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}", // CLSID_ProgramsFolderAndFastItems
+	L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}", // CLSID_ProgramsFolder
+    L"{48e7caab-b918-4e58-a94d-505519c795dc}", // CLSID_StartMenuFolder
+};
+
 DWORD CTray::_SyncThreadProc()
 {
     // Skipped telemetry ShellTraceId_Explorer_CreateTray_Start
@@ -1977,14 +1984,10 @@ DWORD CTray::_SyncThreadProc()
     OleInitialize(nullptr);
     ClassFactory_Start();
 
-    // CLSID_ProgramsFolderAndFastItems
-    SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}");
-
-    // CLSID_ProgramsFolder
-    SetupMergedFolderKeys(L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}");
-
-    // CLSID_StartMenuFolder
-    SetupMergedFolderKeys(L"{48e7caab-b918-4e58-a94d-505519c795dc}");
+    for (auto pszCLSID : c_rgpszMergedFolderCLSIDs)
+    {
+        // SetupMergedFolderKeys(pszCLSID);
+    }
 
     // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
 
