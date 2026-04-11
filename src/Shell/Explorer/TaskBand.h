@@ -5,7 +5,7 @@
 #ifdef __cplusplus
 
 #include "pch.h"
-#include "cwndproc.h"
+#include "CWndProc.h"
 #include "dpa.h"
 #include "commoncontrols.h"
 

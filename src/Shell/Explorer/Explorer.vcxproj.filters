@@ -6,10 +6,9 @@
   <ItemGroup>
     <ClCompile Include="BandSite.cpp" />
     <ClCompile Include="ClassFac.cpp" />
-    <ClCompile Include="CoCreateInstanceHook.cpp" />
-    <ClCompile Include="COWSite.cpp" />
-    <ClCompile Include="CWndProc.cpp" />
-    <ClCompile Include="debug.cpp" />
+    <ClCompile Include="..\Inc\*.cpp" Exclude="..\Inc\SHFusion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="desktop2\DefaultMFU.cpp" />
     <ClCompile Include="desktop2\DeskHost.cpp" />
     <ClCompile Include="desktop2\Logoff.cpp" />
@@ -19,21 +18,17 @@
     <ClCompile Include="desktop2\SpecFldr.cpp" />
     <ClCompile Include="desktop2\UserPane.cpp" />
     <ClCompile Include="desktop2\WrapCtl.cpp" />
-    <ClCompile Include="DesktopP.cpp" />
-    <ClCompile Include="DllLoad.cpp" />
     <ClCompile Include="HostUtil.cpp" />
-    <ClCompile Include="IEGuidP.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
     <ClCompile Include="Mixer.cpp" />
-    <ClCompile Include="Path.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="PinnedList.cpp" />
-    <ClCompile Include="RunTask.cpp" />
     <ClCompile Include="Shell32StartMnu.cpp" />
-    <ClCompile Include="SHFusion.cpp" />
-    <ClCompile Include="ShUndoc.cpp" />
+    <ClCompile Include="..\Inc\SHFusion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="SSOMgr.cpp" />
     <ClCompile Include="StartButton.cpp" />
     <ClCompile Include="StartMnu.cpp" />
@@ -47,18 +42,17 @@
     <ClCompile Include="TrayNot.cpp" />
     <ClCompile Include="TrayProp.cpp" />
     <ClCompile Include="TrayReg.cpp" />
-    <ClCompile Include="UEMApp.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="Desktop2\OpenHost.cpp" />
     <ClCompile Include="Desktop2\OpenBox.cpp" />
     <ClCompile Include="Desktop2\NSCHost.cpp" />
     <ClCompile Include="Desktop2\SrchView.cpp" />
     <ClCompile Include="Desktop2\TopMatch.cpp" />
-    <ClCompile Include="shstr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CoCreateInstanceHook.h" />
-    <ClInclude Include="COWSite.h" />
+    <ClInclude Include="..\Inc\*.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="desktop2\DeskHost.h" />
     <ClInclude Include="desktop2\Desktop2.h" />
     <ClInclude Include="desktop2\MoreProg.h" />
@@ -69,22 +63,12 @@
     <ClInclude Include="desktop2\SpecFldr.h" />
     <ClInclude Include="desktop2\stdafx.h" />
     <ClInclude Include="desktop2\UserPane.h" />
-    <ClInclude Include="desktopp.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
     <ClInclude Include="PatternHelper.h" />
-    <ClInclude Include="NtPerf.h" />
-    <ClInclude Include="NtWmi.h" />
-    <ClInclude Include="Path.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="QSort.h" />
-    <ClInclude Include="RunTask.h" />
-    <ClInclude Include="SHFusion.h" />
     <ClInclude Include="StartButton.h" />
     <ClInclude Include="ThemeManager.h" />
-    <ClInclude Include="UEMApp.h" />
-    <ClInclude Include="Winter.h" />
-    <ClInclude Include="wmiumkm.h" />
     <ClInclude Include="wtl\atlapp.h" />
     <ClInclude Include="wtl\atlcrack.h" />
     <ClInclude Include="wtl\atlctrls.h" />
@@ -104,23 +88,13 @@
     <ClInclude Include="atlstuff.h" />
     <ClInclude Include="BandSite.h" />
     <ClInclude Include="cabinet.h" />
-    <ClInclude Include="CriticalSection.h" />
-    <ClInclude Include="CWndProc.h" />
-    <ClInclude Include="debug.h" />
     <ClInclude Include="dlg.h" />
-    <ClInclude Include="DPA.h" />
     <ClInclude Include="Help.h" />
     <ClInclude Include="HostUtil.h" />
-    <ClInclude Include="IEGuidP.h" />
     <ClInclude Include="MFUList.h" />
     <ClInclude Include="Mixer.h" />
-    <ClInclude Include="Port32.h" />
     <ClInclude Include="rcids.h" />
-    <ClInclude Include="ShDGuid.h" />
-    <ClInclude Include="ShGuidP.h" />
-    <ClInclude Include="ShUndoc.h" />
     <ClInclude Include="SSOMgr.h" />
-    <ClInclude Include="StartIds.h" />
     <ClInclude Include="StartMnu.h" />
     <ClInclude Include="TaskBand.h" />
     <ClInclude Include="TaskBar.h" />
@@ -129,12 +103,9 @@
     <ClInclude Include="TrayCmn.h" />
     <ClInclude Include="TrayItem.h" />
     <ClInclude Include="TrayNot.h" />
-    <ClInclude Include="TrayP.h" />
     <ClInclude Include="TrayReg.h" />
     <ClInclude Include="UserPane.h" />
     <ClInclude Include="Util.h" />
-    <ClInclude Include="w4warn.h" />
-    <ClInclude Include="WinUserP.h" />
     <ClInclude Include="wtl\atltheme.h" />
     <ClInclude Include="wtl\atluser.h" />
     <ClInclude Include="wtl\atlwince.h" />
@@ -144,7 +115,6 @@
     <ClInclude Include="Desktop2\NSCHost.h" />
     <ClInclude Include="Desktop2\SrchView.h" />
     <ClInclude Include="Desktop2\TopMatch.h" />
-    <ClInclude Include="shstr.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="dlg.rc" />

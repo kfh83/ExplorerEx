@@ -16,7 +16,7 @@
 #include "uemapp.h"
 
 #define NO_NOTIFYSUBCLASSWNDPROC
-#include "cwndproc.h"
+#include "CWndProc.h"
 #include "desktop2.h"
 #include "mixer.h"
 #include "port32.h"

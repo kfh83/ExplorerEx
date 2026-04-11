@@ -1,7 +1,7 @@
 #ifndef _TRAYNOT_H
 #define _TRAYNOT_H
 
-#include "cwndproc.h"
+#include "CWndProc.h"
 #include "pch.h"
 #include "traycmn.h"
 #include "trayitem.h"
