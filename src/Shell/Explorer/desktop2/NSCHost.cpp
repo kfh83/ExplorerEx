@@ -121,7 +121,7 @@ HRESULT CNSCHost::OnGetToolTip(IShellItem *psi, LPWSTR pszTip, int cchTip)
 	if (psi->GetAttributes(SFGAO_FOLDER, &attr) < 0 || (attr & SFGAO_FOLDER) != 0)
 		return S_OK;
 
-	IQueryInfo *pqi;
+	IQueryInfo* pqi;
 	HRESULT hr = psi->BindToHandler(nullptr, BHID_SFUIObject, IID_PPV_ARGS(&pqi));
 	if (SUCCEEDED(hr))
 	{
@@ -567,30 +567,179 @@ LRESULT CNSCHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	HRESULT hr = E_FAIL;
 
-	NMHDR *pnmh = (NMHDR *)lParam;
+	NMHDR* pnmh = reinterpret_cast<NMHDR*>(lParam);
 	if (pnmh)
 	{
 		switch (pnmh->code)
 		{
-		case SMN_APPLYREGION:
-			return HandleApplyRegion(hwnd, _hTheme, (PSMNMAPPLYREGION)lParam, SPP_NSCHOST, 0);
-		case SMN_GETMINSIZE:
-			return _OnSMNGetMinSize((PSMNGETMINSIZE)lParam);
-		case 215:
-			return _OnSMNFindItemWorker((PSMNDIALOGMESSAGE)lParam);
-		case 222:
-			PostMessage(hwnd, WM_APP, 0, 0);
-			return 0;
-		case 223:
-			return SUCCEEDED(SetSite(((SMNMMENUBAND *)pnmh)->pmb));
+			case SMN_APPLYREGION:
+				return HandleApplyRegion(hwnd, _hTheme, (SMNMAPPLYREGION*)lParam, SPP_NSCHOST, 0);
+			case SMN_GETMINSIZE:
+				return _OnSMNGetMinSize((SMNGETMINSIZE*)lParam);
+			case 215:
+				return _OnSMNFindItemWorker((SMNDIALOGMESSAGE*)lParam);
+			case 222:
+				PostMessageW(hwnd, WM_APP, 0, 0);
+				return 0;
+			case 223:
+				return SUCCEEDED(SetSite(((SMNMMENUBAND*)pnmh)->pmb));
 		}
 	}
 	return hr;
 }
 
-LRESULT CNSCHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
+LRESULT CNSCHost::_OnSMNFindItemWorker(SMNDIALOGMESSAGE* pdm)
 {
-	return 0; // EXEX-Vista(allison): TODO.
+	LRESULT lRes;
+	IShellItem* psiItem = nullptr;
+
+	switch (pdm->flags & SMNDM_FINDMASK)
+	{
+		case SMNDM_FINDFIRSTMATCH:
+		case SMNDM_FINDNEXTMATCH:
+		{
+			pdm->flags |= 0x1000;
+			return FALSE;
+		}
+		case SMNDM_FINDNEAREST:
+		case SMNDM_HITTEST:
+		{
+			_pns->HitTest(&pdm->pt, &psiItem);
+			lRes = psiItem != nullptr;
+			break;
+		}
+		case SMNDM_FINDFIRST:
+		{
+			_pns->GetNextItem(nullptr, NSTCGNI_FIRSTVISIBLE, &psiItem);
+			lRes = psiItem != nullptr;
+			break;
+		}
+		case SMNDM_FINDLAST:
+		{
+			_pns->GetNextItem(nullptr, NSTCGNI_LASTVISIBLE, &psiItem);
+			lRes = psiItem != nullptr;
+			break;
+		}
+		case SMNDM_FINDNEXTARROW:
+		{
+			if (pdm->pmsg->wParam == VK_UP)
+			{
+				IShellItem* psiSelected;
+				if (SUCCEEDED(_GetSelectedItem(&psiSelected)))
+				{
+					_pns->GetNextItem(psiSelected, NSTCGNI_PREVVISIBLE, &psiItem);
+					psiSelected->Release();
+				}
+				lRes = psiItem != nullptr;
+			}
+			else if (pdm->pmsg->wParam == VK_DOWN)
+			{
+				IShellItem* psiSelected;
+				if (SUCCEEDED(_GetSelectedItem(&psiSelected)))
+				{
+					_pns->GetNextItem(psiSelected, NSTCGNI_NEXTVISIBLE, &psiItem);
+					psiSelected->Release();
+				}
+				lRes = psiItem != nullptr;
+			}
+			else
+			{
+				if (SUCCEEDED(_GetSelectedItem(&psiItem)))
+				{
+					SFGAOF sfgao = SFGAO_FOLDER;
+					if (SUCCEEDED(psiItem->GetAttributes(SFGAO_FOLDER, &sfgao)) && (sfgao & SFGAO_FOLDER) != 0)
+					{
+						pdm->flags |= 0x1000;
+					}
+				}
+				lRes = FALSE;
+			}
+			break;
+		}
+		case SMNDM_INVOKECURRENTITEM:
+		{
+			pdm->flags |= 0x1000;
+			lRes = FALSE;
+			break;
+		}
+		case SMNDM_OPENCASCADE:
+		{
+			lRes = FALSE;
+			break;
+		}
+		case SMNDM_FINDITEMID:
+		case 10:
+		{
+			lRes = TRUE;
+			break;
+		}
+		case 11:
+		{
+			POINT pt = pdm->pt;
+			MapWindowPoints(nullptr, _hwnd, &pt, 1);
+			HWND hwndChild = ChildWindowFromPointEx(_hwnd, pt, CWP_SKIPINVISIBLE | CWP_SKIPDISABLED);
+			if (hwndChild)
+			{
+				pdm->pmsg->hwnd = hwndChild;
+			}
+			lRes = FALSE;
+			break;
+		}
+		default:
+		{
+			lRes = FALSE;
+			ASSERT(!"Unknown SMNDM command"); // 532
+			break;
+		}
+	}
+
+	if (!lRes)
+	{
+		pdm->flags |= 0x4000;
+
+		RECT rcItem;
+		if (psiItem && SUCCEEDED(_pns->GetItemRect(psiItem, &rcItem)))
+		{
+			MapWindowPoints(nullptr, _hwnd, reinterpret_cast<POINT*>(&rcItem), 2);
+			pdm->pt.x = (rcItem.right + rcItem.left) / 2;
+			pdm->pt.y = (rcItem.bottom + rcItem.top) / 2;
+		}
+		else
+		{
+			pdm->pt.x = 0;
+			pdm->pt.y = 0;
+		}
+	}
+	if (psiItem)
+	{
+		if ((pdm->flags & SMNDM_SELECT) != 0)
+		{
+			if (!field_60)
+			{
+				field_60 = 1;
+				_pns->SetTheme(IsCompositionActive() ? L"StartMenuKeyBoardComposited" : L"StartMenuKeyBoard");
+			}
+
+			NSTCITEMSTATE nstcisFlags = NSTCIS_NONE;
+			_pns->GetItemState(psiItem, NSTCIS_SELECTED, &nstcisFlags);
+			if ((nstcisFlags & NSTCIS_SELECTED) == 0)
+			{
+				_pns->SetItemState(psiItem, NSTCIS_SELECTED, NSTCIS_SELECTED);
+			}
+			if (SHIsChildOrSelf(_hwnd, GetFocus()) == S_OK)
+			{
+				pdm->flags &= ~SMNDM_SELECT;
+			}
+		}
+		else if (field_60)
+		{
+			field_60 = 0;
+			_pns->SetTheme(IsCompositionActive() ? L"StartMenuHoverComposited" : L"StartMenuHover");
+		}
+		psiItem->Release();
+	}
+
+	return lRes;
 }
 
 LRESULT CNSCHost::_OnSMNGetMinSize(PSMNGETMINSIZE psmngms)
