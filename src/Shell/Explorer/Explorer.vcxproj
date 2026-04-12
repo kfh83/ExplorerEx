@@ -128,7 +128,7 @@
   <PropertyGroup Label="UserMacros" />
 
   <PropertyGroup>
-    <IncludePath>..\Inc\;desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <IncludePath>..\Inc\;..\Inc\WTL\;desktop2\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
     <IntDir>$(SolutionDir)\build\obj\$(Configuration)\$(Platform)\</IntDir>
     <OutDir>$(SolutionDir)\build\bin\$(Configuration)\$(Platform)\</OutDir>
     <TargetName>explorer</TargetName>
@@ -145,7 +145,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -173,7 +173,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -203,7 +203,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -233,7 +233,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -262,7 +262,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -292,7 +292,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -325,7 +325,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PreprocessorDefinitions>EXEX_DLL;NDEBUG;_CONSOLE;RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -360,7 +360,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <AdditionalIncludeDirectories>..\Inc;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -407,22 +407,22 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="pch.h" />
     <ClInclude Include="StartButton.h" />
     <ClInclude Include="ThemeManager.h" />
-    <ClInclude Include="wtl\atlapp.h" />
-    <ClInclude Include="wtl\atlcrack.h" />
-    <ClInclude Include="wtl\atlctrls.h" />
-    <ClInclude Include="wtl\atlctrlw.h" />
-    <ClInclude Include="wtl\atlctrlx.h" />
-    <ClInclude Include="wtl\atlddx.h" />
-    <ClInclude Include="wtl\atldlgs.h" />
-    <ClInclude Include="wtl\atlfind.h" />
-    <ClInclude Include="wtl\atlframe.h" />
-    <ClInclude Include="wtl\atlgdi.h" />
-    <ClInclude Include="wtl\atlmisc.h" />
-    <ClInclude Include="wtl\atlprint.h" />
-    <ClInclude Include="wtl\atlres.h" />
-    <ClInclude Include="wtl\atlresce.h" />
-    <ClInclude Include="wtl\atlscrl.h" />
-    <ClInclude Include="wtl\atlsplit.h" />
+    <ClInclude Include="..\Inc\WTL\atlapp.h" />
+    <ClInclude Include="..\Inc\WTL\atlcrack.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrls.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrlw.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrlx.h" />
+    <ClInclude Include="..\Inc\WTL\atlddx.h" />
+    <ClInclude Include="..\Inc\WTL\atldlgs.h" />
+    <ClInclude Include="..\Inc\WTL\atlfind.h" />
+    <ClInclude Include="..\Inc\WTL\atlframe.h" />
+    <ClInclude Include="..\Inc\WTL\atlgdi.h" />
+    <ClInclude Include="..\Inc\WTL\atlmisc.h" />
+    <ClInclude Include="..\Inc\WTL\atlprint.h" />
+    <ClInclude Include="..\Inc\WTL\atlres.h" />
+    <ClInclude Include="..\Inc\WTL\atlresce.h" />
+    <ClInclude Include="..\Inc\WTL\atlscrl.h" />
+    <ClInclude Include="..\Inc\WTL\atlsplit.h" />
     <ClInclude Include="atlstuff.h" />
     <ClInclude Include="BandSite.h" />
     <ClInclude Include="cabinet.h" />
@@ -444,10 +444,10 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="TrayReg.h" />
     <ClInclude Include="UserPane.h" />
     <ClInclude Include="Util.h" />
-    <ClInclude Include="wtl\atltheme.h" />
-    <ClInclude Include="wtl\atluser.h" />
-    <ClInclude Include="wtl\atlwince.h" />
-    <ClInclude Include="wtl\atlwinx.h" />
+    <ClInclude Include="..\Inc\WTL\atltheme.h" />
+    <ClInclude Include="..\Inc\WTL\atluser.h" />
+    <ClInclude Include="..\Inc\WTL\atlwince.h" />
+    <ClInclude Include="..\Inc\WTL\atlwinx.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Explorer.rcv" />
