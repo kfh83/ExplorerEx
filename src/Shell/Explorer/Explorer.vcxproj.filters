@@ -18,7 +18,7 @@
     <ClCompile Include="desktop2\SpecFldr.cpp" />
     <ClCompile Include="desktop2\UserPane.cpp" />
     <ClCompile Include="desktop2\WrapCtl.cpp" />
-    <ClCompile Include="HostUtil.cpp" />
+    <ClCompile Include="desktop2\HostUtil.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
@@ -89,7 +89,7 @@
     <ClInclude Include="cabinet.h" />
     <ClInclude Include="dlg.h" />
     <ClInclude Include="Help.h" />
-    <ClInclude Include="HostUtil.h" />
+    <ClInclude Include="desktop2\HostUtil.h" />
     <ClInclude Include="MFUList.h" />
     <ClInclude Include="Mixer.h" />
     <ClInclude Include="rcids.h" />
