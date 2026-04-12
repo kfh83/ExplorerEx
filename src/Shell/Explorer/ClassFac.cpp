@@ -129,12 +129,14 @@ c_ClassParams[] =
     { &CLSID_TrayBandSiteService, CTrayBandSiteService_CreateInstance },
     { &CLSID_TrayNotify,          CTrayNotifyStub_CreateInstance },
 
+#if 1
     // @Note: Custom to ExplorerEx, these would normally be instantiated inside shell32
     { &CLSID_StartMenu,                     CStartMenu_CreateInstance },
     { &CLSID_PersonalStartMenu,             CPersonalStartMenu_CreateInstance },
     { &CLSID_StartMenuFolder,               CStartMenuFolder_CreateInstance },
     { &CLSID_ProgramsFolder,                CProgramsFolder_CreateInstance },
     { &CLSID_ProgramsFolderAndFastItems,    CProgramsFolderAndFastItems_CreateInstance },
+#endif
 };
 
 CDynamicClassFactory* g_rgpcf[ARRAYSIZE(c_ClassParams)] = {};

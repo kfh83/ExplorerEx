@@ -9,19 +9,6 @@
 * CLSID_ProgramsFolderAndFastItems  - CProgramsFolderAndFastItems_CreateInstance
 */
 
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv)
-{
-    UNREFERENCED_PARAMETER(rclsid);
-    UNREFERENCED_PARAMETER(riid);
-
-    if (ppv != nullptr)
-    {
-        *ppv = nullptr;
-    }
-
-    return CLASS_E_CLASSNOTAVAILABLE;
-}
-
 STDAPI_(BOOL) DllMain(HANDLE hDll, DWORD dwReason, void* lpReserved)
 {
     switch (dwReason)
