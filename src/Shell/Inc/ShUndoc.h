@@ -1438,13 +1438,19 @@ DEFINE_GUID(CLSID_MruLongList, 0x53bd6b4e, 0x3780, 0x4693, 0xaf, 0xc3, 0x71, 0x6
 DEFINE_GUID(IID_IAugmentedFolder, 0x2f711b17, 0x773c, 0x41d4, 0x93, 0xfa, 0x7f, 0x23, 0xed, 0xce, 0xcb, 0x66);
 DEFINE_GUID(CLSID_UserEventTimer, 0x864A1288, 0x354C, 0x4D19, 0x9D, 0x68, 0x0C2, 0x74, 0x2B, 0x0B1, 0x49, 0x97);
 
+#if defined(EXPLOREREXSHELL32_EXPORTS)
+#define EXEX_SHELL32_API __declspec(dllexport)
+#else
+#define EXEX_SHELL32_API __declspec(dllimport)
+#endif
+
 // Note: SHRegisterDarwinLink takes ownership of pidlFull. fUpdate means: update the Darwin state right away
-BOOL SHRegisterDarwinLink(LPITEMIDLIST pidlFull, LPWSTR pszDarwinID, BOOL fUpdate);
+EXEX_SHELL32_API BOOL SHRegisterDarwinLink(LPITEMIDLIST pidlFull, LPWSTR pszDarwinID, BOOL fUpdate);
 
 // Use this function to update the Darwin state for all registered Darwin shortcuts.
-void SHReValidateDarwinCache();
+EXEX_SHELL32_API void SHReValidateDarwinCache();
 
-HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut);
+EXEX_SHELL32_API HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut);
 
 inline void(*CheckWinIniForAssocs)();
 inline HRESULT(*CheckDiskSpace)();

@@ -132,13 +132,21 @@
     <IntDir>$(SolutionDir)\build\obj\$(Configuration)\$(Platform)\</IntDir>
     <OutDir>$(SolutionDir)\build\bin\$(Configuration)\$(Platform)\</OutDir>
     <TargetName>explorer</TargetName>
+    <ExplorerExShell32Config>$(Configuration)</ExplorerExShell32Config>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'ReleaseDLL'">
     <TargetName>ExplorerEx</TargetName>
+    <ExplorerExShell32Config>Release</ExplorerExShell32Config>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>false</VcpkgEnabled>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalLibraryDirectories>$(SolutionDir)build\bin\$(ExplorerExShell32Config)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ExplorerEx.Shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -441,7 +449,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="TrayItem.h" />
     <ClInclude Include="TrayNot.h" />
     <ClInclude Include="TrayReg.h" />
-    <ClInclude Include="UserPane.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="..\Inc\WTL\atltheme.h" />
     <ClInclude Include="..\Inc\WTL\atluser.h" />
@@ -451,7 +458,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
   <ItemGroup>
     <None Include="Explorer.rcv" />
     <None Include="immersive\README.md" />
-    <None Include="InterfacesP.inc" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="dlg.rc">
@@ -494,7 +500,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <Image Include="resources\naclockclean.bmp" />
     <Image Include="resources\naclocknoclean.bmp" />
     <Image Include="resources\nanoclockclean.bmp" />
-    <Image Include="nanoclocknoclean.bmp" />
     <Image Include="resources\newsm.bmp" />
     <Image Include="resources\NoProgram.ico" />
     <Image Include="resources\NotificationArea\Clean_Clock_Battery_Network_NoSound.bmp" />
@@ -604,7 +609,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Shell32StartMnu.cpp" />
     <ClCompile Include="..\Inc\SHFusion.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

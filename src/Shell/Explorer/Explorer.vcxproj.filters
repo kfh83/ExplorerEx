@@ -24,7 +24,6 @@
     <ClCompile Include="libx.cpp" />
     <ClCompile Include="Mixer.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="Shell32StartMnu.cpp" />
     <ClCompile Include="..\Inc\SHFusion.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
