@@ -179,7 +179,7 @@ Cleanup:
 	return fIsElevated;
 }
 
-void SetupMergedFolderKeys(LPCTSTR clsid)
+void SetupCOMRegistryKeys(LPCTSTR clsid)
 {
     WCHAR subKey[255];
     WCHAR subKeyClsid[255];
@@ -283,6 +283,219 @@ void SetupMergedFolderKeys(LPCTSTR clsid)
         wprintf(L"FAILED TO WRITE!!");
 
     RegCloseKey(res);
+}
+
+HRESULT SetupComServerKeys(
+    const WCHAR* pszClsid,
+    const WCHAR* pszDescription,
+    DWORD dwAttributes = 0,
+    const WCHAR* pszLocalizedString = nullptr,
+    const WCHAR* pszMergedFolderLocation = nullptr,
+    bool fAddFindVerb = false,
+    const WCHAR* pszThreadingModel = L"Apartment")
+{
+    if (!pszClsid || !pszDescription || !pszThreadingModel)
+        return E_INVALIDARG;
+
+    static WCHAR s_szDllPath[MAX_PATH] = {};
+    static bool s_fDllPathInit = false;
+
+    if (!s_fDllPathInit)
+    {
+        HMODULE hMod = GetModuleHandleW(L"ExplorerEx.Shell32.dll");
+        DWORD cch = 0;
+
+        if (hMod)
+        {
+            cch = GetModuleFileNameW(hMod, s_szDllPath, ARRAYSIZE(s_szDllPath));
+            if (!cch || cch >= ARRAYSIZE(s_szDllPath))
+                return HRESULT_FROM_WIN32(GetLastError());
+        }
+        else
+        {
+            cch = GetModuleFileNameW(nullptr, s_szDllPath, ARRAYSIZE(s_szDllPath));
+            if (!cch || cch >= ARRAYSIZE(s_szDllPath))
+                return HRESULT_FROM_WIN32(GetLastError());
+
+            WCHAR* pszSlash = wcsrchr(s_szDllPath, L'\\');
+            if (!pszSlash)
+                return E_FAIL;
+
+            *(pszSlash + 1) = L'\0';
+
+            HRESULT hr = StringCchCatW(s_szDllPath, ARRAYSIZE(s_szDllPath),
+                                       L"ExplorerEx.Shell32.dll");
+            if (FAILED(hr))
+                return hr;
+        }
+
+        s_fDllPathInit = true;
+    }
+
+    auto fnSetString = [](HKEY hKey, const WCHAR* pszValueName, const WCHAR* pszValue, DWORD dwType = REG_SZ) -> HRESULT
+    {
+        LONG l = RegSetValueExW(
+            hKey,
+            pszValueName,
+            0,
+            dwType,
+            reinterpret_cast<const BYTE*>(pszValue),
+            static_cast<DWORD>((wcslen(pszValue) + 1) * sizeof(WCHAR)));
+
+        return HRESULT_FROM_WIN32(l);
+    };
+
+    auto fnSetDword = [](HKEY hKey, const WCHAR* pszValueName, DWORD dwValue) -> HRESULT
+    {
+        LONG l = RegSetValueExW(
+            hKey,
+            pszValueName,
+            0,
+            REG_DWORD,
+            reinterpret_cast<const BYTE*>(&dwValue),
+            sizeof(dwValue));
+
+        return HRESULT_FROM_WIN32(l);
+    };
+
+    auto fnCreateKey = [](HKEY hRoot, const WCHAR* pszSubKey, HKEY* phKey) -> HRESULT
+    {
+        LONG l = RegCreateKeyExW(
+            hRoot,
+            pszSubKey,
+            0,
+            nullptr,
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            nullptr,
+            phKey,
+            nullptr);
+
+        return HRESULT_FROM_WIN32(l);
+    };
+
+    WCHAR szClsidKey[256];
+    HRESULT hr = StringCchPrintfW(szClsidKey, ARRAYSIZE(szClsidKey), L"Software\\Classes\\CLSID\\%s", pszClsid);
+    if (FAILED(hr))
+        return hr;
+
+    HKEY hClsid = nullptr;
+    HKEY hSubKey = nullptr;
+
+    hr = fnCreateKey(HKEY_CURRENT_USER, szClsidKey, &hClsid);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    hr = fnSetString(hClsid, nullptr, pszDescription);
+    if (SUCCEEDED(hr) && pszLocalizedString)
+    {
+        hr = fnSetString(hClsid, L"LocalizedString", pszLocalizedString, REG_EXPAND_SZ);
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        hr = fnCreateKey(hClsid, L"InProcServer32", &hSubKey);
+        if (SUCCEEDED(hr))
+        {
+            hr = fnSetString(hSubKey, nullptr, s_szDllPath);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, L"ThreadingModel", pszThreadingModel);
+            }
+            RegCloseKey(hSubKey);
+            hSubKey = nullptr;
+        }
+    }
+
+    if (SUCCEEDED(hr) && dwAttributes)
+    {
+        hr = fnCreateKey(hClsid, L"ShellFolder", &hSubKey);
+        if (SUCCEEDED(hr))
+        {
+            hr = fnSetDword(hSubKey, L"Attributes", dwAttributes);
+            RegCloseKey(hSubKey);
+            hSubKey = nullptr;
+        }
+    }
+
+    if (SUCCEEDED(hr) && pszMergedFolderLocation)
+    {
+        hr = fnCreateKey(hClsid, L"MergedFolder", &hSubKey);
+        if (SUCCEEDED(hr))
+        {
+            hr = fnSetString(hSubKey, L"Location", pszMergedFolderLocation);
+            RegCloseKey(hSubKey);
+            hSubKey = nullptr;
+        }
+    }
+
+    if (SUCCEEDED(hr) && fAddFindVerb)
+    {
+        hr = fnCreateKey(hClsid, L"shell\\find", &hSubKey);
+        if (SUCCEEDED(hr))
+        {
+            hr = fnSetDword(hSubKey, L"SuppressionPolicy", 0x80);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, L"LegacyDisable", L"");
+            }
+            RegCloseKey(hSubKey);
+            hSubKey = nullptr;
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = fnCreateKey(hClsid, L"shell\\find\\command", &hSubKey);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, nullptr, L"%SystemRoot%\\Explorer.exe", REG_EXPAND_SZ);
+                RegCloseKey(hSubKey);
+                hSubKey = nullptr;
+            }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec", &hSubKey);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, nullptr, L"[FindFolder(\"%l\", %I)]");
+                RegCloseKey(hSubKey);
+                hSubKey = nullptr;
+            }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec\\application", &hSubKey);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, nullptr, L"Folders");
+                RegCloseKey(hSubKey);
+                hSubKey = nullptr;
+            }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec\\topic", &hSubKey);
+            if (SUCCEEDED(hr))
+            {
+                hr = fnSetString(hSubKey, nullptr, L"AppProperties");
+                RegCloseKey(hSubKey);
+                hSubKey = nullptr;
+            }
+        }
+    }
+
+    if (hSubKey)
+        RegCloseKey(hSubKey);
+    if (hClsid)
+        RegCloseKey(hClsid);
+
+    return hr;
 }
 
 void ComServer_Stop(LPCTSTR clsid)

@@ -61,7 +61,7 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm);
 void ClassFactory_Start();
 void ClassFactory_Stop();
 
-void SetupMergedFolderKeys(LPCTSTR clsid);
+void SetupCOMRegistryKeys(LPCTSTR clsid);
 void ComServer_Stop(LPCTSTR clsid);
 
 //
@@ -1969,12 +1969,14 @@ DWORD WINAPI CTray::SyncThreadProc(void* pv)
     return ptray->_SyncThreadProc();
 }
 
-const WCHAR* const c_rgpszMergedFolderCLSIDs[] =
-{
-    L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}", // CLSID_ProgramsFolderAndFastItems
-	L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}", // CLSID_ProgramsFolder
-    L"{48e7caab-b918-4e58-a94d-505519c795dc}", // CLSID_StartMenuFolder
-};
+HRESULT SetupComServerKeys(
+    const WCHAR* pszClsid,
+    const WCHAR* pszDescription,
+    DWORD dwAttributes = 0,
+    const WCHAR* pszLocalizedString = nullptr,
+    const WCHAR* pszMergedFolderLocation = nullptr,
+    bool fAddFindVerb = false,
+    const WCHAR* pszThreadingModel = L"Apartment");
 
 DWORD CTray::_SyncThreadProc()
 {
@@ -1984,10 +1986,14 @@ DWORD CTray::_SyncThreadProc()
     OleInitialize(nullptr);
     ClassFactory_Start();
 
-    for (auto pszCLSID : c_rgpszMergedFolderCLSIDs)
-    {
-        // SetupMergedFolderKeys(pszCLSID);
-    }
+    SetupComServerKeys(L"{4622ad11-ff23-11d0-8d34-00a0c90f2719}", L"Start Menu", 0, nullptr, L"@shell32.dll,-4177");
+    SetupComServerKeys(L"{3f6953f0-5359-47fc-bd99-9f2cb95a62fd}", L"Personal Start Menu");
+    SetupComServerKeys(
+        L"{48e7caab-b918-4e58-a94d-505519c795dc}", L"Start Menu Folder", 0x28000000,
+        L"@%SystemRoot%\\system32\\shell32.dll,-21786", nullptr, true);
+    SetupComServerKeys(
+        L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}", L"Programs Folder", 0x28100000, nullptr, L"@shell32.dll,-4177");
+    SetupComServerKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}", L"Programs Folder and Fast Items", 0x28100000);
 
     // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
 
