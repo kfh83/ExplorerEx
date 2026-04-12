@@ -90,34 +90,6 @@ HRESULT CTaskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 HRESULT CTrayBandSiteService_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 HRESULT CTrayNotifyStub_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 
-//these are defined in shell32startmnu.cpp
-EXTERN_C HRESULT CStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
-EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut);
-EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-
-HRESULT CStartMenu_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
-{
-    return CStartMenu_CreateInstance(punkOuter,IID_PPV_ARGS(ppunk));
-} 
-
-HRESULT CPersonalStartMenu_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
-{
-    return CPersonalStartMenu_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
-}
-HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
-{
-    return CStartMenuFolder_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
-}
-HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
-{
-    return CProgramsFolder_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
-}
-
-HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
-{
-    return CProgramsFolderAndFastItems_CreateInstance(punkOuter, IID_PPV_ARGS(ppunk));
-}
-
 static const struct
 {
     CLSID const* pclsid;
@@ -128,19 +100,9 @@ c_ClassParams[] =
     { &CLSID_TaskBand,            CTaskBand_CreateInstance },
     { &CLSID_TrayBandSiteService, CTrayBandSiteService_CreateInstance },
     { &CLSID_TrayNotify,          CTrayNotifyStub_CreateInstance },
-
-#if 1
-    // @Note: Custom to ExplorerEx, these would normally be instantiated inside shell32
-    { &CLSID_StartMenu,                     CStartMenu_CreateInstance },
-    { &CLSID_PersonalStartMenu,             CPersonalStartMenu_CreateInstance },
-    { &CLSID_StartMenuFolder,               CStartMenuFolder_CreateInstance },
-    { &CLSID_ProgramsFolder,                CProgramsFolder_CreateInstance },
-    { &CLSID_ProgramsFolderAndFastItems,    CProgramsFolderAndFastItems_CreateInstance },
-#endif
 };
 
 CDynamicClassFactory* g_rgpcf[ARRAYSIZE(c_ClassParams)] = {};
-
 
 void ClassFactory_Start()
 {

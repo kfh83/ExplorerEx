@@ -1,23 +1,23 @@
-#define _IOffset(class, itf)         ((UINT)(UINT_PTR)&(((class *)0)->itf))
-#define IToClass(class, itf, pitf)   ((class  *)(((LPSTR)pitf)-_IOffset(class, itf)))
-
 #include <objbase.h>
 #include <Unknwn.h>
+
+#define _IOffset(class, itf)         ((UINT)(UINT_PTR)&(((class *)0)->itf))
+#define IToClass(class, itf, pitf)   ((class  *)(((LPSTR)pitf)-_IOffset(class, itf)))
 
 #define DllAddRef()
 #define DllRelease()    
 
-extern const CLSID CLSID_StartMenu;
-extern const CLSID CLSID_PersonalStartMenu;
-extern const CLSID CLSID_StartMenuFolder;
-extern const CLSID CLSID_ProgramsFolder;
-extern const CLSID CLSID_ProgramsFolderAndFastItems;
+EXTERN_C const CLSID CLSID_StartMenu;
+EXTERN_C const CLSID CLSID_PersonalStartMenu;
+EXTERN_C const CLSID CLSID_StartMenuFolder;
+EXTERN_C const CLSID CLSID_ProgramsFolder;
+EXTERN_C const CLSID CLSID_ProgramsFolderAndFastItems;
 
-extern HRESULT CStartMenu_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-extern HRESULT CPersonalStartMenu_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-extern HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-extern HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-extern HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CStartMenu_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 
 typedef struct
 {
@@ -98,8 +98,18 @@ const IClassFactoryVtbl c_CFVtbl = {
     CCF_LockServer
 };
 
+EXTERN_C BOOL ShundocInit(void);
+
+EXTERN_C BOOL WINAPI ExplorerExShell32_EnsureRuntimeInit(void)
+{
+    return SHUndocInit() ? TRUE : FALSE;
+}
+
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv)
 {
+    if (!ExplorerExShell32_EnsureRuntimeInit())
+        return CO_E_ERRORINDLL;
+
     if (IsEqualIID(riid, &IID_IClassFactory) || IsEqualIID(riid, &IID_IUnknown))
     {
         const OBJ_ENTRY* pcls;

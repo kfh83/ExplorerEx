@@ -2792,7 +2792,7 @@ BOOL ExecuteRegAppEnumProc(LPCTSTR szSubkey, LPCTSTR szCmdLine, RRA_FLAGS fFlags
     return bRet;
 }
 
-bool SHUndocInit(void)
+EXTERN_C BOOL SHUndocInit(void)
 {
 
 	LOAD_MODULE(shlwapi);
@@ -2940,10 +2940,10 @@ bool SHUndocInit(void)
     if (!CFSFolder_CreateFolder)
     {
         MessageBoxW(0, TEXT("CFSFolder_CreateFolder"), TEXT("CFSFolder_CreateFolder"),0);
-        return false;
+        return FALSE;
     }
 
-	return true;
+	return TRUE;
 }
 
 BOOL IsStartPanelOn()
