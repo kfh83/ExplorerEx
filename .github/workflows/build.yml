@@ -33,9 +33,9 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: amd64
-    - name: Compile ExplorerEx-Vista (explorer.exe)
-      run: | 
-        msbuild explorer.sln /p:Configuration=Release /p:Platform=x64
+    - name: Compile ExplorerEx-Vista (explorer.exe + ExplorerEx.Shell32.dll)
+      run: |
+        msbuild explorer.sln "/t:Explorer;ExplorerEx.Shell32" /p:Configuration=Release /p:Platform=x64
     - name: Set short git commit SHA
       id: vars
       shell: bash
