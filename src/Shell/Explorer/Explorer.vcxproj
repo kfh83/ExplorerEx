@@ -387,7 +387,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
   <ItemGroup>
     <ClInclude Include="..\Inc\*.h" />
     <ClInclude Include="desktop2\DeskHost.h" />
-    <ClInclude Include="desktop2\Desktop2.h" />
     <ClInclude Include="desktop2\MoreProg.h" />
     <ClInclude Include="Desktop2\NSCHost.h" />
     <ClInclude Include="Desktop2\OpenBox.h" />

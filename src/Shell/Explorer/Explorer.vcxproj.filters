@@ -53,7 +53,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="desktop2\DeskHost.h" />
-    <ClInclude Include="desktop2\Desktop2.h" />
     <ClInclude Include="desktop2\MoreProg.h" />
     <ClInclude Include="desktop2\PidlButton.h" />
     <ClInclude Include="desktop2\ProgList.h" />
