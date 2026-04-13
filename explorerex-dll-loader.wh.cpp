@@ -2,7 +2,7 @@
 // @id              explorerex-dll-loader
 // @name            ExplorerEx DLL Loader
 // @description     Loads the DLL build of ExplorerEx
-// @version         1.0.0
+// @version         1.1
 // @author          aubymori
 // @github          https://github.com/aubymori
 // @include         explorer.exe
@@ -50,10 +50,26 @@ BOOL Wh_ModInit(void)
     Wh_ModSettingsChanged();
     WindhawkUtils::StringSetting path = WindhawkUtils::StringSetting::make(L"path");
 
-    HMODULE hEpTaskbar = LoadLibraryW(path.get());
+    Wh_Log(L"Loading DLL from %s", path.get());
+
+    HMODULE hEpTaskbar = LoadLibraryExW(
+        path.get(), nullptr,
+        LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS // We need to load imports from the path of the dll.
+    );
     if (!hEpTaskbar)
     {
-        Wh_Log(L"Failed to load ExplorerEx DLL");
+        DWORD dwLastError = GetLastError();
+        WCHAR szError[512] = {};
+        FormatMessageW(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr,
+            dwLastError,
+            0,
+            szError,
+            ARRAYSIZE(szError),
+            nullptr
+        );
+        Wh_Log(L"LoadLibraryExW(%ls) failed: %ls(%lu)", path.get(), szError, dwLastError);
         return FALSE;
     }
 
