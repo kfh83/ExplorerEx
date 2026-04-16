@@ -136,7 +136,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'ReleaseDLL'">
     <TargetName>ExplorerEx</TargetName>
-    <ExplorerExShell32Config>Release</ExplorerExShell32Config>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>false</VcpkgEnabled>

@@ -32,8 +32,8 @@ Global
 		{1A881839-F61D-4777-AE38-2A5785234790}.Release|x64.Build.0 = Release|x64
 		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDebug|x64.ActiveCfg = ReleaseDebug|x64
 		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDebug|x64.Build.0 = ReleaseDebug|x64
-		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.ActiveCfg = Release|x64
-		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.Build.0 = Release|x64
+		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.ActiveCfg = ReleaseDLL|x64
+		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.Build.0 = ReleaseDLL|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
