@@ -723,7 +723,7 @@ private:
     // menus.
     DWORD _GetCascadeHoverTime() { return GetDoubleClickTime() * 4 / 5; }
 
-    static void CALLBACK SetIconAsync(LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex);
+    static void CALLBACK SetIconAsync(void* pvData, void* pvHint, int iIconIndex, int iOpenIconIndex);
 
     /*
      *  Custom commands we add to the context menu.

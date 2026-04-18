@@ -456,7 +456,7 @@ void SFTBarHost::_ComputeTileMetrics()
     _cxIndent = _cxMargin + 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
     if (_iconsize != ICONSIZE_MEDIUM)
         _cxIndent += _cxIcon;
-    
+
     _cyTile = cyTile + _cyMargin * (_iconsize == ICONSIZE_MEDIUM ? 1 : 3);
     if (_iconsize == ICONSIZE_MEDIUM && _hTheme)
     {
@@ -643,7 +643,7 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
                         HGDIOBJ v9 = SelectObject(hdcBMP, hbmp);
                         DrawThemeBackground(_hTheme, hdcBMP, _iThemePart, 0, &rcClient, NULL);
                         _hBrushAni = CreatePatternBrush(hbmp);
-                        
+
                         SelectObject(hdcBMP, v9);
                         DeleteObject(hbmp);
                     }
@@ -654,12 +654,12 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         }
         else
         {
-            return (LRESULT)GetSysColorBrush(COLOR_MENU);   
+            return (LRESULT)GetSysColorBrush(COLOR_MENU);
         }
     }
     else
     {
-        return (LRESULT)GetSysColorBrush(COLOR_MENU);   
+        return (LRESULT)GetSysColorBrush(COLOR_MENU);
     }
 #endif
 }
@@ -667,7 +667,7 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 //
 //  Appends the PaneItem to _dpaEnum, or deletes it (and nulls it out)
 //  if unable to append.
-// 
+//
 // EXEX-VISTA(allison): Validated.
 int SFTBarHost::_AppendEnumPaneItem(PaneItem *pitem)
 {
@@ -719,21 +719,20 @@ void SFTBarHost::_RepositionItems()
 //  iIconIndex = the icon we got
 //
 // EXEX-VISTA(allison): Validated.
-void SFTBarHost::SetIconAsync(LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex)
+void SFTBarHost::SetIconAsync(void* pvData, void* pvHint, int iIconIndex, int iOpenIconIndex)
 {
-    HWND hwnd = (HWND)pvData;
+    HWND hwnd = static_cast<HWND>(pvData);
     if (IsWindow(hwnd))
     {
-        SFTBarHost *self = reinterpret_cast<SFTBarHost *>(GetWindowLongPtr(hwnd, 0));
+        SFTBarHost* self = reinterpret_cast<SFTBarHost*>(GetWindowLongPtrW(hwnd, 0));
         if (self)
         {
-            IImageList2 *piml = NULL;
+            IImageList2* piml = nullptr;
             if (SUCCEEDED(HIMAGELIST_QueryInterface(self->_himl, IID_PPV_ARGS(&piml))))
             {
                 piml->ForceImagePresent(iIconIndex, ILFIP_ALWAYS);
             }
-
-            PostMessage(hwnd, SFTBM_ICONUPDATE, iIconIndex, (LPARAM)pvHint);
+            PostMessageW(hwnd, SFTBM_ICONUPDATE, iIconIndex, (LPARAM)pvHint);
 
             if (piml)
             {
@@ -1562,7 +1561,22 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     if (_hTheme)
     {
-        GetThemeMargins(_hTheme, NULL, _iThemePart, 0, TMT_CONTENTMARGINS, &rc, &_margins);
+        HRESULT hr = GetThemeMargins(_hTheme, NULL, _iThemePart, 0, TMT_CONTENTMARGINS, &rc, &_margins);
+        if (SUCCEEDED(hr))
+        {
+            wprintf(
+                L"Got theme margins: %d, %d, %d, %d, from part: %d\n",
+                _margins.cxLeftWidth,
+                _margins.cyTopHeight,
+                _margins.cxRightWidth,
+                _margins.cyBottomHeight,
+                _iThemePart
+            );
+        }
+        else
+        {
+			wprintf(L"Failed to get theme margins for part: %d, hr: 0x%X\n", _iThemePart, hr);
+        }
     }
     else
     {
@@ -3229,28 +3243,23 @@ LRESULT SFTBarHost::_OnRepopulate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 // EXEX-VISTA(allison): Partially validated. Recheck flow.
 LRESULT SFTBarHost::_OnChangeNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LPITEMIDLIST *ppidl;
+    ITEMIDLIST_ABSOLUTE** ppidl = nullptr;
     LONG lEvent;
-    LPSHChangeNotificationLock pshcnl;
-    pshcnl = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidl, &lEvent);
-
-    if (pshcnl)
+    HANDLE pshcnl = SHChangeNotification_Lock((HANDLE)wParam, lParam, &ppidl, &lEvent);
+    if (pshcnl && ppidl)
     {
-        UINT id = uMsg - SFTBM_CHANGENOTIFY;
-        if (id < SFTHOST_MAXCLIENTNOTIFY)
+        if (uMsg - 1025 < 8)
         {
-            OnChangeNotify(id, lEvent, ppidl[0], ppidl[1]);
+            OnChangeNotify(uMsg - 1025, lEvent, ppidl[0], ppidl[1]);
         }
-        else if (id == SFTHOST_HOSTNOTIFY_UPDATEIMAGE)
+        else if (uMsg == 1033)
         {
             _OnUpdateImage(ppidl[0], ppidl[1]);
         }
         else
         {
-            // Our wndproc shouldn't have dispatched to us
-            ASSERT(0);
+            ASSERT(0); // 2378
         }
-
         SHChangeNotification_Unlock(pshcnl);
     }
     return 0;
@@ -3259,11 +3268,10 @@ LRESULT SFTBarHost::_OnChangeNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
 // EXEX-VISTA(allison): Validated.
 void SFTBarHost::_OnUpdateImage(LPCITEMIDLIST pidl, LPCITEMIDLIST pidlExtra)
 {
-    // Must use pidl and not pidlExtra because pidlExtra is sometimes NULL
-    SHChangeDWORDAsIDList *pdwidl = (SHChangeDWORDAsIDList *)pidl;
+    SHChangeDWORDAsIDList* pdwidl = (SHChangeDWORDAsIDList*)pidl;
     if (pdwidl->dwItem1 == 0xFFFFFFFF)
     {
-        _SendNotify(_hwnd, 225, 0);
+        _SendNotify(_hwnd, 225, nullptr);
     }
     else
     {
