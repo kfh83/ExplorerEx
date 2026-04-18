@@ -160,10 +160,11 @@ const DWORD GlobalKeylist[] =
 };
 
 CTray::CTray()
-    : _fCanSizeMove(TRUE)
-    , _fIsLogoff(FALSE)
-    , _fIsDesktopConnected(TRUE)
+    : _fIsLogoff(FALSE)
+    , _fBandSiteInitialized(FALSE)
     , _stb(this)
+    , _fCanSizeMove(TRUE)
+    , _fIsDesktopConnected(TRUE)
     , _dwWatermarkPolicy(0)
 {
 }
@@ -1857,9 +1858,7 @@ void CTray::_InitBandsite()
 
     SendMessageW(_hwndTasks, 0x43F, 0, !_fNoThumbnails);
 
-    _fBandSiteReady = 1;
-
-    // Now that bandsite is ready, set the correct size
+    _fBandSiteInitialized = TRUE;
     VerifySize(FALSE, TRUE, FALSE);
     _AccountAllBandsForTaskbarSizingBar();
 }
@@ -3071,7 +3070,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
     _UpdateVertical(uStuckPlace);
 
     IDeskBarClient* pdbc;
-    if (_ptbs && _fBandSiteReady && SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
+    if (_ptbs && _fBandSiteInitialized && SUCCEEDED(_ptbs->QueryInterface(IID_PPV_ARGS(&pdbc))))
     {
         RECT rcClient;
         RECT rcOldClient;

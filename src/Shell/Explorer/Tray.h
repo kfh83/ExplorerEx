@@ -341,8 +341,7 @@ public:
     BOOL _fSkipErase;
 
     BOOL _fIsLogoff;
-
-    BOOL _fBandSiteReady;
+    BOOL _fBandSiteInitialized;
 
     HWND _hwndLastActive;
 
