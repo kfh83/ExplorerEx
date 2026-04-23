@@ -11,26 +11,23 @@
 #define OPENVIEW_VIEWCONTROL	3
 #define OPENVIEW_TOPMATCH		4
 
-#define COMPILE_OPENVIEW
-
-#ifdef COMPILE_OPENVIEW
-
 const SMPANEDATA g_aopaDefault[] =
 {
-	{ L"DesktopSFTBarHost",				0,	SPP_PROGLIST,		{ 0,  0},	NULL, NULL, FALSE, NULL },
-	{ L"Desktop NSCHost",				0,	SPP_NSCHOST,		{ 0,  0},	NULL, NULL, FALSE, NULL },
-	{ L"Desktop Search Open View",		0,	SPP_SEARCHVIEW,		{ 0,  0},	NULL, NULL, FALSE, NULL },
-	{ L"Desktop More Programs Pane",	0,	SPP_MOREPROGRAMS,	{ 0, 30},	NULL, NULL, FALSE, NULL },
-	{ L"Desktop top match",				0,	SPP_TOPMATCH,		{ 0, 20},	NULL, NULL, FALSE, NULL }
+	{ L"DesktopSFTBarHost",				0,	SPP_PROGLIST,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
+	{ L"Desktop NSCHost",				0,	SPP_NSCHOST,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
+	{ L"Desktop Search Open View",		0,	SPP_SEARCHVIEW,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
+	{ L"Desktop More Programs Pane",	0,	SPP_MOREPROGRAMS,	{ 0, 30}, nullptr, nullptr, FALSE, nullptr },
+	{ L"Desktop top match",				0,	SPP_TOPMATCH,		{ 0, 20}, nullptr, nullptr, FALSE, nullptr }
 };
 
 HRESULT COpenViewHost::QueryInterface(REFIID riid, void** ppvObj)
 {
-	static const QITAB qit[] = {
+	static const QITAB qit[] =
+	{
 		QITABENT(COpenViewHost, IServiceProvider),
 		QITABENT(COpenViewHost, IObjectWithSite),
 		QITABENT(COpenViewHost, IOleCommandTarget),
-		{ 0 },
+		{ nullptr },
 	};
 	return QISearch(this, qit, riid, ppvObj);
 }
@@ -114,7 +111,7 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 
 		case 307:
 			IUnknown_QueryServiceExec(static_cast<IServiceProvider*>(this), SID_SM_OpenBox, &SID_SM_DV2ControlHost, nCmdID, 0, nullptr, pvarargOut);
-			if (pvarargOut->iVal && field_18)
+			if (pvarargOut->iVal && _iCurView)
 			{
 				_SetCurrentView(0, pvarargIn);
 				IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 310, 0, nullptr, nullptr);
@@ -124,7 +121,7 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 
 		case 303:
 			ASSERT(pvarargOut->vt == VT_I4); // 638
-			pvarargOut->decVal.Lo32 = field_18;
+			pvarargOut->decVal.Lo32 = _iCurView;
 			return S_OK;
 
 		case 316:
@@ -140,7 +137,7 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 			return _SetCurrentView(nCmdexecopt == -1 ? field_1C : nCmdexecopt, pvarargIn);
 
 		case 306:
-			if (field_18 == 2 || field_18 == 1)
+			if (_iCurView == 2 || _iCurView == 1)
 			{
 				ASSERT(pvarargIn->vt == VT_BYREF); // 659
 				HWND hwndParent = static_cast<HWND>(pvarargIn->byref);
@@ -236,10 +233,10 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 	{
 		DWORD dwStyle = WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_CHILD;
 
-		if (field_18 == i)
+		if (_iCurView == i)
 			dwStyle |= WS_VISIBLE;
 
-		if (i == 3 && field_18 < 2)
+		if (i == 3 && _iCurView < 2)
 			dwStyle |= WS_VISIBLE;
 
 		if (hTheme)
@@ -368,7 +365,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		{
 			if (pnm->code == 217)
 			{
-				if (field_18 < 2)
+				if (_iCurView < 2)
 				{
 					return SendMessageW(_aopa[3].hwnd, uMsg, wParam, lParam);
 				}
@@ -382,7 +379,7 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 					{
 						return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
 					}
-					return SendMessageW(_aopa[field_18].hwnd, uMsg, wParam, lParam);
+					return SendMessageW(_aopa[_iCurView].hwnd, uMsg, wParam, lParam);
 				}
 			LABEL_15:
 				_SetCurrentView(0, nullptr);
@@ -396,10 +393,10 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 	if (pnm->hwndFrom == _hwnd)
 	{
-		HWND hwndInner = GetWindow(_aopa[field_18].hwnd, GW_CHILD);
+		HWND hwndInner = GetWindow(_aopa[_iCurView].hwnd, GW_CHILD);
 		pnm->hwndFrom = hwndInner;
 		pnm->idFrom = GetDlgCtrlID(hwndInner);
-		return SendMessageW(_aopa[field_18].hwnd, WM_NOTIFY, pnm->idFrom, lParam);
+		return SendMessageW(_aopa[_iCurView].hwnd, WM_NOTIFY, pnm->idFrom, lParam);
 	}
 
 	if (pnm->code == 202 || pnm->code == 204 || pnm->code == 207 || pnm->code == 209 || pnm->code == 212 || pnm->code == 218)
@@ -442,7 +439,7 @@ void COpenViewHost::_Layout(int cx, int cy)
 		}
 		cy1 = cy - _aopa[3].size.cy;
 	LABEL_11:
-		SetWindowPos(hwnd, NULL, 0, v6, cx, cy1, 0x204);
+		SetWindowPos(hwnd, nullptr, 0, v6, cx, cy1, 0x204);
 	}
 }
 
@@ -452,59 +449,61 @@ void COpenViewHost::_ShowEnableWindow(HWND hwnd, BOOL bEnable)
 	EnableWindow(hwnd, bEnable);
 }
 
-HRESULT COpenViewHost::_SetCurrentView(int a2, VARIANT* pvararg)
+HRESULT COpenViewHost::_SetCurrentView(int iView, VARIANT* pvararg)
 {
 	HRESULT hr = S_FALSE;
-	
-	if (field_18 != a2)
+
+	if (_iCurView != iView)
 	{
-		_ShowEnableWindow(_aopa[field_18].hwnd, FALSE);
-		
-		bool v6 = field_18 == 2;
-		if (field_18 < 2)
+		_ShowEnableWindow(_aopa[_iCurView].hwnd, FALSE);
+
+		if (_iCurView < OPENVIEW_SEARCHPANE)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_VIEWCONTROL].hwnd, FALSE);
-			IUnknown_QueryServiceExec(_aopa[OPENVIEW_VIEWCONTROL].punk, SID_SM_ViewControl, &SID_SM_DV2ControlHost, 302, a2, NULL, NULL);
-			v6 = field_18 == 2;
+			IUnknown_QueryServiceExec(
+				_aopa[OPENVIEW_VIEWCONTROL].punk, SID_SM_ViewControl, &SID_SM_DV2ControlHost, 302, iView, nullptr,
+				nullptr);
 		}
-		
-		if (v6)
+		if (_iCurView == OPENVIEW_SEARCHPANE)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_TOPMATCH].hwnd, FALSE);
 		}
 
-		//if (a2 == 2)
-		//{
-		//	if (field_18 == 1)
-		//		SHTracePerfSQMCountImpl((PCEVENT_DESCRIPTOR)ShellTraceId_StartMenu_AllPrograms_Search_Usage, 71);
-		//	else
-		//		SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_Usage, 72);
-		//}
+		if (iView == OPENVIEW_SEARCHPANE)
+		{
+			if (_iCurView == OPENVIEW_NSCHOST)
+			{
+				// SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_AllPrograms_Search_Usage, 583);
+			}
+			else
+			{
+				// SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_Search_Usage, 584);
+			}
+		}
 
-		int v7 = field_18;
-		field_1C = v7;
-		if (v7 == 2)
+		field_1C = _iCurView;
+		if (field_1C == 2)
+		{
 			field_1C = 0;
-		field_18 = a2;
-		
-		_ShowEnableWindow(_aopa[a2].hwnd, TRUE);
-		
-		if (field_18 < 2)
+		}
+		_iCurView = iView;
+		_ShowEnableWindow(_aopa[iView].hwnd, TRUE);
+
+		if (_iCurView < OPENVIEW_SEARCHPANE)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_VIEWCONTROL].hwnd, TRUE);
 		}
-		else if (field_18 == 2)
+		else if (_iCurView == OPENVIEW_SEARCHPANE)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_TOPMATCH].hwnd, TRUE);
 		}
-
-		if (field_18 == 1)
+		if (_iCurView == OPENVIEW_NSCHOST)
 		{
-			IUnknown_QueryServiceExec(_aopa[OPENVIEW_NSCHOST].punk, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 302, a2, pvararg, NULL);
+			IUnknown_QueryServiceExec(
+				_aopa[OPENVIEW_NSCHOST].punk, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 302, iView, pvararg, nullptr);
 		}
-		return S_OK;
+		hr = S_OK;
 	}
-	
 	return hr;
 }
 
@@ -517,7 +516,7 @@ HRESULT COpenViewHost::_HandleOpenBoxContextMenu(MSG* pmsg)
 {
 	HRESULT hr = E_FAIL;
 	
-	if (field_18 == 2)
+	if (_iCurView == 2)
 	{
 		VARIANT vt;
 		vt.lVal = -1;
@@ -542,18 +541,14 @@ HRESULT COpenViewHost::_HandleOpenBoxContextMenu(MSG* pmsg)
 
 BOOL WINAPI OpenViewHost_RegisterClass()
 {
-	WNDCLASSEX wc;
-	ZeroMemory(&wc, sizeof(wc));
-
+	WNDCLASSEXW wc		= {};
 	wc.cbSize			= sizeof(wc);
 	wc.style			= CS_GLOBALCLASS;
 	wc.lpfnWndProc		= COpenViewHost::s_WndProc;
 	wc.hInstance		= g_hinstCabinet;
-	wc.hbrBackground	= (HBRUSH)NULL;
-	wc.hCursor			= LoadCursor(NULL, IDC_ARROW);
-	wc.lpszClassName	= WC_OPENPANEHOST;
+	wc.hbrBackground	= (HBRUSH)nullptr;
+	wc.hCursor =		LoadCursorW(nullptr, IDC_ARROW);
+	wc.lpszClassName =	L"Desktop Open Pane Host";
 
 	return RegisterClassEx(&wc);
 }
-
-#endif

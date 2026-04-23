@@ -42,14 +42,14 @@ private:
 
 	void _Layout(int cx, int cy);
 	void _ShowEnableWindow(HWND hwnd, BOOL bEnable);
-	HRESULT _SetCurrentView(int a2, VARIANT* pvararg);
+	HRESULT _SetCurrentView(int iView, VARIANT* pvararg);
 	HRESULT _HandleOpenBoxArrowKey(MSG* pmsg);
 	HRESULT _HandleOpenBoxContextMenu(MSG* pmsg);
 
 private:
 	HWND _hwnd;
 	LONG _lRef;
-	int field_18;
+	int _iCurView;
 	int field_1C;
 	SMPANEDATA _aopa[5];
 
