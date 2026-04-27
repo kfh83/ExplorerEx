@@ -2315,101 +2315,108 @@ LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     // Give derived class a chance to respond
     return OnWndProc(hwnd, uMsg, wParam, lParam);
 #else
-    LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
-    if (pnm->hwndFrom == this->_hwndList)
+    NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
+
+    if (pnm->hwndFrom == _hwndList)
     {
-        if (pnm->code <= 0xFFFFFF91)
+        if (pnm->code <= -111)
         {
-            if (pnm->code != -111)
+            if (pnm->code == -111)
             {
-                switch (pnm->code)
-                {
-                case 0xFFFFFF46:
-                    return _OnLVNAsyncDrawn(CONTAINING_RECORD(pnm, NMLVASYNCDRAWN, hdr));
-                case 0xFFFFFF50:
-                    return _OnLVNEndLabelEdit(CONTAINING_RECORD(pnm, NMLVDISPINFO, hdr));
-                case 0xFFFFFF51:
-                    return _OnLVNBeginLabelEdit(CONTAINING_RECORD(pnm, NMLVDISPINFO, hdr));
-                case 0xFFFFFF62:
-                    return _OnLVNGetInfoTip(CONTAINING_RECORD(pnm, NMLVGETINFOTIP, hdr));
-                case 0xFFFFFF65:
-                    return _OnLVNKeyDown(CONTAINING_RECORD(pnm, NMLVKEYDOWN, hdr));
-                case 0xFFFFFF87:
-                    _UpdateHotTrackRect();
-                    return 0;
-                }
-                return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+                return _OnLVNBeginDrag((NMLISTVIEW*)lParam);
             }
-            return _OnLVNBeginDrag(CONTAINING_RECORD(pnm, NMLISTVIEW, hdr));
+            if (pnm->code == -186)
+            {
+                return _OnLVNAsyncDrawn((NMLVASYNCDRAWN*)lParam);
+            }
+            if (pnm->code == -176)
+            {
+                return _OnLVNEndLabelEdit((NMLVDISPINFOW*)lParam);
+            }
+            if (pnm->code == -175)
+            {
+                return _OnLVNBeginLabelEdit((NMLVDISPINFOW*)lParam);
+            }
+            if (pnm->code == -158)
+            {
+                return _OnLVNGetInfoTip((NMLVGETINFOTIPW*)lParam);
+            }
+            if (pnm->code == -155)
+            {
+                return _OnLVNKeyDown((NMLVKEYDOWN*)lParam);
+            }
+            if (pnm->code == -121)
+            {
+                _UpdateHotTrackRect();
+                return 0;
+            }
+            return OnWndProc(hwnd, uMsg, wParam, lParam);
         }
         if (pnm->code == -109)
         {
-            return _OnLVNBeginDrag(CONTAINING_RECORD(pnm, NMLISTVIEW, hdr));
+            return _OnLVNBeginDrag((NMLISTVIEW*)lParam);
         }
-        if (pnm->code == NM_CUSTOMDRAW)
+        if (pnm->code == -12)
         {
-            return _OnLVCustomDraw(CONTAINING_RECORD(CONTAINING_RECORD(pnm, NMCUSTOMDRAW, hdr), NMLVCUSTOMDRAW, nmcd));
+            return _OnLVCustomDraw((NMLVCUSTOMDRAW*)lParam);
         }
-        if (pnm->code == NM_KILLFOCUS)
+        if (pnm->code == -8)
         {
-            this->_NotifyHoverImage(-1);
+            _NotifyHoverImage(-1);
             goto L_DESELECT_ALL;
         }
         if (pnm->code == -4)
         {
-            return _ActivateItem(_GetLVCurSel(), AIF_KEYBOARD);
+            return _ActivateItem(_GetLVCurSel(), 1);
         }
         if (pnm->code == -2)
         {
-            return _OnLVNItemActivate(CONTAINING_RECORD(pnm, NMITEMACTIVATE, hdr));
+            return _OnLVNItemActivate((NMITEMACTIVATE*)lParam);
         }
-        return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+        return OnWndProc(hwnd, uMsg, wParam, lParam);
     }
     if (pnm->code <= 214)
     {
         if (pnm->code == 214)
         {
-            if (this->_hwndList == GetFocus())
+            if (_hwndList == GetFocus())
             {
-                NotifyWinEvent(0x8005u, this->_hwndList, -4, this->_iCascading + 1);
+                NotifyWinEvent(0x8005, _hwndList, -4, _iCascading + 1);
             }
-            this->_iCascading = -1;
+            _iCascading = -1;
             return 0;
         }
-        if (pnm->code == 200) // SMN_INITIALUPDATE
+        if (pnm->code == 200)
         {
             _EnumerateContents(0);
         }
-        else
+        else if (pnm->code == 201)
         {
-            if (pnm->code == 201) // SMN_APPLYREGION
+            if (_iThemePart != 6)
             {
-                if (this->_iThemePart != 6)
-                {
-                    return HandleApplyRegion(this->_hwnd, this->_hTheme, (SMNMAPPLYREGION *)lParam, this->_iThemePart, 0);
-                }
-            }
-            else
-            {
-                if (pnm->code == 206) // SMN_GETMINSIZE
-                {
-                    return _OnSMNGetMinSize(CONTAINING_RECORD(pnm, SMNGETMINSIZE, hdr));
-                }
-                if (pnm->code == 208) // SMN_POSTPOPUP
-                {
-                    _RevalidatePostPopup();
-                }
-                else if (pnm->code == 210) // SMN_DISMISS
-                {
-                    return _OnSMNDismiss();
-                }
+                return HandleApplyRegion(_hwnd, _hTheme, (SMNMAPPLYREGION*)lParam, _iThemePart, 0);
             }
         }
-        return this->OnWndProc(hwnd, uMsg, wParam, lParam);
+        else
+        {
+            if (pnm->code == 206)
+            {
+                return _OnSMNGetMinSize((SMNGETMINSIZE*)lParam);
+            }
+            if (pnm->code == 208)
+            {
+                _RevalidatePostPopup();
+            }
+            else if (pnm->code == 210)
+            {
+                return _OnSMNDismiss();
+            }
+        }
+        return OnWndProc(hwnd, uMsg, wParam, lParam);
     }
     if (pnm->code == 215)
     {
-        return _OnSMNFindItem((SMNDIALOGMESSAGE *)lParam);
+        return _OnSMNFindItem((SMNDIALOGMESSAGE*)lParam);
     }
     if (pnm->code == 223)
     {
@@ -2419,7 +2426,7 @@ LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     {
         if (_iCascading != -1)
         {
-            NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndList, -4, _iCascading + 1);
+            NotifyWinEvent(0x8005, _hwndList, -4, _iCascading + 1);
         }
         return OnWndProc(hwnd, uMsg, wParam, lParam);
     }
@@ -2432,7 +2439,7 @@ LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     {
     L_DESELECT_ALL:
         _UpdateHotTrackRect();
-        ListView_SetItemState(_hwndList, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_SetItemState(_hwndList, -1, 0, LVIS_FOCUSED | LVIS_SELECTED);
         return OnWndProc(hwnd, uMsg, wParam, lParam);
     }
     return OnWndProc(hwnd, uMsg, wParam, lParam);
@@ -3903,7 +3910,7 @@ LRESULT SFTBarHost::_OnLVNGetInfoTip(LPNMLVGETINFOTIP plvn)
 
     PaneItem *pitem;
 
-    if (ShowInfoTip() && 
+    if (ShowInfoTip() &&
         (pitem = _GetItemFromLV(plvn->iItem)) &&
         !pitem->IsCascade())
     {

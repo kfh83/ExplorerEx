@@ -2917,12 +2917,12 @@ void CDesktopHost::_RemoveSelection(HWND hwnd)
         nm.hwndFrom = hwnd;
         nm.idFrom = GetDlgCtrlID(hwnd);
         nm.code = NM_KILLFOCUS;
-        SendMessage(hwnd, WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
+        SendMessageW(hwnd, WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
     }
 
     if (!_DoesOpenBoxHaveFocus())
     {
-        HWND hwndChild = GetNextDlgTabItem(_hwnd, NULL, FALSE);
+        HWND hwndChild = GetNextDlgTabItem(_hwnd, nullptr, FALSE);
         if (hwndChild)
         {
             HWND hwndInner = ::GetWindow(hwndChild, GW_CHILD);
@@ -2932,7 +2932,7 @@ void CDesktopHost::_RemoveSelection(HWND hwnd)
             nm.hwndFrom = hwndInner;
             nm.idFrom = GetDlgCtrlID(hwndInner);
             nm.code = NM_KILLFOCUS;
-            SendMessage(hwndChild, WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
+            SendMessageW(hwndChild, WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
         }
     }
 }

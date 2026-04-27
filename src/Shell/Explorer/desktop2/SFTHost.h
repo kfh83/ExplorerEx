@@ -563,15 +563,15 @@ private:
     class CLoadIconTask : public CRunnableTask
     {
     public:
-        CLoadIconTask(HWND a2, void* a3, int a4)
+        CLoadIconTask(HWND hwnd, void* a3, int iIndex)
             : CRunnableTask(RTF_DEFAULT)
-            , _iIndex(a4)
-            , _hwnd(a2)
+            , _iIndex(iIndex)
+            , _hwnd(hwnd)
             , field_2C(a3)
         {
         }
 
-        STDMETHODIMP InternalResumeRT()
+        STDMETHODIMP InternalResumeRT() override
         {
             SetIconAsync(_hwnd, field_2C, _iIndex, _iIndex);
             return S_OK;
