@@ -9,12 +9,12 @@ inline HRESULT ResultFromWin32(__in DWORD dwErr)
 
 inline HRESULT ResultFromLastError()
 {
-    return ResultFromWin32(GetLastError());
+    return HRESULT_FROM_WIN32(GetLastError());
 }
 
 inline HRESULT ResultFromKnownLastError()
 {
-    HRESULT hr = ResultFromLastError();
+    const HRESULT hr = HRESULT_FROM_WIN32(GetLastError());
     return (SUCCEEDED(hr) ? E_FAIL : hr);
 }
 
@@ -30,8 +30,8 @@ inline HRESULT ResultFromWin32Count(UINT cchResult, UINT cchBuffer)
 
 inline DWORD GetLastErrorError()
 {
-    DWORD result = GetLastError();
-    return result == ERROR_SUCCESS ? 1 : result;
+    DWORD dwError = GetLastError();
+    return dwError == ERROR_SUCCESS ? 1 : dwError;
 }
 
 inline HRESULT HRESULTFromLastErrorError()
