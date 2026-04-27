@@ -130,370 +130,137 @@ void ClassFactory_Stop()
     }
 }
 
-const wchar_t pszCLSID[] = L"SOFTWARE\\Classes\\CLSID\\";
-
-//https://github.com/microsoftarchive/msdn-code-gallery-microsoft/blob/master/OneCodeTeam/UAC%20self-elevation%20(CppUACSelfElevation)/%5BC++%5D-UAC%20self-elevation%20(CppUACSelfElevation)/C++/CppUACSelfElevation/CppUACSelfElevation.cpp#L291
-BOOL IsProcessElevated()
+typedef struct
 {
-	BOOL fIsElevated = FALSE;
-	DWORD dwError = ERROR_SUCCESS;
-	HANDLE hToken = NULL;
+    HKEY hRootKey;
+    const WCHAR* pszSubKey;
+    const WCHAR* pszClassID;
+    const WCHAR* pszValueName;
+    BYTE* pszData;
+    DWORD dwType;
+} REGSTRUCT;
 
-	// Open the primary access token of the process with TOKEN_QUERY.
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-	{
-		dwError = GetLastError();
-		goto Cleanup;
-	}
-
-	// Retrieve token elevation information.
-	TOKEN_ELEVATION elevation;
-	DWORD dwSize;
-	if (!GetTokenInformation(hToken, TokenElevation, &elevation,
-		sizeof(elevation), &dwSize))
-	{
-		// When the process is run on operating systems prior to Windows 
-		// Vista, GetTokenInformation returns FALSE with the 
-		// ERROR_INVALID_PARAMETER error code because TokenElevation is 
-		// not supported on those operating systems.
-		dwError = GetLastError();
-		goto Cleanup;
-	}
-
-	fIsElevated = elevation.TokenIsElevated;
-
-Cleanup:
-	// Centralized cleanup for all allocated resources.
-	if (hToken)
-	{
-		CloseHandle(hToken);
-		hToken = NULL;
-	}
-
-	// Throw the error if something failed in the function.
-	if (ERROR_SUCCESS != dwError)
-	{
-		throw dwError;
-	}
-
-	return fIsElevated;
-}
-
-void SetupCOMRegistryKeys(LPCTSTR clsid)
+HRESULT InitializeRegistryKeys()
 {
-    WCHAR subKey[255];
-    WCHAR subKeyClsid[255];
-    WCHAR subKeyShellFolder[255];
+    WCHAR szPersonalStartMenuCLSID[64];
+    StringFromGUID2(CLSID_PersonalStartMenu, szPersonalStartMenuCLSID, ARRAYSIZE(szPersonalStartMenuCLSID));
 
-    wcscpy_s(subKeyClsid, pszCLSID);
-    wcsncat_s(subKeyClsid, clsid, 255);
+    WCHAR szStartMenuCLSID[64];
+    StringFromGUID2(CLSID_StartMenu, szStartMenuCLSID, ARRAYSIZE(szStartMenuCLSID));
 
-    wcscpy_s(subKey, subKeyClsid);
-    wcscpy_s(subKeyShellFolder, subKeyClsid);
+    WCHAR szStartMenuFolderCLSID[64];
+    StringFromGUID2(CLSID_StartMenuFolder , szStartMenuFolderCLSID, ARRAYSIZE(szStartMenuFolderCLSID));
 
-    wcsncat_s(subKey, L"\\InProcServer32", 255);
-    wcsncat_s(subKeyShellFolder, L"\\ShellFolder", 255);
+    WCHAR szProgramsFolderCLSID[64];
+    StringFromGUID2(CLSID_ProgramsFolder, szProgramsFolderCLSID, ARRAYSIZE(szProgramsFolderCLSID));
 
-    wprintf(L"subkey %s\n", subKey);
-    wprintf(L"subKeyShellFolder %s\n", subKeyShellFolder);
+    WCHAR szProgramsFolderAndFastItemsCLSID[64];
+    StringFromGUID2(
+        CLSID_ProgramsFolderAndFastItems, szProgramsFolderAndFastItemsCLSID,
+        ARRAYSIZE(szProgramsFolderAndFastItemsCLSID));
 
-    HKEY mainKeyToUse = HKEY_CURRENT_USER;
-    if (IsProcessElevated())
-        mainKeyToUse = HKEY_LOCAL_MACHINE;
+    WCHAR szModulePathAndName[260];
+    GetModuleFileNameW(GetModuleHandleW(L"ExplorerEx.Shell32.dll"), szModulePathAndName, ARRAYSIZE(szModulePathAndName));
 
-    const WCHAR* pszDisplayName = nullptr;
-    if (_wcsicmp(clsid, L"{865e5e76-ad83-4dca-a109-50dc2113ce9a}") == 0)
-        pszDisplayName = L"Programs Folder and Fast Items";
-    else if (_wcsicmp(clsid, L"{7be9d83c-a729-4d97-b5a7-1b7313c39e0a}") == 0)
-        pszDisplayName = L"Programs Folder";
-    else if (_wcsicmp(clsid, L"{48e7caab-b918-4e58-a94d-505519c795dc}") == 0)
-        pszDisplayName = L"Start Menu Folder";
+    const DWORD dwSuppressionPolicy = 0x80;
+    const SFGAOF dwBaseAttributes = SFGAO_BROWSABLE | SFGAO_FOLDER;
+    const SFGAOF dwProgramsFolderAttributes = SFGAO_NONENUMERATED | dwBaseAttributes;
 
-    HKEY res;
-    bool bHasKey = RegOpenKeyW(mainKeyToUse, subKeyClsid, &res) == S_OK;
-    if (!bHasKey)
+    const REGSTRUCT c_rgRegistryEntries[]
     {
-        bHasKey = RegCreateKeyW(mainKeyToUse, subKeyClsid, &res) == S_OK;
-    }
+        // CLSID_PersonalStartMenu
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szPersonalStartMenuCLSID, nullptr, (BYTE*)L"Personal Start Menu", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szPersonalStartMenuCLSID, nullptr, (BYTE*)L"%s", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szPersonalStartMenuCLSID, L"ThreadingModel", (BYTE*)L"Apartment", REG_SZ },
 
-    if (!bHasKey)
-    {
-        wprintf(L"FAILED TO CREATE THE KEY!!!!\n");
-        return;
-    }
+        // CLSID_StartMenu
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szStartMenuCLSID, nullptr, (BYTE*)L"Start Menu", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InProcServer32", szStartMenuCLSID, nullptr, (BYTE*)L"%s", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InProcServer32", szStartMenuCLSID, L"ThreadingModel", (BYTE*)L"Apartment", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\MergedFolder", szStartMenuCLSID, L"Location", (BYTE*)L"@shell32.dll,-4177", REG_SZ },
 
-    if (pszDisplayName)
-    {
-        bool bWrote = RegSetValueExW(res, nullptr, 0, REG_SZ,
-            (const BYTE*)pszDisplayName, (DWORD)((wcslen(pszDisplayName) + 1) * sizeof(WCHAR))) == S_OK;
-        if (!bWrote)
-            wprintf(L"FAILED TO WRITE CLSID DISPLAY NAME!!");
-    }
+        // CLSID_StartMenuFolder
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szStartMenuFolderCLSID, nullptr, (BYTE*)L"Start Menu Folder", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szStartMenuFolderCLSID, L"LocalizedString", (BYTE*)L"@%SystemRoot%\\system32\\shell32.dll,-21786", REG_EXPAND_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szStartMenuFolderCLSID, nullptr, (BYTE*)L"%s", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szStartMenuFolderCLSID, L"ThreadingModel", (BYTE*)L"Apartment", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find", szStartMenuFolderCLSID, L"LegacyDisable", (BYTE*)L"", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find", szStartMenuFolderCLSID, L"SuppressionPolicy", (BYTE*)&dwSuppressionPolicy, REG_DWORD },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find\\command", szStartMenuFolderCLSID, nullptr, (BYTE*)L"%SystemRoot%\\Explorer.exe", REG_EXPAND_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find\\ddeexec", szStartMenuFolderCLSID, nullptr, (BYTE*)L"[FindFolder(\"%%l\", %%I)]", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find\\ddeexec\\application", szStartMenuFolderCLSID, nullptr, (BYTE*)L"Folders", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\shell\\find\\ddeexec\\topic", szStartMenuFolderCLSID, nullptr, (BYTE*)L"AppProperties", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\ShellFolder", szStartMenuFolderCLSID, L"Attributes", (BYTE*)&dwBaseAttributes, REG_DWORD },
 
-    RegCloseKey(res);
+        // CLSID_ProgramsFolder
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szProgramsFolderCLSID, nullptr, (BYTE*)L"Programs Folder", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szProgramsFolderCLSID, nullptr, (BYTE*)L"%s", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szProgramsFolderCLSID, L"ThreadingModel", (BYTE*)L"Apartment", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\MergedFolder", szProgramsFolderCLSID, L"Location", (BYTE*)L"@shell32.dll,-4177", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\ShellFolder", szProgramsFolderCLSID, L"Attributes", (BYTE*)&dwProgramsFolderAttributes, REG_DWORD },
 
-    bHasKey = RegOpenKeyW(mainKeyToUse, subKey, &res) == S_OK;
-    if (!bHasKey)
-    {
-        bHasKey = RegCreateKeyW(mainKeyToUse, subKey, &res) == S_OK;
-    }
-
-    if (!bHasKey)
-    {
-        wprintf(L"FAILED TO CREATE THE KEY!!!!\n");
-        return;
-    }
-
-	WCHAR localExePath[MAX_PATH];
-	GetModuleFileNameW(0, localExePath, MAX_PATH);
-
-    wprintf(L"localExePath %s\n", localExePath);
-
-    WCHAR exePath[MAX_PATH];
-    DWORD size = sizeof(exePath);
-    bool bRead = RegQueryValueExW(res, 0, 0, 0, (LPBYTE)exePath, &size) == S_OK;
-    if (bRead)
-    {
-        //there is something different there!
-        if (wcscmp(exePath, localExePath) != 0)
-        {
-            wprintf(L"WARNING!!! ALREADY A KEY OF A DIFFERENT EXE THERE!! OVERWRITING!\n");
-            //return;
-        }
-    }
-
-    //otherwise we overwrite
-    bool bWrote = RegSetValueExW(res, 0, 0, REG_SZ, (LPBYTE)localExePath, sizeof(localExePath)) == S_OK;
-    if (!bWrote)
-        wprintf(L"FAILED TO WRITE!!");
-
-    RegCloseKey(res);
-
-	bHasKey = RegOpenKeyW(mainKeyToUse, subKeyShellFolder, &res) == S_OK;
-	if (!bHasKey)
-	{
-		bHasKey = RegCreateKeyW(mainKeyToUse, subKeyShellFolder, &res) == S_OK;
-	}
-
-    // CLSID_ProgramsFolder = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
-    // CLSID_ProgramsFolderAndFastItems = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
-    DWORD attributes = SFGAO_NONENUMERATED | SFGAO_BROWSABLE | SFGAO_FOLDER;
-    bWrote = RegSetValueExW(res, L"Attributes", 0, REG_DWORD, (LPBYTE)&attributes, sizeof(DWORD)) == S_OK;
-    if (!bWrote)
-        wprintf(L"FAILED TO WRITE!!");
-
-    RegCloseKey(res);
-}
-
-HRESULT SetupComServerKeys(
-    const WCHAR* pszClsid,
-    const WCHAR* pszDescription,
-    DWORD dwAttributes = 0,
-    const WCHAR* pszLocalizedString = nullptr,
-    const WCHAR* pszMergedFolderLocation = nullptr,
-    bool fAddFindVerb = false,
-    const WCHAR* pszThreadingModel = L"Apartment")
-{
-    if (!pszClsid || !pszDescription || !pszThreadingModel)
-        return E_INVALIDARG;
-
-    static WCHAR s_szDllPath[MAX_PATH] = {};
-    static bool s_fDllPathInit = false;
-
-    if (!s_fDllPathInit)
-    {
-        HMODULE hMod = GetModuleHandleW(L"ExplorerEx.Shell32.dll");
-        DWORD cch = 0;
-
-        if (hMod)
-        {
-            cch = GetModuleFileNameW(hMod, s_szDllPath, ARRAYSIZE(s_szDllPath));
-            if (!cch || cch >= ARRAYSIZE(s_szDllPath))
-                return HRESULT_FROM_WIN32(GetLastError());
-        }
-        else
-        {
-            cch = GetModuleFileNameW(nullptr, s_szDllPath, ARRAYSIZE(s_szDllPath));
-            if (!cch || cch >= ARRAYSIZE(s_szDllPath))
-                return HRESULT_FROM_WIN32(GetLastError());
-
-            WCHAR* pszSlash = wcsrchr(s_szDllPath, L'\\');
-            if (!pszSlash)
-                return E_FAIL;
-
-            *(pszSlash + 1) = L'\0';
-
-            HRESULT hr = StringCchCatW(s_szDllPath, ARRAYSIZE(s_szDllPath),
-                                       L"ExplorerEx.Shell32.dll");
-            if (FAILED(hr))
-                return hr;
-        }
-
-        s_fDllPathInit = true;
-    }
-
-    auto fnSetString = [](HKEY hKey, const WCHAR* pszValueName, const WCHAR* pszValue, DWORD dwType = REG_SZ) -> HRESULT
-    {
-        LONG l = RegSetValueExW(
-            hKey,
-            pszValueName,
-            0,
-            dwType,
-            reinterpret_cast<const BYTE*>(pszValue),
-            static_cast<DWORD>((wcslen(pszValue) + 1) * sizeof(WCHAR)));
-
-        return HRESULT_FROM_WIN32(l);
+        // CLSID_ProgramsFolderAndFastItems
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s", szProgramsFolderAndFastItemsCLSID, nullptr, (BYTE*)L"Programs Folder and Fast Items", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szProgramsFolderAndFastItemsCLSID, nullptr, (BYTE*)L"%s", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\InprocServer32", szProgramsFolderAndFastItemsCLSID, L"ThreadingModel", (BYTE*)L"Apartment", REG_SZ },
+        { HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\%s\\ShellFolder", szProgramsFolderAndFastItemsCLSID, L"Attributes", (BYTE*)&dwProgramsFolderAttributes, REG_DWORD },
     };
 
-    auto fnSetDword = [](HKEY hKey, const WCHAR* pszValueName, DWORD dwValue) -> HRESULT
+    WCHAR szSubKey[260];
+    WCHAR szData[260];
+    HKEY hkey = nullptr;
+    HRESULT hr = S_OK;
+
+    for (UINT i = 0; SUCCEEDED(hr) && i < ARRAYSIZE(c_rgRegistryEntries); ++i)
     {
-        LONG l = RegSetValueExW(
-            hKey,
-            pszValueName,
-            0,
-            REG_DWORD,
-            reinterpret_cast<const BYTE*>(&dwValue),
-            sizeof(dwValue));
-
-        return HRESULT_FROM_WIN32(l);
-    };
-
-    auto fnCreateKey = [](HKEY hRoot, const WCHAR* pszSubKey, HKEY* phKey) -> HRESULT
-    {
-        LONG l = RegCreateKeyExW(
-            hRoot,
-            pszSubKey,
-            0,
-            nullptr,
-            REG_OPTION_NON_VOLATILE,
-            KEY_WRITE,
-            nullptr,
-            phKey,
-            nullptr);
-
-        return HRESULT_FROM_WIN32(l);
-    };
-
-    WCHAR szClsidKey[256];
-    HRESULT hr = StringCchPrintfW(szClsidKey, ARRAYSIZE(szClsidKey), L"Software\\Classes\\CLSID\\%s", pszClsid);
-    if (FAILED(hr))
-        return hr;
-
-    HKEY hClsid = nullptr;
-    HKEY hSubKey = nullptr;
-
-    hr = fnCreateKey(HKEY_CURRENT_USER, szClsidKey, &hClsid);
-    if (FAILED(hr))
-    {
-        return hr;
-    }
-
-    hr = fnSetString(hClsid, nullptr, pszDescription);
-    if (SUCCEEDED(hr) && pszLocalizedString)
-    {
-        hr = fnSetString(hClsid, L"LocalizedString", pszLocalizedString, REG_EXPAND_SZ);
-    }
-
-    if (SUCCEEDED(hr))
-    {
-        hr = fnCreateKey(hClsid, L"InProcServer32", &hSubKey);
+        hr = StringCchPrintfW(
+            szSubKey, ARRAYSIZE(szSubKey), c_rgRegistryEntries[i].pszSubKey, c_rgRegistryEntries[i].pszClassID);
         if (SUCCEEDED(hr))
         {
-            hr = fnSetString(hSubKey, nullptr, s_szDllPath);
-            if (SUCCEEDED(hr))
+            LRESULT lres = RegCreateKeyExW(
+                c_rgRegistryEntries[i].hRootKey, szSubKey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr,
+                &hkey, nullptr);
+            if (lres == ERROR_SUCCESS)
             {
-                hr = fnSetString(hSubKey, L"ThreadingModel", pszThreadingModel);
+                switch (c_rgRegistryEntries[i].dwType)
+                {
+                    case REG_SZ:
+                    {
+                        hr = StringCchPrintfW(
+                            szData, ARRAYSIZE(szData), (WCHAR*)c_rgRegistryEntries[i].pszData, szModulePathAndName);
+                        if (SUCCEEDED(hr))
+                        {
+                            RegSetValueExW(
+                                hkey, c_rgRegistryEntries[i].pszValueName, 0, c_rgRegistryEntries[i].dwType,
+                                (BYTE*)szData, (lstrlenW(szData) + 1) * sizeof(WCHAR));
+                        }
+                        break;
+                    }
+                    case REG_EXPAND_SZ:
+                    {
+                        RegSetValueExW(
+                            hkey, c_rgRegistryEntries[i].pszValueName, 0, c_rgRegistryEntries[i].dwType,
+                            c_rgRegistryEntries[i].pszData,
+                            (lstrlenW((WCHAR*)c_rgRegistryEntries[i].pszData) + 1) * sizeof(WCHAR));
+                        break;
+                    }
+                    case REG_DWORD:
+                    {
+                        RegSetValueExW(
+                            hkey, c_rgRegistryEntries[i].pszValueName, 0, c_rgRegistryEntries[i].dwType,
+                            c_rgRegistryEntries[i].pszData, sizeof(DWORD));
+                        break;
+                    }
+                }
+
+                RegCloseKey(hkey);
             }
-            RegCloseKey(hSubKey);
-            hSubKey = nullptr;
-        }
-    }
-
-    if (SUCCEEDED(hr) && dwAttributes)
-    {
-        hr = fnCreateKey(hClsid, L"ShellFolder", &hSubKey);
-        if (SUCCEEDED(hr))
-        {
-            hr = fnSetDword(hSubKey, L"Attributes", dwAttributes);
-            RegCloseKey(hSubKey);
-            hSubKey = nullptr;
-        }
-    }
-
-    if (SUCCEEDED(hr) && pszMergedFolderLocation)
-    {
-        hr = fnCreateKey(hClsid, L"MergedFolder", &hSubKey);
-        if (SUCCEEDED(hr))
-        {
-            hr = fnSetString(hSubKey, L"Location", pszMergedFolderLocation);
-            RegCloseKey(hSubKey);
-            hSubKey = nullptr;
-        }
-    }
-
-    if (SUCCEEDED(hr) && fAddFindVerb)
-    {
-        hr = fnCreateKey(hClsid, L"shell\\find", &hSubKey);
-        if (SUCCEEDED(hr))
-        {
-            hr = fnSetDword(hSubKey, L"SuppressionPolicy", 0x80);
-            if (SUCCEEDED(hr))
+            else
             {
-                hr = fnSetString(hSubKey, L"LegacyDisable", L"");
-            }
-            RegCloseKey(hSubKey);
-            hSubKey = nullptr;
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = fnCreateKey(hClsid, L"shell\\find\\command", &hSubKey);
-            if (SUCCEEDED(hr))
-            {
-                hr = fnSetString(hSubKey, nullptr, L"%SystemRoot%\\Explorer.exe", REG_EXPAND_SZ);
-                RegCloseKey(hSubKey);
-                hSubKey = nullptr;
-            }
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec", &hSubKey);
-            if (SUCCEEDED(hr))
-            {
-                hr = fnSetString(hSubKey, nullptr, L"[FindFolder(\"%l\", %I)]");
-                RegCloseKey(hSubKey);
-                hSubKey = nullptr;
-            }
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec\\application", &hSubKey);
-            if (SUCCEEDED(hr))
-            {
-                hr = fnSetString(hSubKey, nullptr, L"Folders");
-                RegCloseKey(hSubKey);
-                hSubKey = nullptr;
-            }
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = fnCreateKey(hClsid, L"shell\\find\\ddeexec\\topic", &hSubKey);
-            if (SUCCEEDED(hr))
-            {
-                hr = fnSetString(hSubKey, nullptr, L"AppProperties");
-                RegCloseKey(hSubKey);
-                hSubKey = nullptr;
+                hr = SELFREG_E_CLASS;
             }
         }
     }
-
-    if (hSubKey)
-        RegCloseKey(hSubKey);
-    if (hClsid)
-        RegCloseKey(hClsid);
 
     return hr;
 }
