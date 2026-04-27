@@ -5,6 +5,7 @@
 #include "cabinet.h"
 #include "propvarutil.h"
 #include "SFTHost.h"
+#include "Win32ErrorHelpers.h"
 
 #pragma comment(lib, "propsys.lib")
 
@@ -806,21 +807,6 @@ HRESULT CSearchOpenView::GetViewFlags(BROWSER_VIEW_FLAGS *pbvf)
 #pragma region Resource String Helpers
 
 // Thanks to ep_taskbar by @amrsatrio for these functions
-
-DWORD GetLastErrorError()
-{
-	DWORD result = GetLastError();
-	return result == ERROR_SUCCESS ? 1 : result;
-}
-
-HRESULT HRESULTFromLastErrorError()
-{
-	DWORD error = GetLastError();
-	if (error != ERROR_SUCCESS && (int)error <= 0)
-		return (HRESULT)GetLastErrorError();
-	else
-		return (HRESULT)((GetLastErrorError() & 0x0000FFFF) | (FACILITY_WIN32 << 16) | 0x80000000);
-}
 
 HRESULT ResourceStringFindAndSizeEx(HMODULE hInstance, UINT uId, WORD wLanguage, const WCHAR **ppch, WORD *plen)
 {

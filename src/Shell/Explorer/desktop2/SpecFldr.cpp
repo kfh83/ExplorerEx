@@ -6,6 +6,7 @@
 #include "hostutil.h"
 #include "cowsite.h"
 #include "startmnu.h"
+#include "Win32ErrorHelpers.h"
 
 //
 //  This definition is stolen from shell32\unicpp\dcomp.h
@@ -98,16 +99,6 @@ HRESULT ResourceStringCoAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
 }
 
 #pragma endregion
-
-signed int ResultFromLastError()
-{
-    signed int result = GetLastError();
-    if (result > 0)
-    {
-        return (unsigned __int16)result | 0x80070000;
-    }
-    return result;
-}
 
 HRESULT SHFormatMessageArg(DWORD dwFlags, const void* lpSource, DWORD dwMessageId, DWORD dwLangID, WCHAR* pszBuffer, DWORD cchSize, ...)
 {
