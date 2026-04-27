@@ -159,15 +159,10 @@ BOOL SHKeyHasValues(HKEY hk, LPCTSTR pszSubKey)
 
 void CreateShellDirectories()
 {
-    TCHAR szPath[MAX_PATH];
-
-    //  Create the shell directories if they don't exist
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_DESKTOPDIRECTORY, TRUE);
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_PROGRAMS, TRUE);
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_STARTMENU, TRUE);
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_STARTUP, TRUE);
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_RECENT, TRUE);
-    SHGetSpecialFolderPath(NULL, szPath, CSIDL_FAVORITES, TRUE);
+    WCHAR szPath[260];
+    SHGetSpecialFolderPathW(nullptr, szPath, CSIDL_DESKTOPDIRECTORY, TRUE);
+    SHGetSpecialFolderPathW(nullptr, szPath, CSIDL_PROGRAMS, TRUE);
+    SHGetSpecialFolderPathW(nullptr, szPath, CSIDL_STARTMENU, TRUE);
 }
 
 // returns:
