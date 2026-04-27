@@ -1282,7 +1282,7 @@ BOOL ShouldShowItem(const CMenuDescriptor* pdesc, BOOL bIgnoreRule, DWORD dwMode
     return TRUE;
 }
 
-#define SPECIAL_FOLDER_LIST_LOGGING
+// #define SPECIAL_FOLDER_LIST_LOGGING
 
 void SpecialFolderList::EnumItems()
 {
@@ -1333,7 +1333,7 @@ void SpecialFolderList::EnumItems()
                     || (pitem->_pidl || pitem->_pidlSimple)
                     && ShouldShowItem(pdesc, bIgnoreRule, dwMode))
                 {
-#ifdef SPECIAL_FOLDER_LIST_LOGGING
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
                     WCHAR szBuffer[512];
                     const WCHAR* pszTarget = pdesc->_pszTarget;
                     if (!pszTarget || pszTarget == SFD_SEPARATOR)
@@ -1359,7 +1359,7 @@ void SpecialFolderList::EnumItems()
                     {
                         if (pitem->_pidl)
                         {
-#ifdef SPECIAL_FOLDER_LIST_LOGGING
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
                             wprintf(L"Creating full list item for %ls with a dwIndex of %d\n", pdesc->_pszTarget, dwIndex);
                             if (pdesc->IsSeparator())
                             {
@@ -1380,7 +1380,7 @@ void SpecialFolderList::EnumItems()
 
                             if (pkfm)
                             {
-#ifdef SPECIAL_FOLDER_LIST_LOGGING
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
                                 wprintf(L"Creating simple list item for %ls with a dwIndex of %d\n", pdesc->_pszTarget, dwIndex);
                                 if (pdesc->IsSeparator())
                                 {

@@ -105,9 +105,9 @@ public:
     BOOL HasAccelerator() { return _pszAccelerator != NULL; }
 
     virtual BOOL CanItemWrap() const { return FALSE; }
+    virtual BOOL IsEqual(PaneItem* pItem) const { return FALSE; }
     virtual BOOL IsHiddenInSafeMode() const { return FALSE; }
-	virtual int GetPrivateIcon() { return -1; }
-    virtual BOOL IsEqual(PaneItem *pItem) const { return FALSE; }
+    virtual int GetPrivateIcon() { return -1; }
 
     enum {
         PINPOS_UNPINNED = -1,
@@ -540,13 +540,16 @@ private:
             // We should not be the last release or else we are going to deadlock here, when _phost
             // tries to release the scheduler
             //ASSERT(_phost->_lRef > 1);
-            _phost->Release(); 
+            _phost->Release();
         }
 
         STDMETHODIMP InternalResumeRT()
         {
             _phost->_EnumerateContentsBackground();
-            if (_phost->_hwnd) PostMessage(_phost->_hwnd, SFTBM_REPOPULATE, _fUrgent, 0);
+            if (_phost->_hwnd)
+            {
+                PostMessage(_phost->_hwnd, SFTBM_REPOPULATE, _fUrgent, 0);
+            }
             return S_OK;
         }
 
