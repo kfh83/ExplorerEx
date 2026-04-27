@@ -1,3 +1,5 @@
+#pragma once
+
 // window class name of More Programs pane control
 #define WC_MOREPROGRAMS TEXT("Desktop More Programs Pane")
 
