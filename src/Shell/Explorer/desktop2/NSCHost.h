@@ -95,7 +95,7 @@ private:
 	HRESULT _GetSelectedItem(IShellItem** ppsi);
 	void _NotifyCaptureInput(BOOL fBlock);
 	void _InstrumentLaunchData(IShellItem* psi);
-	HRESULT _Invoke(IShellItem* psi, int a3);
+	HRESULT _Invoke(IShellItem* psi, BOOL fDoDefault);
 	HRESULT _IsItemMSIAds(IShellItem* psi);
 	HRESULT _IsNewItem(IShellItem* psi);
 

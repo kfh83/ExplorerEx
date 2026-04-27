@@ -1634,3 +1634,372 @@ HRESULT SHCacheTrackingFolder(LPCITEMIDLIST pidlRoot, int csidlTarget, IShellFol
 	}
 	return hr;
 }
+
+#pragma region "Util functions from ep_taskbar"
+
+/*
+ *
+ * Special thanks to ep_taskbar by @amrsatrio for the following functions
+ *
+ */
+
+MIDL_INTERFACE("649e2263-dc09-466f-9d66-3eb133ee8f81")
+IContextMenuForProgInvoke : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE SetInvokeVerbs(const WCHAR* const*, UINT);
+};
+
+STDAPI IContextMenu_SetInvokeVerbs(IContextMenu* pcm, const WCHAR* const* rgszVerbs, UINT cVerbs)
+{
+    CComPtr<IContextMenuForProgInvoke> spcmpi;
+    HRESULT hr = pcm->QueryInterface(IID_PPV_ARGS(&spcmpi));
+    if (SUCCEEDED(hr))
+    {
+        hr = spcmpi->SetInvokeVerbs(rgszVerbs, cVerbs);
+    }
+    return hr;
+}
+
+#include "Win32ErrorHelpers.h"
+
+HRESULT SHInvokeCommandOnContextMenu2(
+    HWND hwnd, IUnknown* punk, IContextMenu* pcm, DWORD cmicfMask, UINT queryContextMenuFlags, const CHAR* pszVerb,
+    const WCHAR* pszWorkingDir, const POINT* pptInvoke)
+{
+    HMENU hmenu = CreatePopupMenu();
+    HRESULT hr = hmenu ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
+    {
+        if (punk)
+        {
+            IUnknown_SetSite(pcm, punk);
+        }
+
+        WCHAR* pszVerbW = nullptr;
+        if (pszVerb)
+        {
+            if (SUCCEEDED(SHStrDupA(pszVerb, &pszVerbW)))
+            {
+                IContextMenu_SetInvokeVerbs(pcm, &pszVerbW, 1);
+            }
+            queryContextMenuFlags |= CMF_OPTIMIZEFORINVOKE;
+        }
+        else
+        {
+            queryContextMenuFlags |= CMF_DEFAULTONLY;
+        }
+
+        hr = pcm->QueryContextMenu(hmenu, 0, 1, 0x7FFF, queryContextMenuFlags);
+        if (SUCCEEDED(hr))
+        {
+            if (!pszVerb)
+            {
+                UINT uiDefault = GetMenuDefaultItem(hmenu, FALSE, 0);
+                if (uiDefault != -1)
+                {
+                    pszVerb = MAKEINTRESOURCEA(uiDefault - 1);
+                }
+                else
+                {
+                    hr = E_FAIL;
+                }
+            }
+
+            if (SUCCEEDED(hr))
+            {
+                CMINVOKECOMMANDINFOEX ici = { sizeof(ici) };
+                ici.fMask = cmicfMask | (pszVerbW || pszWorkingDir ? CMIC_MASK_UNICODE : 0);
+                ici.hwnd = hwnd;
+                ici.lpVerb = pszVerb;
+                ici.nShow = SW_SHOWNORMAL;
+                ici.lpVerbW = pszVerbW;
+                ici.lpDirectoryW = pszWorkingDir;
+                if (pptInvoke)
+                {
+                    ici.fMask |= CMIC_MASK_PTINVOKE;
+                    ici.ptInvoke = *pptInvoke;
+                }
+
+                CHAR szWorkingDir[260];
+                if (pszWorkingDir && SHUnicodeToAnsi(pszWorkingDir, szWorkingDir, ARRAYSIZE(szWorkingDir)) >= 0)
+                {
+                    ici.lpDirectory = szWorkingDir;
+                }
+
+                hr = pcm->InvokeCommand((CMINVOKECOMMANDINFO*)&ici);
+            }
+        }
+
+        if (punk)
+        {
+            IUnknown_SetSite(pcm, nullptr);
+        }
+
+        CoTaskMemFree(pszVerbW);
+        DestroyMenu(hmenu);
+    }
+
+    return hr;
+}
+
+struct BGINVOKEVERBINFO
+{
+    IStream* pstrmItems;
+    IStream* pstrmSite;
+    CHAR* pszVerb;
+    HWND hwnd;
+    DWORD cmicfMask;
+    UINT queryContextMenuFlags;
+    WCHAR* pszWorkingDir;
+    POINT ptInvoke;
+    IUnknown* punkSiteBG; // New in 10
+    HRESULT hrInitSite; // New in 10
+    HRESULT* phrInitSite; // New in 10
+};
+
+STDAPI SHStrDupAsCP(const WCHAR* lpWideCharStr, UINT codePage, CHAR** out)
+{
+    *out = nullptr;
+
+    int numBytes = WideCharToMultiByte(codePage, 0, lpWideCharStr, -1, nullptr, 0, nullptr, nullptr);
+    if (!numBytes)
+        return ResultFromKnownLastError();
+
+    CHAR* lpMultiByteStr;
+    HRESULT hr = CoAllocBytes(numBytes, &lpMultiByteStr);
+    if (SUCCEEDED(hr))
+    {
+        if (WideCharToMultiByte(codePage, 0, lpWideCharStr, -1, lpMultiByteStr, numBytes, nullptr, nullptr))
+        {
+            *out = lpMultiByteStr;
+        }
+        else
+        {
+            CoTaskMemFree(lpMultiByteStr);
+            hr = ResultFromKnownLastError();
+        }
+    }
+
+    return hr;
+}
+
+void GetMsgPos(POINT* ppt)
+{
+    DWORD dwMessagePos = GetMessagePos();
+    ppt->x = GET_X_LPARAM(dwMessagePos);
+    ppt->y = GET_Y_LPARAM(dwMessagePos);
+}
+
+HRESULT SHProcessMessagesUntilTimeout(HWND hwnd, DWORD dwMilliseconds, DWORD dwTimeout)
+{
+    DWORD dwTicksStart = GetTickCount();
+    DWORD dwEvent;
+    do
+    {
+        dwEvent = MsgWaitForMultipleObjectsEx(0, nullptr, dwMilliseconds, QS_ALLINPUT, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);
+        if (dwEvent == WAIT_OBJECT_0)
+        {
+            MSG msg;
+            while (PeekMessageW(&msg, nullptr, 0, 0, 1))
+            {
+                if (msg.message == WM_QUIT)
+                {
+                    PostQuitMessage((int)msg.wParam);
+                    dwEvent = WAIT_TIMEOUT;
+                    break;
+                }
+
+                TranslateMessage(&msg);
+                if (msg.message == WM_SETCURSOR && LOWORD(msg.lParam) != HTERROR)
+                {
+                    SetCursor(LoadCursorW(nullptr, IDC_WAIT));
+                }
+                else
+                {
+                    DispatchMessageW(&msg);
+                }
+            }
+
+            if (GetTickCount() - dwTicksStart > dwTimeout)
+            {
+                dwEvent = WAIT_TIMEOUT;
+            }
+        }
+    }
+    while (dwEvent == WAIT_OBJECT_0);
+
+    return dwEvent;
+}
+
+MIDL_INTERFACE("2c68bdea-fe5e-4c78-9008-44c026994ca6")
+IBackgroundContextMenuInvoked : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE OnInvoked(HRESULT) = 0;
+};
+
+#include "BindCtx.h"
+
+DWORD WINAPI s_DoInvokeVerb(void* pv)
+{
+    BGINVOKEVERBINFO* info = (BGINVOKEVERBINFO*)pv;
+
+    HRESULT hr = info->hrInitSite;
+    if (SUCCEEDED(hr))
+    {
+        IShellItemArray* psia;
+        hr = CoGetInterfaceAndReleaseStream(info->pstrmItems, IID_PPV_ARGS(&psia));
+        info->pstrmItems = nullptr;
+        if (SUCCEEDED(hr))
+        {
+            IBindCtx* pbc = nullptr;
+            if (info->hwnd)
+            {
+                BindCtx_RegisterUIWindow(nullptr, info->hwnd, &pbc);
+            }
+
+            IContextMenu* pcm = nullptr;
+            hr = psia->BindToHandler(pbc, BHID_SFUIObject, IID_PPV_ARGS(&pcm));
+            if (SUCCEEDED(hr))
+            {
+                hr = SHInvokeCommandOnContextMenu2(
+                    info->hwnd,
+                    info->punkSiteBG,
+                    pcm,
+                    info->cmicfMask,
+                    info->queryContextMenuFlags,
+                    info->pszVerb,
+                    info->pszWorkingDir,
+                    &info->ptInvoke
+                );
+
+                pcm->Release();
+            }
+
+            IUnknown_SafeReleaseAndNullPtr(&pbc);
+            psia->Release();
+        }
+    }
+
+    IBackgroundContextMenuInvoked* pbcmi;
+    if (SUCCEEDED(IUnknown_QueryService(info->punkSiteBG, __uuidof(IBackgroundContextMenuInvoked), IID_PPV_ARGS(&pbcmi))))
+    {
+        pbcmi->OnInvoked(hr);
+        pbcmi->Release();
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        SHProcessMessagesUntilTimeout(info->hwnd, 5000, 15000);
+    }
+
+    IUnknown_SafeReleaseAndNullPtr(&info->punkSiteBG);
+    IUnknown_SafeReleaseAndNullPtr(&info->pstrmItems);
+    IUnknown_SafeReleaseAndNullPtr(&info->pstrmSite);
+    CoTaskMemFree(info->pszVerb);
+    CoTaskMemFree(info->pszWorkingDir);
+    CoTaskMemFree(info);
+    return 0;
+}
+
+DWORD WINAPI s_DoInvokeVerbSync(void* pv)
+{
+    BGINVOKEVERBINFO* info = (BGINVOKEVERBINFO*)pv;
+
+    HRESULT hr = S_OK;
+
+    if (info->pstrmSite)
+    {
+        hr = CoGetInterfaceAndReleaseStream(info->pstrmSite, IID_PPV_ARGS(&info->punkSiteBG));
+        info->pstrmSite = nullptr;
+    }
+
+    info->hrInitSite = hr;
+    *info->phrInitSite = hr;
+    return 0;
+}
+
+EXTERN_C STDAPI SHInvokeCommandOnBackgroundThread(
+    HWND hwnd,
+    IUnknown* punk,
+    IShellItemArray* psia,
+    DWORD cmicfMask,
+    UINT queryContextMenuFlags,
+    const WCHAR* pszVerb,
+    const WCHAR* pszWorkingDir)
+{
+    BGINVOKEVERBINFO* info;
+    HRESULT hr = CoAllocObject(&info);
+    if (SUCCEEDED(hr))
+    {
+        if (pszVerb)
+        {
+            hr = SHStrDupAsCP(pszVerb, CP_ACP, &info->pszVerb);
+        }
+        else
+        {
+            queryContextMenuFlags |= CMF_DEFAULTONLY;
+        }
+
+        if (SUCCEEDED(hr) && pszWorkingDir)
+        {
+            hr = CoAllocString(pszWorkingDir, &info->pszWorkingDir);
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = CoMarshalInterThreadInterfaceInStream(__uuidof(IShellItemArray), psia, &info->pstrmItems);
+        }
+
+        if (SUCCEEDED(hr) && punk)
+        {
+            hr = CoMarshalInterThreadInterfaceInStream(__uuidof(IUnknown), punk, &info->pstrmSite);
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            info->hwnd = hwnd;
+            info->cmicfMask = cmicfMask | CMIC_MASK_NOASYNC | CMIC_MASK_FLAG_LOG_USAGE;
+            info->queryContextMenuFlags = queryContextMenuFlags | CMF_OPTIMIZEFORINVOKE;
+            GetMsgPos(&info->ptInvoke);
+
+            HRESULT hrInitSite = S_OK;
+            info->phrInitSite = &hrInitSite;
+
+            if (SHCreateThread(s_DoInvokeVerb, info, CTF_THREAD_REF | CTF_COINIT_STA | CTF_REF_COUNTED | (punk ? CTF_WAIT_ALLOWCOM : 0), s_DoInvokeVerbSync))
+            {
+                hr = S_OK;
+            }
+            else
+            {
+                hr = ResultFromKnownLastError();
+                if (hr == E_INVALIDARG)
+                {
+                    hr = S_OK;
+                    if (!SHCreateThread(s_DoInvokeVerb, info, CTF_COINIT_STA | CTF_REF_COUNTED, s_DoInvokeVerbSync))
+                    {
+                        hr = ResultFromKnownLastError();
+                    }
+                }
+            }
+
+            if (SUCCEEDED(hr))
+            {
+                hr = hrInitSite;
+                info = nullptr;
+            }
+        }
+
+        if (info)
+        {
+            IUnknown_SafeReleaseAndNullPtr(&info->pstrmItems);
+            IUnknown_SafeReleaseAndNullPtr(&info->pstrmSite);
+            CoTaskMemFree(info->pszVerb);
+            CoTaskMemFree(info->pszWorkingDir);
+            CoTaskMemFree(info);
+        }
+    }
+
+    return hr;
+}
+
+#pragma endregion "Util functions from ep_taskbar"

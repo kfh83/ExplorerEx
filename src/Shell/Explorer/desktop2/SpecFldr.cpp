@@ -1,4 +1,6 @@
 #include "pch.h"
+
+#include "BindCtx.h"
 #include "cocreateinstancehook.h"
 #include "shundoc.h"
 #include "stdafx.h"
@@ -898,48 +900,6 @@ PCIDLIST_ABSOLUTE _SHILMakeFull(const void *pv)
     PCIDLIST_ABSOLUTE pidl = reinterpret_cast<PCIDLIST_ABSOLUTE>(pv);
     //RIP(ILIsAligned(reinterpret_cast<PCUIDLIST_RELATIVE>(pidl))); // 183
     return pidl;
-}
-
-STDAPI BindCtx_SetMode(IBindCtx *pbcIn, DWORD grfMode, IBindCtx **ppbcOut)
-{
-    HRESULT hr = S_OK;
-
-    *ppbcOut = pbcIn;
-    if (pbcIn)
-    {
-        pbcIn->AddRef();
-    }
-    else
-    {
-        hr = CreateBindCtx(0, ppbcOut);
-    }
-
-    if (SUCCEEDED(hr))
-    {
-        BIND_OPTS bo;
-        bo.cbStruct = sizeof(bo);
-        bo.grfFlags = 0;
-        bo.grfMode = grfMode;
-        bo.dwTickCountDeadline = 0;
-        if (pbcIn)
-        {
-            hr = pbcIn->GetBindOptions(&bo);
-            bo.grfMode = grfMode;
-        }
-
-        if (SUCCEEDED(hr)) // @Note: This check is new in Windows 10
-            hr = (*ppbcOut)->SetBindOptions(&bo);
-
-        if (FAILED(hr))
-			IUnknown_SafeReleaseAndNullPtr(ppbcOut);
-    }
-
-    return hr;
-}
-
-HRESULT BindCtx_CreateWithMode(DWORD grfMode, IBindCtx **ppbc)
-{
-    return BindCtx_SetMode(nullptr, grfMode, ppbc);
 }
 
 //****************************************************************************

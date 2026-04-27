@@ -109,4 +109,13 @@ HRESULT SHCacheTrackingFolder(LPCITEMIDLIST pidlRoot, int csidlTarget, IShellFol
 #define WM_SHOWCLOCKFLYOUT (WM_USER + 0x66)     // @NOTE these are likely not what they're named in vista,
 #define WM_SHOWCLOCKTOOLTIP (WM_USER + 0x67)    // this is probably also not a good place to keep them
 
+EXTERN_C STDAPI SHInvokeCommandOnBackgroundThread(
+    HWND hwnd,
+    IUnknown* punk,
+    IShellItemArray* psia,
+    DWORD cmicfMask,
+    UINT queryContextMenuFlags,
+    const WCHAR* pszVerb,
+    const WCHAR* pszWorkingDir);
+
 #endif  // _UTIL_H

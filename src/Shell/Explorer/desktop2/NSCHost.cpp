@@ -9,6 +9,7 @@
 #include "Shell32Util.h"
 #include "shguidp.h"
 #include "ShUndoc.h"
+#include "util.h"
 
 HRESULT CNSCHost::QueryInterface(REFIID riid, void** ppvObj)
 {
@@ -761,7 +762,7 @@ LRESULT CNSCHost::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		int iHeight = pwp->cy - _margins.cyBottomHeight - _margins.cyTopHeight;
 		int iWidth = pwp->cx - _margins.cxRightWidth - _margins.cxLeftWidth;
 
-		IVisualProperties *pvp;
+		IVisualProperties* pvp;
 		hr = _pns->QueryInterface(IID_PPV_ARGS(&pvp));
 		if (SUCCEEDED(hr))
 		{
@@ -878,9 +879,76 @@ void CNSCHost::_NotifyCaptureInput(BOOL fBlock)
 	_SendNotify(GetParent(_hwnd), SMN_BLOCKMENUMODE, &nmb.hdr);
 }
 
-HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fKeyboard)
+void CNSCHost::_InstrumentLaunchData(IShellItem* psi)
 {
-	return E_NOTIMPL; // EXEX-Vista(allison): TODO.
+	// Skipped telemetry
+}
+
+// @MOD - This calls the newer version of SHInvokeCommandOnBackgroundThread.
+// previously it was SHInvokeCommandOnBackgroundThread -> calls SHInvokeCommandOnBackgroundThreadEx with certain params
+// filled in.
+EXTERN_C STDAPI SHInvokeCommandOnBackgroundThread_Vista(HWND hwnd, IUnknown* punkSite, IShellItemArray* psia, const WCHAR* pszVerb)
+{
+	return SHInvokeCommandOnBackgroundThread(hwnd, punkSite, psia, 0, 0, pszVerb, nullptr);
+}
+
+HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fDoDefault)
+{
+	SFGAOF sfgao = SFGAO_FOLDER;
+	HRESULT hr = psi->GetAttributes(SFGAO_FOLDER, &sfgao);
+	if (SUCCEEDED(hr) && (sfgao & SFGAO_FOLDER) == 0)
+	{
+		IParentAndItem* ppai;
+		hr = psi->QueryInterface(IID_PPV_ARGS(&ppai));
+		if (SUCCEEDED(hr))
+		{
+			IShellFolder* psf;
+			ITEMIDLIST* pidl;
+			hr = ppai->GetParentAndItem(nullptr, &psf, &pidl);
+			if (SUCCEEDED(hr))
+			{
+				SMNMCOMMANDINVOKED ci;
+
+				HWND hwnd = _hwnd;
+
+				IShellItem* psiSelected;
+				if (SUCCEEDED(_GetSelectedItem(&psiSelected)))
+				{
+					_pns->GetItemRect(psiSelected, &ci.rcItem);
+					psiSelected->Release();
+				}
+
+				IShellItemArray* psia;
+				hr = SHCreateShellItemArrayFromShellItem(psi, IID_PPV_ARGS(&psia));
+				if (SUCCEEDED(hr))
+				{
+					hr = SHInvokeCommandOnBackgroundThread_Vista(GetAncestor(_hwnd, GA_ROOT), nullptr, psia, nullptr);
+
+					UEMFireEvent(&CLSID_ActiveDesktop, 18, 0, (WPARAM)psf, (LPARAM)pidl);
+
+					// SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Launched, 65);
+
+					_SendNotify(GetParent(hwnd), SMN_COMMANDINVOKED, &ci.hdr);
+					_InstrumentLaunchData(psi);
+					psia->Release();
+				}
+
+				psf->Release();
+				ILFree(pidl);
+			}
+			ppai->Release();
+		}
+	}
+	else if (fDoDefault)
+	{
+		// SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Folder_Opened, 533);
+		NSTCITEMSTATE nstcisFlags = NSTCIS_NONE;
+		if (SUCCEEDED(_pns->GetItemState(psi, NSTCIS_EXPANDED, &nstcisFlags)))
+		{
+			_pns->SetItemState(psi, NSTCIS_EXPANDED, ~(BYTE)nstcisFlags & NSTCIS_EXPANDED);
+		}
+	}
+	return hr;
 }
 
 HRESULT CNSCHost::_IsItemMSIAds(IShellItem* psi)
