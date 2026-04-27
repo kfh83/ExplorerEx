@@ -1230,6 +1230,7 @@ void AdjustNumOfProgsOnStartMenu(HWND hwndDlg, UINT Id)
 //
 BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg)
 {
+#if 0
     switch (id)
     {
         ////// General Tab Controls
@@ -1287,6 +1288,114 @@ BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hw
 
     }
     return TRUE;
+#endif
+    HWND v6; // eax
+    UINT v8; // eax
+    HWND DlgItem; // eax
+    HWND v10; // eax
+    UINT DlgItemInt; // eax
+    DWORD dwMinMFU; // ecx
+    UINT v13; // [esp-4h] [ebp-10h]
+    UINT codea; // [esp+18h] [ebp+Ch]
+    int bTranslated; // [esp+20h] [ebp+14h] SPLIT BYREF
+
+    if (id <= 1302)
+    {
+        switch (id)
+        {
+            case 1302u:
+            {
+                goto LABEL_34;
+            }
+            case 1u:
+            {
+                // CcshellDebugMsgW(-1, "cspps.Advanced apply - _bDirtyTree=%d", _bDirtyTree);
+                if (_bDirtyTree)
+                {
+                    _prto->WalkTree(0);
+                }
+
+                if (_pph && _bDirtyPinList)
+                {
+                    codea = ::IsDlgButtonChecked(hwndDlg, 1301);
+                    v8 = ::IsDlgButtonChecked(hwndDlg, 1303);
+                    _pph->Save(v8, codea);
+                }
+                if (_bDirtyClients)
+                {
+                    DlgItem = ::GetDlgItem(hwndDlg, 1304);
+                    RegSaveDefaultClient(DlgItem, L"Software\\Clients\\mail");
+                    v10 = ::GetDlgItem(hwndDlg, 1302);
+                    RegSaveDefaultClient(v10, L"SOFTWARE\\Clients\\StartMenuInternet");
+                }
+                DlgItemInt = ::GetDlgItemInt(hwndDlg, 1307, &bTranslated, 0);
+                if (bTranslated)
+                {
+                    dwMinMFU = DlgItemInt != 0 ? DlgItemInt : 0;
+                    if (dwMinMFU >= 30)
+                    {
+                        dwMinMFU = 30;
+                    }
+                    WriteStartPageSetting(L"Start_MinMFU", dwMinMFU);
+                }
+                goto LABEL_24;
+            }
+            case 2u:
+            {
+            LABEL_24:
+                _SaveMagicEntries();
+                _prto->WalkTree(1u);
+                IUnknown_SafeReleaseAndNullPtr(&_prto);
+                EndDialog(id);
+                return 0;
+            }
+            case 1037u:
+                _prto->WalkTree(2u);
+                if (::IsDlgButtonChecked(_hwndParent, 1136))
+                {
+                    ::SetDlgItemInt(hwndDlg, 1307, 9u, 0);
+                }
+                _bDirtyTree = 1;
+                break;
+            case 1301u:
+            LABEL_7:
+                v13 = ::IsDlgButtonChecked(hwndDlg, id);
+                v6 = ::GetDlgItem(hwndDlg, id + 1);
+                ::EnableWindow(v6, v13);
+                _bDirtyPinList = 1;
+            LABEL_8:
+                SendPSMChanged(hwndDlg);
+                return 0;
+        }
+        return 1;
+    }
+    if (id == 1303)
+    {
+        goto LABEL_7;
+    }
+    if (id != 1304)
+    {
+        if (id != 1307)
+        {
+            return 1;
+        }
+        if (code == EN_KILLFOCUS)
+        {
+            AdjustNumOfProgsOnStartMenu(hwndDlg, 1307u);
+            return 0;
+        }
+        if (!_fInsideInit && code == EN_CHANGE)
+        {
+            SendPSMChanged(hwndDlg);
+        }
+    }
+LABEL_34:
+    if (code != 1)
+    {
+        return 0;
+    }
+    _bDirtyClients = 1;
+    goto LABEL_8;
 }
 
 BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
@@ -1546,7 +1655,7 @@ BOOL_PTR CTaskBarPropertySheet::s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WP
 void _TaskbarOptions_OnInitDialog(HWND hDlg)
 {
     TRAYVIEWOPTS tvo;
-    c_tray.GetTrayViewOpts(&tvo, 0);
+    c_tray.GetTrayViewOpts(&tvo, nullptr);
 
     CheckDlgButton(hDlg, IDC_QUICKLAUNCH, tvo.fShowQuickLaunch);
     CheckDlgButton(hDlg, IDC_TRAYOPTONTOP, tvo.fAlwaysOnTop);
@@ -1650,6 +1759,8 @@ BOOL_PTR CTaskBarPropertySheet::TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPAR
     return FALSE;
 }
 
+DEFINE_GUID(POLID_NoRecentDocsMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
 void _StartOptions_OnInitDialog(HWND hDlg)
 {
     // If StartPanel UI is turned off, then this check box should not show up!
@@ -1679,6 +1790,17 @@ void _StartOptions_OnInitDialog(HWND hDlg)
 
         // disable "customize" for the style thats off.
         EnableWindow(GetDlgItem(hDlg, ss.fStartPanelOn ? IDC_OLDSTARTCUSTOMIZE : IDC_NEWSTARTCUSTOMIZE), FALSE);
+    }
+
+    if (SHWindowsPolicy(POLID_NoRecentDocsMenu))
+    {
+        EnableWindow(GetDlgItem(hDlg, 1135), 0);
+        ShowWindow(GetDlgItem(hDlg, 1135), 0);
+    }
+    else
+    {
+        CheckDlgButton(hDlg, 1135, ReadStartPageSetting(L"Start_TrackDocs", TRUE));
+        CheckDlgButton(hDlg, 1136, ReadStartPageSetting(L"Start_TrackProgs", TRUE));
     }
 }
 
