@@ -5999,39 +5999,38 @@ BOOL CTray::IsMouseOverStartButton()
         return fRet;
 
     RECT rc;
-    const RECT* prc = &_arStuckRects[_uStuckPlace];
-    rc.top = prc->top;
+    rc.top = _arStuckRects[_uStuckPlace].top;
     if (STUCK_HORIZONTAL(_uStuckPlace))
     {
-        rc.bottom = prc->bottom;
+        rc.bottom = _arStuckRects[_uStuckPlace].bottom;
     }
     else
     {
-        rc.bottom = prc->top + _stb._sizeStart.cy;
+        rc.bottom = _arStuckRects[_uStuckPlace].top + _stb._sizeStart.cy;
     }
 
     if (IsBiDiLocalizedSystem())
     {
         if (STUCK_HORIZONTAL(_uStuckPlace))
         {
-            rc.left = prc->right - _stb._sizeStart.cx;
+            rc.left = _arStuckRects[_uStuckPlace].right - _stb._sizeStart.cx;
         }
         else
         {
-            rc.left = prc->left;
+            rc.left = _arStuckRects[_uStuckPlace].left;
         }
-        rc.right = prc->right;
+        rc.right = _arStuckRects[_uStuckPlace].right;
     }
     else
     {
-        rc.left = prc->left;
+        rc.left = _arStuckRects[_uStuckPlace].left;
         if (STUCK_HORIZONTAL(_uStuckPlace))
         {
-            rc.right = prc->left + _stb._sizeStart.cx;
+            rc.right = _arStuckRects[_uStuckPlace].left + _stb._sizeStart.cx;
         }
         else
         {
-            rc.right = prc->right;
+            rc.right = _arStuckRects[_uStuckPlace].right;
         }
     }
 
