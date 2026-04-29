@@ -5991,63 +5991,80 @@ void CTray::GetStuckMonitorRect(RECT* prcStuck)
     GetMonitorRects(_hmonStuck, prcStuck, NULL);
 }
 
-// EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
-BOOL CTray::IsMouseOverStartButton()    // TODO: revise
+BOOL CTray::IsMouseOverStartButton()
 {
-    BOOL bRet = FALSE;
+    BOOL fRet = FALSE;
 
-    if ((_uAutoHide & AH_HIDING) == 0)
+    if ((_uAutoHide & AH_HIDING) != 0)
+        return fRet;
+
+    RECT rc;
+    const RECT* prc = &_arStuckRects[_uStuckPlace];
+    rc.top = prc->top;
+    if (STUCK_HORIZONTAL(_uStuckPlace))
     {
-        RECT rc;
-
-        rc.top = _arStuckRects[_uStuckPlace].top;
-        if ((_uStuckPlace & 1) != 0)
-            rc.bottom = _arStuckRects[_uStuckPlace].bottom;
-        else
-            rc.bottom = _stb._sizeStart.cy + _arStuckRects[_uStuckPlace].top;
-        if (IsBiDiLocalizedSystem())
-        {
-            if ((_uStuckPlace & 1) != 0)
-                rc.left = _arStuckRects[_uStuckPlace].right - _stb._sizeStart.cx;
-            else
-                rc.left = _arStuckRects[_uStuckPlace].left;
-            rc.right = _arStuckRects[_uStuckPlace].right;
-        }
-        else
-        {
-            rc.left = _arStuckRects[_uStuckPlace].left;
-            if ((_uStuckPlace & 1) != 0)
-                rc.right = _stb._sizeStart.cx + _arStuckRects[_uStuckPlace].left;
-            else
-                rc.right = _arStuckRects[_uStuckPlace].right;
-        }
-        if (_fCanSizeMove)
-        {
-            if (!_uStuckPlace)
-            {
-                rc.right = rc.right - _sizeSizingBar.cy;
-            }
-            else
-            {
-                if (!(_uStuckPlace - 1))
-                {
-                    rc.bottom -= _sizeSizingBar.cy;
-                }
-                else
-                {
-                    if (_uStuckPlace - 1 == 1)
-                        rc.left = _sizeSizingBar.cy + rc.left;
-                    else
-                        rc.top += _sizeSizingBar.cy;
-                }
-            }
-        }
-        POINT pt;
-        GetCursorPos(&pt);
-        bRet = PtInRect(&rc, pt);
+        rc.bottom = prc->bottom;
+    }
+    else
+    {
+        rc.bottom = prc->top + _stb._sizeStart.cy;
     }
 
-    return bRet;
+    if (IsBiDiLocalizedSystem())
+    {
+        if (STUCK_HORIZONTAL(_uStuckPlace))
+        {
+            rc.left = prc->right - _stb._sizeStart.cx;
+        }
+        else
+        {
+            rc.left = prc->left;
+        }
+        rc.right = prc->right;
+    }
+    else
+    {
+        rc.left = prc->left;
+        if (STUCK_HORIZONTAL(_uStuckPlace))
+        {
+            rc.right = prc->left + _stb._sizeStart.cx;
+        }
+        else
+        {
+            rc.right = prc->right;
+        }
+    }
+
+    if (_fCanSizeMove)
+    {
+        switch (_uStuckPlace)
+        {
+            case STICK_LEFT:
+            {
+                rc.right -= _iSizingBarHeight;
+                break;
+            }
+            case STICK_TOP:
+            {
+                rc.bottom -= _iSizingBarHeight;
+                break;
+            }
+            case STICK_RIGHT:
+            {
+                rc.left += _iSizingBarHeight;
+                break;
+            }
+            default:
+            {
+                rc.top += _iSizingBarHeight;
+                break;
+            }
+        }
+    }
+
+    DWORD dwPos = GetMessagePos();
+    POINT pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
+    return PtInRect(&rc, pt);
 }
 
 BOOL CTray::IsMouseOverClock()
