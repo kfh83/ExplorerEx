@@ -89,66 +89,37 @@ BOOL _IsRudeWindowActive(HWND hwnd);
 //
 ////////////////////////////////////////////////////////////////////////////
 
-class CTaskBandSMC : public IShellMenuCallback
-                   , public IContextMenu
-                   , public IObjectWithSite
+class CTaskBandSMC
+    : public IShellMenuCallback
+    , public IContextMenu
+    , public IObjectWithSite
 {
 public:
-    // *** IUnknown methods ***
-    STDMETHODIMP QueryInterface(REFIID riid, LPVOID * ppvObj)
-    {
-        static const QITAB qit[] =
-        {
-            QITABENT(CTaskBandSMC, IShellMenuCallback),
-            QITABENT(CTaskBandSMC, IContextMenu),
-            QITABENT(CTaskBandSMC, IObjectWithSite),
-            { 0 },
-        };
-        return QISearch(this, qit, riid, ppvObj);
-    }
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
 
-    STDMETHODIMP_(ULONG) AddRef() { return ++_cRef; }
-    STDMETHODIMP_(ULONG) Release()
-    {
-        ASSERT(_cRef > 0);
-        if (--_cRef > 0)
-        {
-            return _cRef;
-        }
-        delete this;
-        return 0;
-    }
+    //~ Begin IShellMenuCallback Interface
+    STDMETHODIMP CallbackSM(SMDATA* smd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+    //~ End IShellMenuCallback Interface
 
-    // *** IShellMenuCallback methods ***
-    STDMETHODIMP CallbackSM(LPSMDATA smd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    //~ Begin IContextMenu Interface
+    STDMETHODIMP QueryContextMenu(HMENU hmenu, UINT iIndexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags) override;
+    STDMETHODIMP InvokeCommand(CMINVOKECOMMANDINFO* lpici) override;
+    STDMETHODIMP GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pRes, CHAR* pszName, UINT cchMax) override;
+    //~ End IContextMenu Interface
 
-    // *** IContextMenu methods ***
-    STDMETHODIMP QueryContextMenu(HMENU hmenu, UINT iIndexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags);
-    STDMETHODIMP InvokeCommand(LPCMINVOKECOMMANDINFO lpici);
-    STDMETHODIMP GetCommandString(UINT_PTR idCmd, UINT uType, UINT *pRes, LPSTR pszName, UINT cchMax) { return E_NOTIMPL; }
+    //~ Begin IObjectWithSite Interface
+    STDMETHODIMP SetSite(IUnknown* punkSite) override;
+    STDMETHODIMP GetSite(REFIID riid, void** ppvSite) override;
+    //~ End IObjectWithSite Interface
 
-    // *** IObjectWithSite methods ***
-    STDMETHODIMP SetSite(IUnknown* punkSite)
-    {
-        ATOMICRELEASE(_punkSite);
-        if (punkSite != NULL)
-        {
-            _punkSite = punkSite;
-            _punkSite->AddRef();
-        }
-        return S_OK;
-    }
-    STDMETHODIMP GetSite(REFIID riid, void** ppvSite) { return E_NOTIMPL; };
-
-    CTaskBandSMC(CTaskBand* ptb) : _cRef(1)
-    {
-        _ptb = ptb;
-        _ptb->AddRef();
-    }
+    CTaskBandSMC(CTaskBand* ptb);
 
 private:
-
-    virtual ~CTaskBandSMC() { ATOMICRELEASE(_ptb); }
+    virtual ~CTaskBandSMC();
 
     ULONG _cRef;
     CTaskBand* _ptb;
@@ -156,7 +127,35 @@ private:
     HWND _hwndSelected;
 };
 
-STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+HRESULT CTaskBandSMC::QueryInterface(REFIID riid, void** ppvObj)
+{
+    static const QITAB qit[] =
+    {
+        QITABENT(CTaskBandSMC, IShellMenuCallback),
+        QITABENT(CTaskBandSMC, IContextMenu),
+        QITABENT(CTaskBandSMC, IObjectWithSite),
+        {},
+    };
+    return QISearch(this, qit, riid, ppvObj);
+}
+
+ULONG CTaskBandSMC::AddRef()
+{
+    return InterlockedIncrement(&_cRef);
+}
+
+ULONG CTaskBandSMC::Release()
+{
+    ASSERT(0 != _cRef); // 153
+    ULONG cRef = InterlockedDecrement(&_cRef);
+    if (cRef == 0)
+    {
+        delete this;
+    }
+    return cRef;
+}
+
+HRESULT CTaskBandSMC::CallbackSM(SMDATA* psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     ASSERT(_ptb);
 
@@ -169,9 +168,9 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
 
     switch (uMsg)
     {
-    case SMC_EXEC:
+        case SMC_EXEC:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            TASKITEM* pti = _ptb->_GetItem(psmd->uId);
             if (pti)
             {
                 _ptb->_SetCurSel(psmd->uId, FALSE);
@@ -181,7 +180,7 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
         }
         break;
 
-    case SMC_GETINFO:
+        case SMC_GETINFO:
         {
             SMINFO* psminfo = (SMINFO*)lParam;
             hres = S_OK;
@@ -200,7 +199,7 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
             {
                 TBBUTTONINFO tbbi;
                 tbbi.iImage = I_IMAGENONE;
-                PTASKITEM pti = _ptb->_GetItem(psmd->uId, &tbbi);
+                TASKITEM* pti = _ptb->_GetItem(psmd->uId, &tbbi);
                 if (pti && tbbi.iImage == I_IMAGECALLBACK)
                 {
                     _ptb->_UpdateItemIcon(psmd->uId);
@@ -211,9 +210,9 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
         }
         break;
 
-    case SMC_CUSTOMDRAW:
+        case SMC_CUSTOMDRAW:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            TASKITEM* pti = _ptb->_GetItem(psmd->uId);
             if (pti)
             {
                 *(LRESULT*)wParam = _ptb->_HandleCustomDraw((NMTBCUSTOMDRAW*)lParam, pti);
@@ -222,19 +221,19 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
         }
         break;
 
-    case SMC_SELECTITEM:
+        case SMC_SELECTITEM:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
-            _hwndSelected = pti ? pti->hwnd : NULL;
+            TASKITEM* pti = _ptb->_GetItem(psmd->uId);
+            _hwndSelected = pti ? pti->hwnd : nullptr;
         }
         break;
 
-    case SMC_GETOBJECT:
+        case SMC_GETOBJECT:
         {
-            GUID *pguid = (GUID*)wParam;
+            GUID* pguid = (GUID*)wParam;
             if (IsEqualIID(*pguid, IID_IContextMenu) && !SHRestricted(REST_NOTRAYCONTEXTMENU))
             {
-                hres = QueryInterface(*pguid, (void **)lParam);
+                hres = QueryInterface(*pguid, (void**)lParam);
             }
             else
             {
@@ -243,18 +242,18 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
         }
         break;
 
-    case SMC_GETINFOTIP:
+        case SMC_GETINFOTIP:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            TASKITEM* pti = _ptb->_GetItem(psmd->uId);
             if (pti)
             {
-                _ptb->_GetItemTitle(psmd->uId, (TCHAR*)wParam, (int)lParam, TRUE);
+                _ptb->_GetItemTitle(psmd->uId, (WCHAR*)wParam, (int)lParam, TRUE);
                 hres = S_OK;
             }
         }
         break;
 
-    case SMC_GETIMAGELISTS:
+        case SMC_GETIMAGELISTS:
         {
             HIMAGELIST himl = (HIMAGELIST)_ptb->_tb.SendMessage(TB_GETIMAGELIST, psmd->uId, 0);
             if (himl)
@@ -265,50 +264,52 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
         }
         break;
 
-    case SMC_EXITMENU:
+        case SMC_EXITMENU:
         {
-            _hwndSelected = NULL;
+            _hwndSelected = nullptr;
             CToolTipCtrl ttc = _ptb->_tb.GetToolTips();
             ttc.Activate(TRUE);
             _ptb->field_128 = 0;
             _ptb->_iIndexPopup = -1;
         }
         break;
-    } 
+    }
 
     return hres;
 }
 
-// *** IContextMenu methods ***
-STDMETHODIMP CTaskBandSMC::QueryContextMenu(HMENU hmenu, UINT iIndexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
+HRESULT CTaskBandSMC::QueryContextMenu(HMENU hmenu, UINT iIndexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
-    ASSERT(_ptb);
+    ASSERT(_ptb); // 320
 
-    HRESULT hr = ResultFromShort(0);
+    HRESULT hr = S_OK;
 
-    if (_hwndSelected != NULL)
+    if (_hwndSelected)
     {
         HMENU hmenuTemp = _GetSystemMenu(_hwndSelected);
         if (hmenuTemp)
         {
             if (Shell_MergeMenus(hmenu, hmenuTemp, 0, iIndexMenu, idCmdLast, uFlags))
             {
-                SetMenuDefaultItem(hmenu, 0, MF_BYPOSITION);
+                if ((uFlags & CMF_NODEFAULT) == 0)
+                {
+                    SetMenuDefaultItem(hmenu, 0, MF_BYPOSITION);
+                }
                 hr = ResultFromShort(GetMenuItemCount(hmenuTemp));
             }
 
             DestroyMenu(hmenuTemp);
         }
     }
-    
+
     return hr;
 }
 
-STDMETHODIMP CTaskBandSMC::InvokeCommand(LPCMINVOKECOMMANDINFO lpici)
+HRESULT CTaskBandSMC::InvokeCommand(CMINVOKECOMMANDINFO* lpici)
 {
-    ASSERT(_ptb);
+    ASSERT(_ptb); // 347
 
-    PTASKITEM pti = _ptb->_FindItemByHwnd(_hwndSelected);
+    TASKITEM* pti = _ptb->_FindItemByHwnd(_hwndSelected);
     if (pti)
     {
         int iCommand = LOWORD(lpici->lpVerb);
@@ -320,6 +321,34 @@ STDMETHODIMP CTaskBandSMC::InvokeCommand(LPCMINVOKECOMMANDINFO lpici)
     }
 
     return S_OK;
+}
+
+HRESULT CTaskBandSMC::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pRes, CHAR* pszName, UINT cchMax)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT CTaskBandSMC::SetSite(IUnknown* punkSite)
+{
+    IUnknown_Set(&_punkSite, punkSite);
+    return S_OK;
+}
+
+HRESULT CTaskBandSMC::GetSite(REFIID riid, void** ppvSite)
+{
+    return E_NOTIMPL;
+}
+
+CTaskBandSMC::CTaskBandSMC(CTaskBand* ptb)
+    : _cRef(1)
+{
+    _ptb = ptb;
+    _ptb->AddRef();
+}
+
+CTaskBandSMC::~CTaskBandSMC()
+{
+    IUnknown_SafeReleaseAndNullPtr(&_ptb);
 }
 
 ////////////////////////////////////////////////////////////////////////////
