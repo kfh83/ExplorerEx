@@ -360,9 +360,9 @@ public:
         return m_hdsa ? DSA_GetItemCount(m_hdsa) : 0;
     }
 
-    HRESULT AppendItem(const T* p, int* piIndex = nullptr)
+    HRESULT AppendItem(const T* pitem, int* piIndex = nullptr)
     {
-        int iIndex = DSA_AppendItem(m_hdsa, p);
+        int iIndex = DSA_AppendItem(m_hdsa, pitem);
         if (piIndex)
             *piIndex = iIndex;
         if (iIndex == -1)
