@@ -6,7 +6,6 @@
 //#include <crtfree.h>
 #include "qsort.h"
 
-#include "ssomgr.h"
 #include "shundoc.h"
 
 __inline HBRUSH SelectBrush(HDC hdc, HBRUSH hbr) { return (HBRUSH)SelectObject(hdc, (HGDIOBJ)(HBRUSH)hbr); }

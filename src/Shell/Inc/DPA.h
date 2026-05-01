@@ -360,12 +360,12 @@ public:
         return m_hdsa ? DSA_GetItemCount(m_hdsa) : 0;
     }
 
-    HRESULT AppendItem(T* p, int* outIndex = nullptr)
+    HRESULT AppendItem(const T* p, int* piIndex = nullptr)
     {
-        int result = DSA_AppendItem(m_hdsa, p);
-        if (outIndex)
-            *outIndex = result;
-        if (result == -1)
+        int iIndex = DSA_AppendItem(m_hdsa, p);
+        if (piIndex)
+            *piIndex = iIndex;
+        if (iIndex == -1)
             return E_OUTOFMEMORY;
         return S_OK;
     }

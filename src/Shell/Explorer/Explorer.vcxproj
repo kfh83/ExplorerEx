@@ -438,7 +438,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="MFUList.h" />
     <ClInclude Include="Mixer.h" />
     <ClInclude Include="rcids.h" />
-    <ClInclude Include="SSOMgr.h" />
     <ClInclude Include="StartMnu.h" />
     <ClInclude Include="TaskBand.h" />
     <ClInclude Include="TaskBar.h" />
@@ -614,7 +613,6 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="SSOMgr.cpp" />
     <ClCompile Include="StartButton.cpp" />
     <ClCompile Include="StartMnu.cpp" />
     <ClCompile Include="TaskBand.cpp" />

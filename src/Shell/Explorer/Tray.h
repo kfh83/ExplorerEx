@@ -5,7 +5,6 @@
 #include "Mixer.h"
 
 #include "TrayNot.h"
-#include "ssomgr.h"
 
 #include "ShUndoc.h"
 
@@ -622,7 +621,6 @@ protected:
 
     HIMAGELIST _himlStartFlag;
 
-    CShellServiceObjectMgr _ssomgr;
     CStartDropTarget _dtStart;
     CTrayDropTarget _dtTray;
     CDeskTray _desktray;

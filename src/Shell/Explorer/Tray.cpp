@@ -61,7 +61,6 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm);
 void ClassFactory_Start();
 void ClassFactory_Stop();
 
-void SetupCOMRegistryKeys(LPCTSTR clsid);
 void ComServer_Stop(LPCTSTR clsid);
 
 //
@@ -4883,7 +4882,6 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
     }
     HRESULT hr = _pSysTray->Exec(&plipd->clsid, 2, plipd->dwFlags, nullptr, nullptr);
     return hr;
-    //return _ssomgr.EnableObject(&plipd->clsid, plipd->dwFlags);
 }
 
 BOOL CTray::GlassEnabled()
@@ -7344,9 +7342,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     msg.wParam = wParam;
     msg.lParam = lParam;
 
-    if (!_stb.TranslateMenuMessage(&msg, &lres))
+    if (_stb.TranslateMenuMessage(&msg, &lres) == S_OK)
         return lres;
-    if (_pmbTasks && !_pmbTasks->TranslateMenuMessage(&msg, &lres))
+    if (_pmbTasks && _pmbTasks->TranslateMenuMessage(&msg, &lres) == S_OK)
         return lres;
 
     wParam_1 = msg.wParam;
