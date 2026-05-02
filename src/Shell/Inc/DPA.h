@@ -9,9 +9,14 @@ template <typename T, typename ContainerPolicy>
 class CDPA_Base
 {
 public:
-    using EnumCallbackType = int (CALLBACK *)(T*, void*);
-    using CompareType = int (CALLBACK *)(T* p1, T* p2, LPARAM lParam);
-    using MergeType = T* (CALLBACK *)(UINT uMsg, T* pDest, T* pSrc, LPARAM lParam);
+    using _PFNDPAENUMCALLBACK = int (CALLBACK*)(T*, void*);
+    using _PFNDPAENUMCALLBACKCONST = int (CALLBACK*)(const T*, void*);
+
+    using _PFNDPACOMPARE = int (CALLBACK*)(T*, T*, LPARAM);
+    using _PFNDPACOMPARECONST = int (CALLBACK*)(const T*, const T*, LPARAM);
+
+    using _PFNDPAMERGE = T * (CALLBACK*)(UINT, T*, T*, LPARAM);
+    using _PFNDPAMERGECONST = const T* (CALLBACK*)(UINT, const T*, const T*, LPARAM);
 
     CDPA_Base(HDPA hdpa = nullptr) : m_hdpa(hdpa)
     {
@@ -56,14 +61,14 @@ public:
 
     BOOL Destroy()
     {
-        BOOL result = TRUE;
+        BOOL fRet = TRUE;
         if (m_hdpa)
         {
             DestroyCallback(_StandardDestroyCB, nullptr);
-            result = DPA_Destroy(m_hdpa);
+            fRet = DPA_Destroy(m_hdpa);
             m_hdpa = nullptr;
         }
-        return result;
+        return fRet;
     }
 
     HDPA Clone(HDPA hdpaNew) const
@@ -91,12 +96,12 @@ public:
         return DPA_SetPtr(m_hdpa, i, p);
     }
 
-    HRESULT InsertPtr(int i, T* p, int* outIndex = nullptr)
+    HRESULT InsertPtr(int i, T* pitem, int* piIndex = nullptr)
     {
-        int result = DPA_InsertPtr(m_hdpa, i, p);
-        if (outIndex)
-            *outIndex = result;
-        if (result == -1)
+        int iIndex = DPA_InsertPtr(m_hdpa, i, pitem);
+        if (piIndex)
+            *piIndex = iIndex;
+        if (iIndex == -1)
             return E_OUTOFMEMORY;
         return S_OK;
     }
@@ -111,18 +116,18 @@ public:
         return m_hdpa && DPA_DeleteAllPtrs(m_hdpa);
     }
 
-    void EnumCallback(EnumCallbackType pfnCB, void* pData = nullptr) const
+    void EnumCallback(_PFNDPAENUMCALLBACK pfnCB, void* pData = nullptr) const
     {
         DPA_EnumCallback(m_hdpa, (PFNDPAENUMCALLBACK)pfnCB, pData);
     }
 
     template <class TData>
-    void EnumCallbackEx(int (CALLBACK *pfnCB)(T* p, TData pData), TData pData = 0) const
+    void EnumCallbackEx(int (CALLBACK* pfnCB)(T* p, TData pData), TData pData = 0) const
     {
-        EnumCallback((EnumCallbackType)pfnCB, (void*)pData);
+        EnumCallback((_PFNDPAENUMCALLBACK)pfnCB, (void*)pData);
     }
 
-    void DestroyCallback(EnumCallbackType pfnCB, void* pData = nullptr)
+    void DestroyCallback(_PFNDPAENUMCALLBACK pfnCB, void* pData = nullptr)
     {
         if (m_hdpa)
         {
@@ -132,9 +137,9 @@ public:
     }
 
     template <class T2>
-    void DestroyCallbackEx(int (CALLBACK *pfnCB)(T* p, T2 pData), T2 pData)
+    void DestroyCallbackEx(int (CALLBACK* pfnCB)(T* p, T2 pData), T2 pData)
     {
-        DestroyCallback((EnumCallbackType)pfnCB, reinterpret_cast<void*>(pData));
+        DestroyCallback((_PFNDPAENUMCALLBACK)pfnCB, reinterpret_cast<void*>(pData));
     }
 
     int GetPtrCount() const
@@ -157,12 +162,12 @@ public:
         return (T*&)DPA_FastGetPtr(m_hdpa, i);
     }
 
-    HRESULT AppendPtr(T* p, int* outIndex = nullptr)
+    HRESULT AppendPtr(T* pitem, int* piIndex = nullptr)
     {
-        int result = DPA_AppendPtr(m_hdpa, p);
-        if (outIndex)
-            *outIndex = result;
-        if (result == -1)
+        int iIndex = DPA_AppendPtr(m_hdpa, pitem);
+        if (piIndex)
+            *piIndex = iIndex;
+        if (iIndex == -1)
             return E_OUTOFMEMORY;
         return S_OK;
     }
@@ -170,6 +175,12 @@ public:
     BOOL PushPtr(T* p)
     {
         return DPA_AppendPtr(m_hdpa, p);
+    }
+
+    T* PopPtr()
+    {
+        int cPtrs = GetPtrCount();
+        return cPtrs > 0 ? DeletePtr(cPtrs - 1) : nullptr;
     }
 
     ULONGLONG GetSize()
@@ -187,31 +198,30 @@ public:
         return DPA_SaveStream(m_hdpa, pfn, pstream, pvInstData);
     }
 
-    BOOL Sort(CompareType pfnCompare, LPARAM lParam)
+    BOOL Sort(_PFNDPACOMPARE pfnCompare, LPARAM lParam)
     {
-        return m_hdpa && DPA_Sort(m_hdpa, (PFNDACOMPARE)pfnCompare, lParam);
+        return m_hdpa && DPA_Sort(m_hdpa, (PFNDPACOMPARE)pfnCompare, lParam);
     }
 
-    // EXEX-Vista(allison): TODO. Check if this still actually exists in the Vista+ version of CDPA.
     template <class T2>
-    BOOL SortEx(int (CALLBACK *pfnCompare)(T* p1, T* p2, T2 lParam), T2 lParam)
+    BOOL SortEx(int (CALLBACK* pfnCompare)(T* p1, T* p2, T2 lParam), T2 lParam)
     {
-        return Sort((CompareType)pfnCompare, reinterpret_cast<LPARAM>(lParam));
+        return Sort((_PFNDPACOMPARE)pfnCompare, reinterpret_cast<LPARAM>(lParam));
     }
 
-    BOOL Merge(CDPA_Base* pdpaDest, DWORD dwFlags, CompareType pfnCompare, MergeType pfnMerge, LPARAM lParam)
+    BOOL Merge(CDPA_Base* pdpaDest, DWORD dwFlags, _PFNDPACOMPARE pfnCompare, _PFNDPAMERGE pfnMerge, LPARAM lParam)
     {
-        return DPA_Merge(m_hdpa, pdpaDest->m_hdpa, dwFlags, (PFNDACOMPARE)pfnCompare, (PFNDPAMERGE)pfnMerge, lParam);
+        return DPA_Merge(m_hdpa, pdpaDest->m_hdpa, dwFlags, (_PFNDPACOMPARE)pfnCompare, (_PFNDPAMERGE)pfnMerge, lParam);
     }
 
-    int Search(T* pFind, int iStart, CompareType pfnCompare, LPARAM lParam, UINT options) const
+    int Search(T* pFind, int iStart, _PFNDPACOMPARE pfnCompare, LPARAM lParam, UINT options) const
     {
-        return DPA_Search(m_hdpa, pFind, iStart, (PFNDACOMPARE)pfnCompare, lParam, options);
+        return DPA_Search(m_hdpa, pFind, iStart, (_PFNDPACOMPARE)pfnCompare, lParam, options);
     }
 
-    BOOL SortedInsertPtr(T* pItem, int iStart, CompareType pfnCompare, LPARAM lParam, UINT options, T* pFind)
+    BOOL SortedInsertPtr(T* pItem, int iStart, _PFNDPACOMPARE pfnCompare, LPARAM lParam, UINT options, T* pFind)
     {
-        return DPA_SortedInsertPtr(m_hdpa, pFind, iStart, (PFNDACOMPARE)pfnCompare, lParam, options, pItem);
+        return DPA_SortedInsertPtr(m_hdpa, pFind, iStart, (_PFNDPACOMPARE)pfnCompare, lParam, options, pItem);
     }
 
     ~CDPA_Base()
@@ -265,7 +275,9 @@ template <typename T>
 class CDSA_Base
 {
 public:
-    using EnumCallbackType = int (CALLBACK *)(T*, void*);
+    using _PFNDSAENUMCALLBACK = int (CALLBACK*)(T*, void*);
+    using _PFNDSAENUMCALLBACKCONST = int (CALLBACK*)(const T*, void*);
+    using _PFNDSACOMPARE = int (CALLBACK*)(const T*, const T*, int);
 
     CDSA_Base(const CDSA_Base& other) = delete;
 
@@ -325,12 +337,12 @@ public:
         return (T*)DSA_GetItemPtr(m_hdsa, i);
     }
 
-    HRESULT InsertItem(int i, T* p, int* outIndex = nullptr)
+    HRESULT InsertItem(int i, T* pitem, int* piIndex = nullptr)
     {
-        int result = DSA_InsertItem(m_hdsa, i, p);
-        if (outIndex)
-            *outIndex = result;
-        if (result == -1)
+        int iIndex = DSA_InsertItem(m_hdsa, i, pitem);
+        if (piIndex)
+            *piIndex = iIndex;
+        if (iIndex == -1)
             return E_OUTOFMEMORY;
         return S_OK;
     }
@@ -340,19 +352,19 @@ public:
         return DSA_DeleteItem(m_hdsa, i);
     }
 
-    void DestroyCallback(EnumCallbackType pfnCB, void* pData = nullptr)
+    void DestroyCallback(_PFNDSAENUMCALLBACK pfnCB, void* pData = nullptr)
     {
         if (m_hdsa)
         {
-            DSA_DestroyCallback(m_hdsa, (PFNDSAENUMCALLBACK)pfnCB, pData);
+            DSA_DestroyCallback(m_hdsa, (_PFNDSAENUMCALLBACK)pfnCB, pData);
             m_hdsa = nullptr;
         }
     }
 
     template <class T2>
-    void DestroyCallbackEx(int (CALLBACK *pfnCB)(T* p, T2 pData), T2 pData)
+    void DestroyCallbackEx(int (CALLBACK* pfnCB)(T* p, T2 pData), T2 pData)
     {
-        DestroyCallback((EnumCallbackType)pfnCB, reinterpret_cast<void*>(pData));
+        DestroyCallback((_PFNDSAENUMCALLBACK)pfnCB, reinterpret_cast<void*>(pData));
     }
 
     int GetItemCount() const
@@ -370,15 +382,15 @@ public:
         return S_OK;
     }
 
-    HRESULT Search(const T* pFind, int iStart, int (*pfnCompare)(const T*, const T*, LPARAM), LPARAM lParam, UINT options, int* outIndex)
+    HRESULT Search(const T* pFind, int iStart, _PFNDSACOMPARE pfnCompare, LPARAM lParam, UINT options, int* piIndex)
     {
-        int index = Search(pFind, iStart, pfnCompare, lParam, options);
-        if (outIndex)
-            *outIndex = index;
-        return index != -1 ? S_OK : E_FAIL;
+        int iIndex = Search(pFind, iStart, pfnCompare, lParam, options);
+        if (piIndex)
+            *piIndex = iIndex;
+        return iIndex != -1 ? S_OK : E_FAIL;
     }
 
-    int Search(const T* pFind, int iStart, int (*pfnCompare)(const T*, const T*, LPARAM), LPARAM lParam, UINT options)
+    int Search(const T* pFind, int iStart, _PFNDSACOMPARE pfnCompare, LPARAM lParam, UINT options)
     {
         int cItem = GetItemCount();
 
