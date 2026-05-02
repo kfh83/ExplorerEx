@@ -954,7 +954,7 @@ LRESULT CDesktopHost::OnNeedRepaint()
     {
         // This will force a repaint the next time the window is shown
         DeleteObject(_hbmCachedSnapshot);
-        _hbmCachedSnapshot = NULL;
+        _hbmCachedSnapshot = nullptr;
     }
     return 0;
 }

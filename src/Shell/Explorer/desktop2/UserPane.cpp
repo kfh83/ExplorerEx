@@ -213,8 +213,8 @@ void CUserPane::_UpdateDC(HDC hdc, int iIndex, BYTE a4)
                 hOldObj = SelectObject(hMemDC, hbmTemp);
             }
 
-            int cxLeftWidth = field_1C;
-            int cyTopHeight = field_24;
+            int cxLeftWidth = _cxPicInset;
+            int cyTopHeight = _cyPicInset;
             int v9 = rc.right - _iFramedPicWidth - rc.left;
             int v22 = (rc.bottom - rc.top - _iFramedPicHeight) / 2;
             int v21 = v9 / 2;
@@ -606,7 +606,7 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         {
             if (_fadeA == -1)
             {
-                SetCursor(LoadCursor(nullptr, IDC_HAND));
+                SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return 1;
             }
             break;
@@ -635,7 +635,8 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
             return 0;
         }
     }
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
+    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CUserPane::OnSize()
@@ -645,7 +646,7 @@ LRESULT CUserPane::OnSize()
 
     if (_hwndStatic)
     {
-        int iPicOffset = rc.bottom - field_28;
+        int iPicOffset = rc.bottom - _cyPicMargin;
 
         RECT rcFrame;
         rcFrame.left = (rc.right - _iFramedPicWidth - rc.left) / 2;
@@ -690,7 +691,7 @@ HRESULT CUserPane::_CreateUserPicture()
 
 void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
 {
-    ASSERT(pgdiImageUserPicture != NULL); // 672
+    ASSERT(pgdiImageUserPicture != nullptr); // 672
 
     HDC hdc = GetDC(_hwndStatic);
     HDC hMemDC = CreateCompatibleDC(hdc);
@@ -699,9 +700,11 @@ void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
         RECT rc;
         GetClientRect(_hwndStatic, &rc);
         if (_hbmUserPicture)
+        {
             DeleteObject(_hbmUserPicture);
+        }
 
-        BITMAPINFO bmi = {0};
+        BITMAPINFO bmi = {};
         bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
         bmi.bmiHeader.biWidth = rc.right;
         bmi.bmiHeader.biHeight = rc.bottom;
@@ -709,8 +712,8 @@ void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        LPVOID pvBits;
-        _hbmUserPicture = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pvBits, 0, 0);
+        void* pvBits;
+        _hbmUserPicture = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &pvBits, nullptr, 0);
         if (_hbmUserPicture)
         {
             HBITMAP hbmUserPicture = (HBITMAP)SelectObject(hMemDC, _hbmUserPicture);
@@ -734,11 +737,12 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
 {
     HRESULT hr = S_OK;
 
-    BOOL bShowPicture = TRUE;
+    BOOL fShowPicture = TRUE;
     if (_hTheme)
-        GetThemeBool(_hTheme, SPP_USERPANE, 0, TMT_USERPICTURE, &bShowPicture);
-
-    if (bShowPicture)
+    {
+        GetThemeBool(_hTheme, SPP_USERPANE, 0, TMT_USERPICTURE, &fShowPicture);
+    }
+    if (fShowPicture)
     {
         WCHAR szUserPicturePath[260];
         szUserPicturePath[0] = '0';
@@ -764,17 +768,17 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
                     _iUnframedPicWidth = MulDiv(_iUnframedPicHeight, iPicWidth, iPicHeight);
                 }
 
-                field_1C = 8;
-                field_20 = 8;
-                field_28 = 8;
-                field_24 = 8;
+                _cxPicInset = 8;
+                _cxPicMargin = 8;
+                _cyPicMargin = 8;
+                _cyPicInset = 8;
 
                 SIZE sizUserPic = { 64, 64 };
                 RemapSizeForHighDPI(&sizUserPic);
 
                 SHLogicalToPhysicalDPI(&_iUnframedPicWidth, &_iUnframedPicHeight);
-                SHLogicalToPhysicalDPI(&field_1C, &field_24);
-                SHLogicalToPhysicalDPI(&field_20, &field_28);
+                SHLogicalToPhysicalDPI(&_cxPicInset, &_cyPicInset);
+                SHLogicalToPhysicalDPI(&_cxPicMargin, &_cyPicMargin);
 
                 _iFramedPicHeight = sizUserPic.cy;
                 _iFramedPicWidth = sizUserPic.cx;
@@ -799,7 +803,7 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
 
         ULONG cch = ARRAYSIZE(_szUserName);
         SHGetUserDisplayName(_szUserName, &cch);
-        SetWindowText(_hwndStatic, _szUserName);
+        SetWindowTextW(_hwndStatic, _szUserName);
 
         if (!a2)
         {
@@ -808,11 +812,13 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
     }
 
     OnSize();
+
     NMHDR nm;
     nm.hwndFrom = _hwnd;
     nm.idFrom = 0;
     nm.code = SMN_NEEDREPAINT;
-    SendMessage(GetParent(_hwnd), WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
+    HWND hwndParent = GetParent(nm.hwndFrom);
+    SendMessageW(hwndParent, WM_NOTIFY, 0, (LPARAM)&nm);
     return hr;
 }
 

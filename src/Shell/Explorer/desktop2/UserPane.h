@@ -87,10 +87,10 @@ private:
     HWND _hwnd;
     HWND _hwndStatic;
     HTHEME _hTheme;
-    int field_1C;
-    int field_20;
-    int field_24;
-    int field_28;
+    int _cxPicInset;
+    int _cxPicMargin; // Seems to  be unused anyway, the frame is always centered horizontally.
+    int _cyPicInset;
+    int _cyPicMargin;
     int _iFramedPicHeight;
     int _iFramedPicWidth;
     int _iUnframedPicHeight;

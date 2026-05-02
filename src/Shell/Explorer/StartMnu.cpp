@@ -138,16 +138,9 @@ Purpose: IMenuPopup::SetSubMenu method
 
 */
 
-STDMETHODIMP CStartMenuHost::SetSubMenu(IMenuPopup *pmp, BOOL fSet)
+STDMETHODIMP CStartMenuHost::SetSubMenu(IMenuPopup* pmp, BOOL fSet)
 {
-#ifdef DEAD_CODE
-    if (!fSet)
-    {
-        Tray_OnStartMenuDismissed();
-    }
-    return NOERROR;
-#else
-    IStartButton *pstb;
+    IStartButton* pstb;
     HRESULT hr = IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb));
     if (!fSet && SUCCEEDED(hr))
     {
@@ -155,7 +148,6 @@ STDMETHODIMP CStartMenuHost::SetSubMenu(IMenuPopup *pmp, BOOL fSet)
         pstb->Release();
     }
     return NOERROR;
-#endif
 }
 
 
