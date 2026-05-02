@@ -9,13 +9,13 @@ template <typename T, typename ContainerPolicy>
 class CDPA_Base
 {
 public:
-    using _PFNDPAENUMCALLBACK = int (CALLBACK*)(T*, void*);
-    using _PFNDPAENUMCALLBACKCONST = int (CALLBACK*)(const T*, void*);
+    using _PFNDPAENUMCALLBACK = int (CALLBACK *)(T*, void*);
+    using _PFNDPAENUMCALLBACKCONST = int (CALLBACK *)(const T*, void*);
 
-    using _PFNDPACOMPARE = int (CALLBACK*)(T*, T*, LPARAM);
-    using _PFNDPACOMPARECONST = int (CALLBACK*)(const T*, const T*, LPARAM);
+    using _PFNDPACOMPARE = int (CALLBACK *)(T*, T*, LPARAM);
+    using _PFNDPACOMPARECONST = int (CALLBACK *)(const T*, const T*, LPARAM);
 
-    using _PFNDPAMERGE = T * (CALLBACK*)(UINT, T*, T*, LPARAM);
+    using _PFNDPAMERGE = T* (CALLBACK*)(UINT, T*, T*, LPARAM);
     using _PFNDPAMERGECONST = const T* (CALLBACK*)(UINT, const T*, const T*, LPARAM);
 
     CDPA_Base(HDPA hdpa = nullptr) : m_hdpa(hdpa)
@@ -122,9 +122,9 @@ public:
     }
 
     template <class TData>
-    void EnumCallbackEx(int (CALLBACK* pfnCB)(T* p, TData pData), TData pData = 0) const
+    void EnumCallbackEx(int (CALLBACK *pfnCB)(T* p, TData pData), TData pData = 0) const
     {
-        EnumCallback((_PFNDPAENUMCALLBACK)pfnCB, (void*)pData);
+        EnumCallback((_PFNDPAENUMCALLBACK)pfnCB, pData);
     }
 
     void DestroyCallback(_PFNDPAENUMCALLBACK pfnCB, void* pData = nullptr)
@@ -137,7 +137,7 @@ public:
     }
 
     template <class T2>
-    void DestroyCallbackEx(int (CALLBACK* pfnCB)(T* p, T2 pData), T2 pData)
+    void DestroyCallbackEx(int (CALLBACK *pfnCB)(T* p, T2 pData), T2 pData)
     {
         DestroyCallback((_PFNDPAENUMCALLBACK)pfnCB, reinterpret_cast<void*>(pData));
     }
@@ -204,24 +204,24 @@ public:
     }
 
     template <class T2>
-    BOOL SortEx(int (CALLBACK* pfnCompare)(T* p1, T* p2, T2 lParam), T2 lParam)
+    BOOL SortEx(int (CALLBACK *pfnCompare)(T* p1, T* p2, T2 lParam), T2 lParam)
     {
         return Sort((_PFNDPACOMPARE)pfnCompare, reinterpret_cast<LPARAM>(lParam));
     }
 
     BOOL Merge(CDPA_Base* pdpaDest, DWORD dwFlags, _PFNDPACOMPARE pfnCompare, _PFNDPAMERGE pfnMerge, LPARAM lParam)
     {
-        return DPA_Merge(m_hdpa, pdpaDest->m_hdpa, dwFlags, (_PFNDPACOMPARE)pfnCompare, (_PFNDPAMERGE)pfnMerge, lParam);
+        return DPA_Merge(m_hdpa, pdpaDest->m_hdpa, dwFlags, (PFNDPACOMPARE)pfnCompare, (PFNDPAMERGE)pfnMerge, lParam);
     }
 
     int Search(T* pFind, int iStart, _PFNDPACOMPARE pfnCompare, LPARAM lParam, UINT options) const
     {
-        return DPA_Search(m_hdpa, pFind, iStart, (_PFNDPACOMPARE)pfnCompare, lParam, options);
+        return DPA_Search(m_hdpa, pFind, iStart, (PFNDPACOMPARE)pfnCompare, lParam, options);
     }
 
     BOOL SortedInsertPtr(T* pItem, int iStart, _PFNDPACOMPARE pfnCompare, LPARAM lParam, UINT options, T* pFind)
     {
-        return DPA_SortedInsertPtr(m_hdpa, pFind, iStart, (_PFNDPACOMPARE)pfnCompare, lParam, options, pItem);
+        return DPA_SortedInsertPtr(m_hdpa, pFind, iStart, (PFNDPACOMPARE)pfnCompare, lParam, options, pItem);
     }
 
     ~CDPA_Base()
@@ -275,9 +275,9 @@ template <typename T>
 class CDSA_Base
 {
 public:
-    using _PFNDSAENUMCALLBACK = int (CALLBACK*)(T*, void*);
-    using _PFNDSAENUMCALLBACKCONST = int (CALLBACK*)(const T*, void*);
-    using _PFNDSACOMPARE = int (CALLBACK*)(const T*, const T*, int);
+    using _PFNDSAENUMCALLBACK = int (CALLBACK *)(T*, void*);
+    using _PFNDSAENUMCALLBACKCONST = int (CALLBACK *)(const T*, void*);
+    using _PFNDSACOMPARE = int (CALLBACK *)(const T*, const T*, LPARAM);
 
     CDSA_Base(const CDSA_Base& other) = delete;
 
@@ -356,13 +356,13 @@ public:
     {
         if (m_hdsa)
         {
-            DSA_DestroyCallback(m_hdsa, (_PFNDSAENUMCALLBACK)pfnCB, pData);
+            DSA_DestroyCallback(m_hdsa, (PFNDSAENUMCALLBACK)pfnCB, pData);
             m_hdsa = nullptr;
         }
     }
 
     template <class T2>
-    void DestroyCallbackEx(int (CALLBACK* pfnCB)(T* p, T2 pData), T2 pData)
+    void DestroyCallbackEx(int (CALLBACK *pfnCB)(T* p, T2 pData), T2 pData)
     {
         DestroyCallback((_PFNDSAENUMCALLBACK)pfnCB, reinterpret_cast<void*>(pData));
     }
@@ -394,49 +394,73 @@ public:
     {
         int cItem = GetItemCount();
 
+        _ASSERT(pfnCompare);
+        _ASSERT(0 <= iStart);
+        _ASSERT((options & DPAS_SORTED) || !(options & (DPAS_INSERTBEFORE | DPAS_INSERTAFTER)));
+
         if ((options & DPAS_SORTED) != 0)
         {
-            int iCompare = 0;
+            int iRet = -1;
+            int nCmp = 0;
 
-            int left = iStart;
-            int mid = 0;
-            int right = cItem - 1;
-            while (left <= right)
+            int iLow = iStart;
+            int iMid = 0;
+            int iHigh = cItem - 1;
+            while (true)
             {
-                mid = (left + right) / 2;
-                iCompare = pfnCompare(pFind, GetItemPtr(mid), lParam);
-                if (iCompare < 0)
+                if (iLow > iHigh)
                 {
-                    right = mid - 1;
+                    if ((options & (DPAS_INSERTBEFORE | DPAS_INSERTAFTER)) != 0)
+                    {
+                        iRet = nCmp > 0 ? iLow : iMid;
+                    }
+                    break;
                 }
-                else if (iCompare > 0)
+
+                iMid = (iLow + iHigh) / 2;
+                nCmp = pfnCompare(pFind, GetItemPtr(iMid), lParam);
+                if (nCmp < 0)
                 {
-                    left = mid + 1;
+                    iHigh = iMid - 1;
+                }
+                else if (nCmp > 0)
+                {
+                    iLow = iMid + 1;
                 }
                 else
                 {
-                    for (; mid > iStart; --mid)
+                    for (; iMid > iStart; --iMid)
                     {
-                        if (pfnCompare(pFind, GetItemPtr(mid - 1), lParam) != 0)
+                        if (pfnCompare(pFind, GetItemPtr(iMid - 1), lParam) != 0)
+                        {
                             break;
+                        }
                     }
-                    return mid;
+                    _ASSERT(0 <= iMid);
+                    iRet = iMid;
+                    break;
                 }
             }
 
-            if ((options & (DPAS_INSERTBEFORE | DPAS_INSERTAFTER)) != 0)
-                return iCompare > 0 ? left : mid;
+            if ((options & (DPAS_INSERTBEFORE | DPAS_INSERTAFTER)) == 0)
+            {
+                _ASSERT(Search(pFind, iStart, pfnCompare, lParam, options & ~DPAS_SORTED) == iRet);
+            }
+
+            return iRet;
         }
         else
         {
             for (int i = iStart; i < cItem; ++i)
             {
                 if (pfnCompare(pFind, GetItemPtr(i), lParam) == 0)
+                {
                     return i;
+                }
             }
-        }
 
-        return -1;
+            return -1;
+        }
     }
 
 protected:
