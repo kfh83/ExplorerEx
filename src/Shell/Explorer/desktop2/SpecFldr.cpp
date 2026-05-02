@@ -63,7 +63,7 @@ enum {
     SFD_USEBGTHREAD     = 0x0100,
 };
 
-#pragma region ResourceStringHelpers
+#pragma region "ResourceStringHelpers"
 
 template <typename T>
 HRESULT TCoTaskMemAllocCb(SIZE_T cb, T **out)
@@ -100,7 +100,7 @@ HRESULT ResourceStringCoAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
     return ResourceStringCoAllocCopyEx(hModule, uId, LANG_NEUTRAL, ppsz);
 }
 
-#pragma endregion
+#pragma endregion "ResourceStringHelpers"
 
 HRESULT SHFormatMessageArg(DWORD dwFlags, const void* lpSource, DWORD dwMessageId, DWORD dwLangID, WCHAR* pszBuffer, DWORD cchSize, ...)
 {
@@ -145,44 +145,46 @@ class SpecialFolderListItem;
 class CMenuDescriptor
 {
 public:
-    typedef int(CMenuDescriptor::* CUSTOMTOOLTIPCALLBACK)(SpecialFolderList*, const SpecialFolderListItem*, LPWSTR, DWORD) const;
+    typedef int (CMenuDescriptor::*CUSTOMTOOLTIPCALLBACK)(SpecialFolderList*, const SpecialFolderListItem*, WCHAR*, DWORD) const;
 
-    LPCWSTR _pszTarget;
+    const WCHAR* _pszTarget;
     const KNOWNFOLDERID _kfId;
-    LPCWSTR _pszPath;
+    const WCHAR* _pszPath;
     const KNOWNFOLDERID _kfMenuId;
-    LPCWSTR _pszIconPath;
-    LPCGUID _pguidPolicyHide;
-    LPCGUID _pguidPolicyRestrict;
-    LPCGUID _pguidPolicyForceShow;
-    LPCWSTR _pszShow;
+    const WCHAR* _pszIconPath;
+    const GUID* _pguidPolicyHide;
+    const GUID* _pguidPolicyRestrict;
+    const GUID* _pguidPolicyForceShow;
+    const WCHAR* _pszShow;
     UINT _uFlags;
     CREATESHELLMENUCALLBACK _CreateShellMenuCallback;
-    LPCWSTR _pszCustomizeKey;
+    const WCHAR* _pszCustomizeKey;
     DWORD _dwShellFolderFlags;
     DWORD _dwShellMenuSetFlags;
     UINT _idsCustomName;
     UINT _iToolTip;
     CUSTOMTOOLTIPCALLBACK _CustomTooltipCallback;
     SHOULDSHOWFOLDERCALLBACK _ShowFolder;
-    LPCWSTR _pszCanHideOnDesktop;
-    PCEVENT_DESCRIPTOR _pEventDescriptor;
+    const WCHAR* _pszCanHideOnDesktop;
+    const EVENT_DESCRIPTOR* _pEventDescriptor;
     int _iEventId;
     DWORD _dwEventFlags;
 
     REFKNOWNFOLDERID GetFolderID() const
     {
+        _ASSERTE(HasFolderID()); // 173
         return _kfId;
+    }
+
+    REFKNOWNFOLDERID GetMenuFolderID() const
+    {
+        _ASSERTE(HasMenuFolderID); // 179
+        return _kfMenuId;
     }
 
     BOOL HasFolderID() const
     {
         return !IsEqualGUID(_kfId, GUID_NULL);
-    }
-
-    REFKNOWNFOLDERID GetMenuFolderID() const
-    {
-        return _kfMenuId;
     }
 
     BOOL HasMenuFolderID() const
@@ -201,7 +203,7 @@ public:
         return _CreateShellMenuCallback ? _CreateShellMenuCallback(ppsmc) : S_OK;
     }
 
-    BOOL GetCustomName(LPTSTR *ppsz) const
+    BOOL GetCustomName(WCHAR** ppsz) const
     {
         return _idsCustomName && SUCCEEDED(ResourceStringCoAllocCopy(g_hinstCabinet, _idsCustomName, ppsz));
     }
@@ -229,7 +231,7 @@ public:
     // Taken from ep_taskbar by @amrsatrio
     DWORD GetDisplayMode(int *bOutIgnoreRule)
     {
-       
+
         *bOutIgnoreRule = FALSE;
 
         if (_pguidPolicyHide && SHWindowsPolicy(*_pguidPolicyHide)
@@ -895,12 +897,6 @@ static CMenuDescriptor s_rgsfd[] =
 };
 
 // d:\\longhorn\\Shell\\inc\\idllib.h
-PCIDLIST_ABSOLUTE _SHILMakeFull(const void *pv)
-{
-    PCIDLIST_ABSOLUTE pidl = reinterpret_cast<PCIDLIST_ABSOLUTE>(pv);
-    //RIP(ILIsAligned(reinterpret_cast<PCUIDLIST_RELATIVE>(pidl))); // 183
-    return pidl;
-}
 
 //****************************************************************************
 //
@@ -2376,13 +2372,13 @@ BOOL IsNetConPidlRAS(IShellFolder2 *psfNetCon, LPCITEMIDLIST pidlNetConItem)
     BOOL bRet = FALSE;
     SHCOLUMNID scidMediaType, scidSubMediaType, scidCharacteristics;
     VARIANT v;
-    
+
     scidMediaType.fmtid       = GUID_NETSHELL_PROPS;
     scidMediaType.pid         = ICOL_NETCONMEDIATYPE;
 
     scidSubMediaType.fmtid    = GUID_NETSHELL_PROPS;
     scidSubMediaType.pid      = ICOL_NETCONSUBMEDIATYPE;
-    
+
     scidCharacteristics.fmtid = GUID_NETSHELL_PROPS;
     scidCharacteristics.pid   = ICOL_NETCONCHARACTERISTICS;
 
@@ -2392,7 +2388,7 @@ BOOL IsNetConPidlRAS(IShellFolder2 *psfNetCon, LPCITEMIDLIST pidlNetConItem)
         if (IsMediaRASType((NETCON_MEDIATYPE)v.lVal))
         {
             VariantClear(&v);
-         
+
             // Make sure it's not incoming
             if (SUCCEEDED(psfNetCon->GetDetailsEx(pidlNetConItem, &scidCharacteristics, &v)))
             {
@@ -2405,10 +2401,10 @@ BOOL IsNetConPidlRAS(IShellFolder2 *psfNetCon, LPCITEMIDLIST pidlNetConItem)
         if (NCM_LAN == (NETCON_MEDIATYPE)v.lVal)
         {
             VariantClear(&v);
-            
+
             if (SUCCEEDED(psfNetCon->GetDetailsEx(pidlNetConItem, &scidSubMediaType, &v)))
             {
-                
+
                 if (NCSM_WIRELESS == (NETCON_SUBMEDIATYPE)v.lVal)
                     bRet = TRUE;
             }

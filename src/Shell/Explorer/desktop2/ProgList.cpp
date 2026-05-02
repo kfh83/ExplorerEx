@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "cocreateinstancehook.h"
+#include "idllib.h"
 #include "shundoc.h"
 #include "stdafx.h"
 #include "proglist.h"
@@ -921,6 +922,12 @@ LPBYTE CByUsageHiddenData::_AppendString(LPBYTE pbHidden, LPWSTR pwsz)
     return (LPBYTE)(pwszOut + 1 + lstrlenW(pwszOut));
 }
 
+PITEMID_CHILD _ILMakeAlignedChild(PCIDLIST_RELATIVE pidl)
+{
+    // RIP(ILIsAligned(pidl)); // 955
+    return const_cast<PITEMID_CHILD>(pidl);
+}
+
 //
 //  Note!  On failure, the source pidl is freed!
 //  (This behavior is inherited from ILAppendHiddenID.)
@@ -1233,14 +1240,6 @@ ByUsage::~ByUsage()
     {
         _pdirDesktop->Release();
     }
-}
-
-// d:\longhorn\Shell\inc\idllib.h
-PCUITEMID_CHILD _SHILMakeChild(const void *pv)
-{
-    PCUITEMID_CHILD pidl = static_cast<PCITEMID_CHILD>(pv);
-    //RIP(ILIsChild(reinterpret_cast<PCUIDLIST_RELATIVE>(pidl))); // 178
-    return pidl;
 }
 
 // {06C59536-1C66-4301-8387-82FBA3530E8D}
@@ -3799,19 +3798,6 @@ BOOL CMenuItemsCache::_ShouldProcessRoot(int iRoot)
 //
 //          [BYTE] 0x02 -- end
 //
-
-ITEMID_CHILD *_ILMakeAlignedChild(const ITEMIDLIST_RELATIVE *pidl)
-{
-    //if (((unsigned __int8)pidl & 3) != 0
-    //    && CcshellRipW(L"d:\\longhorn\\shell\\explorer\\desktop2\\proglist.cpp", 955, L"ILIsAligned(pidl)", 0))
-    //{
-    //    AttachUserModeDebugger();
-    //    do
-    //        __debugbreak();
-    //    while (`_ILMakeAlignedChild'::`7': : gAlwaysAssert);
-    //}
-    return (ITEMID_CHILD *)pidl;
-}
 
 #define CACHE_CHDIR     0
 #define CACHE_ITEM      1
