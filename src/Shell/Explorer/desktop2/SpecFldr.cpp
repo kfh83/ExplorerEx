@@ -7,6 +7,7 @@
 #include "specfldr.h"
 #include "hostutil.h"
 #include "cowsite.h"
+#include "idllib.h"
 #include "startmnu.h"
 #include "Win32ErrorHelpers.h"
 
