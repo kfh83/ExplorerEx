@@ -941,7 +941,180 @@ CSystemMixer::CSystemMixer(HWND hwndCallback)
     _uWinMM_DeviceChange = RegisterWindowMessageW(L"winmm_devicechange");
 }
 
-MMRESULT CSystemMixer::AdjustTreble(int increment)
+LONG CSystemMixer::Release()
+{
+    _ASSERTE(_cRef != 0); // 96
+    LONG cRef = InterlockedDecrement(&_cRef);
+    if (cRef == 0)
+    {
+        delete this;
+    }
+    return cRef;
+}
+
+void CSystemMixer::ForwardWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    DWORD* pdwVolume; // eax MAPDST
+    DWORD* pdwLastVolume; // esi
+
+    DEV_BROADCAST_DEVICEINTERFACE* dbdi = reinterpret_cast<DEV_BROADCAST_DEVICEINTERFACE*>(lParam);
+
+    if (uMsg == 537)
+    {
+        if (!_pszDeviceInterface)
+        {
+            return;
+        }
+        if (wParam != 32769)
+        {
+            if (wParam == 32770)
+            {
+                if (dbdi->dbcc_devicetype == 5 && !lstrcmpiW(dbdi->dbcc_name, _pszDeviceInterface))
+                {
+                    goto LABEL_23;
+                }
+                return;
+            }
+            if (wParam != 32771)
+                return;
+        }
+        if (dbdi->dbcc_devicetype == 5 && !lstrcmpiW(dbdi->dbcc_name, _pszDeviceInterface))
+        {
+            _Close();
+        }
+        return;
+    }
+
+    if (uMsg == 977)
+    {
+        if (_hMixer == (HMIXER)wParam && lParam == _rgmxctrl[0].dwControlID)
+        {
+            pdwVolume = (DWORD*)LocalAlloc(LPTR, _mxlDst.cChannels * sizeof(DWORD));
+            if (pdwVolume)
+            {
+                if (!_GetVolume(pdwVolume))
+                {
+                    pdwLastVolume = _pdwLastVolume;
+                    if (!pdwLastVolume || memcmp(pdwLastVolume, pdwVolume, _mxlDst.cChannels * sizeof(DWORD)))
+                    {
+                        _RefreshMixCache(pdwVolume);
+                    }
+                }
+                LocalFree(pdwVolume);
+            }
+        }
+    }
+    else if (uMsg == _uWinMM_DeviceChange)
+    {
+    LABEL_23:
+        _Refresh();
+    }
+}
+
+HRESULT CSystemMixer::ToggleMute()
+{
+    IAudioEndpointVolume* pVolume = nullptr;
+    HRESULT hr = _CreateVolumeObject(&pVolume);
+    if (SUCCEEDED(hr))
+    {
+        _ASSERTE(nullptr != pVolume); // 214
+
+        BOOL fMute;
+        hr = pVolume->GetMute(&fMute);
+        if (SUCCEEDED(hr))
+        {
+            hr = pVolume->SetMute(!fMute, nullptr);
+        }
+        pVolume->Release();
+    }
+    return hr;
+}
+
+HRESULT CSystemMixer::AdjustVolume(int Increment)
+{
+    IAudioEndpointVolume* pVolume = nullptr;
+    HRESULT hr = _CreateVolumeObject(&pVolume);
+    if (SUCCEEDED(hr))
+    {
+        _ASSERTE(nullptr != pVolume); // 301
+
+        if (Increment)
+        {
+            hr = pVolume->VolumeStepUp(nullptr);
+        }
+        else
+        {
+            hr = pVolume->VolumeStepDown(nullptr);
+        }
+        pVolume->Release();
+    }
+    return hr;
+}
+
+MMRESULT CSystemMixer::ToggleBassBoost()
+{
+    DWORD fEnabled = 0;
+    if (_CheckMissing())
+        return MMSYSERR_NODRIVER;
+
+    if (!_rgfControlPresent[6])
+        return MMSYSERR_NOERROR;
+
+    MIXERCONTROLDETAILS mxcd;
+    mxcd.cMultipleItems = 0;
+    mxcd.dwControlID = _rgmxctrl[6].dwControlID;
+    mxcd.paDetails = &fEnabled;
+    mxcd.cbStruct = 24;
+    mxcd.cChannels = 1;
+    mxcd.cbDetails = 4;
+    MMRESULT mmr = mixerGetControlDetailsW((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
+    if (!mmr)
+    {
+        fEnabled = fEnabled == 0 ? 1 : 0;
+        mmr = mixerSetControlDetails((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
+    }
+    return mmr;
+}
+
+MMRESULT CSystemMixer::AdjustBass(int Increment)
+{
+    LONG lLevel;
+
+    if (_CheckMissing())
+        return MMSYSERR_NODRIVER;
+
+    MMRESULT mmr = MMSYSERR_NOERROR;
+
+    if (_rgfControlPresent[1])
+    {
+        lLevel = 0;
+
+        MIXERCONTROLDETAILS mxcd;
+        mxcd.cMultipleItems = 0;
+        mxcd.paDetails = &lLevel;
+        mxcd.cbStruct = 0x18;
+        mxcd.dwControlID = _rgmxctrl[1].dwControlID;
+        mxcd.cChannels = 1;
+        mxcd.cbDetails = 4;
+        mmr = mixerGetControlDetailsW((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
+        if (!mmr)
+        {
+            lLevel += Increment != 0 ? 2621 : -2621;
+
+            lLevel = std::min<LONG>(65535, lLevel); // @MOD Don't use macro
+            lLevel = std::max<LONG>(0, lLevel); // @MOD Don't use macro
+
+            mxcd.paDetails = &lLevel;
+            mxcd.cChannels = 1;
+            mxcd.cMultipleItems = 0;
+            mxcd.cbDetails = 4;
+            mmr = mixerSetControlDetails((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
+        }
+    }
+    return mmr;
+}
+
+MMRESULT CSystemMixer::AdjustTreble(int Increment)
 {
     if (_CheckMissing())
         return MMSYSERR_NODRIVER;
@@ -963,7 +1136,7 @@ MMRESULT CSystemMixer::AdjustTreble(int increment)
         mmr = mixerGetControlDetailsW(reinterpret_cast<HMIXEROBJ>(_hMixer), &mxcd, 0x80000000);
         if (mmr == MMSYSERR_NOERROR)
         {
-            lLevel += increment != 0 ? 2621 : -2621;
+            lLevel += Increment != 0 ? 2621 : -2621;
             lLevel = std::min<LONG>(65535, lLevel); // @MOD Don't use macro
             lLevel = std::max<LONG>(0, lLevel);     // @MOD Don't use macro
 
@@ -1085,6 +1258,62 @@ void CSystemMixer::_GetLineControls()
 
 BOOL CSystemMixer::_Open()
 {
+    DEV_BROADCAST_HANDLE dbh; // [esp+18h] [ebp-48h] BYREF
+
+    DWORD_PTR cbDeviceInterface = 0;
+
+    _ASSERTE((nullptr == _hMixer)
+        && (nullptr == _pdblCacheMix)
+        && (nullptr == _pdblCacheMix)
+        && (nullptr == _pszDeviceInterface)); // 481
+
+    int mixerID; // [esp+10h] [ebp-50h] SPLIT BYREF
+    if (!_GetDefaultMixerID(&mixerID))
+    {
+        if (!mixerOpen(&this->_hMixer, mixerID, (DWORD_PTR)this->_hwndCallback, 0, 0x10000u))
+        {
+            HWND hwndCallback = this->_hwndCallback;
+            if (hwndCallback)
+            {
+                memset(&dbh.dbch_devicetype, 0, 0x28u);
+                dbh.dbch_size = 0x2C;
+                dbh.dbch_devicetype = DBT_DEVTYP_HANDLE;
+                dbh.dbch_handle = *(HANDLE*)&this->_hMixer;
+                this->_hdevnotify = RegisterDeviceNotificationW(hwndCallback, &dbh, DEVICE_NOTIFY_WINDOW_HANDLE);
+            }
+
+            if (_GetDestLine())
+            {
+                _GetLineControls();
+                cbDeviceInterface = 0;
+                if (!mixerMessage((HMIXER)mixerID, 0x80Du, (DWORD_PTR)&cbDeviceInterface, 0))
+                {
+                    if (cbDeviceInterface)
+                    {
+                        WCHAR* pwstrDeviceInterface = (WCHAR*)LocalAlloc(0x40u, cbDeviceInterface);
+                        if (pwstrDeviceInterface)
+                        {
+                            if (mixerMessage((HMIXER)mixerID, 0x80Cu, (DWORD_PTR)pwstrDeviceInterface, cbDeviceInterface))
+                            {
+                                LocalFree(pwstrDeviceInterface);
+                            }
+                            else
+                            {
+                                this->_pszDeviceInterface = pwstrDeviceInterface;
+                            }
+                        }
+                    }
+                }
+                return 1;
+            }
+            else
+            {
+                mixerClose((HMIXER)*(HANDLE*)&this->_hMixer);
+                *(HANDLE*)&this->_hMixer = nullptr;
+            }
+        }
+    }
+    return cbDeviceInterface;
 }
 
 void CSystemMixer::_Close()
@@ -1100,7 +1329,7 @@ void CSystemMixer::_Close()
 
     if (_hMixer)
     {
-        ASSERT(MMSYSERR_NOERROR == mixerClose(_hMixer)); // 552
+        _ASSERTE(MMSYSERR_NOERROR == mixerClose(_hMixer)); // 552
         _hMixer = nullptr;
     }
     if (_hdevnotify)

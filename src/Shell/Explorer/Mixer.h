@@ -35,10 +35,10 @@ public:
     void ForwardWindowMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     HRESULT ToggleMute();
-    HRESULT AdjustVolume(int direction); // up/down
+    HRESULT AdjustVolume(int Increment); // up/down
     MMRESULT ToggleBassBoost();
-    MMRESULT AdjustBass(int direction);
-    MMRESULT AdjustTreble(int increment);
+    MMRESULT AdjustBass(int Increment);
+    MMRESULT AdjustTreble(int Increment);
 
 private:
     void _RefreshMixCache(const DWORD* padwVolume);

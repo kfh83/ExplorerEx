@@ -1415,10 +1415,7 @@ LRESULT CTray::_OnCreate()
     LRESULT lres = -1;
     v_hwndTray = _hwnd;
 
-    // EXEX-VISTA TODO: Uncommented when implemented CSystemMixer
-#ifdef SYSTEM_MIXER
-    _pSystemMixer = new (std::nothrow) CSystemMixer(_hwnd);
-#endif
+    _pSystemMixer = new CSystemMixer(_hwnd);
 
     SendMessage(_hwnd, WM_CHANGEUISTATE, MAKEWPARAM(UIS_INITIALIZE, 0), 0);
 
@@ -3992,14 +3989,11 @@ LRESULT CTray::_HandleDestroy()
     _RevokeDropTargets();
     _DestroyStartMenu();
 
-    // EXEX-VISTA TODO: Uncomment when CSystemMixer is implemented
-#ifdef SYSTEM_MIXER
     if (_pSystemMixer)
     {
         _pSystemMixer->Release();
         _pSystemMixer = nullptr;
     }
-#endif
 
     // Tell the start menu to free all its cached darwin links
     SHRegisterDarwinLink(nullptr, nullptr, TRUE);
@@ -7480,12 +7474,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 _ShowOnlyQuickLaunchDeskBand();
             }
-#ifdef SYSTEM_MIXER
             else if (_pSystemMixer)
             {
                 _pSystemMixer->ForwardWindowMessage(uMsg, wParam_1, lParam_2);
             }
-#endif
             return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
         }
 
@@ -7954,12 +7946,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (uMsg == WM_DEVICECHANGE)
             {
-#ifdef SYSTEM_MIXER
                 if (_pSystemMixer)
                 {
-                    _pSystemMixer->ForwardWindowMessage(0x219u, msg.wParam, msg.lParam);
+                    _pSystemMixer->ForwardWindowMessage(0x219, msg.wParam, msg.lParam);
                 }
-#endif
                 lres = _OnDeviceChange(hwnd, wParam_1, lParam_2);
                 v20 = lres == 0;
                 goto LABEL_134;
@@ -8075,12 +8065,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             case 0x3D1:
             {
-#ifdef SYSTEM_MIXER
                 if (_pSystemMixer)
                 {
                     _pSystemMixer->ForwardWindowMessage(0x3D1, msg.wParam, msg.lParam);
                 }
-#endif
                 return lres;
             }
             case 0x40C:
@@ -8383,22 +8371,22 @@ DWORD WINAPI CTray::PropertiesThreadProc(void* pv)
     return c_tray._PropertiesThreadProc(pv);
 }
 
-// EXEX-VISTA: Move later.
-typedef struct tagTRAYPROPTHREADDATA
+// @Note: Name taken from 7601 Explorer.exe
+struct PropertiesThreadProcData
 {
     DWORD dwFlags;
     RECT rcStartButton;
     IStream* pstm;
-} TRAYPROPTHREADDATA, *PTRAYPROPTHREADDATA;
+};
 
 // EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
 DWORD CTray::_PropertiesThreadProc(void* pv)
 {
-    TRAYPROPTHREADDATA* pData = static_cast<TRAYPROPTHREADDATA*>(pv);
-    if (pData)
+    PropertiesThreadProcData* pptpd = static_cast<PropertiesThreadProcData*>(pv);
+    if (pptpd)
     {
-        RECT rc = pData->rcStartButton;
-        bool fInvokeCustomize = (pData->dwFlags & TPF_INVOKECUSTOMIZE) != 0;
+        RECT rc = pptpd->rcStartButton;
+        bool fInvokeCustomize = (pptpd->dwFlags & TPF_INVOKECUSTOMIZE) != 0;
         DWORD dwExStyle = (IS_BIDI_LOCALIZED_SYSTEM() ? 0x400000 : 0) | 0x80;
 
         HWND* phwndProp = fInvokeCustomize ? &_hwndPropCustomize : &_hwndProp;
@@ -8421,7 +8409,7 @@ DWORD CTray::_PropertiesThreadProc(void* pv)
             HICON hicoStub = LoadIconW(GetModuleHandleW(L"SHELL32"), MAKEINTRESOURCEW(40));
             SendMessageW(*phwndProp, WM_SETICON, ICON_BIG, (LPARAM)hicoStub);
 
-            DoTaskBarProperties(*phwndProp, pData->dwFlags, pData->pstm);
+            DoTaskBarProperties(*phwndProp, pptpd->dwFlags, pptpd->pstm);
 
             *phwndProp = nullptr;
             DestroyWindow(hwnd);
@@ -8432,7 +8420,7 @@ DWORD CTray::_PropertiesThreadProc(void* pv)
             }
         }
 
-        delete pData;
+        delete pptpd;
     }
 
     return 1;
@@ -8468,7 +8456,7 @@ void CTray::DoProperties(DWORD dwFlags)
         }
         else
         {
-            TRAYPROPTHREADDATA* pParams = new(std::nothrow) TRAYPROPTHREADDATA();
+            PropertiesThreadProcData* pParams = new(std::nothrow) PropertiesThreadProcData();
             if (pParams)
             {
                 _stb.GetRect(&pParams->rcStartButton);
