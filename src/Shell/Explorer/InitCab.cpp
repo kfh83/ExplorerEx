@@ -1841,6 +1841,15 @@ public:
         //SetProcessReference(punk);
     }
 
+    template <typename TLambda>
+    CThreadRefHost(TLambda lambda)
+        : _cRef(0)
+        , _punk(nullptr)
+    {
+        lambda(&_cRef, &_punk);
+        SHSetThreadRef(_punk);
+    }
+
     CThreadRefHost(const CThreadRefHost&) = delete;
 
     virtual ~CThreadRefHost()
@@ -2060,7 +2069,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             }
 
             WriteCleanShutdown(FALSE);    // assume we will have a bad shutdown
-            CThreadRefHost refhost;
+            CThreadRefHost host;
 
             void(*WinList_Init)() = decltype(WinList_Init)(GetProcAddress(LoadLibrary(L"explorerframe.dll"),(LPCSTR)110));
             if (WinList_Init)
