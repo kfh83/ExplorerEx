@@ -68,21 +68,8 @@ HRESULT CTopMatch::QueryService(REFGUID guidService, REFIID riid, void** ppvObje
 	return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
 }
 
-GUID POLID_NoSearchInternetLinkInStartMenu =
-{
-  2349109124u,
-  16169u,
-  18090u,
-  { 149u, 144u, 236u, 147u, 63u, 146u, 255u, 51u }
-};
-
-const GUID POLID_NoSearchComputerLinkInStartMenu =
-{
-  2183995476u,
-  37952u,
-  18650u,
-  { 146u, 246u, 250u, 144u, 222u, 14u, 156u, 150u }
-};
+const GUID POLID_NoSearchInternetLinkInStartMenu = { 2349109124u, 16169u, 18090u, { 149u, 144u, 236u, 147u, 63u, 146u, 255u, 51u } };
+const GUID POLID_NoSearchComputerLinkInStartMenu = { 2183995476u, 37952u, 18650u, { 146u, 246u, 250u, 144u, 222u, 14u, 156u, 150u } };
 
 HRESULT CTopMatch::SetSite(IUnknown *punkSite)
 {
@@ -100,7 +87,7 @@ HRESULT CTopMatch::SetSite(IUnknown *punkSite)
 			lvi.lParam = 0;
 			lvfi.lParam = 0;
 			lvi.mask = 5;
-			lvi.pszText = _sz;
+			lvi.pszText = _szSearchEverywhere;
 			lvfi.flags = 1;
 			if (ListView_FindItem(_hwndList, -1, &lvfi) < 0)
 			{
@@ -110,7 +97,7 @@ HRESULT CTopMatch::SetSite(IUnknown *punkSite)
 				ListView_InsertItem(_hwndList, &lvi);
 			}
 		}
-		_AddSearchItem(1, _sz2);
+		_AddSearchItem(1, _szSearchInternet);
 		_AddSearchExtension();
 		_UpdateTopMatchSizeInOpenView();
 	}
@@ -145,18 +132,15 @@ HRESULT CTopMatch::Exec(const GUID *pguidCmdGroup,
 			case 317:
 			{
 				int iIndex = VariantToInt32WithDefault(*pvarargIn, 0);
-				if (iIndex >= 0)
-				{
-					if (!field_464)
-					{
-						field_464 = 1;
-						ListView_SetItemState(_hwndList, iIndex, LVIS_SELECTED, LVIS_SELECTED);
-					}
-				}
-				else
+				if (iIndex < 0)
 				{
 					field_464 = 0;
 					ListView_SetItemState(_hwndList, -1, 0, LVIS_SELECTED);
+				}
+				else if (!field_464)
+				{
+					field_464 = 1;
+					ListView_SetItemState(_hwndList, iIndex, LVIS_SELECTED, LVIS_SELECTED);
 				}
 				return 0;
 			}
@@ -168,7 +152,7 @@ HRESULT CTopMatch::Exec(const GUID *pguidCmdGroup,
 			}
 			case 328:
 			{
-				ListView_SetItemText(_hwndList, 0, 0, _sz);
+				ListView_SetItemText(_hwndList, 0, 0, _szSearchEverywhere);
 				break;
 			}
 		}
@@ -179,7 +163,7 @@ HRESULT CTopMatch::Exec(const GUID *pguidCmdGroup,
 
 LRESULT CTopMatch::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	CTopMatch *self = reinterpret_cast<CTopMatch *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	CTopMatch* self = reinterpret_cast<CTopMatch*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 
 	switch (uMsg)
 	{
@@ -204,12 +188,12 @@ LRESULT CTopMatch::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_NCDESTROY:
 			return self->_OnNCDestroy(hwnd, uMsg, wParam, lParam);
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CTopMatch::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
+	NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
 
 	if (pnm->hwndFrom == _hwndList)
 	{
@@ -221,7 +205,7 @@ LRESULT CTopMatch::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			case NM_CLICK:
 			{
-				return _ActivateItem(lParam, 1);
+				return _ActivateItem(((NMITEMACTIVATE*)lParam)->iItem, 1);
 			}
 		}
 	}
@@ -230,15 +214,15 @@ LRESULT CTopMatch::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case SMN_GETMINSIZE:
 		{
-			return _OnSMNGetMinSize((PSMNGETMINSIZE)pnm);
+			return _OnSMNGetMinSize((SMNGETMINSIZE*)pnm);
 		}
 		case 215:
 		{
-			return _OnSMNFindItem((PSMNDIALOGMESSAGE)pnm);
+			return _OnSMNFindItem((SMNDIALOGMESSAGE*)pnm);
 		}
 		case 223:
 		{
-			return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
+			return SUCCEEDED(SetSite(((SMNSETSITE*)pnm)->punkSite));
 		}
 		case NM_KILLFOCUS:
 		{
@@ -248,7 +232,7 @@ LRESULT CTopMatch::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 
@@ -259,8 +243,8 @@ LRESULT CTopMatch::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	SMPANEDATA *psmpd = PaneDataFromCreateStruct(lParam);
-	IUnknown_Set(&psmpd->punk, SAFECAST(this, IServiceProvider*));
+	SMPANEDATA* psmpd = PaneDataFromCreateStruct(lParam);
+	IUnknown_Set(&psmpd->punk, static_cast<IServiceProvider*>(this));
 
 	RECT rc;
 	GetClientRect(_hwnd, &rc);
@@ -270,7 +254,7 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	if (_hTheme)
 	{
-		GetThemeMargins(_hTheme, NULL, SPP_TOPMATCH, 0, TMT_CONTENTMARGINS, &rc, &_margins);
+		GetThemeMargins(_hTheme, nullptr, SPP_TOPMATCH, 0, TMT_CONTENTMARGINS, &rc, &_margins);
 	}
 	else
 	{
@@ -280,11 +264,21 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		_margins.cxRightWidth = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
 	}
 
-	_hwndList = SHFusionCreateWindowEx(0, L"SysListView32", NULL, 0x5600204F,
-		_margins.cxLeftWidth, _margins.cyTopHeight,
-		RECTWIDTH(rc), RECTHEIGHT(rc),
-		_hwnd, 0, g_hinstCabinet, 0);
-	
+	_hwndList = SHFusionCreateWindowEx(
+		0,
+		L"SysListView32",
+		nullptr,
+		LVS_LIST | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_NOSCROLL |
+		WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD,
+		_margins.cxLeftWidth,
+		_margins.cyTopHeight,
+		RECTWIDTH(rc),
+		RECTHEIGHT(rc),
+		_hwnd,
+		nullptr,
+		g_hinstCabinet,
+		nullptr
+	);
 	if (!_hwndList)
 		return -1;
 
@@ -293,38 +287,44 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		dwLvExStyle |= LVS_EX_DOUBLEBUFFER;
 	}
-	
-	SendMessage(_hwndList, LVM_SETEXTENDEDLISTVIEWSTYLE, dwLvExStyle, dwLvExStyle);
+	ListView_SetExtendedListViewStyleEx(_hwndList, dwLvExStyle, dwLvExStyle);
+
 	if (_hTheme)
 	{
-		GetThemeColor(_hTheme, SPP_TOPMATCH, 0, TMT_HOTTRACKING, &field_44);
+		GetThemeColor(_hTheme, SPP_TOPMATCH, 0, TMT_HOTTRACKING, &_clrHot);
+
 		COLORREF clrText;
 		GetThemeColor(_hTheme, SPP_TOPMATCH, 0, TMT_TEXTCOLOR, &clrText);
-		_clrBk = CLR_INVALID;
+		_clrBG = CLR_INVALID;
 		ListView_SetTextColor(_hwndList, clrText);
-		ListView_SetBkColor(_hwndList, _clrBk);
-		ListView_SetTextBkColor(_hwndList, _clrBk);
-		ListView_SetOutlineColor(_hwndList, field_44);
+		ListView_SetBkColor(_hwndList, _clrBG);
+		ListView_SetTextBkColor(_hwndList, _clrBG);
+		ListView_SetOutlineColor(_hwndList, _clrHot);
 	}
 	else
 	{
 		ListView_SetTextColor(_hwndList, GetSysColor(COLOR_MENUTEXT));
-		field_44 = GetSysColor(COLOR_MENUTEXT);
-		_clrBk = GetSysColor(COLOR_MENU);
+		_clrHot = GetSysColor(COLOR_MENUTEXT);
+		_clrBG = GetSysColor(COLOR_MENU);
 	}
-	
-	LPCWSTR pszTheme = IsCompositionActive() ? L"StartMenuComposited" : L"StartMenu";
-	SetWindowTheme(_hwndList, pszTheme, NULL);
+
+	const WCHAR* pszTheme = IsCompositionActive() ? L"StartMenuComposited" : L"StartMenu";
+	SetWindowTheme(_hwndList, pszTheme, nullptr);
+
 	_cyIcon = GetSystemMetrics(SM_CYSMICON);
 
 
-	IImageList2 *piml;
+	IImageList2* piml;
 	if (SUCCEEDED(SHGetImageList(-1, IID_PPV_ARGS(&piml))))
 	{
 		if (SUCCEEDED(piml->Resize(_cyIcon, _cyIcon)))
-			_himl = (HIMAGELIST)piml;
+		{
+			_himl = IImageListToHIMAGELIST(piml);
+		}
 		else
+		{
 			piml->Release();
+		}
 	}
 
 	ListView_SetView(_hwndList, LV_VIEW_TILE);
@@ -335,8 +335,8 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	_cyIcon += 2 * SHGetSystemMetricsScaled(SM_CYEDGE) + 2;
 	ListView_SetImageList(_hwndList, _himl, LVSIL_NORMAL);
 
-	LoadString(g_hinstCabinet, 8243, _sz, ARRAYSIZE(_sz));
-	LoadString(g_hinstCabinet, 8244, _sz2, ARRAYSIZE(_sz2));
+	LoadStringW(g_hinstCabinet, 8243, _szSearchEverywhere, ARRAYSIZE(_szSearchEverywhere));
+	LoadStringW(g_hinstCabinet, 8244, _szSearchInternet, ARRAYSIZE(_szSearchInternet));
 	SetAccessibleSubclassWindow(_hwndList);
 	return 0;
 }
@@ -351,7 +351,7 @@ LRESULT CTopMatch::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		cx = 0;
 	if (cy < 0)
 		cy = 0;
-	SetWindowPos(_hwndList, NULL, cxLeftWidth, cyTopHeight, cx, cy, 0x204u);
+	SetWindowPos(_hwndList, nullptr, cxLeftWidth, cyTopHeight, cx, cy, SWP_NOZORDER | SWP_NOOWNERZORDER);
 	_SetTileWidth(cx);
 	return 0;
 }
@@ -371,7 +371,7 @@ LRESULT CTopMatch::_OnEraseBackground(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 	}
 	else
 	{
-		SHFillRectClr((HDC)wParam, &rc, _clrBk);
+		SHFillRectClr((HDC)wParam, &rc, _clrBG);
 	}
 	return 1;
 }
@@ -381,10 +381,10 @@ LRESULT CTopMatch::_OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	if (_hTheme)
 	{
 		ListView_SetTextColor(_hwndList, GetSysColor(COLOR_MENUTEXT));
-		field_44 = GetSysColor(COLOR_MENUTEXT);
-		_clrBk = GetSysColor(COLOR_MENU);
-		ListView_SetBkColor(_hwndList, _clrBk);
-		ListView_SetTextBkColor(_hwndList, _clrBk);
+		_clrHot = GetSysColor(COLOR_MENUTEXT);
+		_clrBG = GetSysColor(COLOR_MENU);
+		ListView_SetBkColor(_hwndList, _clrBG);
+		ListView_SetTextBkColor(_hwndList, _clrBG);
 	}
 	SHPropagateMessage(hwnd, uMsg, wParam, lParam, SPM_SEND | SPM_ONELEVEL);
 	return 0;
@@ -424,14 +424,14 @@ LRESULT CTopMatch::_OnNCCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	CTopMatch *self = new CTopMatch(hwnd);
 	if (!self)
 		return 0;
-	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)self);
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)self);
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CTopMatch::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-	LRESULT lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
+	SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+	LRESULT lRes = DefWindowProcW(hwnd, uMsg, wParam, lParam);
 	if (this)
 		Release();
 	return lRes;
@@ -442,7 +442,7 @@ LRESULT CTopMatch::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 	LRESULT lres = _OnSMNFindItemWorker(pdm);
 	if (lres)
 	{
-		if ((pdm->flags & (0x100 | 0x800)) != 0)
+		if ((pdm->flags & (SMNDM_SELECT | 0x800)) != 0)
 		{
 			field_464 = 1;
 			ListView_SetItemState(_hwndList, pdm->itemID, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
@@ -454,14 +454,14 @@ LRESULT CTopMatch::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 	}
 	else
 	{
-		pdm->flags |= 0x4000u;
+		pdm->flags |= SMNDM_VERTICAL;
 
 		int iItem = _GetLVCurSel();
 		RECT rc;
 		if (iItem >= 0 && ListView_GetItemRect(_hwndList, iItem, &rc, LVIR_BOUNDS))
 		{
-			pdm->pt.x = (RECTWIDTH(rc)) / 2;
-			pdm->pt.y = (RECTHEIGHT(rc)) / 2;
+			pdm->pt.x = (rc.left + rc.right) / 2;
+			pdm->pt.y = (rc.bottom + rc.top) / 2;
 		}
 		else
 		{
@@ -479,7 +479,7 @@ LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 	LRESULT iCurSel1;
 	LRESULT iItem;
 	LRESULT iCurSel;
-	LVFINDINFO lvfi;
+	LVFINDINFOW lvfi;
 
 	switch (pdm->flags & 0xF)
 	{
@@ -508,7 +508,9 @@ LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 				return iItem != iCurSel1 && iItem >= 0;
 			}
 			if (wParam != VK_DOWN)
+			{
 				return 0;
+			}
 			iCurSel1 = _GetLVCurSel();
 			if (iCurSel1 != -1)
 			{
@@ -550,7 +552,7 @@ LRESULT CTopMatch::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
 
 void CTopMatch::_SetTileWidth(int cxTile)
 {
-	LVTILEVIEWINFO tvi = {0};
+	LVTILEVIEWINFO tvi = {};
 	tvi.cbSize = sizeof(tvi);
 	tvi.dwMask = LVTVIM_TILESIZE | LVTVIM_COLUMNS;
 	tvi.dwFlags = LVTVIF_FIXEDWIDTH | LVTVIF_FIXEDHEIGHT;
@@ -563,26 +565,27 @@ void CTopMatch::_SetTileWidth(int cxTile)
 void CTopMatch::_UpdateTopMatchSizeInOpenView()
 {
 	int cItems = ListView_GetItemCount(_hwndList);
+
 	VARIANT varg;
 	varg.vt = VT_I4;
 	varg.iVal = _margins.cyTopHeight + _margins.cyBottomHeight + cItems * _cyIcon;
-	IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 316, 0, &varg, NULL);
+	IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 316, 0, &varg, nullptr);
 	VariantClear(&varg);
 }
 
 void CTopMatch::_AddSearchExtension()
 {
-	WCHAR szExtensionName[MAX_PATH];
+	WCHAR szExtensionName[260];
 	DWORD cbData = sizeof(szExtensionName);
-	if (!_SHRegGetValueFromHKCUHKLM(
-		TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\SearchExtensions"),
-		TEXT("InternetExtensionName"),
+	if (_SHRegGetValueFromHKCUHKLM(
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\SearchExtensions",
+		L"InternetExtensionName",
 		SRRF_RT_ANY,
-		0,
+		nullptr,
 		szExtensionName,
-		&cbData))
+		&cbData) == ERROR_SUCCESS)
 	{
-		WCHAR szExtensionNameOut[MAX_PATH];
+		WCHAR szExtensionNameOut[260];
 		if (SUCCEEDED(SHLoadIndirectString(szExtensionName, szExtensionNameOut, ARRAYSIZE(szExtensionNameOut), NULL)))
 		{
 			_AddSearchItem(2, szExtensionNameOut);

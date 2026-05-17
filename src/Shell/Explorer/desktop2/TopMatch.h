@@ -71,11 +71,11 @@ private:
 	HTHEME _hTheme;
 	LONG _lRef;
 	MARGINS _margins;
-	COLORREF field_44;
-	COLORREF _clrBk;
+	COLORREF _clrHot;
+	COLORREF _clrBG;
 	int _cyIcon;
-	WCHAR _sz[MAX_PATH];
-	WCHAR _sz2[MAX_PATH];
+	WCHAR _szSearchEverywhere[260];
+	WCHAR _szSearchInternet[260];
 	HIMAGELIST _himl;
 	int field_464;
 
