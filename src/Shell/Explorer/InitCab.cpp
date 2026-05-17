@@ -1821,46 +1821,52 @@ void CheckForServerAdminUI()
     }
 }
 
-//reversed from w10 explorer
+// EXEX-Vista(Allison): Validated from Windows 10 Explorer/TwinUI.dll
 class CThreadRefHost
 {
 public:
-    LONG ref = 0;
-    IUnknown* punk = 0;
-
-    void WaitForRefs()
-    {
-		SHSetThreadRef(0LL);
-		punk = this->punk;
-		if (punk)
-		{
-            punk->Release();
-			this->punk = 0LL;
-		}
-        MSG Msg;
-		while (this->ref)
-		{
-			if (GetMessageW(&Msg, 0LL, 0, 0))
-			{
-				TranslateMessage(&Msg);
-				DispatchMessageW(&Msg);
-			}
-		}
-    }
-
     CThreadRefHost()
+        : _cRef(0)
+        , _punk(nullptr)
     {
-		SHCreateThreadRef(&ref, &this->punk);
-		SHSetThreadRef(this->punk);
-        static void(*fSetProcessReference)(IUnknown * punk) = decltype(fSetProcessReference)(GetProcAddress(LoadLibrary(L"api-ms-win-shcore-thread-l1-1-0"),"SetProcessReference"));
+        SHCreateThreadRef(&_cRef, &_punk);
+        SHSetThreadRef(_punk);
+
+        static void (*fSetProcessReference)(IUnknown* punk) = reinterpret_cast<decltype(fSetProcessReference)>(
+            GetProcAddress(LoadLibraryW(L"api-ms-win-shcore-thread-l1-1-0"), "SetProcessReference"));
         if (fSetProcessReference)
-            fSetProcessReference(punk);
+        {
+            fSetProcessReference(_punk);
+        }
         //SetProcessReference(punk);
     }
+
+    CThreadRefHost(const CThreadRefHost&) = delete;
+
     virtual ~CThreadRefHost()
     {
         WaitForRefs();
     }
+
+    void WaitForRefs()
+    {
+        SHSetThreadRef(nullptr);
+        IUnknown_SafeReleaseAndNullPtr(&_punk);
+
+        MSG msg;
+        while (_cRef)
+        {
+            if (GetMessageW(&msg, nullptr, 0, 0))
+            {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+    }
+
+protected:
+    LONG _cRef;
+    IUnknown* _punk;
 };
 
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
