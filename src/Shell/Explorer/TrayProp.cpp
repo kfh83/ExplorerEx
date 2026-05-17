@@ -820,13 +820,13 @@ public:
         if (hpage)
             AddPage(hpage);
 
-		// Deskbands page
-		psp.pszTemplate = MAKEINTRESOURCEW(10);
-		psp.pfnDlgProc = s_DeskbandsOptionsDlgProc;
-		psp.lParam = reinterpret_cast<LPARAM>(this);
-		hpage = CreatePropertySheetPageW(&psp);
-		if (hpage)
-			AddPage(hpage);
+        // Deskbands page
+        psp.pszTemplate = MAKEINTRESOURCEW(10);
+        psp.pfnDlgProc = s_DeskbandsOptionsDlgProc;
+        psp.lParam = reinterpret_cast<LPARAM>(this);
+        hpage = CreatePropertySheetPageW(&psp);
+        if (hpage)
+            AddPage(hpage);
 
         _pDlgNotify = new CComObject<CNotificationsDlg>;
         if (_pDlgNotify)
@@ -835,15 +835,15 @@ public:
         }
     }
 
-    ~CTaskBarPropertySheet()
+    ~CTaskBarPropertySheet() override
     {
-        ATOMICRELEASE(_pDlgNotify);
+        IUnknown_SafeReleaseAndNullPtr(&_pDlgNotify);
     }
 
     // We aren't handling any messages special, so we just make an empty map
     DECLARE_EMPTY_MSG_MAP()
-private:
 
+private:
     // dlgproc's for the various pages
     static BOOL_PTR s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     static BOOL_PTR s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -857,8 +857,13 @@ private:
     void _ApplyTaskbarOptionsFromDialog(HWND hDlg);
     void _ApplyStartOptionsFromDialog(HWND hDlg);
     void _ApplyNotificationOptionsFromDialog(HWND hDlg);
+    void _HandleDeskbandOptions(int a2, BOOL fDelete);
 
-
+    void _DeskbandOptions_OnInitDialog(HWND hDlg, DWORD dwFlags);
+    void _AddDeskBandItem(REFCLSID clsid, int iPrivID, WCHAR* pszName, UINT cchName, BOOL a6);
+    void _PopulateDeskBandList();
+    void _UpdateQLOnDeskbandsPage();
+    void _UpdateQLOnTaskbarPage();
 
     // for the old style customize dialog
     SMADVANCED  _Adv;
@@ -867,7 +872,11 @@ private:
     CComObject<CNotificationsDlg>* _pDlgNotify;
 
     DWORD _dwFlags;
-    HWND _hwndDeskbandsTree;
+    HWND field_278;
+    HWND _hwndTree;
+    HTREEITEM field_280;
+    CSimpleArray<HTREEITEM> _rgTreeItems;
+    HIMAGELIST _himl;
     ICatBandManager* _pcbm;
 };
 
@@ -1601,7 +1610,7 @@ BOOL CCustomizeStartMenuDlg::AdvancedTabInit(HWND hDlg)
         IUnknown_SetSite(_prto, static_cast<IServiceProvider*>(this));
 
         _prto->InitTree(
-            hwndTV,HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartMenu\\StartPanelVista",
+            hwndTV, HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartMenu\\StartPanelVista",
             nullptr);
 
         TreeView_SelectSetFirstVisible(hwndTV, TreeView_GetRoot(hwndTV));
@@ -2014,9 +2023,11 @@ BOOL _ToggleDeskbandItem(HWND hwnd, HTREEITEM hti)
     return fToggled;
 }
 
+
+
 BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#if 0
+#if 1
     if (uMsg == WM_NOTIFY)
     {
         NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
@@ -2026,8 +2037,8 @@ BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WP
             {
                 if (reinterpret_cast<NMTVKEYDOWN*>(pnm)->wVKey == VK_SPACE)
                 {
-                    HTREEITEM hti = TreeView_GetNextItem(_hwndDeskbandsTree, nullptr, TVGN_CARET);
-                    if (hti && _ToggleDeskbandItem(_hwndDeskbandsTree, hti))
+                    HTREEITEM hti = TreeView_GetNextItem(_hwndTree, nullptr, TVGN_CARET);
+                    if (hti && _ToggleDeskbandItem(_hwndTree, hti))
                     {
                         SendPSMChanged(hDlg);
                         ::SetWindowLongPtrW(hDlg, 0, 1);
@@ -2047,7 +2058,7 @@ BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WP
             }
             case PSN_KILLACTIVE:
             {
-                _UpdateQLOnTaskbarPage(this);
+                _UpdateQLOnTaskbarPage();
                 break;
             }
             case PSN_SETACTIVE:
@@ -2060,11 +2071,13 @@ BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WP
                 if (pnm->idFrom == 1137)
                 {
                     DWORD dwPos = GetMessagePos();
-                    POINT pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
-                    ::ScreenToClient(_hwndDeskbandsTree, &pt);
 
-                    HTREEITEM hti = TreeView_HitTest(_hwndDeskbandsTree, &pt);
-                    if (hti && _ToggleDeskbandItem(_hwndDeskbandsTree, hti))
+                    TVHITTESTINFO ht;
+                    ht.pt = { GET_X_LPARAM(dwPos), GET_Y_LPARAM(dwPos) };
+                    ::ScreenToClient(_hwndTree, &ht.pt);
+
+                    HTREEITEM hti = TreeView_HitTest(_hwndTree, &ht);
+                    if (hti && _ToggleDeskbandItem(_hwndTree, hti))
                     {
                         SendPSMChanged(hDlg);
                     }
@@ -2378,7 +2391,238 @@ void CTaskBarPropertySheet::_ApplyNotificationOptionsFromDialog(HWND hDlg)
     c_tray.SetTrayViewOpts(&tvo, _pcbm);
     SendMessageW(c_tray._hwndNotify, 0x402u, 0, tvo.fHideClock);
     c_tray.SizeWindows();
-    ::SendNotifyMessageW(HWND_BROADCAST, 0x1Au, 0, (LPARAM)L"TraySettings");
+    ::SendNotifyMessageW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"TraySettings");
+}
+
+// @Note: DESKBANDITEM is a struct inside ExplorerFrame but is bigger than the struct used in explorer.exe.
+// So the name is borrowed with a "TV" prefix appended to it in order to differentiate.
+struct TVDESKBANDITEM
+{
+    CLSID clsid;
+    int iPrivID;
+};
+
+void CTaskBarPropertySheet::_HandleDeskbandOptions(int a2, BOOL fDelete)
+{
+    if (_hwndTree)
+    {
+        int cItems = _rgTreeItems.GetSize();
+        for (int i = 0; i < cItems; ++i)
+        {
+            TVITEMW tvi = {};
+            tvi.mask = TVIF_IMAGE | TVIF_PARAM | TVIF_HANDLE;
+            tvi.hItem = _rgTreeItems[i];
+            if (TreeView_GetItem(_hwndTree, &tvi))
+            {
+                TVDESKBANDITEM* pDeskBandItem = reinterpret_cast<TVDESKBANDITEM*>(tvi.lParam);
+                if (pDeskBandItem)
+                {
+                    if (a2)
+                    {
+                        if (!tvi.iImage)
+                        {
+                            _pcbm->ShowCatBand(CATID_DeskBand, pDeskBandItem->clsid, pDeskBandItem->iPrivID);
+                        }
+                        else if (SUCCEEDED(_pcbm->HideCatBand(CATID_DeskBand, pDeskBandItem->clsid, pDeskBandItem->iPrivID)))
+                        {
+                            if (pDeskBandItem->iPrivID != 0
+                                && pDeskBandItem->iPrivID != 26
+                                && IsEqualCLSID(pDeskBandItem->clsid, CLSID_ISFBand))
+                            {
+                                operator delete(pDeskBandItem);
+                                pDeskBandItem = nullptr;
+                                TreeView_DeleteItem(_hwndTree, tvi.hItem);
+                            }
+                        }
+                    }
+
+                    if (pDeskBandItem && fDelete)
+                    {
+                        operator delete(pDeskBandItem);
+                    }
+                }
+            }
+        }
+    }
+
+    if (fDelete)
+    {
+        TreeView_DeleteAllItems(_hwndTree);
+        RemovePropW(_hwndTree, L"MSAAStateImageMapCount");
+        RemovePropW(_hwndTree, L"MSAAStateImageMapAddr");
+
+        if (_himl)
+        {
+            ImageList_Destroy(_himl);
+        }
+    }
+}
+
+void CTaskBarPropertySheet::_DeskbandOptions_OnInitDialog(HWND hDlg, DWORD dwFlags)
+{
+    _hwndTree = ::GetDlgItem(hDlg, 1137);
+    if (_hwndTree)
+    {
+        HWND v5 = ::GetDlgItem(hDlg, 1138);
+        LONG WindowLongW = ::GetWindowLongPtrW(v5, -16);
+        ::SetWindowLongPtrW(v5, -16, WindowLongW | 0x100);
+        HIMAGELIST v7 = (HIMAGELIST)SendMessageW(v5, 0x1108u, 2u, 0);
+        HIMAGELIST v8 = v7;
+        if (v7)
+        {
+            _himl = ImageList_Duplicate(v7);
+            ImageList_Destroy(v8);
+
+            HICON Icon = ImageList_GetIcon(_himl, 2, 0);
+            HWND hDlga = (HWND)Icon;
+            if (Icon)
+            {
+                ImageList_ReplaceIcon(_himl, 0, Icon);
+                DestroyIcon((HICON)hDlga);
+            }
+
+            HIMAGELIST himl = TreeView_SetImageList(_hwndTree, _himl, TVSIL_NORMAL);
+            if (himl)
+            {
+                ImageList_Destroy(himl);
+            }
+        }
+
+        SetPropW(_hwndTree, L"MSAAStateImageMapCount", (HANDLE)2);
+        SetPropW(_hwndTree, L"MSAAStateImageMapAddr", (HANDLE)",");
+        _PopulateDeskBandList();
+    }
+}
+
+void CTaskBarPropertySheet::_AddDeskBandItem(REFCLSID clsid, int iPrivID, WCHAR* pszName, UINT cchName, BOOL a6)
+{
+    int fSomething;
+
+    if (IsEqualCLSID(CLSID_ISFBand, clsid) && iPrivID == 26)
+    {
+        fSomething = 1;
+        if (SHWindowsPolicy(POLID_QuickLaunchEnabled) != -1)
+        {
+            return;
+        }
+    }
+    else
+    {
+        fSomething = 0;
+    }
+
+    TVDESKBANDITEM* pDeskBandItem = new(std::nothrow) TVDESKBANDITEM;
+    if (pDeskBandItem)
+    {
+        pDeskBandItem->clsid = clsid;
+        pDeskBandItem->iPrivID = iPrivID;
+    }
+
+    TVITEMEXW item = {};
+    item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_PARAM | TVIF_SELECTEDIMAGE;
+    item.pszText = pszName;
+    item.cchTextMax = cchName;
+    item.lParam = (LPARAM)pDeskBandItem;
+    item.iImage = a6 == 0;
+    item.iSelectedImage = item.iImage;
+
+    TVINSERTSTRUCTW tvis;
+    tvis.hParent = TVI_ROOT;
+    tvis.hInsertAfter = TVI_ROOT;
+    tvis.itemex = item;
+
+    HTREEITEM hti = TreeView_InsertItem(_hwndTree, &tvis);
+    if (hti)
+    {
+        _rgTreeItems.Add(hti);
+    }
+    if (fSomething)
+    {
+        field_280 = hti;
+    }
+}
+
+void CTaskBarPropertySheet::_PopulateDeskBandList()
+{
+    TVITEMW tvi; // [esp+Ch] [ebp-264h] BYREF
+    DWORD v5; // [esp+44h] [ebp-22Ch] BYREF
+    int a6; // [esp+48h] [ebp-228h] BYREF
+    int iPrivID; // [esp+4Ch] [ebp-224h] BYREF
+    UINT cchName; // [esp+50h] [ebp-220h] SPLIT BYREF
+    CLSID clsid; // [esp+54h] [ebp-21Ch] BYREF
+    WCHAR szName[260]; // [esp+64h] [ebp-20Ch] BYREF
+
+    int i = 0;
+    int cItems = _rgTreeItems.GetSize();
+    if (cItems > 0)
+    {
+        do
+        {
+            tvi = {};
+            tvi.mask = TVIF_IMAGE | TVIF_PARAM | TVIF_HANDLE;
+            tvi.hItem = _rgTreeItems[i];
+            if (TreeView_GetItem(_hwndTree, &tvi) && tvi.lParam)
+            {
+                operator delete(reinterpret_cast<TVDESKBANDITEM*>(tvi.lParam));
+            }
+            ++i;
+        }
+        while (i < cItems);
+    }
+
+    TreeView_DeleteAllItems(_hwndTree);
+
+    if (_pcbm && _pcbm->EnumReset(CATID_DeskBand) >= 0)
+    {
+        while (true)
+        {
+            cchName = 260;
+            if (_pcbm->EnumNextCatBand(CATID_DeskBand, &clsid, &iPrivID, szName, &cchName, &v5, &a6) != S_OK)
+            {
+                break;
+            }
+            _AddDeskBandItem(clsid, iPrivID, szName, cchName, a6);
+        }
+    }
+}
+
+void CTaskBarPropertySheet::_UpdateQLOnDeskbandsPage()
+{
+    if (field_278 && _hwndTree && field_280)
+    {
+        TVITEMW tvi = {};
+        tvi.mask = 0x32;
+        tvi.hItem = field_280;
+        tvi.iImage = ::IsDlgButtonChecked(field_278, 1107) != 1;
+        tvi.iSelectedImage = tvi.iImage;
+        SendMessageW(_hwndTree, TVM_SETITEMW, 0, (LPARAM)&tvi);
+    }
+}
+
+void CTaskBarPropertySheet::_UpdateQLOnTaskbarPage()
+{
+    if (_hwndTree && field_280)
+    {
+        TVITEMW tvi = {};
+        tvi.mask = 0x12;
+        tvi.hItem = field_280;
+        if (TreeView_GetItem(_hwndTree, &tvi))
+        {
+            if (field_278)
+            {
+                ::CheckDlgButton(field_278, 1107, tvi.iImage == 0);
+            }
+            else
+            {
+                HWND hwndTray = FindWindowW(L"Shell_TrayWnd", nullptr);
+                if (hwndTray)
+                {
+                    ULONG_PTR dwResult; // [esp+40h] [ebp-4h] BYREF
+                    SendMessageTimeoutW(hwndTray, 0x4EDu, 0, tvi.iImage == 0, 3u, 7000u, &dwResult);
+                }
+            }
+        }
+    }
 }
 
 #define CX_PREVIEW  336
@@ -2984,17 +3228,17 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm)
             || ((dwFlags & TPF_PAGEFLAGS) == TPF_TOOLBARSPAGE)); // 3073
 
         UINT nStartPage = 0;
-        if ((dwFlags & 1) == 0)
+        if ((dwFlags & TPF_TASKBARPAGE) == 0)
         {
-            if ((dwFlags & 2) != 0)
+            if ((dwFlags & TPF_STARTMENUPAGE) != 0)
             {
                 nStartPage = 1;
             }
-            else if ((dwFlags & 8) != 0)
+            else if ((dwFlags & TPF_NOTIFICATIONPAGE) != 0)
             {
                 nStartPage = 2;
             }
-            else if ((dwFlags & 0x10) != 0)
+            else if ((dwFlags & TPF_TOOLBARSPAGE) != 0)
             {
                 nStartPage = 3;
             }

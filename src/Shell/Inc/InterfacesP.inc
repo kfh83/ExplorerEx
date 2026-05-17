@@ -298,13 +298,13 @@ IAssociationElement : IUnknown
 MIDL_INTERFACE("8d79a7d3-6397-48ee-bc1f-1f021f8fff1c")
 ICatBandManager : IUnknown
 {
-	virtual HRESULT STDMETHODCALLTYPE EnumNextCatBand(REFGUID, GUID*, int*, WCHAR*, UINT*, DWORD*, int*) = 0;
-	virtual HRESULT STDMETHODCALLTYPE EnumReset(REFGUID) = 0;
-	virtual HRESULT STDMETHODCALLTYPE ToggleCatBand(REFGUID, REFGUID, const int) = 0;
-	virtual HRESULT STDMETHODCALLTYPE ShowCatBand(REFGUID, REFGUID, const int) = 0;
-	virtual HRESULT STDMETHODCALLTYPE HideCatBand(REFGUID, REFGUID, const int) = 0;
-	virtual HRESULT STDMETHODCALLTYPE QueryCatBand(REFGUID, REFGUID, const int, WCHAR*, const UINT, DWORD*, int*) = 0;
-	virtual HRESULT STDMETHODCALLTYPE RefreshCatBandCache(REFGUID) = 0;
+	virtual HRESULT STDMETHODCALLTYPE EnumNextCatBand(REFCATID, CLSID*, int*, WCHAR*, UINT*, DWORD*, BOOL*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE EnumReset(REFCATID) = 0;
+	virtual HRESULT STDMETHODCALLTYPE ToggleCatBand(REFCATID, REFCLSID, const int) = 0;
+	virtual HRESULT STDMETHODCALLTYPE ShowCatBand(REFCATID, REFCLSID, const int) = 0;
+	virtual HRESULT STDMETHODCALLTYPE HideCatBand(REFCATID, REFCLSID, const int) = 0;
+	virtual HRESULT STDMETHODCALLTYPE QueryCatBand(REFCATID, REFCLSID, const int, WCHAR*, const UINT, DWORD*, BOOL*) = 0;
+	virtual HRESULT STDMETHODCALLTYPE RefreshCatBandCache(REFCATID) = 0;
 };
 
 extern "C" inline const IID IID_ICatBandManager = __uuidof(ICatBandManager);
