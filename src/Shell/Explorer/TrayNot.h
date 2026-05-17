@@ -139,12 +139,12 @@ public:
     
     BOOL GetIsNoAutoTrayPolicyEnabled() const
     {
-        return m_TrayItemRegistry.IsNoAutoTrayPolicyEnabled();
+        return _trayItemRegistry.IsNoAutoTrayPolicyEnabled();
     }
 
     BOOL GetIsAutoTrayEnabledByUser() const
     {
-        return m_TrayItemRegistry.IsAutoTrayEnabledByUser();
+        return _trayItemRegistry.IsAutoTrayEnabledByUser();
     }
 
     // *** Other ***
@@ -324,7 +324,7 @@ private:
 
     CTrayItemManager    m_TrayItemManager;
     CTrayItemManager    m_TrayItemManagerSCA;       // Vista - TrayItemManager for the System Control Area (SCA)
-    CTrayItemRegistry   m_TrayItemRegistry;
+    CTrayItemRegistry   _trayItemRegistry;
 
     BOOL            _fKey;
     BOOL            _fReturn;

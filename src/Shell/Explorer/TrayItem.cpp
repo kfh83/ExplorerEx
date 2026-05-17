@@ -14,37 +14,29 @@ DWORD CTrayItem::_GetStateFlag(ICONSTATEFLAG sf)
         case TIF_HIDDEN:
             dwFlag = NIS_HIDDEN;
             break;
-            
         case TIF_DEMOTED:
             dwFlag = NISP_DEMOTED;
             break;
-            
         case TIF_STARTUPICON:
             dwFlag = NISP_STARTUPICON;
             break;
-            
         case TIF_SHARED:
             dwFlag = NIS_SHAREDICON;
             break;
-            
         case TIF_SHAREDICONSOURCE:
             dwFlag = NISP_SHAREDICONSOURCE;
             break;
-
         case TIF_ONCEVISIBLE:
             dwFlag = NISP_ONCEVISIBLE;
             break;
-
         case TIF_ITEMCLICKED:
             dwFlag = NISP_ITEMCLICKED;
             break;
-
         case TIF_ITEMSAMEICONMODIFY:
             dwFlag = NISP_ITEMSAMEICONMODIFY;
-            break;
     }
 
-    ASSERT(dwFlag);
+    _ASSERTE(dwFlag); // 46
     return dwFlag;
 }
 

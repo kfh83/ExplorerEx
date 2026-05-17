@@ -17,7 +17,7 @@ class CGraphicsInit
 public:
     CGraphicsInit()
     {
-        Gdiplus::GdiplusStartupInput gsi = {0};
+        Gdiplus::GdiplusStartupInput gsi = { nullptr };
         gsi.GdiplusVersion = 1;
         Gdiplus::GdiplusStartup(&_token, &gsi, NULL);
     }

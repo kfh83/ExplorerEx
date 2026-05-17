@@ -247,7 +247,7 @@ HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB)
             do
             {
                 CNotificationItem ni;
-                if (m_TrayItemRegistry.GetTrayItem(i++, &ni, &bStat))
+                if (_trayItemRegistry.GetTrayItem(i++, &ni, &bStat))
                 {
                     if (bStat)
                         pNotifyCB->Notify(NIM_ADD, &ni);
@@ -304,8 +304,10 @@ HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
     }
     else
     {
-        if (m_TrayItemRegistry.SetPastItemPreference(&pNotifyItem))
+        if (_trayItemRegistry.SetPastItemPreference(&pNotifyItem))
+        {
             return S_OK;
+        }
     }
 
     return E_INVALIDARG;
@@ -542,7 +544,7 @@ void CTrayNotify::_InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick)
 
             _beLastBalloonEvent = bRightMouseButtonClick ? BALLOONEVENT_USERRIGHTCLICK : BALLOONEVENT_USERLEFTCLICK;
 
-            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
             _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, (bRightMouseButtonClick ? NIN_BALLOONTIMEOUT : NIN_BALLOONUSERCLICK));
         }
     }
@@ -687,8 +689,8 @@ DWORD CTrayNotify::_ShowBalloonTip(HICON hIcon, DWORD dwLastSoundTime)
         {
             field_3C = 0;
             field_38 = GetTickCount();
-            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 4u, 1000);
-            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5u, 0xFFFF);
+            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 4, MAKELPARAM(1000, 0));
+            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
             SendMessageW(_hwndInfoTip, TTM_TRACKACTIVATE, TRUE, (LPARAM)&ti);
         }
     }
@@ -716,7 +718,7 @@ void CTrayNotify::_DisableCurrentInfoTip(CTrayItem* ptiTemp, UINT uReason, BOOL 
     {
         if (uReason == NIN_BALLOONHIDE)
         {
-            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
         }
         _HideBalloonTip();
     }
@@ -725,8 +727,8 @@ void CTrayNotify::_DisableCurrentInfoTip(CTrayItem* ptiTemp, UINT uReason, BOOL 
 void CTrayNotify::_EmptyInfoTipQueue()
 {
     delete _pinfo;
-    _pinfo = NULL;
-    _dpaInfo.EnumCallback(DeleteInfoItemCB, NULL);
+    _pinfo = nullptr;
+    _dpaInfo.EnumCallback(DeleteInfoItemCB, nullptr);
     _dpaInfo.DeleteAllPtrs();
 }
 
@@ -825,7 +827,7 @@ void CTrayNotify::_ShowInfoTip(REFGUID guid, HWND hwnd, UINT uID, BOOL bShow, BO
                 // If the user clicked on the chevron info tip, we dont want to show the
                 // chevron any more, otherwise we want to show it once more the next session
                 // for a maximum of 5 sessions...
-                m_TrayItemRegistry.IncChevronInfoTipShownInRegistry(uReason == NIN_BALLOONUSERCLICK);
+                _trayItemRegistry.IncChevronInfoTipShownInRegistry(uReason == NIN_BALLOONUSERCLICK);
             }
 
             _DisableCurrentInfoTip(pti, uReason, TRUE);
@@ -1017,7 +1019,7 @@ void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo,
                         ptiTemp = ItemManagerByGuid->GetItemDataByIndex(nIcon);
                     }
                     field_3C = 1;
-                    SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5u, 0xFFFF);
+                    SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
                     _DisableCurrentInfoTip(ptiTemp, 1028, 1);
                 LABEL_20:
                     _pinfo = pii;
@@ -1036,7 +1038,7 @@ void CTrayNotify::_SetInfoTip(REFGUID guid, HWND hWnd, UINT uID, LPTSTR pszInfo,
     else
     {
         _beLastBalloonEvent = BALLOONEVENT_BALLOONHIDE;
-        _ShowInfoTip(guid, hWnd, uID, 0, 0, 0x403u);
+        _ShowInfoTip(guid, hWnd, uID, 0, 0, NIN_BALLOONHIDE);
     }
 }
 
@@ -1488,7 +1490,7 @@ void CTrayNotify::_NotifyCallback(CTrayItemManager* ptim, DWORD dwMessage, INT_P
             else if (nCurrentItem == -1 && nPastItem != -1)
             {
                 bStat = FALSE;
-                m_TrayItemRegistry.GetTrayItem(nPastItem, pni, &bStat);
+                _trayItemRegistry.GetTrayItem(nPastItem, pni, &bStat);
 
                 if (bStat)
                     PostMessage(_hwndNotify, TNM_NOTIFY, dwMessage, (LPARAM)pni);
@@ -1516,7 +1518,7 @@ void CTrayNotify::_NotifyCallback(CTrayItemManager* ptim, DWORD dwMessage, INT_P
                 if (nPastItem != -1)
                 {
                     bStat = 0;
-                    m_TrayItemRegistry.GetTrayItem(nPastItem, pni, &bStat);
+                    _trayItemRegistry.GetTrayItem(nPastItem, pni, &bStat);
                     if (bStat)
                     {
                         goto LABEL_13;
@@ -1582,7 +1584,7 @@ BOOL CTrayNotify::_DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOO
             // frees pinfo and shows the next balloon if any
             _beLastBalloonEvent = BALLOONEVENT_BALLOONHIDE;
 
-            SendMessageW(_hwndInfoTip, NIN_BALLOONHIDE, 5, 0xFFFF);
+            SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
             _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, TRUE, NIN_BALLOONHIDE);
 
             delete _pinfo;
@@ -1602,15 +1604,15 @@ BOOL CTrayNotify::_DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOO
                 hIcon = ImageList_GetIcon(himlIcons, ptim->GetTBBtnImage(nIcon), ILD_NORMAL);
             }
 
-            int nPastSessionIndex = m_TrayItemRegistry.DoesIconExistFromPreviousSession(pti, pti->szIconText, hIcon);
+            int nPastSessionIndex = _trayItemRegistry.DoesIconExistFromPreviousSession(pti, pti->szIconText, hIcon);
 
             if (nPastSessionIndex != -1)
             {
                 _NotifyCallback(ptim, NIM_DELETE, -1, nPastSessionIndex);
-                m_TrayItemRegistry.DeletePastItem(nPastSessionIndex);
+                _trayItemRegistry.DeletePastItem(nPastSessionIndex);
             }
 
-            if (m_TrayItemRegistry.AddToPastItems(pti, hIcon))
+            if (_trayItemRegistry.AddToPastItems(pti, hIcon))
                 _NotifyCallback(ptim, NIM_ADD, -1, 0);
 
             if (hIcon)
@@ -1658,7 +1660,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
         pti->szExeName[0] = '\0';
     }
 
-    INT_PTR nPastSessionIndex = m_TrayItemRegistry.CheckAndRestorePersistentIconSettings( pti,
+    INT_PTR nPastSessionIndex = _trayItemRegistry.CheckAndRestorePersistentIconSettings( pti,
                                     ((pnid->uFlags & NIF_TIP) ? pnid->szTip : NULL),
                                     ((pnid->uFlags & NIF_ICON) ? GetHIcon(pnid) : NULL) );
 
@@ -1685,7 +1687,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
     pnid->dwStateMask &= ~NIS_SHOWALWAYS;
 
     // If one of the icons had been placed in the secondary tray in the previous session...
-    if (pti->IsDemoted() && m_TrayItemRegistry.IsAutoTrayEnabled())
+    if (pti->IsDemoted() && _trayItemRegistry.IsAutoTrayEnabled())
     {
         tbb.fsState |= TBSTATE_HIDDEN;
     }
@@ -1723,7 +1725,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
             if (nPastSessionIndex != -1)
             {
                 _NotifyCallback(NIM_DELETE, -1, nPastSessionIndex);
-                m_TrayItemRegistry.DeletePastItem(nPastSessionIndex);
+                _trayItemRegistry.DeletePastItem(nPastSessionIndex);
             }
 
             if (!_PlaceItem(0, pti, TRAYEVENT_ONNEWITEMINSERT))
@@ -1838,7 +1840,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
     else
         hIcon = nullptr;
 
-    nPastSessionIndex = m_TrayItemRegistry.CheckAndRestorePersistentIconSettings(pti, (pnid->uFlags & 4) != 0 ? pnid->szTip : nullptr, hIcon);
+    nPastSessionIndex = _trayItemRegistry.CheckAndRestorePersistentIconSettings(pti, (pnid->uFlags & 4) != 0 ? pnid->szTip : nullptr, hIcon);
 
     tbb.bReserved[0] = 0;
     tbb.bReserved[1] = 0;
@@ -1859,7 +1861,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
     }
 
     pnid->dwStateMask &= ~0x20000000u;
-    if (pti->IsDemoted() && m_TrayItemRegistry.IsAutoTrayEnabled() || fRet)
+    if (pti->IsDemoted() && _trayItemRegistry.IsAutoTrayEnabled() || fRet)
     {
         tbb.fsState |= 8u;
         if (fRet)
@@ -1880,7 +1882,7 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
             if (nPastSessionIndex != -1)
             {
                 _NotifyCallback(ptim, 2u, -1, nPastSessionIndex);
-                m_TrayItemRegistry.DeletePastItem(nPastSessionIndex);
+                _trayItemRegistry.DeletePastItem(nPastSessionIndex);
             }
             if (!_PlaceItem(0, pti, TRAYEVENT_ONNEWITEMINSERT))
             {
@@ -2343,11 +2345,11 @@ HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
     // or if the system tray is made invisible by policy...
     ASSERT(m_TrayItemRegistry.IsNoAutoTrayPolicyEnabled() == FALSE);
 
-    if (bTraySetting != m_TrayItemRegistry.IsAutoTrayEnabledByUser())
+    if (bTraySetting != _trayItemRegistry.IsAutoTrayEnabledByUser())
     {
         // NOTENOTE : Always assign this value BEFORE calling _ToggleTrayItems, since the timers
         // are started ONLY if auto tray is enabled..
-        m_TrayItemRegistry.SetIsAutoTrayEnabledInRegistry(bTraySetting); 
+        _trayItemRegistry.SetIsAutoTrayEnabledInRegistry(bTraySetting);
 
         // Update the duration that the icon was present in the tray
         _SetUsedTime();
@@ -2360,7 +2362,7 @@ HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
 void CTrayNotify::_ShowChevronInfoTip()
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
-    if (m_TrayItemRegistry.ShouldChevronInfoTipBeShown() && !SHRestricted(REST_NOSMBALLOONTIP))
+    if (_trayItemRegistry.ShouldChevronInfoTipBeShown() && !SHRestricted(REST_NOSMBALLOONTIP))
     {
         TCHAR szInfoTitle[64];
         LoadString(g_hinstCabinet, IDS_BANGICONINFOTITLE, szInfoTitle, ARRAYSIZE(szInfoTitle));
@@ -2701,7 +2703,7 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
 
         _OpenTheme();
 
-        m_TrayItemRegistry.InitRegistryValues(SHGetImageListFlags(_hwndToolbar));
+        _trayItemRegistry.InitRegistryValues(SHGetImageListFlags(_hwndToolbar));
 
         m_TrayItemManager.SetTrayToolbar(_hwndToolbar);
         m_TrayItemManager.SetIconList(_himlIcons);
@@ -3465,7 +3467,7 @@ BOOL _UseCachedIcon(UINT uMsg)
 
 LRESULT CTrayNotify::_OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 2832
+    _ASSERTE(!_fNoTrayItemsDisplayPolicyEnabled); // 2832
 
     _fChevronSelected = FALSE;
 
@@ -3477,10 +3479,12 @@ LRESULT CTrayNotify::_OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     if (_UseCachedIcon(uMsg))
     {
-        i = ToolBar_CommandToIndex(hWnd, _idMouseActiveIcon);
+        i = SendMessageW(hWnd, TB_COMMANDTOINDEX, _idMouseActiveIcon, 0);
     }
 
-    POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+    POINT pt;
+    pt.x = GET_X_LPARAM(lParam);
+    pt.y = GET_Y_LPARAM(lParam);
     if (i == -1)
     {
         i = SendMessageW(hWnd, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&pt));
@@ -3499,41 +3503,41 @@ LRESULT CTrayNotify::_OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             return 1;
         }
 
-        BOOL fIsEqualGUID = 0;
+        BOOL fSame = FALSE;
         if (fClickDown)
         {
             SHAllowSetForegroundWindow(pti->hWnd);
+
             if (_pinfo)
             {
                 if (!IsEqualGUID(pti->guidItem, GUID_NULL))
                 {
-                    fIsEqualGUID = IsEqualGUID(pti->guidItem, _pinfo->guid);
+                    fSame = IsEqualGUID(pti->guidItem, _pinfo->guid);
                 }
                 else
                 {
-                    fIsEqualGUID = _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID;
+                    fSame = _pinfo->hWnd == pti->hWnd && _pinfo->uID == pti->uID;
                 }
-                if (fIsEqualGUID)
+                if (fSame)
                 {
-                    if (uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONDBLCLK)
-                        _beLastBalloonEvent = BALLOONEVENT_USERRIGHTCLICK;
-                    else
-                        _beLastBalloonEvent = BALLOONEVENT_USERLEFTCLICK;
-                    SendMessageW(_hwndInfoTip, 0x403, 5, 0xFFFF);
+                    _beLastBalloonEvent = uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONDBLCLK
+                                              ? BALLOONEVENT_USERRIGHTCLICK
+                                              : BALLOONEVENT_USERLEFTCLICK;
+                    SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
                     _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, NIN_BALLOONUSERCLICK);
 
-                    (void)541; // Skipped telemetry ShellTraceId_Notification_Launch
+                    // SHTracePerfSQMCountImpl(&ShellTraceId_Notification_Launch, 541);
                 }
             }
 
             _PlaceItem(i, pti, TRAYEVENT_ONITEMCLICK);
-            _fItemClicked = 1;
+            _fItemClicked = TRUE;
             _ActivateTips(0);
         }
-        if (!fIsEqualGUID && (uMsg != WM_LBUTTONUP && uMsg != WM_RBUTTONUP || SendMessageW(hWnd, TB_GETHOTITEM, 0, 0) != -1))
+        if (!fSame && (uMsg != 514 && uMsg != 517 || SendMessageW(hWnd, 0x447, 0, 0) != -1))
         {
             MapWindowPoints(hWnd, nullptr, &pt, 1);
-            _SendNotify(pti, uMsg, MAKELONG(pt.x, pt.y), nullptr, 0);
+            _SendNotify(pti, uMsg, LOWORD(pt.x) | (LOWORD(pt.y) << 16), nullptr, 0);
         }
         return 1;
     }
@@ -4061,7 +4065,7 @@ void CTrayNotify::_ToggleDemotedMenu()
     }
 
     BOOL fHasDemotedItems;
-    if (m_TrayItemRegistry.IsAutoTrayEnabled())
+    if (_trayItemRegistry.IsAutoTrayEnabled())
     {
         fHasDemotedItems = m_TrayItemManager.DemotedItemsPresent(2);
     }
@@ -4246,11 +4250,11 @@ BOOL CTrayNotify::_UpdateTrayItems(BOOL bUpdateDemotedItems)
 {
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
 
-    BOOL bDemoteItemsOverThreshold = ( m_TrayItemRegistry.IsAutoTrayEnabled() ?
+    BOOL bDemoteItemsOverThreshold = ( _trayItemRegistry.IsAutoTrayEnabled() ?
                                        m_TrayItemManager.DemotedItemsPresent(MIN_DEMOTED_ITEMS_THRESHOLD) :
                                        FALSE );
 
-    if (bUpdateDemotedItems || !m_TrayItemRegistry.IsAutoTrayEnabled())
+    if (bUpdateDemotedItems || !_trayItemRegistry.IsAutoTrayEnabled())
     {
         _HideAllDemotedItems(bDemoteItemsOverThreshold);
     }
@@ -4303,7 +4307,7 @@ BOOL CTrayNotify::_PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEven
             // hide/show
             m_TrayItemManager.SetTBBtnStateHelper( nIcon,
                                 TBSTATE_HIDDEN,
-                                (pti->IsHidden() || (m_TrayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted())) );
+                                (pti->IsHidden() || (_trayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted())) );
 
             if (bDemoteStatusChange)
             {
@@ -4341,7 +4345,7 @@ BOOL CTrayNotify::_PlaceItem(INT_PTR nIcon, CTrayItem * pti, TRAYEVENT tTrayEven
                 _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, NIN_BALLOONHIDE);
             }
 
-            ptim->SetTBBtnStateHelper(nIcon, TBSTATE_HIDDEN, pti->IsHidden() || m_TrayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted());
+            ptim->SetTBBtnStateHelper(nIcon, TBSTATE_HIDDEN, pti->IsHidden() || _trayItemRegistry.IsAutoTrayEnabled() && pti->IsDemoted());
 
             if (bDemoteStatusChange)
             {
@@ -4389,7 +4393,7 @@ TRAYITEMPOS CTrayNotify::_TrayItemPos(CTrayItem * pti, TRAYEVENT tTrayEvent, BOO
             if (!pti->IsHidden())
                 pti->SetOnceVisible(TRUE);
 
-            if (m_TrayItemRegistry.IsAutoTrayEnabled() && !pti->IsHidden())
+            if (_trayItemRegistry.IsAutoTrayEnabled() && !pti->IsHidden())
             {
                 if ( (tTrayEvent == TRAYEVENT_ONICONMODIFY) &&
                      (pti->IsItemSameIconModify()) )
@@ -4419,7 +4423,7 @@ TRAYITEMPOS CTrayNotify::_TrayItemPos(CTrayItem * pti, TRAYEVENT tTrayEvent, BOO
             if (!pti->IsHidden())
                 pti->SetOnceVisible(TRUE);
 
-            if (m_TrayItemRegistry.IsAutoTrayEnabled() && !pti->IsHidden())
+            if (_trayItemRegistry.IsAutoTrayEnabled() && !pti->IsHidden())
             {
                 if (pti->dwUserPref == TNUP_AUTOMATIC)
                 {
@@ -4487,7 +4491,7 @@ TRAYITEMPOS CTrayNotify::_TrayItemPos(CTrayItem * pti, TRAYEVENT tTrayEvent, BOO
             pti->SetOnceVisible(TRUE);
             *bDemoteStatusChange = TRUE;
 
-            if (m_TrayItemRegistry.IsAutoTrayEnabled())
+            if (_trayItemRegistry.IsAutoTrayEnabled())
             {
                 if ((pti->dwUserPref == TNUP_AUTOMATIC) || (pti->dwUserPref == TNUP_PROMOTED))
                 {
@@ -4894,7 +4898,7 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
                             L"DontSaveNotificationCustomization", nullptr, &dwData, &cbData, 0, nullptr, 0);
                         if (!dwData)
                         {
-                            m_TrayItemRegistry.InitTrayItemStream(1, GetTrayItemCB, this);
+                            _trayItemRegistry.InitTrayItemStream(1, GetTrayItemCB, this);
                         }
                     }
                     break;
@@ -5394,7 +5398,7 @@ void CTrayNotify::_SetChevronTheme()
         {
 			pszTheme = fComposited ? L"TrayNotifyHorizComposited" : L"TrayNotifyHoriz";
         }
-        SetWindowTheme(_hwndChevron, pszTheme, 0);
+        SetWindowTheme(_hwndChevron, pszTheme, nullptr);
     }
 }
 
@@ -5405,12 +5409,12 @@ void CTrayNotify::_SetClockToolbarThemes()
         const WCHAR* pszTheme = IsCompositionActive() && c_tray.GlassEnabled() ? L"TrayNotifyComposited" : L"TrayNotify";
         SetWindowTheme(_hwndClock, pszTheme, nullptr);
 
-        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Clock", FALSE)) // 4876
+        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Clock", FALSE)); // 4876
         SendMessageW(_hwndToolbar, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
         SendMessageW(_hwndToolbarSCA, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(pszTheme));
 
-        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)) // 4880
-        SendMessageW(_hwndInfoTip, TB_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(L"TrayNotify"));
+        ASSERT(IsThemeClassDefined(_hTheme, pszTheme, L"Toolbar", FALSE)); // 4880
+        SendMessageW(_hwndInfoTip, TTM_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(L"TrayNotify"));
     }
 }
 
@@ -5419,7 +5423,7 @@ void CTrayNotify::_OpenTheme()
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
     _hTheme = OpenThemeData(_hwndNotify, L"TrayNotify");
 
@@ -5428,7 +5432,7 @@ void CTrayNotify::_OpenTheme()
     _SetClockToolbarThemes();
     SetWindowStyleEx(_hwndNotify, WS_EX_STATICEDGE, !_hTheme);
 
-    InvalidateRect(_hwndNotify, NULL, FALSE);
+    InvalidateRect(_hwndNotify, nullptr, FALSE);
 }
 
 // *** Helper functions for UserEventTimer..
@@ -5442,7 +5446,7 @@ HRESULT CTrayNotify::_SetItemTimer(CTrayItem * pti)
     {
         ASSERT(pti->dwUserPref == TNUP_AUTOMATIC);
 
-        UINT uTimerInterval = m_TrayItemRegistry._uPrimaryCountdown;
+        UINT uTimerInterval = _trayItemRegistry._uPrimaryCountdown;
         if (pti->IsItemClicked())
         {
             // If the item has been clicked on, add 8 hours to its staying time
@@ -5551,7 +5555,7 @@ BOOL CTrayNotify::_ShouldDestroyTimer(int nTimerFlag)
     switch(nTimerFlag)
     {
         case TF_ICONDEMOTE_TIMER:
-            return (!m_TrayItemRegistry.IsAutoTrayEnabled() || m_TrayItemManager.GetPromotedItemCount() == 0);
+            return (!_trayItemRegistry.IsAutoTrayEnabled() || m_TrayItemManager.GetPromotedItemCount() == 0);
 
         case TF_INFOTIP_TIMER:
             return (!_GetQueueCount());
@@ -5581,7 +5585,7 @@ IUserEventTimer * CTrayNotify::_CreateTimer(int nTimerFlag)
 
         default:
             ASSERT(TF_ERROR);
-            return NULL;
+            return nullptr;
     }
 
     if (ppUserEventTimer && !*ppUserEventTimer)
@@ -5594,7 +5598,7 @@ IUserEventTimer * CTrayNotify::_CreateTimer(int nTimerFlag)
         }
         else
         {
-            uTimerTickInterval = m_TrayItemRegistry.GetTimerTickInterval(nTimerFlag);
+            uTimerTickInterval = _trayItemRegistry.GetTimerTickInterval(nTimerFlag);
 
             (*ppUserEventTimer)->InitTimerTickInterval(uTimerTickInterval);
         }
@@ -5605,10 +5609,10 @@ IUserEventTimer * CTrayNotify::_CreateTimer(int nTimerFlag)
 
 BOOL CTrayNotify::_SetInfoTipTimer(UINT uTimerID, UINT uTimerInterval)
 {
-    BOOL v4 = SetTimer(_hwndNotify, uTimerID, uTimerInterval, nullptr);
-    if (!v4 && _pinfo)
+    BOOL fRet = SetTimer(_hwndNotify, uTimerID, uTimerInterval, nullptr);
+    if (!fRet && _pinfo)
     {
-        _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, 0x404u);
+        _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, 0, 0, NIN_BALLOONTIMEOUT);
     }
-    return v4;
+    return fRet;
 }
