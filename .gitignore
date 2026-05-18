@@ -8,4 +8,4 @@ ReleaseDebug/
 ReleaseDLL/
 src/immersive/libMinHook.x64.lib
 *.user
-*.vcproj.user
+*.vcproj.user 
