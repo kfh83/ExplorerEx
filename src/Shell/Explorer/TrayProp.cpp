@@ -138,10 +138,9 @@ private:
 
 CPinHelper::CPinHelper()
 {
-    _pidlBrowser = ILCreateFromPath(TEXT("shell:::{2559a1f4-21d7-11d4-bdaf-00c04f60b9f0}"));
-    _pidlEmail   = ILCreateFromPath(TEXT("shell:::{2559a1f5-21d7-11d4-bdaf-00c04f60b9f0}"));
-    CoCreateInstanceHook(CLSID_StartMenuPin, NULL, CLSCTX_INPROC_SERVER,
-                     IID_PPV_ARGS(&_psmp));
+    _pidlBrowser = ILCreateFromPathW(L"shell:::{2559a1f4-21d7-11d4-bdaf-00c04f60b9f0}");
+    _pidlEmail = ILCreateFromPathW(L"shell:::{2559a1f5-21d7-11d4-bdaf-00c04f60b9f0}");
+    CoCreateInstanceHook(CLSID_StartMenuPin, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmp));
 }
 
 

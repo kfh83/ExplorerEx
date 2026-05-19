@@ -1,4 +1,7 @@
 #include "pch.h"
+
+#include <wil/result_macros.h>
+
 #include "cocreateinstancehook.h"
 #include "shfusion.h"
 #include "cabinet.h"
@@ -1838,7 +1841,6 @@ public:
         {
             fSetProcessReference(_punk);
         }
-        //SetProcessReference(punk);
     }
 
     template <typename TLambda>
@@ -1897,6 +1899,29 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 	freopen_s(&pFile, "CONOUT$", "w", stdout);
 
     printf("Hello world!\n");
+
+    wil::SetResultLoggingCallback([](const wil::FailureInfo& failure) noexcept
+    {
+        wchar_t message[2048];
+        if (SUCCEEDED(GetFailureLogString(message, ARRAYSIZE(message), failure)))
+        {
+            switch (failure.type)
+            {
+                case wil::FailureType::Exception:
+                case wil::FailureType::Return:
+                case wil::FailureType::Log:
+                {
+                    wprintf(L"%s", message); // message includes newline
+                    break;
+                }
+                case wil::FailureType::FailFast:
+                {
+                    MessageBoxW(nullptr, message, L"ExplorerEx", MB_ICONERROR);
+                    break;
+                }
+            }
+        }
+    });
 #endif
 
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
