@@ -89,6 +89,7 @@ private:
 HRESULT CTaskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 HRESULT CTrayBandSiteService_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 HRESULT CTrayNotifyStub_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
+HRESULT CTrayDeskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk);
 
 static const struct
 {
@@ -100,6 +101,7 @@ c_ClassParams[] =
     { &CLSID_TaskBand,            CTaskBand_CreateInstance },
     { &CLSID_TrayBandSiteService, CTrayBandSiteService_CreateInstance },
     { &CLSID_TrayNotify,          CTrayNotifyStub_CreateInstance },
+    { &CLSID_TrayDeskBand,        CTrayDeskBand_CreateInstance }
 };
 
 CDynamicClassFactory* g_rgpcf[ARRAYSIZE(c_ClassParams)] = {};
@@ -125,7 +127,7 @@ void ClassFactory_Stop()
             g_rgpcf[i]->Revoke();
 
             g_rgpcf[i]->Release();
-            g_rgpcf[i] = NULL;
+            g_rgpcf[i] = nullptr;
         }
     }
 }

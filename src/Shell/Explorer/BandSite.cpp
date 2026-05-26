@@ -1144,3 +1144,13 @@ HRESULT CTrayBandSiteService_CreateInstance(IUnknown* punkOuter, IUnknown** ppun
 
     return E_OUTOFMEMORY;
 }
+
+HRESULT CTrayDeskBand_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
+{
+    if (punkOuter)
+    {
+        return CLASS_E_NOAGGREGATION;
+    }
+    *ppunk = static_cast<IUnknown*>(static_cast<ITrayDeskBand*>(&c_tray));
+    return S_OK;
+}
