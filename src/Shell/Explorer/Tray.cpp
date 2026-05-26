@@ -7638,8 +7638,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                             return lres;
                         }
                     }
-                    v19 = v18 + 1;
-                    return v19 + 1;
+                    return v18 + 2;
                 }
 
                 if (uMsg <= 0x4E)
@@ -7654,7 +7653,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                             {
                                 goto LABEL_90;
                             }
-                            if (pnm->code == NM_ENDWAIT || pnm->code == NM_STARTWAIT) // NM_ENDWAIT || NM_STARTWAIT
+                            if (pnm->code == NM_ENDWAIT || pnm->code == NM_STARTWAIT)
                             {
                                 _OnWaitCursorNotify((NMHDR*)lParam);
                             }
@@ -7687,40 +7686,33 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                             return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
                         }
 
-                        if (uMsg == WM_POWER)
-                        {
-                        LABEL_205:
-                            _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
-                            _HandlePowerStatus(uMsg, wParam_1, lParam_2);
-                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
-                        }
                         if (uMsg == WM_COPYDATA)
                         {
                             if (msg.lParam)
                             {
-                                if (((COPYDATASTRUCT*)lParam)->dwData == 0) // TCDM_APPBAR
+                                switch (((COPYDATASTRUCT*)lParam)->dwData)
                                 {
-                                    return _OnAppBarMessage((COPYDATASTRUCT*)msg.lParam);
-                                }
-
-                                if (((COPYDATASTRUCT*)lParam)->dwData == 1)
-                                {
-                                    bRefresh = 0;
-                                    lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)msg.wParam, (COPYDATASTRUCT*)msg.lParam, &bRefresh);
-                                    if (bRefresh)
+                                    case 0:
                                     {
-                                    LABEL_90:
-                                        SizeWindows();
+                                        return _OnAppBarMessage((COPYDATASTRUCT*)msg.lParam);
+                                    }
+                                    case 1:
+                                    {
+                                        bRefresh = 0;
+                                        lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)msg.wParam, (COPYDATASTRUCT*)msg.lParam, &bRefresh);
+                                        if (bRefresh)
+                                        {
+                                        LABEL_90:
+                                            SizeWindows();
+                                            return lres;
+                                        }
                                         return lres;
                                     }
-                                    return lres;
+                                    case 2:
+                                    {
+                                        return _LoadInProc((COPYDATASTRUCT*)msg.lParam);
+                                    }
                                 }
-                                if (((COPYDATASTRUCT*)lParam)->dwData == 2) // TCDM_LOADINPROC
-                                {
-                                    return _LoadInProc((tagCOPYDATASTRUCT*)msg.lParam);
-                                }
-
-
                                 return 0;
                             }
                             return 0;
@@ -7940,9 +7932,11 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 goto L_default;
             }
 
-            if (uMsg == WM_POWERBROADCAST)
+            if (uMsg == WM_POWER || uMsg == WM_POWERBROADCAST)
             {
-                goto LABEL_205;
+                _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
+                _HandlePowerStatus(uMsg, wParam_1, lParam_2);
+                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
             }
 
             if (uMsg == WM_DEVICECHANGE)
@@ -8085,7 +8079,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         if (uMsg == TM_RELAYPOSCHANGED)
         {
-            _AppBarNotifyAll((HMONITOR)lParam, 1u, (HWND)wParam, 0);
+            _AppBarNotifyAll((HMONITOR)lParam, 1, (HWND)wParam, 0);
             return lres;
         }
 
