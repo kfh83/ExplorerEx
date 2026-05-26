@@ -33,6 +33,11 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: amd64
+
+    - uses: NuGet/setup-nuget@v2
+    - name: Restore NuGet packages
+      run: nuget restore explorer.sln
+
     - name: Compile ExplorerEx-Vista (explorer.dll + ExplorerEx.Shell32.dll)
       run: |
         msbuild explorer.sln /p:Configuration=ReleaseDLL /p:Platform=x64
