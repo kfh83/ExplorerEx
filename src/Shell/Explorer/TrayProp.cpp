@@ -778,7 +778,7 @@ class CTaskBarPropertySheet : public CPropertySheetImpl<CTaskBarPropertySheet>
 {
 public:
     CTaskBarPropertySheet(UINT nStartPage, HWND hwndParent, DWORD dwFlags, ICatBandManager* pcbm)
-        : CPropertySheetImpl<CTaskBarPropertySheet>((LPCTSTR)nullptr, nStartPage, hwndParent)
+        : CPropertySheetImpl<CTaskBarPropertySheet>(static_cast<const WCHAR*>(nullptr), nStartPage, hwndParent)
         , _dwFlags(dwFlags)
         , _pcbm(pcbm)
     {
@@ -1408,6 +1408,7 @@ LABEL_34:
 
 BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 {
+#if 0
     ::SetWindowLongPtr( hwndDlg, DWLP_MSGRESULT, 0); // handled
     switch (pnm->code)
     {
@@ -1481,6 +1482,56 @@ BOOL_PTR CCustomizeStartMenuDlg::OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm)
 #endif
     }
     return TRUE;
+#endif
+    NMTVKEYDOWN* pnmtv = reinterpret_cast<NMTVKEYDOWN*>(pnm);
+
+    TVHITTESTINFO ht;
+
+    ::SetWindowLongPtrW(hwndDlg, 0, 0);
+
+    if (pnm->code == -412)
+    {
+        if (pnmtv->wVKey == VK_SPACE)
+        {
+            HWND hwndTree = ::GetDlgItem(hwndDlg, 1123);
+            _prto->ToggleItem((HTREEITEM)::SendMessageW(hwndTree, TVM_GETNEXTITEM, TVM_GETNEXTITEM, 0));
+            _bDirtyTree = 1;
+            SendPSMChanged(hwndDlg);
+            ::SetWindowLongPtrW(hwndDlg, 0, 1);
+            return 1;
+        }
+        return 1;
+    }
+
+    if (pnm->code == -5)
+    {
+        if (pnm->idFrom == 1123)
+        {
+            ::SetWindowLongPtrW(hwndDlg, 0, 1);
+            return 1;
+        }
+        return 1;
+    }
+
+    if (pnm->code + 3 <= 1 && pnm->idFrom == 1123)
+    {
+        HWND hwndTree = ::GetDlgItem(hwndDlg, 1123);
+        DWORD dwPos = GetMessagePos();
+
+        ht.pt.x = GET_X_LPARAM(dwPos);
+        ht.pt.y = GET_Y_LPARAM(dwPos);
+        ::ScreenToClient(hwndTree, &ht.pt);
+
+        HTREEITEM hti = TreeView_HitTest(hwndTree, &ht);
+        if (hti)
+        {
+            _prto->ToggleItem(hti);
+            _bDirtyTree = 1;
+            SendPSMChanged(hwndDlg);
+        }
+    }
+
+    return 1;
 }
 
 BOOL_PTR CCustomizeStartMenuDlg::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -2336,6 +2387,7 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
 
 void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
 {
+#if 0
     if (!SHRestricted(REST_NOSTARTPANEL))
     {
         //Get the current state of the check box
@@ -2359,6 +2411,50 @@ void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
         // changed a setting with the Start Menu)
         ::PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
     }
+#endif
+    int fStartPanelOn = 0;
+
+    SHELLSTATEW ss = {}; // [esp+Ch] [ebp-20h] BYREF
+    SHGetSetSettings(&ss, 0x200000u, 0);
+
+    if (!SHRestricted(REST_NOSTARTPANEL))
+    {
+        fStartPanelOn = ::IsDlgButtonChecked(hDlg, 1132) != 0;
+    }
+    if (fStartPanelOn != (unsigned __int8)(*((BYTE*)&ss + 0x1C) & 2) >> 1)
+    {
+        *((DWORD*)&ss + 7) ^= (*((BYTE*)&ss + 0x1C) ^ (unsigned __int8)(2 * fStartPanelOn)) & 2;
+        ::SHGetSetSettings(&ss, 0x200000u, 1);
+        ::PostMessageW(v_hwndDesktop, 0x460u, 0, 0);
+    }
+
+    BOOL fChecked = ::IsDlgButtonChecked(hDlg, 1135) == 1;
+    if (fChecked != (ReadStartPageSetting(L"Start_TrackDocs", 1u) != 0))
+    {
+        if (fChecked)
+        {
+            WriteStartPageSetting(L"Start_TrackDocs", 1u);
+        }
+        else
+        {
+            // ClearRecentDocuments();
+        }
+        WriteStartPageSetting(L"Start_ShowRecentDocs", fChecked ? 2 : 0);
+    }
+
+    BOOL v4 = ::IsDlgButtonChecked(hDlg, 1136) == 1;
+    if (v4 != (ReadStartPageSetting(L"Start_TrackProgs", 1u) != 0))
+    {
+        UINT v5 = ::IsDlgButtonChecked(hDlg, 1136);
+        WriteStartPageSetting(L"Start_TrackProgs", v5);
+        if (!v4)
+        {
+            ClearUEMData();
+            // ClearMRUStuff(1);
+        }
+        // UEMEnable(v4);
+    }
+    ::PostMessageW(v_hwndTray, 0x40Du, 0, 0);
 }
 
 BOOL UpdateSCAIcon(HWND hDlg, int i)

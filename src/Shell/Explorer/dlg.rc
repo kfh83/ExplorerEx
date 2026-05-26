@@ -147,8 +147,8 @@ LTEXT           "Select this option to use the menu style from earlier versions 
 IDC_STATIC, 20, 57, 150, 24
 PUSHBUTTON      "&Customize...", IDC_NEWSTARTCUSTOMIZE, 192, 4, 53, 14
 PUSHBUTTON      "&Customize...", IDC_OLDSTARTCUSTOMIZE, 192, 44, 53, 14
-AUTOCHECKBOX	"Store and display a list of recently opened &files", lst16, 14, 114, 224, 10
-AUTOCHECKBOX	"Store and display a list of recently opened &programs", cmb1, 14, 128, 224, 10
+CONTROL         "Store and display a list of recently opened &files", 1135, BUTTON, BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 14, 114, 224, 10
+CONTROL         "Store and display a list of recently opened &programs", 1136, BUTTON, BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 14, 128, 224, 10
 GROUPBOX		"Privacy", 300, 7, 100, 238, 42
 CONTROL			"<A>How do I change the way the Start menu looks?</A>", stc29, "SysLink", WS_TABSTOP, 7, 200, 256, 8
 END

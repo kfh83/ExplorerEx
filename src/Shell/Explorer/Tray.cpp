@@ -7720,6 +7720,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                     return _LoadInProc((tagCOPYDATASTRUCT*)msg.lParam);
                                 }
 
+
                                 return 0;
                             }
                             return 0;
