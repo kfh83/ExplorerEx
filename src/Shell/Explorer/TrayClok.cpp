@@ -51,8 +51,8 @@ protected:
     // Paint helpers
     LRESULT         _DoPaint(BOOL fPaint);
     void            _EnsureFontsInitialized(BOOL fForce);
-    void            _GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText);
-    void            _DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText);
+    void            _GetTextExtent(HDC hdc, const WCHAR* pszText, int cchText, RECT* prcText);
+    void            _DrawText(HDC hdc, const WCHAR* pszText, int cchText, const RECT* prcText);
 
     // Time/Date calc helpers
     void            _Reset();
@@ -82,8 +82,6 @@ protected:
     HRESULT _ShowTooltip(BOOL fShow);
     HRESULT _ShowFlyout(BOOL fShow);
 
-    IFlyout* m_pFlyout;
-
 private:
     ULONG           _cRef;
 
@@ -108,6 +106,9 @@ private:
     BOOL             _fClockRunning;
     BOOL             _fClockClipped;
     BOOL             _fHasFocus;
+
+    IFlyout*        _pFlyout;
+
     BOOL             _fShowSeconds;
 
     friend BOOL ClockCtl_Class(HINSTANCE hinst);
@@ -122,20 +123,20 @@ HRESULT CClockCtl::_ShowTooltip(BOOL fShow) // @MOD taken from ep_taskbar, based
         _EnsureFlyout();
     }
 
-    if (m_pFlyout)
+    if (_pFlyout)
     {
         if (fShow)
         {
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
-            if (m_pFlyout)
+            if (_pFlyout)
             {
-                hr = m_pFlyout->ShowTooltip(_hwnd, &rcExclude);
+                hr = _pFlyout->ShowTooltip(_hwnd, &rcExclude);
             }
         }
-        else if (m_pFlyout)
+        else if (_pFlyout)
         {
-            hr = m_pFlyout->HideTooltip();
+            hr = _pFlyout->HideTooltip();
         }
     }
 
@@ -157,24 +158,22 @@ ULONG CClockCtl::Release()
     return _cRef;
 }
 
-// EXEX-VISTA: Validated.
+// ExEx-Vista(Allison): Verified.
 void CClockCtl::_UpdateLastHour()
 {
     SYSTEMTIME st;
-
-    // Grab the time
     GetLocalTime(&st);
     _wLastHour = st.wHour;
     _wLastMinute = st.wMinute;
-    _wLastSecond = st.wSecond;
+    _wLastSecond = st.wSecond; // @MOD: Add seconds to tray clock.
 }
 
-// EXEX-VISTA: Validated.
+// ExEx-Vista(Allison): Verified.
 void CClockCtl::_EnableTimer(DWORD dtNextTick)
 {
     if (dtNextTick)
     {
-        SetTimer(_hwnd, 0, dtNextTick, NULL);
+        SetTimer(_hwnd, 0, dtNextTick, nullptr);
         _fClockRunning = TRUE;
     }
     else if (_fClockRunning)
@@ -184,37 +183,48 @@ void CClockCtl::_EnableTimer(DWORD dtNextTick)
     }
 }
 
+// @MOD taken from ep_taskbar, based on 8.x
+DEFINE_GUID(CLSID_TrayClock, 0xA323554A, 0x0FE1, 0x4E49, 0xAE, 0xE1, 0x67, 0x22, 0x46, 0x5D, 0x79, 0x9F);
+
+// ExEx-Vista(Allison): Verified.
 LRESULT CClockCtl::_HandleCreate()
 {
     AddRef();
 
     _EnsureFontsInitialized(FALSE);
+    CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pFlyout));
 
     _hTheme = OpenThemeData(_hwnd, L"Clock");
 
-    _fShowSeconds = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowSecondsInSystemClock"), FALSE, FALSE);
-
+    // @MOD: Add seconds to tray clock.
+    _fShowSeconds = SHRegGetBoolUSValueW(
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"ShowSecondsInSystemClock", FALSE, FALSE);
     _UpdateLastHour();
     return 1;
 }
 
 LRESULT CClockCtl::_HandleDestroy()
 {
-    Release();  // safe because cwndproc is holding a ref across call to v_wndproc
-
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
     }
 
     if (_hfontCapNormal)
     {
-        DeleteFont(_hfontCapNormal);
-        _hfontCapNormal = NULL;
+        DeleteObject(_hfontCapNormal);
+        _hfontCapNormal = nullptr;
+    }
+
+    if (_pFlyout)
+    {
+        _pFlyout->Release();
+        _pFlyout = nullptr;
     }
 
     _EnableTimer(0);
+    Release();
     return 1;
 }
 
@@ -276,32 +286,31 @@ DWORD CClockCtl::_RecalcCurTime()
     return 1000UL * (60 - st.wSecond);
 }
 
+// ExEx-Vista(Allison): Verified.
 void CClockCtl::_EnsureFontsInitialized(BOOL fForce)
 {
     if (fForce || !_hfontCapNormal)
     {
-        HFONT hfont;
-        NONCLIENTMETRICS ncm;
-
+        NONCLIENTMETRICSW ncm;
         ncm.cbSize = sizeof(ncm);
-        if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0))
+        if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0))
         {
-            // Create the normal font
             ncm.lfCaptionFont.lfWeight = FW_NORMAL;
-            hfont = CreateFontIndirect(&ncm.lfCaptionFont);
+            HFONT hfont = CreateFontIndirectW(&ncm.lfCaptionFont);
             if (hfont)
             {
                 if (_hfontCapNormal)
-                    DeleteFont(_hfontCapNormal);
-
+                {
+                    DeleteObject(_hfontCapNormal);
+                }
                 _hfontCapNormal = hfont;
             }
         }
     }
 }
 
-// EXEX-VISTA: Validated.
-void CClockCtl::_GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
+// ExEx-Vista(Allison): Verified.
+void CClockCtl::_GetTextExtent(HDC hdc, const WCHAR* pszText, int cchText, RECT* prcText)
 {
     if (_hTheme)
     {
@@ -310,33 +319,27 @@ void CClockCtl::_GetTextExtent(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcT
     else
     {
         SIZE size;
-        GetTextExtentPoint(hdc, pszText, cchText, &size);
+        GetTextExtentPointW(hdc, pszText, cchText, &size);
         SetRect(prcText, 0, 0, size.cx, size.cy);
     }
 }
 
-BOOL
-WINAPI
-SHExtTextOutW(
-    HDC hdc,
-    int x,
-    int y,
-    UINT options,
-    CONST RECT* lprect,
-    LPCWSTR lpString,
-    UINT c,
-    CONST INT* lpDx)
+STDAPI_(BOOL) SHExtTextOutW(
+    HDC hdc, int x, int y, UINT options, const RECT* lprect, const WCHAR* lpString, UINT c, const int* lpDx)
 {
     if (c)
     {
         DWORD dwLayout = GetLayout(hdc);
         if (dwLayout != -1 && (dwLayout & LAYOUT_RTL) != 0)
+        {
             --x;
+        }
     }
     return ExtTextOutW(hdc, x, y, options, lprect, lpString, c, lpDx);
 }
 
-void CClockCtl::_DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
+// ExEx-Vista(Allison): Verified.
+void CClockCtl::_DrawText(HDC hdc, const WCHAR* pszText, int cchText, const RECT* prcText)
 {
     if (_hTheme)
     {
@@ -344,11 +347,11 @@ void CClockCtl::_DrawText(HDC hdc, TCHAR* pszText, int cchText, LPRECT prcText)
     }
     else
     {
-        SHExtTextOutW(hdc, prcText->left, prcText->top, ETO_OPAQUE, NULL, pszText, cchText, NULL);
+        SHExtTextOutW(hdc, prcText->left, prcText->top, ETO_OPAQUE, nullptr, pszText, cchText, nullptr);
     }
 }
 
-// EXEX-VISTA: Validated.
+// ExEx-Vista(Allison): Partially verified.
 LRESULT CClockCtl::_DoPaint(BOOL fPaint)
 {
     PAINTSTRUCT ps;
@@ -384,14 +387,14 @@ LRESULT CClockCtl::_DoPaint(BOOL fPaint)
     {
         if (IsCompositionActive() && _hTheme)
         {
-			BITMAPINFO bmi = { 0 };
+			BITMAPINFO bmi = {};
             bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
             bmi.bmiHeader.biWidth = RECTWIDTH(ps.rcPaint);
 			bmi.bmiHeader.biHeight = -RECTHEIGHT(ps.rcPaint);
             bmi.bmiHeader.biPlanes = 1;
             bmi.bmiHeader.biBitCount = 32;
             bmi.bmiHeader.biCompression = BI_RGB;
-            hMemBm = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, 0, NULL, 0);
+            hMemBm = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, nullptr, nullptr, 0);
         }
         else
         {
@@ -551,7 +554,9 @@ LRESULT CClockCtl::_DoPaint(BOOL fPaint)
         if (hdc)
         {
             if (!dtNextTick && !fPaint)
+            {
                 InvalidateRect(_hwnd, NULL, FALSE);
+            }
             else
             {
                 InvalidateRect(_hwnd, NULL, TRUE);
@@ -562,14 +567,11 @@ LRESULT CClockCtl::_DoPaint(BOOL fPaint)
     return 0;
 }
 
+// ExEx-Vista(Allison): Verified.
 void CClockCtl::_Reset()
 {
-    //
-    // Reset the clock by killing the timer and invalidating.
-    // Everything will be updated when we try to paint.
-    //
     _EnableTimer(0);
-    InvalidateRect(_hwnd, NULL, FALSE);
+    InvalidateRect(_hwnd, nullptr, FALSE);
 }
 
 LRESULT CClockCtl::_HandleTimeChange()
@@ -1060,14 +1062,11 @@ LRESULT CClockCtl::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// @MOD taken from ep_taskbar, based on 8.x
-DEFINE_GUID(CLSID_TrayClock, 0xA323554A, 0x0FE1, 0x4E49, 0xAE, 0xE1, 0x67, 0x22, 0x46, 0x5D, 0x79, 0x9F);
-
 void CClockCtl::_EnsureFlyout()
 {
-    if (!m_pFlyout)
+    if (!_pFlyout)
     {
-        CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pFlyout));
+        CoCreateInstance(CLSID_TrayClock, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pFlyout));
     }
 }
 
@@ -1080,43 +1079,43 @@ HRESULT CClockCtl::_ShowFlyout(BOOL fShow) // @MOD taken from ep_taskbar, based 
         _EnsureFlyout();
     }
 
-    if (m_pFlyout)
+    if (_pFlyout)
     {
         if (fShow)
         {
             RECT rcExclude;
             GetWindowRect(_hwnd, &rcExclude);
 
-            if (m_pFlyout)
+            if (_pFlyout)
             {
-                hr = m_pFlyout->ShowFlyout(_hwnd, &rcExclude);
+                hr = _pFlyout->ShowFlyout(_hwnd, &rcExclude);
             }
         }
-        else if (m_pFlyout)
+        else if (_pFlyout)
         {
-            hr = m_pFlyout->HideFlyout();
+            hr = _pFlyout->HideFlyout();
         }
     }
+
     return hr;
 }
 
-// Register the clock class.
+// ExEx-Vista(Allison): Verified.
 BOOL ClockCtl_Class(HINSTANCE hinst)
 {
-    WNDCLASS wc = {};
+    WNDCLASSW wc = {};
 
-    wc.lpszClassName = WC_TRAYCLOCK;
-    wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = CClockCtl::s_WndProc;
+    wc.lpszClassName = L"TrayClockWClass";
+    wc.style = CS_VREDRAW | CS_HREDRAW;
+    wc.lpfnWndProc = static_cast<WNDPROC>(CClockCtl::s_WndProc);
     wc.hInstance = hinst;
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_3DFACE + 1);
     wc.cbWndExtra = sizeof(CClockCtl*);
-
-    return RegisterClass(&wc);
+    return RegisterClassW(&wc);
 }
 
-
+// ExEx-Vista(Allison): Verified.
 HWND ClockCtl_Create(HWND hwndParent, UINT uID, HINSTANCE hInst)
 {
     HWND hwnd = nullptr;
@@ -1125,9 +1124,10 @@ HWND ClockCtl_Create(HWND hwndParent, UINT uID, HINSTANCE hInst)
     if (pcc)
     {
         hwnd = SHFusionCreateWindowEx(
-            0, WC_TRAYCLOCK, nullptr, WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD, 0, 0, 0, 0, hwndParent,
-            IntToPtr_(HMENU, uID), hInst, pcc);
+            0, L"TrayClockWClass", nullptr, WS_CLIPSIBLINGS | WS_VISIBLE | WS_CHILD, 0, 0, 0, 0, hwndParent,
+            (HMENU)uID, hInst, pcc);
         pcc->Release();
     }
+
     return hwnd;
 }
