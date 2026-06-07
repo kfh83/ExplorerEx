@@ -732,7 +732,7 @@ BOOL CTrayItemRegistry::GetTrayItem(INT_PTR nIndex, CNotificationItem* pni, BOOL
     return TRUE;
 }
 
-BOOL CTrayItemRegistry::SetPastItemPreference(LPNOTIFYITEM pNotifyItem)
+BOOL CTrayItemRegistry::SetPastItemPreference(const NOTIFYITEM* pNotifyItem)
 {
     if (_dpaPersistentItemInfo && pNotifyItem->pszExeName[0] != 0)
     {

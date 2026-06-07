@@ -116,27 +116,35 @@ class CTrayNotify;  // forward declaration...
 //
 // CTrayNotify class members
 //
-class CTrayNotify : public CImpWndProc
+class CTrayNotify
+    : public CImpWndProc
+    , public ITrayNotify
 {
 public:
     CTrayNotify() {};
     virtual ~CTrayNotify() {};
 
-    // *** IUnknown methods ***
-    STDMETHODIMP_(ULONG) AddRef();
-    STDMETHODIMP_(ULONG) Release();
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
 
-    // *** ITrayNotify methods, which are called from the CTrayNotifyStub ***
-    STDMETHODIMP SetPreference(NOTIFYITEM pNotifyItem);
-    STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB);
-    STDMETHODIMP EnableAutoTray(BOOL bTraySetting);
+    //~ Begin ITrayNotify Interface
+    STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB, DWORD* pdwCBCookie) override;
+    STDMETHODIMP UnregisterCallback(DWORD dwCBCookie) override;
+    STDMETHODIMP SetPreference(const NOTIFYITEM* pNotifyItem) override;
+    STDMETHODIMP EnableAutoTray(BOOL bTraySetting) override;
+    STDMETHODIMP DoAction(BOOL) override;
+    STDMETHODIMP SetWindowingEnvironmentConfig(IUnknown* punk) override;
+    //~ End ITrayNotify Interface
 
     // *** Properties Sheet methods ***
     BOOL GetIsNoTrayItemsDisplayPolicyEnabled() const
     {
         return _fNoTrayItemsDisplayPolicyEnabled;
     }
-    
+
     BOOL GetIsNoAutoTrayPolicyEnabled() const
     {
         return _trayItemRegistry.IsNoAutoTrayPolicyEnabled();
@@ -152,7 +160,7 @@ public:
     LRESULT TrayNotify(HWND hwndTray, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
 
 protected:
-    static BOOL GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG trayCallbackArg, 
+    static BOOL GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG trayCallbackArg,
         TRAYCBRET * pOutData);
 
     void _TickleForTooltip(CNotificationItem *pni);
@@ -178,7 +186,7 @@ protected:
     void _SetOrKillIconDemoteTimer(CTrayItem * pti, TRAYITEMPOS tiPos);
 
     // WndProc callback functions
-    LRESULT v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
     // Callback for the chevron button
     static LRESULT CALLBACK s_ChevronWndProc(
         HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
@@ -215,10 +223,10 @@ protected:
     {
     	return (hwnd == _hwndNotify && uID == UID_CHEVRONBUTTON);
     }
-    
+
     void _OnWorkStationLocked(BOOL bLocked);
     void _OnRudeApp(BOOL bRudeApp);
-    
+
     // Toolbar Notification helper functions - respond to different user messages
     BOOL _InsertNotify(PNOTIFYICONDATA32 pnid);
     BOOL _DeleteNotify(REFGUID guid, INT_PTR nIcon, BOOL bShutdown, BOOL bShouldSaveIcon);
@@ -250,7 +258,7 @@ protected:
     void _OnInfoTipTimer();
     LRESULT _OnTimer(UINT_PTR uTimerID);
     void _OnIconDemoteTimer(WPARAM wParam, LPARAM lParam);
-    
+
     // Various Message handles
     LRESULT _OnMouseEvent(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     LRESULT _OnCDNotify(LPNMTBCUSTOMDRAW pnm);
@@ -318,7 +326,7 @@ private:
 
     TCHAR           _szExplorerExeName[MAX_PATH];
     TCHAR *         _pszCurrentThreadDesktopName;
-    
+
     HIMAGELIST      _himlIcons;
     HIMAGELIST      _himlIconsSCA;                  // Vista - ImageList for the System Control Area (SCA)
 
@@ -330,7 +338,7 @@ private:
     BOOL            _fReturn;
 
     BOOL            _fBangMenuOpen;
-    
+
     BOOL            _fHaveDemoted;
 
     BOOL            _fAnimating;
@@ -342,14 +350,14 @@ private:
     BOOL            _fHasFocus;
 
     int             field_2AC;
-    
+
     RECT            _rcAnimateTotal;
     RECT            _rcAnimateCurrent;
     //
     // Timer for icon info tips..
     //
     ULONG           _uInfoTipTimer;
-    
+
     TNINFOITEM      *_pinfo;    // current balloon being shown
     CDPA<TNINFOITEM, CTContainer_PolicyUnOwned<TNINFOITEM>> _dpaInfo;
 
@@ -365,7 +373,7 @@ private:
     int             _idMouseActiveIcon;
 
     INotificationCB     * _pNotifyCB;
-    
+
     IUserEventTimer     * m_pIconDemoteTimer;
     IUserEventTimer     * m_pInfoTipTimer;
 
@@ -383,6 +391,9 @@ private:
     BOOL                _bStartMenuAllowsTrayBalloon;
     BALLOONEVENT        _beLastBalloonEvent;
 
+    int                 field_32C;          // Vista - NEW
+    int                 field_330;          // Vista - NEW
+
 public: // @Temp for letting CTray access members directly
     int                 field_334;
 
@@ -390,32 +401,5 @@ private:
     SIZE                _sizeTrayNotify;
     int                 field_340;
 };
-#pragma optimize( "", off )
-//
-// Stub for CTrayNotify, so as to not break the COM rules of refcounting a static object
-//
-class CTrayNotifyStub :
-	public CComObjectRootEx<CComSingleThreadModel>,
-	public CComCoClass<CTrayNotifyStub, &CLSID_TrayNotify>,
-	public ITrayNotify
-{
-public:
-	CTrayNotifyStub() {};
-	virtual ~CTrayNotifyStub() {};
 
-	//DECLARE_NOT_AGGREGATABLE(CTrayNotifyStub)
-
-	BEGIN_COM_MAP(CTrayNotifyStub)
-		COM_INTERFACE_ENTRY(ITrayNotify)
-	END_COM_MAP()
-
-	// *** ITrayNotify method ***
-	virtual STDMETHODIMP RegisterCallback(INotificationCB* pNotifyCB, ULONG*) override;
-	virtual STDMETHODIMP UnregisterCallback(ULONG*) override;
-	virtual STDMETHODIMP SetPreference(NOTIFYITEM pNotifyItem) override;
-	virtual STDMETHODIMP EnableAutoTray(BOOL bTraySetting) override;
-	virtual STDMETHODIMP DoAction(BOOL bTraySetting) override;
-	virtual STDMETHODIMP SetWindowingEnvironmentConfig(IUnknown* unk) override;
-};
-#pragma optimize( "", on )
 #endif  // _TRAYNOT_H

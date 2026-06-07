@@ -69,59 +69,29 @@ int CALLBACK DeleteInfoItemCB(TNINFOITEM* pItem, void* pData)
     return TRUE;
 }
 
-
-#pragma optimize( "", off )
-//
-// CTrayNotifyStub functions...
-//
-HRESULT CTrayNotifyStub::SetPreference(NOTIFYITEM pNotifyItem)
-{
-    return c_tray._trayNotify.SetPreference(pNotifyItem);
-}
-
-HRESULT CTrayNotifyStub::RegisterCallback(INotificationCB* pNotifyCB, ULONG*)
-{
-    return c_tray._trayNotify.RegisterCallback(pNotifyCB);
-}
-
-HRESULT CTrayNotifyStub::UnregisterCallback(ULONG*)
-{
-    return S_OK;
-}
-
-HRESULT CTrayNotifyStub::EnableAutoTray(BOOL bTraySetting)
-{
-    return c_tray._trayNotify.EnableAutoTray(bTraySetting);
-}
-
-HRESULT CTrayNotifyStub::DoAction(BOOL bTraySetting)
-{
-	return S_OK;
-}
-
-STDMETHODIMP_(HRESULT __stdcall) CTrayNotifyStub::SetWindowingEnvironmentConfig(IUnknown* unk)
-{
-    return E_NOTIMPL;
-}
-
 HRESULT CTrayNotifyStub_CreateInstance(IUnknown* pUnkOuter, IUnknown** ppunk)
 {
-    if (pUnkOuter != NULL)
+    HRESULT hr = S_OK;
+    if (pUnkOuter)
         return CLASS_E_NOAGGREGATION;
-
-    CComObject<CTrayNotifyStub> *pStub = new CComObject<CTrayNotifyStub>;
-    if (pStub)
-        return pStub->QueryInterface(IID_PPV_ARGS(ppunk));
-    else
-        return E_OUTOFMEMORY;
+    *ppunk = static_cast<ITrayNotify*>(&c_tray._trayNotify);
+    return hr;
 }
-#pragma optimize( "", on )
 
 //
 // CTrayNotify Methods..
 //
 
-// IUnknown methods
+HRESULT CTrayNotify::QueryInterface(REFIID riid, void** ppv)
+{
+    static const QITAB qit[] =
+    {
+        QITABENT(CTrayNotify, ITrayNotify),
+        {}
+    };
+    return QISearch(this, qit, riid, ppv);
+}
+
 STDMETHODIMP_(ULONG) CTrayNotify::AddRef()
 {
     return InterlockedIncrement(&m_cRef);
@@ -207,8 +177,10 @@ void CTrayNotify::_TickleForTooltip(CNotificationItem* pni)
     }
 }
 
-HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB)
+HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB, DWORD* pdwCBCookie)
 {
+    *pdwCBCookie = 0;
+
     if (!_fNoTrayItemsDisplayPolicyEnabled)
     {
         ATOMICRELEASE(_pNotifyCB);
@@ -267,7 +239,12 @@ HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB)
     return S_OK;
 }
 
-HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
+HRESULT CTrayNotify::UnregisterCallback(DWORD dwCBCookie)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT CTrayNotify::SetPreference(const NOTIFYITEM* pNotifyItem)
 {
     // This function should NEVER be called if the NoTrayItemsDisplayPolicy is enabled...
     ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
@@ -280,15 +257,15 @@ HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
 
     INT_PTR iItem = -1;
 
-    if (pNotifyItem.hWnd)
+    if (pNotifyItem->hWnd)
     {
-        iItem = m_TrayItemManager.FindItemAssociatedWithHwndUid(pNotifyItem.hWnd, pNotifyItem.uID);
+        iItem = m_TrayItemManager.FindItemAssociatedWithHwndUid(pNotifyItem->hWnd, pNotifyItem->uID);
         if (iItem != -1)
         {
             CTrayItem * pti = m_TrayItemManager.GetItemDataByIndex(iItem);
-            if (pti && pti->dwUserPref != pNotifyItem.dwUserPref)
+            if (pti && pti->dwUserPref != pNotifyItem->dwUserPref)
             {
-                pti->dwUserPref = pNotifyItem.dwUserPref;
+                pti->dwUserPref = pNotifyItem->dwUserPref;
                 // If the preference changes, the accumulated time must start again...
                 if (pti->IsStartupIcon())
                     pti->uNumSeconds = 0;
@@ -304,7 +281,7 @@ HRESULT CTrayNotify::SetPreference(NOTIFYITEM pNotifyItem)
     }
     else
     {
-        if (_trayItemRegistry.SetPastItemPreference(&pNotifyItem))
+        if (_trayItemRegistry.SetPastItemPreference(pNotifyItem))
         {
             return S_OK;
         }
@@ -428,10 +405,6 @@ BOOL CTrayNotify::_CheckAndResizeImages(HWND hwndToolbar)
 
     return fOK;
 #endif
-    // ebp
-    // rsi
-    // r12d
-    // ebx MAPDST
     UINT v9; // eax
     HIMAGELIST himlNew; // rbx
     int i; // r12d
@@ -526,18 +499,15 @@ void CTrayNotify::_ActivateTips(BOOL bActivate)
         SendMessage(_hwndToolbarInfoTipSCA, TTM_ACTIVATE, (WPARAM)bActivate, 0);
 }
 
-// x,y in client coords
-
 void CTrayNotify::_InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick)
 {
     if (!_fNoTrayItemsDisplayPolicyEnabled && _pinfo)
     {
         RECT rect;
         GetWindowRect(_hwndInfoTip, &rect);
-        // x & y are mapped to our window so map the rect to our window as well
-        MapWindowRect(HWND_DESKTOP, _hwndNotify, &rect);   // screen -> client
+        MapWindowRect(HWND_DESKTOP, _hwndNotify, &rect);
 
-        POINT pt = {x, y};
+        POINT pt = { x, y };
         if (PtInRect(&rect, pt))
         {
             SHAllowSetForegroundWindow(_pinfo->hWnd);
@@ -545,45 +515,38 @@ void CTrayNotify::_InfoTipMouseClick(int x, int y, BOOL bRightMouseButtonClick)
             _beLastBalloonEvent = bRightMouseButtonClick ? BALLOONEVENT_USERRIGHTCLICK : BALLOONEVENT_USERLEFTCLICK;
 
             SendMessageW(_hwndInfoTip, TTM_SETDELAYTIME, 5, MAKELPARAM(-1, 0));
-            _ShowInfoTip(_pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE, (bRightMouseButtonClick ? NIN_BALLOONTIMEOUT : NIN_BALLOONUSERCLICK));
+
+            _ShowInfoTip(
+                _pinfo->guid, _pinfo->hWnd, _pinfo->uID, FALSE, FALSE,
+                bRightMouseButtonClick ? NIN_BALLOONTIMEOUT : NIN_BALLOONUSERCLICK);
+
+            if (!bRightMouseButtonClick)
+            {
+                // SHTracePerfSQMCountImpl(&ShellTraceId_Notification_Launch, 541);
+            }
         }
     }
 }
 
 void CTrayNotify::_PositionInfoTip()
 {
-    ASSERT(!_fNoTrayItemsDisplayPolicyEnabled);
+    _ASSERTE(!_fNoTrayItemsDisplayPolicyEnabled); // 443
 
     if (_pinfo)
     {
-        int x = 0;
-        int y = 0;
-
-        // if (_pinfo->hWnd == _hwndNotify && _pinfo->uID == UID_CHEVRONBUTTON)
-        if (_IsChevronInfoTip(_pinfo->hWnd, _pinfo->uID))
+        CTrayItemManager* ptim = _GetItemManagerByGuid(_pinfo->guid);
+        HWND hwndToolbar = _GetToolbarByGuid(_pinfo->guid);
+        INT_PTR iIndex = ptim->FindItemAssociatedWithHwndUid(_pinfo->hWnd, _pinfo->uID);
+        if (iIndex != -1)
         {
             RECT rc;
-            GetWindowRect(_hwndChevron, &rc);
-            x = rc.left;
-            y = rc.top;
-        }
-        else
-        {
-            INT_PTR iIndex = m_TrayItemManager.FindItemAssociatedWithHwndUid(_pinfo->hWnd, _pinfo->uID);
-            if (iIndex != -1)
+            if (SendMessageW(hwndToolbar, TB_GETITEMRECT, iIndex, (LPARAM)&rc))
             {
-                RECT rc;
-                if (SendMessage(_hwndToolbar, TB_GETITEMRECT, iIndex, (LPARAM)&rc))
-                {
-                    MapWindowRect(_hwndToolbar, HWND_DESKTOP, &rc);
-                    x = (rc.left + rc.right)/2;
-                    y = (rc.top  + rc.bottom)/2;
-                }
-
+                MapWindowRect(hwndToolbar, HWND_DESKTOP, &rc);
+                SendMessageW(
+                    _hwndInfoTip, TTM_TRACKPOSITION, 0, MAKELONG((rc.right + rc.left) / 2, (rc.bottom + rc.top) / 2));
             }
         }
-
-        SendMessage(_hwndInfoTip, TTM_TRACKPOSITION, 0, MAKELONG(x, y));
     }
 }
 
@@ -676,7 +639,7 @@ DWORD CTrayNotify::_ShowBalloonTip(HICON hIcon, DWORD dwLastSoundTime)
     _fInfoTipShowing = 1;
     if (_pinfo)
     {
-        //field_330 = 0;
+        field_330 = 0;
         (void)27; // Skipped telemetry Notification_Displayed
 
         UINT uTimeout;
@@ -701,8 +664,7 @@ DWORD CTrayNotify::_ShowBalloonTip(HICON hIcon, DWORD dwLastSoundTime)
 void CTrayNotify::_HideBalloonTip()
 {
     _litsLastInfoTip = LITS_BALLOONDESTROYED;
-
-    SendMessage(_hwndInfoTip, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)0);
+    SendMessageW(_hwndInfoTip, TTM_TRACKACTIVATE, FALSE, 0);
 }
 
 void CTrayNotify::_DisableCurrentInfoTip(CTrayItem* ptiTemp, UINT uReason, BOOL bBalloonShowing)
@@ -1326,11 +1288,11 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     }
 
     HICON hIcon1 = nullptr;
-    if ((pnid->uFlags & 2) != 0)
+    if ((pnid->uFlags & 0x2) != 0)
     {
         HICON hIcon2 = nullptr;
         BOOL bIsEqualIcon = FALSE;
-        int iImageOld = ptim->GetTBBtnImage(nIcon, 1);
+        int iImageOld = ptim->GetTBBtnImage(nIcon, TRUE);
         if (!bFirstTime)
         {
             if (iImageOld != -1)
@@ -1415,7 +1377,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
     if ((pnid->uFlags & NIF_TIP) != 0)
     {
         ptim->SetTBBtnText(nIcon, pnid->szTip);
-        StringCchCopyW(pti->szIconText, 128, pnid->szTip);
+        StringCchCopyW(pti->szIconText, ARRAYSIZE(pti->szIconText), pnid->szTip);
     }
 
     if (fResize)
@@ -2357,6 +2319,16 @@ HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
         _ToggleTrayItems(bTraySetting);
     }
     return S_OK;
+}
+
+HRESULT CTrayNotify::DoAction(BOOL)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT CTrayNotify::SetWindowingEnvironmentConfig(IUnknown* punk)
+{
+    return E_NOTIMPL;
 }
 
 void CTrayNotify::_ShowChevronInfoTip()
@@ -3930,7 +3902,7 @@ void CTrayNotify::_OnCommand(const HWND hWnd, WPARAM wParam, LPARAM lParam)
     else if (!cmd)
     {
         _ASSERT(!_fNoTrayItemsDisplayPolicyEnabled); // 3296
-        // field_2AC = 0;
+        field_2AC = 0;
 
         KillTimer(this->_hwndChevron, 0xAu);
         // _ActivateChevronTrackingTooltip(0);
@@ -4203,17 +4175,18 @@ void CTrayNotify::_AnimateButtons(int iIndex, DWORD dwSleep, int iNumberItems, B
     _BlankButtons((int) iIndex, 1, FALSE);
 }
 
+// ExEx-Vista(Allison): Verified.
 BOOL CTrayNotify::_SetRedraw(BOOL fRedraw)
 {
     BOOL fOldRedraw = _fRedraw;
     _fRedraw = fRedraw;
 
-    SendMessage(_hwndToolbar, WM_SETREDRAW, fRedraw, 0);
+    SendMessageW(_hwndToolbar, WM_SETREDRAW, fRedraw, 0);
     if (_fRedraw)
     {
         if (_fRepaint)
         {
-            InvalidateRect(_hwndNotify, NULL, FALSE);
+            InvalidateRect(_hwndNotify, nullptr, FALSE);
             UpdateWindow(_hwndNotify);
         }
     }

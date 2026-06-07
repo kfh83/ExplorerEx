@@ -127,7 +127,7 @@ class CTrayItemRegistry
 
         void IncChevronInfoTipShownInRegistry(BOOL bUserClickedInfoTip = FALSE);
         BOOL SetIsAutoTrayEnabledInRegistry(BOOL bAutoTray);
-        BOOL SetPastItemPreference(LPNOTIFYITEM pNotifyItem);
+        BOOL SetPastItemPreference(const NOTIFYITEM* pNotifyItem);
 
         INT_PTR CheckAndRestorePersistentIconSettings(CTrayItem *pti, LPTSTR pszIconToolTip, HICON hIcon);
         void DeletePastItem(INT_PTR nIndex);

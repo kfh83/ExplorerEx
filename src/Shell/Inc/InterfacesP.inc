@@ -259,9 +259,9 @@ INotificationCB : IUnknown
 MIDL_INTERFACE("D133CE13-3537-48BA-93A7-AFCD5D2053B4")
 ITrayNotify : IUnknown
 {
-	STDMETHOD(RegisterCallback)(INotificationCB* callback, DWORD*) PURE;
-	STDMETHOD(UnregisterCallback)(ULONG*) PURE;
-	STDMETHOD(SetPreference)(NOTIFYITEM) PURE;
+	STDMETHOD(RegisterCallback)(INotificationCB*, DWORD*) PURE;
+	STDMETHOD(UnregisterCallback)(DWORD) PURE;
+	STDMETHOD(SetPreference)(const NOTIFYITEM*) PURE;
 	STDMETHOD(EnableAutoTray)(BOOL) PURE;
 	STDMETHOD(DoAction)(BOOL) PURE;
 	STDMETHOD(SetWindowingEnvironmentConfig)(IUnknown*) PURE;

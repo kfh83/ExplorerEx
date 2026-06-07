@@ -731,7 +731,7 @@ void CNotificationsDlg::ApplyChanges(void)
     {
         for (int i = 0; i < _saItems.GetSize(); i++)
         {
-            _pTrayNotify->SetPreference(_saItems[i]);
+            _pTrayNotify->SetPreference((NOTIFYITEM*)&_saItems[i]);
         }
     }
 }
