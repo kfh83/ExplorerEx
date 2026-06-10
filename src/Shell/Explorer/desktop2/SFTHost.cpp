@@ -2883,8 +2883,7 @@ LRESULT SFTBarHost::_OnLVSubItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
 #endif
 }
 
-BOOL
-WINAPI
+STDAPI_(BOOL)
 SHExtTextOutW(
     HDC hdc,
     int x,

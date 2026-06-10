@@ -321,8 +321,7 @@ LRESULT CMorePrograms::_OnCtlColorBtn(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return reinterpret_cast<LRESULT>(_hbrBk);
 }
 
-BOOL
-WINAPI
+STDAPI_(BOOL)
 SHExtTextOutW(
     HDC hdc,
     int x,
