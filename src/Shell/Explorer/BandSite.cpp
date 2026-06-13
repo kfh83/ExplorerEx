@@ -10,8 +10,6 @@
 #include "util.h"
 #include "shundoc.h"
 
-//#include "shdeprecated.h"
-
 #define SAFECAST(_obj, _type) (((_type)(_obj)==(_obj)?0:0), (_type)(_obj))
 
 extern IStream *GetDesktopViewStream(DWORD grfMode, LPCTSTR pszName);
@@ -230,9 +228,8 @@ void WINAPI BandSite_FixUpComposition(IBandSite *pbs)
 CTrayBandSite* IUnknownToCTrayBandSite(IUnknown* punk)
 {
     CTrayBandSite* ptbs;
-    
-    punk->QueryInterface(CLSID_TrayBandSite, (void **)&ptbs);
-    ASSERT(ptbs);
+    punk->QueryInterface(CLSID_TrayBandSite, reinterpret_cast<void**>(&ptbs));
+    _ASSERTE(ptbs);
     return ptbs;
 }
 
@@ -316,23 +313,15 @@ static BOOL CALLBACK SetTransparency(HWND hwnd, LPARAM lParam)
 
 BOOL IsSizeMoveRestricted()
 {
-    // Refused to compile for me, linker error:
     return _SHRegGetBoolValueFromHKCUHKLM(
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-        L"LockTaskbar",
-        FALSE);
-    return FALSE;
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", L"LockTaskbar", FALSE);
 }
 
 BOOL IsSizeMoveEnabled()
 {
-    // Refused to compile for me, linker error:
     return !IsSizeMoveRestricted()
         && _SHRegGetBoolValueFromHKCUHKLM(
-            L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-            L"TaskbarSizeMove",
-            TRUE);
-    return TRUE;
+            L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSizeMove", TRUE);
 }
 
 // *** IBandSite methods ***

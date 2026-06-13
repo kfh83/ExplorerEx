@@ -1906,7 +1906,7 @@ class CLogOffMenuCallback
     , public IShellMenuCallback
 {
 public:
-    CLogOffMenuCallback(CLogoffPane *pLogoffPane);
+    CLogOffMenuCallback(CLogoffPane *pLogOffPane);
 
 private:
     ~CLogOffMenuCallback();
@@ -1923,20 +1923,21 @@ public:
 private:
     DWORD _ShutdownChoiceFromMenuChoice(LPSMDATA psmd);
 
-private:
-    CLogoffPane *_pLogoffPane;
+    CLogoffPane* _pLogOffPane;
 };
 
-CLogOffMenuCallback::CLogOffMenuCallback(CLogoffPane *pLogoffPane)
-    : _pLogoffPane(pLogoffPane)
+CLogOffMenuCallback::CLogOffMenuCallback(CLogoffPane* pLogOffPane)
+    : _pLogOffPane(pLogOffPane)
 {
-    if (_pLogoffPane)
-        _pLogoffPane->AddRef();
+    if (_pLogOffPane)
+    {
+        _pLogOffPane->AddRef();
+    }
 }
 
 CLogOffMenuCallback::~CLogOffMenuCallback()
 {
-    IUnknown_SafeReleaseAndNullPtr(&_pLogoffPane);
+    IUnknown_SafeReleaseAndNullPtr(&_pLogOffPane);
 }
 
 HRESULT CLogOffMenuCallback::QueryInterface(REFIID riid, void **ppvObj)
@@ -1975,16 +1976,16 @@ HRESULT CLogOffMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam,
         if (psmd->punk && SUCCEEDED(psmd->punk->QueryInterface(IID_PPV_ARGS(&psm))))
         {
             HMENU hMenu = (HMENU)SHLoadMenuPopup(g_hinstCabinet, 6001);
-            _pLogoffPane->ApplyLogoffMenuOption(hMenu);
-            _pLogoffPane->AddShutdownOptions(hMenu);
+            _pLogOffPane->ApplyLogoffMenuOption(hMenu);
+            _pLogOffPane->AddShutdownOptions(hMenu);
 
-            psm->SetMenu(hMenu, _pLogoffPane->_hwnd, 0);
+            psm->SetMenu(hMenu, _pLogOffPane->_hwnd, 0);
             psm->Release();
             return S_OK;
         }
         break;
     case 3u:
-        _pLogoffPane->TBPressButton(0, 0);
+        _pLogOffPane->TBPressButton(0, 0);
         return S_OK;
     case 4u:
         uId = psmd->uId;
@@ -1999,7 +2000,7 @@ HRESULT CLogOffMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam,
         {
             v10 = _ShutdownChoiceFromMenuChoice(psmd);
             // SHTracePerf(&ShellTraceId_Explorer_ShutdownUX_SelectMenuItem_Start);
-            PostMessage(_pLogoffPane->_hwnd, 0x111u, 4u, v10 | 0x10000000);
+            PostMessage(_pLogOffPane->_hwnd, 0x111u, 4u, v10 | 0x10000000);
         }
         return S_OK;
     case 5u:
@@ -2013,10 +2014,10 @@ HRESULT CLogOffMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam,
         if (psmd->uId >= 0x64 && psmd->uId <= 0x96)
         {
             v6 = _ShutdownChoiceFromMenuChoice(psmd);
-            return _pLogoffPane->GetShutdownItemDescription(v6, (WCHAR *)wParam, (UINT)lParam);
+            return _pLogOffPane->GetShutdownItemDescription(v6, (WCHAR *)wParam, (UINT)lParam);
         }
 
-        TipIDFromIDM = _pLogoffPane->GetTipIDFromIDM(psmd->uId);
+        TipIDFromIDM = _pLogOffPane->GetTipIDFromIDM(psmd->uId);
         if (TipIDFromIDM != -1)
         {
             LoadString(g_hinstCabinet, TipIDFromIDM, (LPWSTR)wParam, (int)lParam);

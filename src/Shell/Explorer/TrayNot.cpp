@@ -2305,7 +2305,7 @@ HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
 
     // This function will NEVER be called if the auto tray is disabled by policy,
     // or if the system tray is made invisible by policy...
-    ASSERT(m_TrayItemRegistry.IsNoAutoTrayPolicyEnabled() == FALSE);
+    ASSERT(_trayItemRegistry.IsNoAutoTrayPolicyEnabled() == FALSE);
 
     if (bTraySetting != _trayItemRegistry.IsAutoTrayEnabledByUser())
     {
@@ -2464,39 +2464,6 @@ BOOL CTrayNotify::GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG t
     }
 
     return FALSE;
-}
-
-// Add an SCA test item (e.g., Network) to the SCA toolbar
-void AddTestSCAItem(HWND hWnd)
-{
-    NOTIFYICONDATAW nid = {};
-    nid.cbSize = sizeof(nid);
-    nid.hWnd = hWnd;
-    nid.uID = 1001; // unique per hWnd
-    nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
-    nid.uCallbackMessage = WM_APP + 42; // your app-level message to receive tray notifications
-    nid.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APPLICATION)); // replace with your icon
-    nid.guidItem = SCAID_Network; // routes to SCA toolbar via IsSCAGuid
-
-    StringCchCopyW(nid.szTip, ARRAYSIZE(nid.szTip), L"SCA Test Item (Network)");
-    Shell_NotifyIconW(NIM_ADD, &nid);
-
-    // Optional: set version to 4 for modern behavior (keyboard anchor, etc.)
-    nid.uVersion = NOTIFYICON_VERSION_4;
-    Shell_NotifyIconW(NIM_SETVERSION, &nid);
-}
-
-// Remove the test SCA item
-void RemoveTestSCAItem(HWND hWnd)
-{
-    NOTIFYICONDATAW nid = {};
-    nid.cbSize = sizeof(nid);
-    nid.hWnd = hWnd;
-    nid.uID = 1001;
-    nid.uFlags = NIF_GUID;
-    nid.guidItem = SCAID_Network;
-
-    Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
 void SHLogicalToPhysicalDPI(SIZE* pSize);
@@ -4439,7 +4406,7 @@ TRAYITEMPOS CTrayNotify::_TrayItemPos(CTrayItem * pti, TRAYEVENT tTrayEvent, BOO
             // Hidden items cannot have timers, and we will never get this event if
             // the item was hidden...
             ASSERT(!pti->IsHidden());
-            ASSERT(m_TrayItemRegistry.IsAutoTrayEnabled());
+            ASSERT(_trayItemRegistry.IsAutoTrayEnabled());
 
             tiPos = TIPOS_DEMOTED;
             if (!pti->IsDemoted())

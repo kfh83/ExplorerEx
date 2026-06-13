@@ -38,10 +38,10 @@ IRegTreeOptions : IUnknown
     STDMETHOD(ToggleItem)(THIS_ HTREEITEM hti) PURE;
     STDMETHOD(ShowHelp)(THIS_ HTREEITEM hti, DWORD dwFlags) PURE;*/
 
-    STDMETHOD(InitTree)(HWND, HKEY, LPCSTR, LPCSTR) PURE;
+    STDMETHOD(InitTree)(HWND, HKEY, const CHAR*, const CHAR*) PURE;
     STDMETHOD(WalkTree)(unsigned int) PURE;
-    STDMETHOD(ToggleItem)(_TREEITEM*) PURE;
-    STDMETHOD(ShowHelp)(_TREEITEM*, ULONG) PURE;
+    STDMETHOD(ToggleItem)(HTREEITEM) PURE;
+    STDMETHOD(ShowHelp)(HTREEITEM, ULONG) PURE;
     STDMETHOD(SetEventListener)(IUnknown*) PURE;
 };
 

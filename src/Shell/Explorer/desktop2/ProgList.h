@@ -229,6 +229,7 @@ protected:
 
     static void _InitStringList(HKEY hk, LPCTSTR pszValue, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa);
     void _InitKillList();
+    void  _InitNoKillList();
     bool _SetInterestingLink(CByUsageShortcut *pscut);
     BOOL _PathIsInterestingExe(LPCTSTR pszPath);
     BOOL _IsExcludedExe(LPCTSTR pszPath);

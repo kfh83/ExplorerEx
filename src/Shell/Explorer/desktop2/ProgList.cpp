@@ -1349,65 +1349,13 @@ BOOL ByUsage::s_fDoneCreateMenuItemCachTask;
 
 HRESULT ByUsage::Initialize()
 {
-#ifdef DEAD_CODE
-    HRESULT hr;
-
-    hr = CoCreateInstanceHook(CLSID_StartMenuPin, NULL, CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&_psmpin));
-    if (FAILED(hr))
-    {
-        return hr;
-    }
-
-    if (!(_pdirDesktop = CByUsageDir::CreateDesktop())) {
-        return E_OUTOFMEMORY;
-    }
-
-    // Use already initialized MenuCache if available
-    if (g_pMenuCache)
-    {
-        _pMenuCache = g_pMenuCache;
-        _pMenuCache->AttachUI(_pByUsageUI);
-        g_pMenuCache = NULL; // We take ownership here.
-    }
-    else
-    {
-        hr = CMenuItemsCache::ReCreateMenuItemsCache(_pByUsageUI, &_ftStartTime, &_pMenuCache);
-        if (FAILED(hr))
-        {
-            return hr;
-        }
-    }
-
-
-    _ulPinChange = -1;              // Force first query to re-enumerate
-
-    _dpaNew = NULL;
-
-    if (_pByUsageUI)
-    {
-        _hwnd = _pByUsageUI->_hwnd;
-
-        //
-        //  Register for the "pin list change" event.  This is an extended
-        //  event (hence global), so listen in a location that contains
-        //  no objects so the system doesn't waste time sending
-        //  us stuff we don't care about.  Our choice: _pidlBrowser.
-        //  It's not even a folder, so it can't contain any objects!
-        //
-        ASSERT(!_pMenuCache->IsLocked());
-        _pByUsageUI->RegisterNotify(NOTIFY_PINCHANGE, SHCNE_EXTENDED_EVENT, _pidlBrowser, FALSE);
-    }
-
-    return S_OK;
-#else
     HRESULT hr = CoCreateInstanceHook(CLSID_StartMenuPin, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_psmpin));
-    if (hr >= 0)
+    if (SUCCEEDED(hr))
     {
-        _pdirDesktop = CByUsageDir::CreateDesktop();
+        _pdirDesktop = CByUsageDir::CreateDesktopW();
         if (_pdirDesktop)
         {
-            _pMenuCache = (CMenuItemsCache*)InterlockedExchangePointer(reinterpret_cast<void* volatile*>(&g_pMenuCache), nullptr);
+            _pMenuCache = static_cast<CMenuItemsCache*>(InterlockedExchangePointer(reinterpret_cast<void* volatile*>(&g_pMenuCache), nullptr));
             if (_pMenuCache)
             {
                 _pMenuCache->AttachUI(_pByUsageUI);
@@ -1417,7 +1365,7 @@ HRESULT ByUsage::Initialize()
                 hr = CMenuItemsCache::ReCreateMenuItemsCache(_pByUsageUI, &_ftStartTime, &_pMenuCache);
             }
 
-            if (hr >= 0)
+            if (SUCCEEDED(hr))
             {
                 _ulPinChange = -1;
                 _dpaNew.Attach(nullptr);
@@ -1426,15 +1374,15 @@ HRESULT ByUsage::Initialize()
                 {
                     _hwnd = _pByUsageUI->_hwnd;
 
-                    ASSERT(!_pMenuCache->IsLocked()); // 1390
-                    _pByUsageUI->RegisterNotify(NOTIFY_PINCHANGE, SHCNE_EXTENDED_EVENT, _pidlBrowser, 0);
+                    _ASSERTE(!_pMenuCache->IsLocked()); // 1390
+                    _pByUsageUI->RegisterNotify(NOTIFY_PINCHANGE, SHCNE_EXTENDED_EVENT, _pidlBrowser, FALSE);
                 }
             }
 
             if (!s_fDoneCreateMenuItemCachTask)
             {
                 IShellTaskScheduler* psched;
-                if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&psched))))
+                if (SUCCEEDED(CoCreateInstance(CLSID_SharedTaskScheduler, nullptr, CLSCTX_INPROC, IID_PPV_ARGS(&psched))))
                 {
                     CCreateMenuItemCacheTask* pTask = new CCreateMenuItemCacheTask(_pMenuCache, psched);
                     if (pTask)
@@ -1454,7 +1402,6 @@ HRESULT ByUsage::Initialize()
     }
 
     return hr;
-#endif
 }
 
 void CMenuItemsCache::_InitStringList(HKEY hk, LPCTSTR pszSub, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa)
@@ -1515,6 +1462,11 @@ void CMenuItemsCache::_InitKillList()
         _InitStringList(hk, TEXT("AddRemoveNames"), &_dpaKillLink);
         RegCloseKey(hk);
     }
+}
+
+void CMenuItemsCache::_InitNoKillList()
+{
+
 }
 
 STDAPI_(UINT) ILGetSizeAndDepth(LPCITEMIDLIST pidl, DWORD *pdwDepth)
@@ -2154,59 +2106,43 @@ BOOL CMenuItemsCache::_PathIsInterestingExe(LPCTSTR pszPath)
     return StrCmpICW(pszExt, TEXT(".exe")) == 0 && !_IsExcludedExe(pszPath);
 }
 
-
 BOOL CMenuItemsCache::_IsExcludedExe(LPCTSTR pszPath)
 {
-#ifdef DEAD_CODE
-    pszPath = PathFindFileName(pszPath);
+    pszPath = PathFindFileNameW(pszPath);
 
-    int i;
-    for (i = 0; i < _dpaKill.GetPtrCount(); i++)
+    for (int i = 0; i < _dpaKill.GetPtrCount(); ++i)
     {
-        if (StrCmpI(pszPath, _dpaKill.GetPtr(i)) == 0)
+        if (StrCmpIW(pszPath, _dpaKill.GetPtr(i)) == 0)
         {
             return TRUE;
         }
     }
 
-    HKEY hk;
     BOOL fRc = FALSE;
 
-    if (SUCCEEDED(_pqa->Init(ASSOCF_OPEN_BYEXENAME, pszPath, NULL, NULL)) &&
-        SUCCEEDED(_pqa->GetKey(0, ASSOCKEY_APP, NULL, &hk)))
+    IQueryAssociations* pqa = static_cast<IQueryAssociations*>(
+        InterlockedExchangePointer(reinterpret_cast<void* volatile*>(&_pqa), nullptr));
+    if (!pqa)
     {
-        fRc = ERROR_SUCCESS == SHQueryValueEx(hk, TEXT("NoStartPage"), NULL, NULL, NULL, NULL);
-        RegCloseKey(hk);
+        AssocCreate(CLSID_QueryAssociations, IID_PPV_ARGS(&pqa));
     }
-
-    return fRc;
-#else
-    pszPath = PathFindFileName(pszPath);
-
-    for (int i = 0; i < _dpaKill.GetPtrCount(); i++)
-    {
-        if (StrCmpI(pszPath, _dpaKill.GetPtr(i)) == 0)
-        {
-            return 1;
-        }
-    }
-
-    BOOL fRc = FALSE;
-    IQueryAssociations* pqa = (IQueryAssociations *)InterlockedExchangePointer((volatile LPVOID*)&this->_pqa, 0);
-    if (pqa || (AssocCreate(CLSID_QueryAssociations, IID_PPV_ARGS(&pqa)), pqa))
+    if (pqa)
     {
         HKEY hkey;
-        if (pqa->Init(2, pszPath, 0, 0) >= 0 && pqa->GetKey(0, ASSOCKEY_APP, 0, &hkey) >= 0)
+        if (SUCCEEDED(pqa->Init(ASSOCF_INIT_BYEXENAME, pszPath, nullptr, nullptr))
+            && SUCCEEDED(pqa->GetKey(0, ASSOCKEY_APP, nullptr, &hkey)))
         {
-            fRc = SHQueryValueEx(hkey, L"NoStartPage", 0, 0, 0, 0) == 0;
+            fRc = SHQueryValueExW(hkey, L"NoStartPage", nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
             RegCloseKey(hkey);
         }
 
-        if (InterlockedCompareExchangePointer((volatile LPVOID*)&_pqa, pqa, NULL))
+        if (InterlockedCompareExchangePointer((void*volatile*)&_pqa, pqa, nullptr))
+        {
             pqa->Release();
+        }
     }
+
     return fRc;
-#endif
 }
 
 
@@ -3662,12 +3598,11 @@ HRESULT CMenuItemsCache::Initialize(ByUsageUI *pbuUI, FILETIME * pftOSInstall)
 
     return hr;
 #else
-    HRESULT hr; // ebx
-    // eax
+    _pByUsageUI = pbuUI;
+    _ftOldApps = *pftOSInstall;
 
-    this->_pByUsageUI = pbuUI;
-    this->_ftOldApps = *pftOSInstall;
-    hr = 0x8007000E;
+    HRESULT hr = E_OUTOFMEMORY;
+
     if (_dpaAppInfo.Create(4))
     {
         if (_dpaKill.Create(4))
@@ -3676,14 +3611,15 @@ HRESULT CMenuItemsCache::Initialize(ByUsageUI *pbuUI, FILETIME * pftOSInstall)
             {
                 //if (CDPA_Base<IUnknown>::Create(4))
                 {
-                    if (CMenuItemsCache::_GetExcludedDirectories())
+                    if (_GetExcludedDirectories())
                     {
-                        CMenuItemsCache::_InitKillList();
-                        //CMenuItemsCache::_InitNoKillList(this);
-                        this->_hPopupReady = CreateMutexW(0, 0, 0);
+                        _InitKillList();
+                        _InitNoKillList();
+
+                        _hPopupReady = CreateMutexW(nullptr, FALSE, nullptr);
                         if (_hPopupReady)
                         {
-                            this->_fCheckNew = 1;
+                            _fCheckNew = TRUE;
                             return 0;
                         }
                     }

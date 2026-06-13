@@ -214,18 +214,19 @@ class ATL_NO_VTABLE CNotificationsDlg :
 public:
     CNotificationsDlg()
     {
-        _pTrayNotify = NULL;
+        _pTrayNotify = nullptr;
         _fItemChanged = FALSE;
-        _hPlaceholderIcon = NULL;
+        _hPlaceholderIcon = nullptr;
         _nIndex = -1;
         _fComboBoxActive = FALSE;
     };
+
     virtual ~CNotificationsDlg()
     {
         if (_pTrayNotify)
         {
             _pTrayNotify->Release();
-            _pTrayNotify = NULL;
+            _pTrayNotify = nullptr;
         }
     };
 
@@ -270,7 +271,7 @@ public:
         LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
     //*** Other ***
-    void ApplyChanges(void);
+    void ApplyChanges();
 
 private:
     HRESULT _AddItem(CNotificationItem& ni, int iIndex);
@@ -293,23 +294,24 @@ private:
 HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
 {
     HIMAGELIST himl = ListView_GetImageList(_hwndListView, LVSIL_SMALL);
-    BOOL fInsert = FALSE;
-    LV_ITEM lvitem = {0};
-    int iImage = -1;
+    LVITEMW lvitem = {};
 
     if (!ni.hIcon)
     {
         if (!_hPlaceholderIcon)
         {
-            _hPlaceholderIcon = (HICON)LoadImage(g_hinstCabinet,
-                MAKEINTRESOURCE(ICO_TRAYPROP_PLACEHOLDER), IMAGE_ICON,
-                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-                LR_LOADMAP3DCOLORS);
+            _hPlaceholderIcon = static_cast<HICON>(LoadImageW(
+                g_hinstCabinet, MAKEINTRESOURCEW(252), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+                GetSystemMetrics(SM_CYSMICON), LR_LOADMAP3DCOLORS));
         }
-
         if (_hPlaceholderIcon)
+        {
             ni.hIcon = CopyIcon(_hPlaceholderIcon);
+        }
     }
+
+    BOOL fInsert;
+    int iImage;
 
     if (iIndex == -1)
     {
@@ -324,24 +326,27 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
         lvitem.iSubItem = 0;
         ListView_GetItem(_hwndListView, &lvitem);
         ImageList_ReplaceIcon(himl, lvitem.iImage, ni.hIcon);
+
         iImage = lvitem.iImage;
         fInsert = FALSE;
     }
 
     if (!ni.pszIconText || ni.pszIconText[0] == 0)
     {
-        TCHAR szTemp[MAX_PATH];
-        if (LoadString(g_hinstCabinet, IDS_NOTITLE, szTemp, ARRAYSIZE(szTemp)))
+        WCHAR szTemp[260];
+        if (LoadStringW(g_hinstCabinet, 733, szTemp, ARRAYSIZE(szTemp)))
+        {
             ni.SetIconText(szTemp);
-        // ni.m_strText.LoadString(IDS_NOTITLE);
+        }
     }
     else
-    // Replace '\n' with ' '
     {
-        LPTSTR pszTemp = NULL;
-        while (NULL != (pszTemp = StrChr(ni.pszIconText, TEXT('\n'))))
+        while (true)
         {
-            *pszTemp = TEXT(' ');
+            WCHAR* pszTemp = StrChrW(ni.pszIconText, L'\n');
+            if (!pszTemp)
+                break;
+            *pszTemp = L' ';
         }
     }
 
@@ -350,7 +355,7 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     lvitem.iSubItem = 0;
     lvitem.pszText = ni.pszIconText;
     lvitem.iImage = iImage;
-    lvitem.iGroupId = (ni.hWnd == NULL) ? GROUPID_PASTITEMS : GROUPID_CURRENTITEMS;
+    lvitem.iGroupId = ni.hWnd != nullptr ? 5 : 6;
     if (fInsert)
         ListView_InsertItem(_hwndListView, &lvitem);
     else
@@ -361,8 +366,8 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     lvitem.iSubItem = 1;
 
     CString str;
-    str.LoadString(IDS_NOTIFY_FIRST + ni.dwUserPref);
-    lvitem.pszText = (LPTSTR)(LPCTSTR)str;
+    str.LoadStringW(ni.dwUserPref + 1002);
+    lvitem.pszText = const_cast<WCHAR*>(static_cast<const WCHAR*>(str));
     ListView_SetItem(_hwndListView, &lvitem);
 
     if (fInsert)
@@ -371,7 +376,7 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     }
     else
     {
-        _saItems[iIndex] = ni;
+        ni = _saItems[iIndex];
     }
 
     return S_OK;
@@ -1019,7 +1024,9 @@ BOOL ClearStartPageSetting(const WCHAR* pszVal)
         HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", pszVal) == ERROR_SUCCESS;
 }
 
-class CCustomizeStartMenuDlg : public CDialogImpl<CCustomizeStartMenuDlg>, IServiceProvider
+class CCustomizeStartMenuDlg
+    : public CDialogImpl<CCustomizeStartMenuDlg>
+    , public IServiceProvider
 {
 public:
     enum { IDD = DLG_PAGE_SMADVANCED };
@@ -1057,11 +1064,10 @@ public:
     //~ End IServiceProvider Interface
 
 private:
-    // dlgproc's for the various pages
     BOOL_PTR AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL AdvancedTabInit(HWND hDlg);
 
-    BOOL OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg); // shared command handler
+    BOOL OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hwndDlg);
     BOOL_PTR OnAdvancedNotify(HWND hwndDlg, NMHDR * pnm);
 
     void _InitMagicEntries();
@@ -1097,7 +1103,7 @@ ULONG CCustomizeStartMenuDlg::AddRef()
 ULONG CCustomizeStartMenuDlg::Release()
 {
     LONG cRef = _cRef;
-    if ( _cRef-- == 1 )
+    if (_cRef-- == 1)
     {
         delete this;
         return 0;
@@ -1108,7 +1114,7 @@ ULONG CCustomizeStartMenuDlg::Release()
 class CStaticDoesCsidlExist : IRegTreeItem
 {
 public:
-    CStaticDoesCsidlExist(int csidl) : _csidl(csidl) {}
+    explicit CStaticDoesCsidlExist(int csidl) : _csidl(csidl) {}
 
     //~ Begin IUnknown Interface
     STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
@@ -1224,14 +1230,44 @@ void ClearUEMData()
 
 void AdjustNumOfProgsOnStartMenu(HWND hwndDlg, UINT Id)
 {
+    int v4;
+    UINT iNewNumOfProgs;
     BOOL fTranslated;
-    int iNumOfProgs = (int)GetDlgItemInt(hwndDlg, Id, &fTranslated, FALSE);
-    int iNewNumOfProgs = min(max(iNumOfProgs, 0), MAX_PROGS_ALLOWED);
-    if((iNumOfProgs != iNewNumOfProgs) || (!fTranslated))
+
+    int iNumOfProgs = GetDlgItemInt(hwndDlg, Id, &fTranslated, 0);
+    if (iNumOfProgs <= 0)
     {
-        SetDlgItemInt(hwndDlg, Id, (UINT)iNewNumOfProgs, FALSE);
-        SendPSMChanged(hwndDlg);
+        v4 = 0;
     }
+    else
+    {
+        v4 = iNumOfProgs;
+    }
+
+    if (v4 >= 30)
+    {
+        iNewNumOfProgs = 30;
+    }
+    else
+    {
+        if (iNumOfProgs > 0)
+        {
+            iNewNumOfProgs = iNumOfProgs;
+            goto LABEL_10;
+        }
+        iNewNumOfProgs = 0;
+    }
+
+    if (iNumOfProgs == iNewNumOfProgs)
+    {
+    LABEL_10:
+        if (fTranslated)
+        {
+            return;
+        }
+    }
+    SetDlgItemInt(hwndDlg, Id, iNewNumOfProgs, 0);
+    SendPSMChanged(hwndDlg);
 }
 
 // NOTE - shared WM_COMMAND handler
@@ -1671,16 +1707,17 @@ BOOL CCustomizeStartMenuDlg::AdvancedTabInit(HWND hDlg)
     return FALSE;
 }
 
-void SetTaskbarIcon(HWND hwnd)
+void SetTaskbarIcon(HWND hDlg)
 {
-    HWND hwndParent = GetParent(hwnd);
+    HWND hwndParent = GetParent(hDlg);
     if (hwndParent)
     {
-        LONG_PTR WindowLongW = GetWindowLongPtr(hwndParent, GWL_EXSTYLE);
-        SetWindowLongPtr(hwndParent, GWL_EXSTYLE, WindowLongW | WS_EX_APPWINDOW);
-        HMODULE hMod = GetModuleHandle(TEXT("SHELL32"));
-        HICON hIcon = LoadIcon(hMod, MAKEINTRESOURCE(40));
-        SendMessage(hwndParent, WM_SETICON, 0, (LPARAM)hIcon);
+        DWORD dwExStyle = GetWindowLongPtrW(hwndParent, GWL_EXSTYLE);
+        SetWindowLongPtrW(hwndParent, GWL_EXSTYLE, dwExStyle | WS_EX_APPWINDOW);
+
+        HMODULE hMod = GetModuleHandleW(L"SHELL32");
+        HICON hIcon = LoadIconW(hMod, MAKEINTRESOURCEW(40));
+        SendMessageW(hwndParent, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIcon));
     }
 }
 
@@ -1918,7 +1955,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
 
             case IDC_NEWSTARTCUSTOMIZE:
             {
-                CCustomizeStartMenuDlg *pps = new CCustomizeStartMenuDlg(hDlg);
+                CCustomizeStartMenuDlg* pps = new CCustomizeStartMenuDlg(hDlg);
                 if (pps)
                 {
                     if (pps->DoModal() == IDOK)

@@ -1,5 +1,4 @@
 #pragma once
-#include "pch.h"
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
@@ -38,10 +37,12 @@ interface DECLSPEC_NOVTABLE IStartButtonSite
     virtual void STDMETHODCALLTYPE OnStartButtonClosing() = 0;
 };
 
-class CStartButton : public IStartButton, public IServiceProvider
+class CStartButton
+    : public IStartButton
+    , public IServiceProvider
 {
 public:
-    CStartButton(IStartButtonSite *pStartButtonSite);
+    CStartButton(IStartButtonSite* pStartButtonSite);
 
     //~ Begin IUnknown Interface
     STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
@@ -101,9 +102,8 @@ public:
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
     HFONT _hStartFont;
-    char padding[4];
-    int _uDown; // start btn pressed?
-    int _fAllowUp; // can we un-press it?
+    UINT _uDown;
+    BOOL _fAllowUp;
     int _nIsOnContextMenu;
     BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;
@@ -129,7 +129,7 @@ private:
     void _ExploreCommonStartMenu(BOOL bExplore);
 
     const WCHAR* _GetCurrentThemeName();
-    
+
     void _HandleDestroy();
     void _OnSettingChanged(UINT a2);
     bool _OnThemeChanged(bool bForceUpdate);

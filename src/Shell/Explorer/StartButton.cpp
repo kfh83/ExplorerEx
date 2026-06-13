@@ -738,7 +738,7 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
             ReleaseDC(_hwndStart, hdc);
         }
     }
-    UpdateLayeredWindow(_hwndStart, 0, &pptDst, 0, 0, 0, 0, 0, 0);
+    UpdateLayeredWindow(_hwndStart, nullptr, &pptDst, nullptr, nullptr, nullptr, 0, nullptr, 0);
 
     if (fCalculated)
         SetWindowRgn(_hwndStart, hRgn, TRUE);
@@ -748,13 +748,13 @@ void CStartButton::ExecRefresh()
 {
     if (_pmbStartMenu)
     {
-        IUnknown_Exec(_pmbStartMenu, &CLSID_MenuBand, MBANDCID_REFRESH, 0, 0, 0);
+        IUnknown_Exec(_pmbStartMenu, &CLSID_MenuBand, MBANDCID_REFRESH, 0, nullptr, nullptr);
     }
     else
     {
         if (_pmpStartPane)
         {
-            IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, 0, 0);
+            IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, nullptr, nullptr);
         }
     }
 }
@@ -763,12 +763,13 @@ void CStartButton::ForceButtonUp()
 {
     if (!_fAllowUp)
     {
+        _fAllowUp = TRUE;
+
         MSG msg;
-        _fAllowUp = 1;
-        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
-        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
-        SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
-        PeekMessage(&msg, _hwndStart, WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK, PM_REMOVE);
+        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        SendMessageW(_hwndStart, BM_SETSTATE, FALSE, 0);
+        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK, PM_REMOVE);
     }
 }
 
@@ -783,19 +784,25 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
     {
         HDC hdc = GetDC(_hwndStart);
         GetThemePartSize(hTheme, hdc, BP_PUSHBUTTON, CBS_UNCHECKEDNORMAL, NULL, TS_TRUE, &_sizeStart);
-        DWORD dwLogPixelsX = GetDeviceCaps(hdc, LOGPIXELSX);
+
+        int iDpi = GetDeviceCaps(hdc, LOGPIXELSX);
 
         // XXX(isabella): Looks to be DPI resolution?
-        if (dwLogPixelsX >= 120)
+        if (iDpi < 120)
         {
-            if (dwLogPixelsX >= 144)
-                _nSomeSize = dwLogPixelsX >= 192 ? 14 : 11;
-            else
-                _nSomeSize = 9;
+            _nSomeSize = 8;
+        }
+        else if (iDpi < 144)
+        {
+            _nSomeSize = 9;
+        }
+        else if (iDpi < 192)
+        {
+            _nSomeSize = 11;
         }
         else
         {
-            _nSomeSize = 8;
+            _nSomeSize = 14;
         }
 
         ReleaseDC(_hwndStart, hdc);
@@ -902,9 +909,6 @@ BOOL CStartButton::IsPopupMenuVisible()
 
 BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 {
-    //*pPoint = { 0, 0 };
-    //return TRUE;
-
     RECT rcTrayWnd;
     GetWindowRect(v_hwndTray, &rcTrayWnd);
 
@@ -1120,7 +1124,7 @@ void CStartButton::_DestroyStartButtonBalloon()
     if (_hwndStartBalloon)
     {
         DestroyWindow(_hwndStartBalloon);
-        _hwndStartBalloon = NULL;
+        _hwndStartBalloon = nullptr;
     }
     KillTimer(_hwndStart, 1);
 }
@@ -1270,7 +1274,7 @@ void CStartButton::_HandleDestroy()
         ImageList_Destroy(_himlStartFlag);
     }
 
-    RemoveProp(_hwndStart, TEXT("StartButtonTag"));
+    RemovePropW(_hwndStart, L"StartButtonTag");
 }
 
 void CStartButton::_OnSettingChanged(UINT a2)
@@ -1305,7 +1309,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     }
     else if (!bForceUpdate)
     {
-        _pszThemeName = NULL;
+        _pszThemeName = nullptr;
         if (!_nSettingsChangeType)
         {
             StartButtonReset();

@@ -287,6 +287,7 @@ protected:
 
     // vista composition related
     BOOL _CanGlassifyTaskbar();
+    BOOL _IsTrayTaskband();
 
     // animation helpers
     void  _UpdateAnimationIndices();

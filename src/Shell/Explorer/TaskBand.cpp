@@ -1268,6 +1268,11 @@ BOOL CTaskBand::_CanGlassifyTaskbar()
     return c_tray.GlassEnabled() && IsCompositionActive();
 }
 
+BOOL CTaskBand::_IsTrayTaskband()
+{
+    return IsChild(v_hwndTray, _hwnd);
+}
+
 //-----------------------------------------------------------------------------
 // DESCRIPTION:  Synchronizes the indexes held by the animating items to the 
 //               true toolbar indexes.
@@ -4648,10 +4653,9 @@ LRESULT CALLBACK CTaskBand::s_TaskbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM w
 	return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
 
-//---------------------------------------------------------------------------
 LRESULT CTaskBand::_HandleCreate()
 {
-    ASSERT(_hwnd);
+    _ASSERTE(_hwnd);
 
     _uCDHardError = RegisterWindowMessage( TEXT(COPYDATA_HARDERROR) );
 
@@ -4672,7 +4676,7 @@ LRESULT CTaskBand::_HandleCreate()
         _tb.SetButtonStructSize();
 
         // initial size
-        SIZE size = {0, 0};
+        SIZE size = { 0, 0 };
         _tb.SetButtonSize(size);
 
         _tb.SetExtendedStyle( TBSTYLE_EX_TRANSPARENTDEADAREA | 
@@ -5565,35 +5569,45 @@ void CTaskBand::_HandleDropDown(int iIndex)
     }
 }
 
+// ExEx-Vista(Allison): Verified.
 LRESULT CTaskBand::_HandleDestroy()
 {
     _UnregisterNotify(_uShortcutInvokeNotify);
 
     RevokeDragDrop(_hwnd);
 
-    RegisterShellHook(_hwnd, FALSE);
+    if (_IsTrayTaskband())
+        RegisterShellHook(_hwnd, FALSE);
+    else
+        DeregisterShellHookWindow(_hwnd);
 
-    _hwnd = NULL;
+    _hwnd = nullptr;
 
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = NULL;
+        _hTheme = nullptr;
+    }
+    if (_hThemeGlomMenu)
+    {
+        CloseThemeData(_hThemeGlomMenu);
+        _hThemeGlomMenu = nullptr;
     }
 
     if (_tb)
     {
-        //ASSERT(_tb.IsWindow());
+        _ASSERTE(_tb.IsWindow()); // 5757
 
-        for (int i = _tb.GetButtonCount() - 1; i >= 0; i--)
+        for (int i = _tb.GetButtonCount() - 1; i >= 0; --i)
         {
-            PTASKITEM pti = _GetItem(i);
+            TASKITEM* pti = _GetItem(i, nullptr, TRUE);
             if (pti)
             {
                 delete pti;
             }
         }
-        CImageList il = CImageList(_tb.GetImageList());
+
+        CImageList il = _tb.GetImageList();
         if (il)
         {
             il.Destroy();
@@ -5751,6 +5765,7 @@ LRESULT CTaskBand::_HandleActivate(HWND hwndActive)
     return TRUE;
 }
 
+// ExEx-Vista(Allison): Verified.
 void CTaskBand::_HandleOtherWindowCreated(HWND hwndCreated)
 {
     if (_AddWindow(hwndCreated))
@@ -5761,37 +5776,35 @@ void CTaskBand::_HandleOtherWindowCreated(HWND hwndCreated)
     }
 }
 
-//---------------------------------------------------------------------------
+// ExEx-Vista(Allison): Verified.
 void CTaskBand::_HandleOtherWindowDestroyed(HWND hwndDestroyed)
 {
-#ifdef DEAD_CODE
-    int i;
-
-    // Look for the destoyed window. 
     int iItemIndex = _FindIndexByHwnd(hwndDestroyed);
     if (iItemIndex >= 0)
     {
-        if (_fAnimate && _IsHorizontal() && 
-            ToolBar_IsVisible(_tb, iItemIndex))
+        _HideThumbnail();
+        KillTimer(_hwnd, 10);
+        _fShowThumbnail = FALSE;
+
+        if (_fAnimate && _IsHorizontal() && ToolBar_IsVisible(_tb, iItemIndex))
         {
-           _AnimateItems(iItemIndex, FALSE, FALSE); 
+            _AnimateItems(iItemIndex, FALSE, FALSE);
         }
         else
         {
-           _DeleteItem(hwndDestroyed, iItemIndex);
+            _DeleteItem(hwndDestroyed, iItemIndex);
+
+            _HideThumbnail();
+            KillTimer(_hwnd, 10);
+            _fShowThumbnail = FALSE;
         }
     }
     else
     {
-        // If the item doesn't exist in the task list, make sure it isn't part
-        // of somebody's fake SDI implementation.  Otherwise Minimize All will
-        // break.
-        for (i = _tb.GetButtonCount() - 1; i >= 0; i--)
+        for (int i = _tb.GetButtonCount() - 1; i >= 0; --i)
         {
-            PTASKITEM pti = _GetItem(i);
-            if ((pti->dwFlags & TIF_EVERACTIVEALT) &&
-                (HWND) GetWindowLongPtr(pti->hwnd, 0) ==
-                       hwndDestroyed)
+            TASKITEM* pti = _GetItem(i, nullptr, TRUE);
+            if (pti && (pti->dwFlags & 8) != 0 && (HWND)GetWindowLongPtrW(pti->hwnd, 0) == hwndDestroyed)
             {
                 goto NoDestroy;
             }
@@ -5801,75 +5814,18 @@ void CTaskBand::_HandleOtherWindowDestroyed(HWND hwndDestroyed)
     _ptray->HandleWindowDestroyed(hwndDestroyed);
 
 NoDestroy:
-    // This might have been a rude app.  Figure out if we've
-    // got one now and have the tray sync up.
-    HWND hwndRudeApp = _FindRudeApp(NULL);
+    HWND hwndRudeApp = _FindRudeApp(nullptr);
     _ptray->HandleFullScreenApp(hwndRudeApp);
-    if (hwndRudeApp)
-    {
-        DWORD dwStyleEx = GetWindowLongPtr(hwndRudeApp, GWL_EXSTYLE);
-        if (!(dwStyleEx & WS_EX_TOPMOST) && !_IsRudeWindowActive(hwndRudeApp))
-        {
-            SwitchToThisWindow(hwndRudeApp, TRUE);
-        }
-    }
 
+    if (hwndRudeApp
+        && (GetWindowLongPtrW(hwndRudeApp, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0 && !_IsRudeWindowActive(hwndRudeApp))
+    {
+        SwitchToThisWindow(hwndRudeApp, TRUE);
+    }
     if (_ptray->_hwndLastActive == hwndDestroyed)
     {
-        if (_ptray->_hwndLastActive == hwndDestroyed)
-            _ptray->_hwndLastActive = NULL;
+        _ptray->_hwndLastActive = nullptr;
     }
-#else
-    bool v3; // zf
-    int i; // edi
-    struct TASKITEM *pti; // eax
-    HWND hwndRudeApp; // edi
-    CTray *ptray; // esi
-    LRESULT iItemIndex; // [esp+Ch] [ebp-4h]
-
-    iItemIndex = CTaskBand::_FindIndexByHwnd(hwndDestroyed);
-    if (iItemIndex < 0)
-    {
-        i = SendMessageW(this->_tb, 0x418u, 0, 0);
-        while (--i >= 0)
-        {
-            pti = CTaskBand::_GetItem(i, 0, 1);
-            if (pti && (pti->dwFlags & 8) != 0 && (HWND)GetWindowLongW(pti->hwnd, 0) == hwndDestroyed)
-                goto NoDestroy;
-        }
-    }
-    else
-    {
-        CTaskBand::_HideThumbnail();
-        KillTimer(_hwnd, 10);
-        v3 = this->_fAnimate == 0;
-        this->_fShowThumbnail = 0;
-        if (v3 || (this->_dwViewMode & 1) != 0 || !ToolBar_IsVisible(this->_tb, iItemIndex))
-        {
-            CTaskBand::_DeleteItem(hwndDestroyed, iItemIndex);
-            CTaskBand::_HideThumbnail();
-            KillTimer(_hwnd, 10u);
-            this->_fShowThumbnail = 0;
-        }
-        else
-        {
-            CTaskBand::_AnimateItems(iItemIndex, 0, 0);
-        }
-    }
-    _ptray->HandleWindowDestroyed(hwndDestroyed);
-NoDestroy:
-    hwndRudeApp = CTaskBand::_FindRudeApp(0);
-    _ptray->HandleFullScreenApp(hwndRudeApp);
-    if (hwndRudeApp && (GetWindowLongW(hwndRudeApp, -20) & 8) == 0 && !_IsRudeWindowActive(hwndRudeApp))
-    {
-        SwitchToThisWindow(hwndRudeApp, 1);
-    }
-
-    if (_ptray->_hwndLastActive == hwndDestroyed)
-    {
-        _ptray->_hwndLastActive = 0;
-    }
-#endif
 }
 
 void CTaskBand::_HandleGetMinRect(HWND hwndShell, POINTS * prc)
