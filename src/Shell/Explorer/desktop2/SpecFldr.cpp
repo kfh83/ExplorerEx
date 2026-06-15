@@ -1983,80 +1983,80 @@ HRESULT SpecialFolderList::_CreateFullListItem(SpecialFolderListItem *pitem)
     return hr;
 }
 
-TASKOWNERID stru_1017900 = { 156425175u, 57748u, 17760u, { 176u, 158u, 222u, 109u, 45u, 227u, 102u, 62u } };
+const CLSID TOID_LoadFullPidlTask = {
+    0x952DBD7, 0xE194, 0x4560, { 0xB0, 0x9E, 0xDE, 0x6D, 0x2D, 0xE3, 0x66, 0x3E }
+};
 
-HRESULT SpecialFolderList::_CreateSimpleListItem(IKnownFolderManager *pkfm, SpecialFolderListItem *pitem, DWORD a4)
+HRESULT SpecialFolderList::_CreateSimpleListItem(IKnownFolderManager* pkfm, SpecialFolderListItem* pitem, DWORD a4)
 {
-    // eax
-    // esi
-    int v7; // eax
-    IRunnableTask *pclfpt; // ebx
-    IKnownFolder *pkf; // [esp+Ch] [ebp-260h] BYREF
-    int v14; // [esp+10h] [ebp-25Ch] SPLIT
-    HICON hIcon; // [esp+10h] [ebp-25Ch] MAPDST SPLIT BYREF
-    KNOWNFOLDER_DEFINITION kfd; // [esp+14h] [ebp-258h] BYREF
-    WCHAR szOutBuf[260]; // [esp+60h] [ebp-20Ch] BYREF
-
-    pkf = 0;
-
+    IKnownFolder* pkf = nullptr;
     HRESULT hr = pkfm->GetFolder(pitem->_psfd->GetFolderID(), &pkf);
-    if (hr >= 0)
+    if (SUCCEEDED(hr))
     {
+        KNOWNFOLDER_DEFINITION kfd;
         hr = pkf->GetFolderDefinition(&kfd);
 
-        WCHAR guidStr[64];
-        StringFromGUID2(pitem->_psfd->GetFolderID(), guidStr, ARRAYSIZE(guidStr));
-        if (kfd.pszIcon == NULL)
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
+        WCHAR szGUID[64];
+        StringFromGUID2(pitem->_psfd->GetFolderID(), szGUID, ARRAYSIZE(szGUID));
+        if (kfd.pszIcon == nullptr)
         {
-            wprintf(L"[DEBUG] s_rgsfdNEW[%d] (KNOWNFOLDERID: %ls) has kfd.pszIcon == NULL\n", a4, guidStr);
+            wprintf(L"[DEBUG] s_rgsfdNEW[%d] (KNOWNFOLDERID: %ls) has kfd.pszIcon == NULL\n", a4, szGUID);
         }
+#endif
 
-        if (hr >= 0)
+        if (SUCCEEDED(hr))
         {
-            if (!kfd.pszLocalizedName)
+            if (kfd.pszLocalizedName)
             {
-                goto LABEL_6;
-            }
-
-            hr = SHLoadIndirectString(kfd.pszLocalizedName, szOutBuf, 260u, 0);
-            if (hr >= 0)
-            {
-                hr = SHStrDup(szOutBuf, &pitem->_pszDispName);
-            LABEL_6:
-                if (hr >= 0)
+                WCHAR szDisplayName[260];
+                hr = SHLoadIndirectString(kfd.pszLocalizedName, szDisplayName, ARRAYSIZE(szDisplayName), nullptr);
+                if (SUCCEEDED(hr))
                 {
-                    v14 = PathParseIconLocationW(kfd.pszIcon);
-                    if (_IsPrivateImageList())
-                    {
-						printf("SpecialFolderList::_CreateSimpleListItem (Private): Loading icon from path: %ls\n", kfd.pszIcon);
-                        hr = SHDefExtractIcon(kfd.pszIcon, v14, 2u, &hIcon, 0, _cxIcon);
-                        if (hr >= 0)
-                        {
-							printf("SpecialFolderList::_CreateSimpleListItem: hIcon: 0x%p\n", hIcon);
-                            int iImageCount = ImageList_GetImageCount(this->_himl);
-                            printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount returned %d images\n", iImageCount);
-                            v7 = ImageList_ReplaceIcon(this->_himl, -1, hIcon);
-                            int iNewImageCount = ImageList_GetImageCount(this->_himl);
-                            printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
-                            pitem->_iImageIndex = v7;
-                            DestroyIcon(hIcon);
-                        }
-                    }
-                    else
-                    {
-                        pitem->_iImageIndex = Shell_GetCachedImageIndexW(kfd.pszIcon, v14, 2u);
-                    }
+                    hr = SHStrDupW(szDisplayName, &pitem->_pszDispName);
                 }
             }
-
-            FreeKnownFolderDefinitionFields(&kfd);
-            if (hr >= 0 && _psched)
+            if (SUCCEEDED(hr))
             {
-                pclfpt = new CLoadFullPidlTask(_hwnd, a4, _cxIcon);
-                if (pclfpt)
+                int iIndex = PathParseIconLocationW(kfd.pszIcon);
+                if (_IsPrivateImageList())
                 {
-                    hr = _psched->AddTask(pclfpt, stru_1017900, (DWORD_PTR)this, 0x10000000);
-                    pclfpt->Release();
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
+                    printf("SpecialFolderList::_CreateSimpleListItem (Private): Loading icon from path: %ls\n", kfd.pszIcon);
+#endif
+
+                    HICON hIcon;
+                    hr = SHDefExtractIconW(kfd.pszIcon, iIndex, GIL_PERINSTANCE, &hIcon, nullptr, _cxIcon);
+                    if (SUCCEEDED(hr))
+                    {
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
+                        printf("SpecialFolderList::_CreateSimpleListItem: hIcon: 0x%p\n", hIcon);
+                        int iImageCount = ImageList_GetImageCount(_himl);
+                        printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount returned %d images\n", iImageCount);
+#endif
+                        int v7 = ImageList_AddIcon(_himl, hIcon);
+#if defined(SPECIAL_FOLDER_LIST_LOGGING) || defined(DEBUG)
+                        int iNewImageCount = ImageList_GetImageCount(_himl);
+                        printf("SpecialFolderList::_CreateSimpleListItem: ImageList_GetImageCount after ReplaceIcon returned %d images\n", iNewImageCount);
+#endif
+                        pitem->_iImageIndex = v7;
+                        DestroyIcon(hIcon);
+                    }
+                }
+                else
+                {
+                    pitem->_iImageIndex = Shell_GetCachedImageIndexW(kfd.pszIcon, iIndex, GIL_FORSHELL);
+                }
+            }
+            FreeKnownFolderDefinitionFields(&kfd);
+
+            if (SUCCEEDED(hr) && _psched)
+            {
+                CLoadFullPidlTask* plfpt = new CLoadFullPidlTask(_hwnd, a4, _cxIcon);
+                if (plfpt)
+                {
+                    hr = _psched->AddTask(plfpt, TOID_LoadFullPidlTask, reinterpret_cast<DWORD_PTR>(this), ITSAT_DEFAULT_PRIORITY);
+                    plfpt->Release();
                 }
             }
         }
