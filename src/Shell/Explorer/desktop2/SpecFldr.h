@@ -131,5 +131,5 @@ private:
 
     int     field_188;
     int     field_18C;
-    int     field_190;
+    int     _iTextWidth;
 };

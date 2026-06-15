@@ -414,7 +414,7 @@ protected:
     void _MessageLoop();
 
     void _DestroyStartMenu();
-    SIZE *_GetStartButtonPadding(SIZE *pSize);
+    SIZE _GetStartButtonPadding();
 
     static DWORD WINAPI RunDlgThreadProc(void* pv);
     DWORD _RunDlgThreadProc(HANDLE hdata);
@@ -604,6 +604,7 @@ protected:
     static BOOL CALLBACK s_EnumTooltipWindowsProc(HWND hwnd, LPARAM lParam);
 
     void _StarterWatermarkCreate(int fCreate);
+    void _StarterWatermarkUpdate();
 
     // protected data
     HWND _hwndNotify;     // clock window
@@ -755,6 +756,8 @@ protected:
 
     UINT _uMsgEnableUserTrackedBalloonTips;
     UINT _uMsgShowOnlyQuickLaunchDeskBand;
+
+    IMessageFilter* _pmf;
 
     // These member variables are used to keep track of downlevel apps
     // which attempt to take over as default web browser

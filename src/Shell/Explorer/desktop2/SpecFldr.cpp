@@ -8,6 +8,7 @@
 #include "hostutil.h"
 #include "cowsite.h"
 #include "idllib.h"
+#include "ResourceStringHelpers.h"
 #include "startmnu.h"
 #include "Win32ErrorHelpers.h"
 
@@ -17,11 +18,12 @@
 #define REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL \
      REGSTR_PATH_EXPLORER TEXT("\\HideDesktopIcons\\NewStartPanel")
 
-HRESULT CRecentShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
-HRESULT CNoSubdirShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
-HRESULT CMyComputerShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
-HRESULT CNoFontsShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
-HRESULT CConnectToShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
+HRESULT CRecentShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc);
+HRESULT CNoSubdirShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc);
+HRESULT CMyComputerShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc);
+HRESULT CNoFontsShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc);
+HRESULT CNoSubMenuShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc);
+
 LPTSTR _Static_LoadString(const struct SpecialFolderDesc *pdesc);
 BOOL ShouldShowWindowsSecurity();
 BOOL ShouldShowOEMLink();
@@ -64,45 +66,6 @@ enum {
     SFD_USEBGTHREAD     = 0x0100,
 };
 
-#pragma region "ResourceStringHelpers"
-
-template <typename T>
-HRESULT TCoTaskMemAllocCb(SIZE_T cb, T **out)
-{
-    T *p = (T *)CoTaskMemAlloc(cb);
-    HRESULT hr = p ? S_OK : E_OUTOFMEMORY;
-    if (SUCCEEDED(hr))
-    {
-        *out = p;
-    }
-    return S_OK;
-}
-
-HRESULT CALLBACK _ResourceStringAllocCopyExCoAlloc(HANDLE hHeap, SIZE_T cb, WCHAR **ppsz)
-{
-    return TCoTaskMemAllocCb(cb, ppsz);
-}
-
-template <typename T>
-HRESULT TResourceStringAllocCopyEx(HMODULE hInstance,
-    UINT uId,
-    WORD wLanguage,
-    HRESULT(CALLBACK *pfnAlloc)(HANDLE, SIZE_T, T *),
-    HANDLE hHeap,
-    T *pt);
-
-HRESULT ResourceStringCoAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz)
-{
-    return TResourceStringAllocCopyEx(hModule, uId, wLanguage, _ResourceStringAllocCopyExCoAlloc, nullptr, ppsz);
-}
-
-HRESULT ResourceStringCoAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
-{
-    return ResourceStringCoAllocCopyEx(hModule, uId, LANG_NEUTRAL, ppsz);
-}
-
-#pragma endregion "ResourceStringHelpers"
-
 HRESULT SHFormatMessageArg(DWORD dwFlags, const void* lpSource, DWORD dwMessageId, DWORD dwLangID, WCHAR* pszBuffer, DWORD cchSize, ...)
 {
     va_list va;
@@ -110,7 +73,7 @@ HRESULT SHFormatMessageArg(DWORD dwFlags, const void* lpSource, DWORD dwMessageI
 
     va_list vaParamList;
     va_copy(vaParamList, va);
-    if (FormatMessage(dwFlags, lpSource, dwMessageId, dwLangID, pszBuffer, cchSize, &vaParamList))
+    if (FormatMessageW(dwFlags, lpSource, dwMessageId, dwLangID, pszBuffer, cchSize, &vaParamList))
     {
         return S_OK;
     }
@@ -288,30 +251,31 @@ public:
 
     void AdjustForSKU(DWORD dwProductType)
     {
-        LSTATUS lStat; // eax
-        DWORD cbData; // [esp+10h] [ebp-28h] SPLIT BYREF
-        // [esp+14h] [ebp-24h]
-        // [esp+18h] [ebp-20h]
-        // [esp+1Ch] [ebp-1Ch]
-        //CPPEH_RECORD ms_exc; // [esp+20h] [ebp-18h]
-        DWORD dwMode; // [esp+40h] [ebp+8h] SPLIT BYREF
+        LSTATUS ValueW;
+        DWORD cbData;
+        DWORD dwMode;
 
         int v6 = 1;
-        BOOL v7 = IsOS(OS_ANYSERVER);
+        BOOL fServer = IsOS(OS_ANYSERVER);
         int v8 = 0;
-        if (dwProductType == PRODUCT_ENTERPRISE || dwProductType == PRODUCT_BUSINESS || dwProductType == PRODUCT_BUSINESS_N || dwProductType == PRODUCT_ENTERPRISE_N)
+
+        if (dwProductType == PRODUCT_ENTERPRISE
+            || dwProductType == PRODUCT_BUSINESS
+            || dwProductType == PRODUCT_BUSINESS_N
+            || dwProductType == PRODUCT_ENTERPRISE_N)
         {
             v6 = 0;
         }
-        if (v7)
+        if (fServer)
         {
             v6 = 0;
         }
+
         if (!memcmp(&this->_kfId, &GUID_NULL, 0x10u))
         {
             if (this->_pszTarget == (const WCHAR*)-1 || !this->_pszTarget)
             {
-                if (this->_pszPath && !StrCmpICW(L"Microsoft.AdministrativeTools", this->_pszPath) && v7)
+                if (this->_pszPath && !StrCmpICW(L"Microsoft.AdministrativeTools", this->_pszPath) && fServer)
                 {
                     this->_uFlags = this->_uFlags & ~3u | 2;
                     goto LABEL_33;
@@ -335,9 +299,11 @@ public:
                 while (dword_108BAD4);
             }*/
 
-            if (!StrCmpICW(L"::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}", this->_pszTarget != (const WCHAR*)-1 ? this->_pszTarget : nullptr))
+            if (!StrCmpICW(
+                L"::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}",
+                this->_pszTarget != (const WCHAR*)-1 ? this->_pszTarget : nullptr))
             {
-                if (v7)
+                if (fServer)
                 {
                     this->_uFlags = this->_uFlags & ~3u | 1;
                     v8 = 1;
@@ -351,19 +317,22 @@ public:
                 goto LABEL_34;
             }
         }
-        else if (!IsEqualGUID(GetFolderID(), FOLDERID_Profile)
-            && !IsEqualGUID(GetFolderID(), FOLDERID_Pictures)
-            && !IsEqualGUID(GetFolderID(), FOLDERID_Music)
-            && !IsEqualGUID(GetFolderID(), FOLDERID_Recent))
+        else
         {
-            if (IsEqualGUID(GetFolderID(), FOLDERID_Games) && !v6)
+            if (!IsEqualGUID(GetFolderID(), FOLDERID_Profile)
+                && !IsEqualGUID(GetFolderID(), FOLDERID_Pictures)
+                && !IsEqualGUID(GetFolderID(), FOLDERID_Music)
+                && !IsEqualGUID(GetFolderID(), FOLDERID_Recent))
             {
-                goto LABEL_15;
+                if (IsEqualGUID(GetFolderID(), FOLDERID_Games) && !v6)
+                {
+                    goto LABEL_15;
+                }
+                goto LABEL_34;
             }
-            goto LABEL_34;
         }
 
-        if (v7)
+        if (fServer)
         {
         LABEL_15:
             this->_uFlags &= ~3u;
@@ -375,25 +344,11 @@ public:
         if (v8)
         {
             cbData = 4;
-            lStat = SHRegGetValueW(
-                HKEY_CURRENT_USER,
-                L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-                this->_pszShow,
-                0x18,
-                nullptr,
-                &dwMode,
-                &cbData);
-            if (lStat == 2 || lStat == 3)
+            ValueW = SHRegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", this->_pszShow, SRRF_RT_DWORD, nullptr, &dwMode, &cbData);
+            if (ValueW == 2 || ValueW == 3)
             {
                 dwMode = this->_uFlags & 3;
-                _SHRegSetValue(
-                    HKEY_CURRENT_USER,
-                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-                    this->_pszShow,
-                    0x18,
-                    4u,
-                    &dwMode,
-                    4u);
+                _SHRegSetValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", this->_pszShow, SRRF_RT_DWORD, 4u, &dwMode, 4u);
             }
         }
     }
@@ -714,7 +669,7 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pguidPolicyForceShow */         nullptr,
         /* _pszShow */                      L"Start_ShowControlPanel",
         /* _uFlags */                       0x1 | 0x8 | 0x80,
-        /* _CreateShellMenuCallback */      nullptr, //CNoSubMenuShellMenuCallback_CreateInstance,
+        /* _CreateShellMenuCallback */      CNoSubMenuShellMenuCallback_CreateInstance,
         /* _pszCustomizeKey */              nullptr,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
@@ -897,8 +852,6 @@ static CMenuDescriptor s_rgsfd[] =
     }
 };
 
-// d:\\longhorn\\Shell\\inc\\idllib.h
-
 //****************************************************************************
 //
 //  SpecialFolderListItem
@@ -1053,7 +1006,7 @@ HRESULT SpecialFolderList::CLoadFullPidlTask::InternalResumeRT()
     CKnownFolderInformation* pkfi = new CKnownFolderInformation();
     if (pkfi)
     {
-        const CMenuDescriptor* pdesc = &s_rgsfd[this->_dwIndex];
+        const CMenuDescriptor* pdesc = &s_rgsfd[_dwIndex];
         if (SUCCEEDED(SHGetKnownFolderIDList(pdesc->GetFolderID(), KF_FLAG_DEFAULT, nullptr, &pkfi->_pidl)))
         {
             IShellFolder* psf;
@@ -1125,13 +1078,14 @@ SpecialFolderList::~SpecialFolderList()
 HRESULT SpecialFolderList::Initialize()
 {
     DWORD dwProductType;
-    if (RtlGetProductInfo(6, 0, 0, 0, &dwProductType) && dwProductType != 0xABCDABCD)
+    if (RtlGetProductInfo(6, 0, 0, 0, &dwProductType) && dwProductType != PRODUCT_UNLICENSED)
     {
         for (int i = 0; i < ARRAYSIZE(s_rgsfd); i++)
         {
             s_rgsfd[i].AdjustForSKU(dwProductType);
         }
     }
+
     return S_OK;
 }
 
@@ -1230,8 +1184,6 @@ BOOL ShouldShowItem(const CMenuDescriptor* pdesc, BOOL bIgnoreRule, DWORD dwMode
     return TRUE;
 }
 
-// #define SPECIAL_FOLDER_LIST_LOGGING
-
 void SpecialFolderList::EnumItems()
 {
     if (!field_188)
@@ -1250,7 +1202,7 @@ void SpecialFolderList::EnumItems()
             Release();
         }
     }
-    field_190 = 0;
+    _iTextWidth = 0;
 
     BOOL fIgnoreSeparators = TRUE;
     int iItems = 0;
@@ -1570,22 +1522,8 @@ HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewNam
 #endif
 }
 
-//
-//  If we get any changenotify, it means that somebody added (or thought about
-//  adding) an item to one of our minkids folders, so we'll have to look to see
-//  if it crossed the minkids threshold.
-//
 void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
 {
-#ifdef DEAD_CODE
-    Invalidate();
-    for (id = 0; id < _cNotify; id++)
-    {
-        UnregisterNotify(id);
-    }
-    _cNotify = 0;
-    PostMessage(_hwnd, SFTBM_REFRESH, TRUE, 0);
-#else
     UINT v6 = 0;
     UINT* p_cNotify = &this->_cNotify;
     bool v8 = this->_cNotify == 0;
@@ -1593,12 +1531,11 @@ void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1
     if (!v8)
     {
         do
-            SFTBarHost::UnregisterNotify(v6++);
+            UnregisterNotify(v6++);
         while (v6 < *p_cNotify);
     }
     *p_cNotify = 0;
     PostMessageW(this->_hwnd, 0x40Au, 1u, 0);
-#endif
 }
 
 
@@ -1894,11 +1831,11 @@ HRESULT SpecialFolderList::OnItemUpdate(PaneItem *p, WPARAM wParam, LPARAM lPara
 
 int SpecialFolderList::GetMinTextWidth()
 {
-    if (!this->field_190)
+    if (!_iTextWidth)
     {
-        field_190 = _CalcMaxTextWith();
+        _iTextWidth = _CalcMaxTextWith();
     }
-    return field_190;
+    return _iTextWidth;
 }
 
 HRESULT DisplayNameOfAsString(IShellFolder *psf, const ITEMIDLIST_RELATIVE *pidl, SHGDNF flags, WCHAR **ppsz)
@@ -2260,282 +2197,63 @@ HRESULT CMyComputerShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc)
     return *ppsmc ? S_OK : E_OUTOFMEMORY;
 }
 
-//****************************************************************************
-//
-//  IShellMenuCallback helper that prevents Fonts from cascading
-//  Used by Control Panel.
-//
-
-class CNoFontsShellMenuCallback
+class CNoSubMenuShellMenuCallback
     : public CUnknown
     , public IShellMenuCallback
 {
 public:
-    // *** IUnknown ***
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj);
-    STDMETHODIMP_(ULONG) AddRef(void) { return CUnknown::AddRef(); }
-    STDMETHODIMP_(ULONG) Release(void) { return CUnknown::Release(); }
+    //~ Begin IUnknown Interface
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
+    STDMETHODIMP_(ULONG) AddRef() override;
+    STDMETHODIMP_(ULONG) Release() override;
+    //~ End IUnknown Interface
 
-    // *** IShellMenuCallback ***
-    STDMETHODIMP CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-private:
-    friend HRESULT CNoFontsShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
+    //~ Begin IShellMenuCallback Interface
+    STDMETHODIMP CallbackSM(SMDATA* psmd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+    //~ End IShellMenuCallback Interface
 };
 
-HRESULT CNoFontsShellMenuCallback::QueryInterface(REFIID riid, void **ppvObj)
+HRESULT CNoSubMenuShellMenuCallback::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =
     {
-        QITABENT(CNoFontsShellMenuCallback, IShellMenuCallback),
-        { 0 },
+        QITABENT(CNoSubMenuShellMenuCallback, IShellMenuCallback),
+        {}
     };
-
     return QISearch(this, qit, riid, ppvObj);
 }
 
-BOOL _IsFontsFolderShortcut(IShellFolder *psf, LPCITEMIDLIST pidl)
+ULONG CNoSubMenuShellMenuCallback::AddRef()
 {
-    TCHAR sz[MAX_PATH];
-    return SUCCEEDED(DisplayNameOfW(psf, pidl, SHGDN_FORPARSING | SHGDN_INFOLDER, sz, ARRAYSIZE(sz))) &&
-           lstrcmpi(sz, TEXT("::{D20EA4E1-3957-11d2-A40B-0C5020524152}")) == 0;
+    return CUnknown::AddRef();
 }
 
-HRESULT CNoFontsShellMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+ULONG CNoSubMenuShellMenuCallback::Release()
+{
+    return CUnknown::Release();
+}
+
+HRESULT CNoSubMenuShellMenuCallback::CallbackSM(SMDATA* psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
-    case SMC_GETSFINFO:
+        case SMC_GETSFINFO:
         {
-            // If this is the Fonts item, then remove the SUBMENU attribute.
-            SMINFO *psminfo = reinterpret_cast<SMINFO *>(lParam);
-            if ((psminfo->dwMask & SMIM_FLAGS) &&
-                (psminfo->dwFlags & SMIF_SUBMENU) &&
-                _IsFontsFolderShortcut(psmd->psf, psmd->pidlItem))
+            SMINFO* psminfo = reinterpret_cast<SMINFO*>(lParam);
+            if ((psminfo->dwMask & SMIM_FLAGS) != 0 && (psminfo->dwFlags & SMIF_SUBMENU) != 0)
             {
                 psminfo->dwFlags &= ~SMIF_SUBMENU;
             }
             return S_OK;
         }
     }
-    return S_FALSE;
-}
-
-HRESULT CNoFontsShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc)
-{
-    *ppsmc = new CNoFontsShellMenuCallback;
-    return *ppsmc ? S_OK : E_OUTOFMEMORY;
-}
-
-//****************************************************************************
-//
-//  IShellMenuCallback helper that filters the "connect to" menu
-//
-
-class CConnectToShellMenuCallback
-    : public CUnknown
-    , public IShellMenuCallback
-    , public CObjectWithSite
-{
-public:
-    // *** IUnknown ***
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj);
-    STDMETHODIMP_(ULONG) AddRef(void) { return CUnknown::AddRef(); }
-    STDMETHODIMP_(ULONG) Release(void) { return CUnknown::Release(); }
-
-    // *** IShellMenuCallback ***
-    STDMETHODIMP CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-    // *** IObjectWithSite ***
-    // inherited from CObjectWithSite
-
-private:
-    HRESULT _OnGetSFInfo(SMDATA *psmd, SMINFO *psminfo);
-    HRESULT _OnGetInfo(SMDATA *psmd, SMINFO *psminfo);
-    HRESULT _OnEndEnum(SMDATA *psmd);
-
-    friend HRESULT CConnectToShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc);
-    BOOL _bAnyRAS;
-};
-
-#define ICOL_NETCONMEDIATYPE       0x101 // from netshell
-#define ICOL_NETCONSUBMEDIATYPE    0x102 // from netshell
-#define ICOL_NETCONSTATUS          0x103 // from netshell
-#define ICOL_NETCONCHARACTERISTICS 0x104 // from netshell
-
-BOOL IsMediaRASType(NETCON_MEDIATYPE ncm)
-{
-    return (ncm == NCM_DIRECT || ncm == NCM_ISDN || ncm == NCM_PHONE || ncm == NCM_TUNNEL || ncm == NCM_PPPOE);  // REVIEW DIRECT correct?
-}
-
-BOOL IsNetConPidlRAS(IShellFolder2 *psfNetCon, LPCITEMIDLIST pidlNetConItem)
-{
-    BOOL bRet = FALSE;
-    SHCOLUMNID scidMediaType, scidSubMediaType, scidCharacteristics;
-    VARIANT v;
-
-    scidMediaType.fmtid       = GUID_NETSHELL_PROPS;
-    scidMediaType.pid         = ICOL_NETCONMEDIATYPE;
-
-    scidSubMediaType.fmtid    = GUID_NETSHELL_PROPS;
-    scidSubMediaType.pid      = ICOL_NETCONSUBMEDIATYPE;
-
-    scidCharacteristics.fmtid = GUID_NETSHELL_PROPS;
-    scidCharacteristics.pid   = ICOL_NETCONCHARACTERISTICS;
-
-    if (SUCCEEDED(psfNetCon->GetDetailsEx(pidlNetConItem, &scidMediaType, &v)))
-    {
-        // Is this a RAS connection
-        if (IsMediaRASType((NETCON_MEDIATYPE)v.lVal))
-        {
-            VariantClear(&v);
-
-            // Make sure it's not incoming
-            if (SUCCEEDED(psfNetCon->GetDetailsEx(pidlNetConItem, &scidCharacteristics, &v)))
-            {
-                if (!(NCCF_INCOMING_ONLY & v.lVal))
-                    bRet = TRUE;
-            }
-        }
-
-        // Is this a Wireless LAN connection?
-        if (NCM_LAN == (NETCON_MEDIATYPE)v.lVal)
-        {
-            VariantClear(&v);
-
-            if (SUCCEEDED(psfNetCon->GetDetailsEx(pidlNetConItem, &scidSubMediaType, &v)))
-            {
-
-                if (NCSM_WIRELESS == (NETCON_SUBMEDIATYPE)v.lVal)
-                    bRet = TRUE;
-            }
-        }
-
-        VariantClear(&v);
-    }
-    return bRet;
-}
-
-HRESULT CConnectToShellMenuCallback::_OnGetInfo(SMDATA *psmd, SMINFO *psminfo)
-{
-    HRESULT hr = S_FALSE;
-    if (psminfo->dwMask & SMIM_ICON)
-    {
-        if (psmd->uId == IDM_OPENCONFOLDER)
-        {
-            LPITEMIDLIST pidl = SHCloneSpecialIDList(NULL, CSIDL_CONNECTIONS, FALSE);
-            if (pidl)
-            {
-                LPCITEMIDLIST pidlObject;
-                IShellFolder *psf;
-                hr = SHBindToParent(pidl, IID_PPV_ARGS(&psf), &pidlObject);
-                if (SUCCEEDED(hr))
-                {
-                    SHMapPIDLToSystemImageListIndex(psf, pidlObject, &psminfo->iIcon);
-                    psminfo->dwFlags |= SMIF_ICON;
-                    psf->Release();
-                }
-                ILFree(pidl);
-            }
-        }
-    }
-    return hr;
-}
-
-HRESULT CConnectToShellMenuCallback::_OnGetSFInfo(SMDATA *psmd, SMINFO *psminfo)
-{
-    IShellFolder2 *psf2;
-    ASSERT(psminfo->dwMask & SMIM_FLAGS);                       // ??
-    psminfo->dwFlags &= ~SMIF_SUBMENU;
-
-    if (SUCCEEDED(psmd->psf->QueryInterface(IID_PPV_ARGS(&psf2))))
-    {
-        if (!IsNetConPidlRAS(psf2, psmd->pidlItem))
-            psminfo->dwFlags |= SMIF_HIDDEN;
-        else
-            _bAnyRAS = TRUE;
-
-        psf2->Release();
-    }
-
-    return S_OK;
-}
-
-HRESULT CConnectToShellMenuCallback::_OnEndEnum(SMDATA *psmd)
-{
-    HRESULT hr = S_FALSE;
-    IShellMenu* psm;
-
-    if (psmd->punk && SUCCEEDED(hr = psmd->punk->QueryInterface(IID_PPV_ARGS(&psm))))
-    {
-        // load the static portion of the connect to menu, and add it to the bottom
-        HMENU hmStatic = LoadMenu(_AtlBaseModule.GetResourceInstance(), MAKEINTRESOURCE(MENU_CONNECTTO));
-
-        if (hmStatic)
-        {
-            // if there aren't any dynamic items (RAS connections), then delete the separator
-            if (!_bAnyRAS)
-                DeleteMenu(hmStatic, 0, MF_BYPOSITION);
-
-            HWND hwnd = NULL;
-            IUnknown *punk;
-            if (SUCCEEDED(IUnknown_QueryService(_punkSite, SID_SMenuPopup, IID_PPV_ARGS(&punk))))
-            {
-                IUnknown_GetWindow(punk, &hwnd);
-                punk->Release();
-            }
-            psm->SetMenu(hmStatic, hwnd, SMSET_NOEMPTY | SMSET_BOTTOM);
-        }
-        psm->Release();
-    }
-    return hr;
-}
-
-
-HRESULT CConnectToShellMenuCallback::QueryInterface(REFIID riid, void **ppvObj)
-{
-    static const QITAB qit[] =
-    {
-        QITABENT(CConnectToShellMenuCallback, IShellMenuCallback),
-        QITABENT(CConnectToShellMenuCallback, IObjectWithSite),
-        { 0 },
-    };
-
-    return QISearch(this, qit, riid, ppvObj);
-}
-
-HRESULT CConnectToShellMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uMsg)
-    {
-    case SMC_GETINFO:
-        return _OnGetInfo(psmd, (SMINFO *)lParam);
-
-    case SMC_GETSFINFO:
-        return _OnGetSFInfo(psmd, (SMINFO *)lParam);
-
-    case SMC_BEGINENUM:
-        _bAnyRAS = FALSE;
-
-    case SMC_ENDENUM:
-        return _OnEndEnum(psmd);
-
-    case SMC_EXEC:
-        switch (psmd->uId)
-        {
-            case IDM_OPENCONFOLDER:
-                ShowFolder(CSIDL_CONNECTIONS);
-                return S_OK;
-        }
-        break;
-    }
 
     return S_FALSE;
 }
 
-HRESULT CConnectToShellMenuCallback_CreateInstance(IShellMenuCallback **ppsmc)
+HRESULT CNoSubMenuShellMenuCallback_CreateInstance(IShellMenuCallback** ppsmc)
 {
-    *ppsmc = new CConnectToShellMenuCallback;
+    *ppsmc = new CNoSubMenuShellMenuCallback;
     return *ppsmc ? S_OK : E_OUTOFMEMORY;
 }
 

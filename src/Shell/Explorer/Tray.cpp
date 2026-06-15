@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include "cocreateinstancehook.h"
 #include "shguidp.h"
 #include "cabinet.h"
@@ -505,8 +506,7 @@ void CTray::_GetSaveStateAndInitRects()
     if (hTheme)
         CloseThemeData(hTheme);
 
-    SIZE sizeStartPadding;
-    _GetStartButtonPadding(&sizeStartPadding);
+    SIZE sizeStartPadding = _GetStartButtonPadding();
 
     SIZE size;
     size.cx = sizeStartPadding.cx + _stb._sizeStart.cx;
@@ -1220,6 +1220,15 @@ void __stdcall RePositionWatermark(HWND hWnd, BOOL bRepaint)
     MoveWindow(hWnd, pt.x, pt.y, g_bmpWidth, g_bmpHeight, bRepaint);
 }
 
+void __stdcall UpdateWatermark()
+{
+    if (g_hwndWatermark)
+    {
+        SetWindowPos(g_hwndWatermark, (HWND)-1, 0, 0, 0, 0, 0x203u);
+        RePositionWatermark(g_hwndWatermark, 1);
+    }
+}
+
 void WINAPI DeleteWatermark(HINSTANCE hInstance)
 {
     if (g_hwndWatermark)
@@ -1406,6 +1415,14 @@ void CTray::_StarterWatermarkCreate(BOOL fCreate)
     else
     {
         _dwWatermarkPolicy = 0;
+    }
+}
+
+void CTray::_StarterWatermarkUpdate()
+{
+    if (_dwWatermarkPolicy == 1)
+    {
+        UpdateWatermark();
     }
 }
 
@@ -1633,15 +1650,8 @@ BOOL CTray::_IsTopmost()
 
 BOOL CTray::_IsPopupMenuVisible()
 {
-#ifdef DEAD_CODE
     HWND hwnd;
-    return ((SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)) && IsWindowVisible(hwnd)) ||
-        (SUCCEEDED(IUnknown_GetWindow(_pmpStartPane, &hwnd)) && IsWindowVisible(hwnd)) ||
-        (SUCCEEDED(IUnknown_GetWindow(_pmpTasks, &hwnd)) && IsWindowVisible(hwnd)));
-#else
-    HWND hwnd;
-    return (_stb.IsPopupMenuVisible()) || (SUCCEEDED(IUnknown_GetWindow(_pmpTasks, &hwnd)) && IsWindowVisible(hwnd));
-#endif
+    return _stb.IsPopupMenuVisible() || (SUCCEEDED(IUnknown_GetWindow(_pmpTasks, &hwnd)) && IsWindowVisible(hwnd));
 }
 
 BOOL CTray::_IsActive()
@@ -1703,6 +1713,7 @@ void CTray::_ResetZorder(BOOL fForce)
     {
         hwndZorder = HWND_NOTOPMOST;
     }
+
     if (hwndZorder != (_IsTopmost() != 0 ? HWND_TOPMOST : HWND_NOTOPMOST) || fForce)
     {
         SetWindowPos(
@@ -1771,6 +1782,7 @@ void CTray::_MessageLoop()
             }
         }
     }
+
     if (_hwnd && IsWindow(_hwnd))
     {
         SendMessageW(_hwnd, WM_ENDSESSION, 1, 0);
@@ -1933,8 +1945,8 @@ void CTray::UpdateStuckRect()
     RECT rcDisplay;
     _GetDisplayRectFromRect(&rcDisplay, &_arStuckRects[_uStuckPlace], MONITOR_DEFAULTTONEAREST);
 
-    SIZE sizeStartPadding;
-    _GetStartButtonPadding(&sizeStartPadding);
+    SIZE sizeStartPadding = _GetStartButtonPadding();
+
     if ((_uStuckPlace & STICK_TOP) != 0)
     {
         int cyStart = sizeStartPadding.cy + _stb._sizeStart.cy;
@@ -1976,7 +1988,7 @@ DWORD CTray::_SyncThreadProc()
 
     InitializeRegistryKeys();
 
-    // CoRegisterMessageFilter(static_cast<IMessageFilter*>(this), &_pmf);
+    CoRegisterMessageFilter(this, &_pmf);
 
     _InitNonzeroGlobals();
     HandleFirstTime();
@@ -2007,7 +2019,7 @@ DWORD CTray::_SyncThreadProc()
         _stb.InitTheme();
         _stb.UpdateStartButton(true);
 
-        // _StarterWatermarkUpdate();
+        _StarterWatermarkUpdate();
         field_679 = true;
 
         // _SignalShellDesktopSwitchEvent();
@@ -2028,22 +2040,21 @@ DWORD CTray::_SyncThreadProc()
     return 0;
 }
 
-// the rest of the thread proc that includes the message loop
 DWORD WINAPI CTray::MainThreadProc(void* pv)
 {
-    CTray* ptray = (CTray*)pv;
+    CTray* ptray = static_cast<CTray*>(pv);
 
-    if (!ptray->_hwnd)
-        return FALSE;
-
-    ptray->_OnCreateAsync();
-
-    PERFSETMARK("ExplorerStartMenuReady");
-
-    ptray->_MessageLoop();
+    if (ptray->_hwnd)
+    {
+        ptray->_OnCreateAsync();
+        // SHTracePerf(&ShellTraceId_Explorer_StartMenu_Ready_Info);
+        ptray->_MessageLoop();
+    }
 
     ClassFactory_Stop();
-    OleUninitialize();      // matched in _SyncThreadProc()
+
+    CoRegisterMessageFilter(ptray->_pmf, nullptr);
+    OleUninitialize();
 
     return FALSE;
 }
@@ -2924,11 +2935,12 @@ BOOL _IsSliverHeight(int cy)
     return (cy < (3 * (g_cyDlgFrame + g_cyBorder)));
 }
 
-SIZE *CTray::_GetStartButtonPadding(SIZE *pSize)
+SIZE CTray::_GetStartButtonPadding()
 {
-    pSize->cx = 2 * (GetSystemMetrics(SM_CXBORDER) + GetSystemMetrics(SM_CXDLGFRAME));
-    pSize->cy = 2 * (GetSystemMetrics(SM_CYDLGFRAME) + GetSystemMetrics(SM_CYBORDER));
-    return pSize;
+    SIZE sizePadding;
+    sizePadding.cx = 2 * (GetSystemMetrics(SM_CXBORDER) + GetSystemMetrics(SM_CXDLGFRAME));
+    sizePadding.cy = 2 * (GetSystemMetrics(SM_CYDLGFRAME) + GetSystemMetrics(SM_CYBORDER));
+    return sizePadding;
 }
 
 int _GetRebarMinHeight(const HWND hwnd)
@@ -2981,8 +2993,7 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
 
     if (!_fSelfSizing)
     {
-        SIZE sizeStart;
-        _GetStartButtonPadding(&sizeStart);
+        SIZE sizeStart = _GetStartButtonPadding();
 
         if (STUCK_HORIZONTAL(uStuckPlace))
         {
@@ -9948,11 +9959,8 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
     }
     }
 #else
-    unsigned int v5; // eax
-    // eax
-    LONG v7; // eax
-    HWND Focus; // edi
-    // [esp-10h] [ebp-38h]
+    UINT idRes; // eax
+    HWND hwndFocus; // edi
     RECT rcView; // [esp+18h] [ebp-10h] BYREF
 
     if (idCmd <= 0x1A5)
@@ -9961,12 +9969,93 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
         {
             DoProperties(4u);
         }
-        else if (idCmd > 0x198)
+        else if (idCmd <= 0x198)
+        {
+            if (idCmd == 408)
+            {
+                ShellExecuteW(_hwnd, nullptr, L"timedate.cpl", nullptr, nullptr, 1);
+            }
+            else if (idCmd <= 0x191)
+            {
+                switch (idCmd)
+                {
+                    case 0x191:
+                        _RunDlg(0);
+                        break;
+                    case 0x130:
+                        PostMessageW(_hwnd, 0x111u, 0x132u, 0);
+                        break;
+                    case 0x131:
+                        SetForegroundWindow(_hwnd);
+                        SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
+                        SendMessageW(_stb._hwndStart, 0xF3u, 0, 0);
+                        break;
+                    case 0x132:
+                        if (GetAsyncKeyState(VK_SHIFT) < 0)
+                        {
+                            UEMFireEvent(&CLSID_ActiveDesktop, 40, 0, 1, -1);
+                            _RefreshStartMenu();
+                        }
+                        if (!_bMainMenuInit && _stb.IsButtonPushed())
+                        {
+                            _SetFocus(_stb._hwndStart);
+                            _ToolbarMenu();
+                        }
+                        break;
+                }
+            }
+            else if (idCmd == 402)
+            {
+                UpdateWindow(_hwnd);
+                Sleep(0x64u);
+                //g_fEndSessionInitiated = 1;
+                _SaveTrayAndDesktop();
+                LogoffWindowsDialog(v_hwndDesktop);
+            }
+            else if (idCmd <= 0x195)
+            {
+                if (_CanTileAnyWindows())
+                {
+                    if (idCmd == 403)
+                    {
+                        idRes = 535;
+                    }
+                    else if ((idCmd == 404))
+                    {
+                        idRes = 536;
+                    }
+                    else
+                    {
+                        idRes = 538;
+                    }
+
+                    SaveWindowPositions(idRes);
+                    _AppBarNotifyAll(nullptr, 3u, nullptr, 1);
+                    if (idCmd == 403)
+                    {
+                        CascadeWindows(GetDesktopWindow(), 0, nullptr, 0, nullptr);
+                    }
+                    else
+                    {
+                        TileWindows(GetDesktopWindow(), idCmd != 404, nullptr, 0, nullptr);
+                    }
+                    _fUndoEnabled = 0;
+
+                    SetTimer(_hwnd, 18, 500, nullptr);
+                    _AppBarNotifyAll(nullptr, 3u, nullptr, 0);
+                }
+            }
+            else if (idCmd == 407)
+            {
+                _RaiseDesktop(g_fDesktopRaised == 0, 1);
+            }
+        }
+        else
         {
             switch (idCmd)
             {
                 case 0x19Au:
-                    SHCreateThread(_EjectThreadProc, nullptr, 1u, nullptr);
+                    SHCreateThread(_EjectThreadProc, nullptr, CTF_INSIST, nullptr);
                     break;
                 case 0x19Bu:
                     _ActivateWindowSwitcher();
@@ -9992,215 +10081,148 @@ void CTray::_Command(UINT idCmd, BOOL fFromNotifArea)
                     break;
             }
         }
-        else if (idCmd == 408)
+        return;
+    }
+
+    if (idCmd <= 0x205)
+    {
+        switch (idCmd)
         {
-            ShellExecuteW(_hwnd, nullptr, L"timedate.cpl", nullptr, nullptr, 1);
+            case 0x205u:
+                if (_AllowLockWorkStation())
+                {
+                    LockWorkStation();
+                }
+                break;
+            case 0x1A8u:
+                // Skipped telemetry LockState_ChangeNotify_Start
+                _SetLockState(2u);
+                // Skipped telemetry LockState_ChangeNotify_Stop
+                return;
+            case 0x1ABu:
+                GetWindowRect(_hwndRebar, &rcView);
+                MapWindowRect(nullptr, _hwnd, &rcView);
+                rcView.bottom -= 18;
+                SetWindowPos(_hwndRebar, nullptr, 0, 0, rcView.right - rcView.left, rcView.bottom - rcView.top, 6u);
+                return;
+            case 0x1ACu:
+                GetWindowRect(_hwndRebar, &rcView);
+                MapWindowRect(nullptr, _hwnd, &rcView);
+                rcView.bottom += 18;
+                SetWindowPos(_hwndRebar, nullptr, 0, 0, rcView.right - rcView.left, rcView.bottom - rcView.top, 6u);
+                return;
         }
-        else if (idCmd > 0x191)
+
+        if (idCmd == 503)
         {
-            if (idCmd == 402)
+            CoInitialize(nullptr);
+
+            IHxHelpPane* pxhp = nullptr;
+            if (SUCCEEDED(CoCreateInstance(CLSID_HxHelpPane, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pxhp))))
+            {
+                CComBSTR sbstrUri(L"mshelp://help/?id=home");
+                if (sbstrUri)
+                {
+                    pxhp->DisplayTask(static_cast<_bstr_t>(sbstrUri));
+                }
+            }
+            CoUninitialize();
+
+            if (pxhp)
+            {
+                pxhp->Release();
+            }
+            return;
+        }
+
+        if (idCmd != 505)
+        {
+            if (idCmd == 506)
             {
                 UpdateWindow(_hwnd);
                 Sleep(0x64u);
                 //g_fEndSessionInitiated = 1;
-                _SaveTrayAndDesktop();
-                LogoffWindowsDialog(v_hwndDesktop);
+                _DoExitWindows(v_hwndDesktop, 0, fFromNotifArea);
+                return;
             }
-            else if (idCmd <= 0x195)
-            {
-                if (_CanTileAnyWindows())
-                {
-                    if (idCmd == 403)
-                        v5 = 535;
-                    else
-                        v5 = 2 * (idCmd != 404) + 536;
-
-                    SaveWindowPositions(v5);
-                    _AppBarNotifyAll(nullptr, 3u, nullptr, 1);
-                    if (idCmd == 403)
-                    {
-                        CascadeWindows(GetDesktopWindow(), 0, nullptr, 0, nullptr);
-                    }
-                    else
-                    {
-                        TileWindows(GetDesktopWindow(), idCmd != 404, nullptr, 0, nullptr);
-                    }
-                    _fUndoEnabled = 0;
-                    SetTimer(_hwnd, 0x12u, 0x1F4u, nullptr);
-                    _AppBarNotifyAll(nullptr, 3u, nullptr, 0);
-                }
-            }
-            else if (idCmd == 407)
-            {
-                _RaiseDesktop(g_fDesktopRaised == 0, 1);
-            }
+            if (idCmd != 510)
+                return;
         }
-        else
+        _ShowFolder(_hwnd, idCmd == 505 ? CSIDL_CONTROLS : CSIDL_PRINTERS, 0);
+        return;
+    }
+
+    if (idCmd == 5000)
+    {
+        UpdateWindow(_hwnd);
+        Sleep(0x64u);
+        DisconnectWindowsDialog(v_hwndDesktop);
+        return;
+    }
+
+    if (idCmd == 5001)
+    {
+        if (SHGetMachineInfo(3))
         {
-            switch (idCmd)
-            {
-            case 0x191u:
-                _RunDlg(0);
-                break;
-            case 0x130u:
-                PostMessageW(_hwnd, 0x111u, 0x132u, 0);
-                break;
-            case 0x131u:
-                SetForegroundWindow(_hwnd);
-                SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
-                SendMessageW(_stb._hwndStart, 0xF3u, 0, 0);
-                break;
-            case 0x132u:
-                if (GetAsyncKeyState(VK_SHIFT) < 0)
-                {
-                    UEMFireEvent(&CLSID_ActiveDesktop, 40, 0, 1, -1);
-                    _RefreshStartMenu();
-                }
-                if (!_bMainMenuInit && _stb.IsButtonPushed())
-                {
-                    _SetFocus(_stb._hwndStart);
-                    _ToolbarMenu();
-                }
-                break;
-            }
+            WinStationSetInformationW(nullptr, -1, WinStationNtSecurity, nullptr, 0);
         }
         return;
     }
 
-    if (idCmd > 0x205)
+    if (idCmd == 41008)
     {
-        if (idCmd == 5000)
-        {
-            UpdateWindow(_hwnd);
-            Sleep(0x64u);
-            DisconnectWindowsDialog(v_hwndDesktop);
-            return;
-        }
-        if (idCmd == 5001)
-        {
-            if (SHGetMachineInfo(3))
-            {
-                WinStationSetInformationW(nullptr, -1, WinStationNtSecurity, nullptr, 0);
-            }
-            return;
-        }
-        if (idCmd == 41008)
-        {
-            MSG msg = { nullptr, WM_KEYDOWN, VK_TAB };
+        MSG msg = { nullptr, WM_KEYDOWN, VK_TAB };
 
-            memset(&rcView, 0, sizeof(rcView));
-            Focus = GetFocus();
-            SendMessageW(this->_hwnd, 0x128u, 0x10002u, 0);
-            fFromNotifArea = GetAsyncKeyState(16) < 0;
-            if (Focus)
+        memset(&rcView, 0, sizeof(rcView));
+        hwndFocus = GetFocus();
+        SendMessageW(_hwnd, 0x128u, 0x10002u, 0);
+        fFromNotifArea = GetAsyncKeyState(16) < 0;
+        if (hwndFocus)
+        {
+            if (IsChildOrHWND(_stb._hwndStart, hwndFocus))
             {
-                if (IsChildOrHWND(this->_stb._hwndStart, Focus))
+                if (!fFromNotifArea)
                 {
-                    if (!fFromNotifArea)
-                    {
-                    LABEL_84:
-                        IUnknown_UIActivateIO(this->_ptbs, 1, &msg);
-                        return;
-                    }
-                LABEL_87:
-                    GiveDesktopFocus();
+                LABEL_84:
+                    IUnknown_UIActivateIO(_ptbs, 1, &msg);
                     return;
                 }
-                if (IsChildOrHWND(this->_hwndNotify, Focus))
-                {
-                    if (fFromNotifArea)
-                    {
-                        goto LABEL_84;
-                    }
-                    goto LABEL_87;
-                }
+            LABEL_87:
+                GiveDesktopFocus();
+                return;
             }
-            if (IUnknown_TranslateAcceleratorIO(this->_ptbs, &msg))
+            if (IsChildOrHWND(_hwndNotify, hwndFocus))
             {
                 if (fFromNotifArea)
-                    _SetFocus(this->_stb._hwndStart);
-                else
-                    _SetFocus(this->_hwndNotify);
+                {
+                    goto LABEL_84;
+                }
+                goto LABEL_87;
             }
-            return;
         }
-
-        switch (idCmd)
+        if (IUnknown_TranslateAcceleratorIO(_ptbs, &msg))
         {
-            case 0xA065u:
-                CTray::_RefreshStartMenu();
-                break;
-            case 0xA085u:
-                CTray::_InvokeSearch();
-                break;
-            case 0xA086u:
-                SHFindComputer(nullptr, nullptr);
-                break;
+            if (fFromNotifArea)
+                _SetFocus(_stb._hwndStart);
+            else
+                _SetFocus(_hwndNotify);
         }
         return;
     }
 
     switch (idCmd)
     {
-        case 0x205u:
-            if (_AllowLockWorkStation())
-            {
-                LockWorkStation();
-            }
+        case 0xA065u:
+            _RefreshStartMenu();
             break;
-        case 0x1A8u:
-            // Skipped telemetry LockState_ChangeNotify_Start
-            _SetLockState(2u);
-            // Skipped telemetry LockState_ChangeNotify_Stop
-            return;
-        case 0x1ABu:
-            GetWindowRect(_hwndRebar, &rcView);
-            MapWindowRect(nullptr, _hwnd, &rcView);
-            rcView.bottom -= 18;
-            SetWindowPos(_hwndRebar, nullptr, 0, 0, rcView.right - rcView.left, rcView.bottom - rcView.top, 6u);
-            return;
-        case 0x1ACu:
-            GetWindowRect(_hwndRebar, &rcView);
-            MapWindowRect(nullptr, _hwnd, &rcView);
-            rcView.bottom += 18;
-            SetWindowPos(_hwndRebar, nullptr, 0, 0, rcView.right - rcView.left, rcView.bottom - rcView.top, 6u);
-            return;
+        case 0xA085u:
+            _InvokeSearch();
+            break;
+        case 0xA086u:
+            SHFindComputer(nullptr, nullptr);
+            break;
     }
 
-    if (idCmd == 503)
-    {
-        CoInitialize(nullptr);
-
-        IHxHelpPane* pxhp = nullptr;
-        if (CoCreateInstance(CLSID_HxHelpPane, nullptr, 0x17u, IID_PPV_ARGS(&pxhp)) >= 0)
-        {
-            CComBSTR bstrUri(TEXT("mshelp://help/?id=home"));
-            if (bstrUri)
-            {
-                pxhp->DisplayTask(bstrUri.m_str);
-            }
-        }
-        CoUninitialize();
-        if (pxhp)
-        {
-            pxhp->Release();
-        }
-        return;
-    }
-    if (idCmd != 505)
-    {
-        if (idCmd == 506)
-        {
-            UpdateWindow(_hwnd);
-            Sleep(0x64u);
-            //g_fEndSessionInitiated = 1;
-            _DoExitWindows(v_hwndDesktop, 0, fFromNotifArea);
-            return;
-        }
-        if (idCmd != 510)
-            return;
-    }
-    _ShowFolder(_hwnd, idCmd == 505 ? CSIDL_CONTROLS : CSIDL_PRINTERS, 0);
 #endif
 }
 

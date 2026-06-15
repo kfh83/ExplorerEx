@@ -3367,6 +3367,27 @@ HRESULT CPersonalProgramsMenuCallback::QueryInterface(REFIID riid, void** ppvObj
     return QISearch(this, qit, riid, ppvObj);
 }
 
+DEFINE_PROPERTYKEY(PKEY_AppUserModel_HostEnvironment, 0x9F4C2855, 0x9F79, 0x4B39, 0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3, 14);
+
+bool IsImmersiveShortcut(IShellItem* psi)
+{
+    bool fImmersive = false;
+
+    CComPtr<IShellItem2> spsi2;
+    HRESULT hr = psi->QueryInterface(IID_PPV_ARGS(&spsi2));
+    if (SUCCEEDED(hr))
+    {
+        ULONG uHostEnv;
+        hr = spsi2->GetUInt32(PKEY_AppUserModel_HostEnvironment, &uHostEnv);
+        if (SUCCEEDED(hr))
+        {
+            fImmersive = (uHostEnv == 1 || uHostEnv == 2);
+        }
+    }
+
+    return fImmersive;
+}
+
 HRESULT CPersonalProgramsMenuCallback::IncludeItem(IShellItem* psi)
 {
     VARIANT vt = {};
@@ -3384,7 +3405,7 @@ HRESULT CPersonalProgramsMenuCallback::IncludeItem(IShellItem* psi)
         hr = ppai->GetParentAndItem(nullptr, &psf, &pidl);
         if (SUCCEEDED(hr))
         {
-            if (_FilterPidl(vt.boolVal == VARIANT_TRUE ? VARIANT_FALSE : VARIANT_TRUE, psf, pidl) == S_OK)
+            if (_FilterPidl(vt.boolVal == VARIANT_TRUE ? VARIANT_FALSE : VARIANT_TRUE, psf, pidl) == S_OK || IsImmersiveShortcut(psi))
             {
                 hr = S_FALSE;
             }

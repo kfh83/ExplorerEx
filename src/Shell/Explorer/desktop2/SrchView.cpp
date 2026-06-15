@@ -4,6 +4,7 @@
 
 #include "cabinet.h"
 #include "propvarutil.h"
+#include "ResourceStringHelpers.h"
 #include "SFTHost.h"
 #include "Win32ErrorHelpers.h"
 
@@ -30,7 +31,7 @@ CSearchOpenView::CSearchOpenView()
 	field_AC = -2;
 	dword9C = -1;
 	cbData = sizeof(DWORD);
-	SHGetValue(HKEY_CURRENT_USER, DV2_REGPATH, L"StartMenuIndexed", 0, &field_AC, &cbData);
+	SHGetValue(HKEY_CURRENT_USER, DV2_REGPATH, L"StartMenuIndexed", nullptr, &field_AC, &cbData);
 
 	ASSERT(_pszGroupPrograms == NULL);			// 263
 	ASSERT(_pszGroupInternet == NULL);			// 264
@@ -318,7 +319,7 @@ HRESULT CSearchOpenView::OnNavigationComplete(PCIDLIST_ABSOLUTE pidlFolder)
 
 	if (_ppci && _viewMode == 1)
 	{
-		_FilterPathCompleteView(_ppci->_psz1);
+		_FilterPathCompleteView(_ppci->_spsz1.get());
 	}
 	return S_OK;
 }
@@ -804,146 +805,6 @@ HRESULT CSearchOpenView::GetViewFlags(BROWSER_VIEW_FLAGS *pbvf)
 	return S_OK;
 }
 
-#pragma region Resource String Helpers
-
-// Thanks to ep_taskbar by @amrsatrio for these functions
-
-HRESULT ResourceStringFindAndSizeEx(HMODULE hInstance, UINT uId, WORD wLanguage, const WCHAR **ppch, WORD *plen)
-{
-	HRESULT hr;
-
-	HRSRC hRsrc = FindResourceEx(hInstance, RT_STRING, MAKEINTRESOURCE((uId >> 4) + 1), wLanguage);
-	if (hRsrc)
-	{
-		HGLOBAL hgRsrc = LoadResource(hInstance, hRsrc);
-		if (hgRsrc)
-		{
-			WORD *pRsrc = (WORD *)LockResource(hgRsrc);
-			if (pRsrc)
-			{
-				for (UINT i = uId & 0xF; i; --i)
-					pRsrc += *pRsrc + 1;
-
-				if (ppch)
-				{
-					WORD len = *pRsrc;
-					*ppch = len ? (const WCHAR*)pRsrc + 1 : nullptr;
-					*plen = len;
-				}
-				else if (plen)
-				{
-					*plen = *pRsrc;
-				}
-
-				hr = S_OK;
-			}
-			else
-			{
-				hr = E_FAIL;
-			}
-		}
-		else
-		{
-			hr = HRESULTFromLastErrorError();
-		}
-	}
-	else
-	{
-		hr = HRESULTFromLastErrorError();
-	}
-
-	return hr;
-}
-
-template <typename T>
-HRESULT TResourceStringAllocCopyEx(
-	HMODULE hInstance,
-	UINT uId,
-	WORD wLanguage,
-	HRESULT(CALLBACK *pfnAlloc)(HANDLE, SIZE_T, T *),
-	HANDLE hHeap,
-	T *pt)
-{
-	*pt = nullptr;
-
-	const WCHAR *rgch;
-	WORD len;
-	HRESULT hr = ResourceStringFindAndSizeEx(hInstance, uId, wLanguage, &rgch, &len);
-	if (SUCCEEDED(hr))
-	{
-		SIZE_T elemSize = sizeof(*pt);
-
-		SIZE_T cb = elemSize * len;
-		T t;
-		hr = pfnAlloc(hHeap, cb + elemSize, &t);
-		if (SUCCEEDED(hr))
-		{
-			memcpy(t, rgch, cb);
-			t[cb / elemSize] = 0;
-			*pt = t;
-		}
-	}
-
-	return hr;
-}
-
-int SysAllocCb(SIZE_T cb, WCHAR **ppsz)
-{
-	if (cb < sizeof(WCHAR))
-		return E_INVALIDARG;
-	WCHAR *psz = SysAllocStringByteLen(nullptr, (UINT)(cb - sizeof(WCHAR)));
-	HRESULT hr = psz ? S_OK : E_OUTOFMEMORY;
-	if (SUCCEEDED(hr))
-	{
-		*ppsz = psz;
-	}
-	return hr;
-}
-
-HRESULT CALLBACK ResourceStringAllocCopyExSysAlloc(HANDLE hHeap, SIZE_T cb, WCHAR **ppsz)
-{
-	return SysAllocCb(cb, ppsz);
-}
-
-HRESULT ResourceStringSysAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz)
-{
-	return TResourceStringAllocCopyEx(hModule, uId, wLanguage, ResourceStringAllocCopyExSysAlloc, nullptr, ppsz);
-}
-
-HRESULT ResourceStringSysAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
-{
-	return ResourceStringSysAllocCopyEx(hModule, uId, LANG_NEUTRAL, ppsz);
-}
-
-template <typename T>
-HRESULT TLocalAllocArrayEx(UINT uFlags, SIZE_T uBytes, T **out)
-{
-	T *p = (T *)LocalAlloc(uFlags, uBytes);
-	HRESULT hr = p ? S_OK : E_OUTOFMEMORY;
-	if (SUCCEEDED(hr))
-	{
-		*out = p;
-	}
-	return hr;
-}
-
-HRESULT CALLBACK _ResourceStringAllocCopyExLocalAlloc(HANDLE hHeap, SIZE_T cb, WCHAR **ppsz)
-{
-	return TLocalAllocArrayEx(0, cb, (BYTE **)ppsz);
-}
-
-HRESULT ResourceStringLocalAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz)
-{
-	return TResourceStringAllocCopyEx(hModule, uId, wLanguage, _ResourceStringAllocCopyExLocalAlloc, nullptr, ppsz);
-}
-
-HRESULT ResourceStringLocalAllocCopy(HINSTANCE hModule, UINT uId, WCHAR **ppsz)
-{
-	return ResourceStringLocalAllocCopyEx(hModule, uId, LANG_NEUTRAL, ppsz);
-}
-
-#pragma endregion
-
 enum SCHEDULERFLAGS
 {
 	SCHF_DEFAULT = 0x0,
@@ -963,35 +824,16 @@ IShellTaskSchedulerSettings : IUnknown
 	virtual HRESULT STDMETHODCALLTYPE GetFlags(SCHEDULERFLAGS *) = 0;
 };
 
-// d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp
-LSTATUS __stdcall SHRegGetDWORDW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, DWORD *pdwData)
+// shell\lib\cul\registryhelpers.cpp
+STDAPI SHRegGetDWORDW(HKEY hkey, const WCHAR* pwszSubKey, const WCHAR* pwszValue, DWORD* pdwData)
 {
-	DWORD pcbData; // [esp+8h] [ebp-4h] BYREF
+	_ASSERT(hkey);
+	_ASSERT(pdwData);
 
-	//if (!hkey)
-	//{
-	//	CULAssertOutputDebugString((int)L"d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp", 155, (int)L"hkey");
-	//	__debugbreak();
-	//}
-	// 
-	//if (!pdwData)
-	//{
-	//	CULAssertOutputDebugString((int)L"d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp", 156, (int)L"pdwData");
-	//	__debugbreak();
-	//}
-	pcbData = 4;
-	LSTATUS lr = SHRegGetValueW(hkey, pszSubKey, pszValue, 16, 0, pdwData, &pcbData);
-	//if (lr == ERROR_MORE_DATA)
-	//{
-	//	CULAssertOutputDebugString(
-	//		(int)L"d:\\win7m2\\shell\\lib\\cul\\registryhelpers.cpp",
-	//		161,
-	//		(int)L"lr != ERROR_MORE_DATA");
-	//	__debugbreak();
-	//}
-	if (lr > 0)
-		return (unsigned __int16)lr | 0x80070000;
-	return lr;
+	DWORD cbData = sizeof(DWORD);
+	LSTATUS lr = SHRegGetValueW(hkey, pwszSubKey, pwszValue, RRF_RT_REG_DWORD, nullptr, pdwData, &cbData);
+	_ASSERT(lr != ERROR_MORE_DATA);
+	return HRESULT_FROM_WIN32(lr);
 }
 
 #define HYBRID_CODE
@@ -1076,19 +918,21 @@ HRESULT CSearchOpenView::Initialize(HWND hwnd)
 	return hr;
 }
 
-TASKOWNERID stru_1015F74 = { 228903948u, 12084u, 19201u, { 162u, 153u, 110u, 250u, 217u, 237u, 114u, 28u } };
+const CLSID TOID_PathCompletion = {
+	228903948u, 12084u, 19201u, { 162u, 153u, 110u, 250u, 217u, 237u, 114u, 28u }
+};
 
 HRESULT CSearchOpenView::AddPathCompletionTask(LPCWSTR pszPath)
 {
 	LPWSTR v7;
-	HRESULT hr = SHStrDup(pszPath, &v7);
+	HRESULT hr = SHStrDupW(pszPath, &v7);
 	if (hr >= 0)
 	{
-		CPathCompletionTask *pct = new CPathCompletionTask(_punkSite, _peb, _hwnd, v7);
+		CPathCompletionTask* pct = new CPathCompletionTask(_punkSite, _peb, _hwnd, v7);
 		if (pct)
 		{
-			_psched->RemoveTasks(stru_1015F74, 0, 0);
-			hr = _psched->AddTask(pct, stru_1015F74, 0, 268435712);
+			_psched->RemoveTasks(TOID_PathCompletion, 0, FALSE);
+			hr = _psched->AddTask(pct, TOID_PathCompletion, 0, 0x10000100);
 			pct->Release();
 		}
 		else
@@ -1221,18 +1065,24 @@ LRESULT CSearchOpenView::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 LRESULT CSearchOpenView::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	LPNMHDR pnm = reinterpret_cast<LPNMHDR>(lParam);
+	NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
 	if (pnm)
 	{
 		switch (pnm->code)
 		{
-			case 201u:
+			case 201:
+			{
 				HandleApplyRegion(hwnd, _hTheme, (SMNMAPPLYREGION*)pnm, SPP_SEARCHVIEW, 0);
 				break;
-			case 215u:
+			}
+			case 215:
+			{
 				return _OnSMNFindItem((SMNDIALOGMESSAGE*)pnm);
-			case 223u:
+			}
+			case 223:
+			{
 				return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
+			}
 			case NM_KILLFOCUS:
 			{
 				IShellView2* psv2;
@@ -1245,7 +1095,8 @@ LRESULT CSearchOpenView::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			}
 		}
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
+	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CSearchOpenView::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1416,16 +1267,16 @@ LRESULT CSearchOpenView::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 				{
 					v4 |= 0x10;
 				}
-			
+
 				_pFolderView->SelectAndPositionItems(1, (LPCITEMIDLIST *)&pidl, 0, v4 | 0x8);
 				ILFree(pidl);
-			
+
 				int v5 = pdm->flags & 0xF;
 				if (v5 == 5 || v5 == 3 || v5 == 4)
 				{
 					_UpdateOpenBoxText();
 				}
-				pdm->flags = pdm->flags & 0xFFFBF6FF | 0x40000;	
+				pdm->flags = pdm->flags & 0xFFFBF6FF | 0x40000;
 			}
 		}
 	}
@@ -1447,7 +1298,7 @@ LRESULT CSearchOpenView::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 					pdm->pt.x = (RECTWIDTH(rc)) / 2;
 					pdm->pt.y = (RECTHEIGHT(rc)) / 2;
 				}
-				phtv->Release();	
+				phtv->Release();
 			}
 		}
 	}
@@ -1975,7 +1826,8 @@ HRESULT CSearchOpenView::_CreateExplorerBrowser(HWND hwnd)
 	HRESULT hr = CoCreateInstance(CLSID_ExplorerBrowser, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_peb));
 	if (SUCCEEDED(hr))
 	{
-		IUnknown_SetSite(_peb, SAFECAST(this, IServiceProvider *));
+		IUnknown_SetSite(_peb, static_cast<IServiceProvider*>(this));
+
 		hr = _peb->SetOptions(EBO_NOWRAPPERWINDOW);
 		if (SUCCEEDED(hr))
 		{
@@ -1992,10 +1844,9 @@ HRESULT CSearchOpenView::_CreateExplorerBrowser(HWND hwnd)
 			}
 		}
 	}
+
 	return hr;
 }
-
-HRESULT ResourceStringCoAllocCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR **ppsz);
 
 HRESULT CSearchOpenView::_FilterView(IFilterView* pfv)
 {
@@ -2007,7 +1858,7 @@ HRESULT CSearchOpenView::_FilterView(IFilterView* pfv)
 		if (SUCCEEDED(hr))
 		{
 			WCHAR* pszText;
-			if (hr == S_FALSE && SUCCEEDED(ResourceStringCoAllocCopyEx(g_hinstCabinet, 7050, 0, &pszText)))
+			if (hr == S_FALSE && SUCCEEDED(ResourceStringCoAllocCopy(g_hinstCabinet, 7050, &pszText)))
 			{
 				_peb->SetEmptyText(pszText);
 				CoTaskMemFree(pszText);
@@ -2366,7 +2217,7 @@ HRESULT CSearchOpenView::_InitPathCompletePidlAutoList(const WCHAR* pszPath, PID
 							ali.pc = pc;
 							ali.pvl = pvl;
 							ali.iIconSize = 16;
-							ResourceStringCoAllocCopyEx(g_hinstCabinet, 8246, 0, &ali.pszDisplayName);
+							ResourceStringCoAllocCopy(g_hinstCabinet, 8246, &ali.pszDisplayName);
 
 							IAutoListDescription* pald;
 							hr = psilf->CreateAutoList(&ali, IID_PPV_ARGS(&pald));
@@ -2512,7 +2363,7 @@ HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem** ppsi)
 					ali.dwFolderFlags = _GetFolderFlags();
 					ali.pscope = pscope;
 					ali.pvl = pvl;
-					ResourceStringCoAllocCopyEx(g_hinstCabinet, 8246, 0, &ali.pszDisplayName);
+					ResourceStringCoAllocCopy(g_hinstCabinet, 8246, &ali.pszDisplayName);
 					if (hr >= 0)
 					{
 						ISearchIDListFactory* psilf = nullptr;
@@ -3650,7 +3501,7 @@ void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo* ppciNew)
 	BOOL v3 = 0;
 	if (ppciNew && _ppci)
 	{
-		v3 = StrCmpIW(_ppci->_psz2, ppciNew->_psz2) == 0;
+		v3 = StrCmpIW(_ppci->_spsz2.get(), ppciNew->_spsz2.get()) == 0;
 	}
 	if (_ppci)
 	{
@@ -3662,12 +3513,12 @@ void CSearchOpenView::_PathCompleteUpdate(CPathCompleteInfo* ppciNew)
 
 	if (v3)
 	{
-		_FilterPathCompleteView(_ppci->_psz1);
+		_FilterPathCompleteView(_ppci->_spsz1.get());
 	}
 	else
 	{
 		ITEMIDLIST_ABSOLUTE* pidl;
-		if (SUCCEEDED(_InitPathCompletePidlAutoList(_ppci->_psz2, &pidl)))
+		if (SUCCEEDED(_InitPathCompletePidlAutoList(_ppci->_spsz2.get(), &pidl)))
 		{
 			_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
 			_peb->BrowseToIDList(pidl, SBSP_WRITENOHISTORY);
@@ -3682,7 +3533,7 @@ void CSearchOpenView::_ReleaseExplorerBrowser()
 	{
 		_peb->Unadvise(_dwCookie);
 		_peb->Destroy();
-		IUnknown_SetSite(_peb, NULL);
+		IUnknown_SetSite(_peb, nullptr);
 	}
 	IUnknown_SafeReleaseAndNullPtr(&_peb);
 }
@@ -3691,8 +3542,8 @@ void RevokeFromGIT(DWORD dwCookie)
 {
 	if (dwCookie)
 	{
-		IGlobalInterfaceTable *pgit;
-		if (SUCCEEDED(CoCreateInstance(CLSID_StdGlobalInterfaceTable, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pgit))))
+		IGlobalInterfaceTable* pgit;
+		if (SUCCEEDED(CoCreateInstance(CLSID_StdGlobalInterfaceTable, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pgit))))
 		{
 			pgit->RevokeInterfaceFromGlobal(dwCookie);
 			pgit->Release();
@@ -3718,14 +3569,14 @@ void CSearchOpenView::_SizeExplorerBrowser(int cx, int cy)
 	rc.bottom = cy - _margins.cyBottomHeight;
 	_peb->SetRect(nullptr, rc);
 
-	IColumnManager *pcm;
+	IColumnManager* pcm;
 	if (_pFolderView && SUCCEEDED(_pFolderView->QueryInterface(IID_PPV_ARGS(&pcm))))
 	{
-		CM_COLUMNINFO cmci = {0};
+		CM_COLUMNINFO cmci = {};
 		cmci.cbSize = sizeof(cmci);
 		cmci.dwState = CM_STATE_NONE;
 		cmci.dwMask = CM_MASK_WIDTH;
-		cmci.uWidth = (UINT)RECTWIDTH(rc);
+		cmci.uWidth = static_cast<UINT>(RECTWIDTH(rc));
 		if (field_B0 != 0) // EXEX-Vista(allison): TODO: Check why field_B0 is never true
 		{
 			cmci.uWidth -= GetSystemMetrics(SM_CXVSCROLL);
@@ -3774,40 +3625,12 @@ void CSearchOpenView::_SwitchToMode(VIEWMODE viewModeNew, int a3)
 	_viewMode = viewModeNew;
 }
 
-// Thanks to ep_taskbar by @amrsatrio for these functions
-#pragma region Resource String Copy Helpers
-
-HRESULT ResourceStringCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR *ppsz, UINT cch)
-{
-	const WCHAR *pch;
-	WORD len;
-	HRESULT hr = ResourceStringFindAndSizeEx(hModule, uId, wLanguage, &pch, &len);
-	if (SUCCEEDED(hr))
-	{
-		if (len < cch)
-		{
-			memcpy(ppsz, pch, sizeof(WCHAR) * len);
-			ppsz[len] = 0;
-		}
-		else
-		{
-			hr = HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
-		}
-	}
-	return hr;
-}
-
-HRESULT ResourceStringCchCopyEx(HMODULE hModule, UINT uId, WORD wLanguage, WCHAR *ppsz, UINT cch)
-{
-	return ResourceStringCopyEx(hModule, uId, wLanguage, ppsz, cch);
-}
-
-#pragma endregion
-
 void CSearchOpenView::_UpdateIndexState(int iState)
 {
 	if (iState)
+	{
 		field_AC = 1;
+	}
 
 	WCHAR szText[255];
 	ResourceStringCchCopyEx(g_hinstCabinet, iState == 0 ? 7027 : 7028, LANG_NEUTRAL, szText, ARRAYSIZE(szText));

@@ -113,25 +113,13 @@ IStartMenuQueryCache : IUnknown
 
 #pragma endregion
 
+#include <wil/resource.h>
+
 class CPathCompleteInfo
 {
 public:
-	CPathCompleteInfo()
-		: _psz1(nullptr)
-		, _psz2(nullptr)
-	{
-	}
-
-	~CPathCompleteInfo()
-	{
-		_psz2 = nullptr;
-		CoTaskMemFree(_psz2);
-		_psz1 = nullptr;
-		CoTaskMemFree(_psz1);
-	}
-
-	LPWSTR _psz1;
-	LPWSTR _psz2;
+	wil::unique_cotaskmem_string _spsz1;
+	wil::unique_cotaskmem_string _spsz2;
 };
 
 #include "RunTask.h"
@@ -245,9 +233,9 @@ public:
 										{
 											if (v14->GetIDList(&pidl) >= 0)
 											{
-												if (SHStrDup(v5, &ppci->_psz1) >= 0)
+												if (SHStrDup(v5, &ppci->_spsz1) >= 0)
 												{
-													if (SHStrDup(pszStr, &ppci->_psz2) >= 0 && (CRunnableTask::ShouldContinue() & 0x80000000) == 0)
+													if (SHStrDup(pszStr, &ppci->_spsz2) >= 0 && (CRunnableTask::ShouldContinue() & 0x80000000) == 0)
 													{
 														PostMessageW(_hwnd, 0x401u, (WPARAM)ppci, (LPARAM)pidl);
 														ppci = 0;
@@ -276,7 +264,7 @@ public:
 					ppv->Release();
 					return hr;
 				}
-				if (SHStrDupW(this->_pszPath, &ppci->_psz2) >= 0)
+				if (SHStrDupW(this->_pszPath, &ppci->_spsz2) >= 0)
 				{
 					PostMessageW(this->_hwnd, 0x401u, (WPARAM)ppci, 0);
 					ppci = 0;
