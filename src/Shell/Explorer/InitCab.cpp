@@ -820,40 +820,28 @@ void _RunWelcome()
     {
         PostMessage(v_hwndTray, RegisterWindowMessage(TEXT("Welcome Finished")), 0, 0);
     }
-
 }
 
-// On NT, run the TASKMAN= line from the registry
-void _AutoRunTaskMan(void)
+void _AutoRunTaskMan()
 {
-    HKEY hkeyWinLogon;
-
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"),
-                     0, KEY_READ, &hkeyWinLogon) == ERROR_SUCCESS)
+    WCHAR szBuffer[260];
+    DWORD cbBuffer = sizeof(szBuffer);
+    if (SHGetValueW(
+        HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Taskman", nullptr,
+        szBuffer, &cbBuffer) == ERROR_SUCCESS && szBuffer[0])
     {
-        TCHAR szBuffer[MAX_PATH];
-        DWORD cbBuffer = sizeof(szBuffer);
-        if (RegQueryValueEx(hkeyWinLogon, TEXT("Taskman"), 0, NULL, (LPBYTE)szBuffer, &cbBuffer) == ERROR_SUCCESS)
-        {
-            if (szBuffer[0])
-            {
-                PROCESS_INFORMATION pi;
-                STARTUPINFO startup = {0};
-                startup.cb = sizeof(startup);
-                startup.wShowWindow = SW_SHOWNORMAL;
+        PROCESS_INFORMATION pi;
 
-                if (CreateProcess(NULL, szBuffer, NULL, NULL, FALSE, 0,
-                                  NULL, NULL, &startup, &pi))
-                {
-                    CloseHandle(pi.hProcess);
-                    CloseHandle(pi.hThread);
-                }
-            }
+        STARTUPINFOW startup = {};
+        startup.wShowWindow = SW_SHOWNORMAL;
+        startup.cb = sizeof(startup);
+        if (CreateProcessW(nullptr, szBuffer, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &pi))
+        {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
         }
-        RegCloseKey(hkeyWinLogon);
     }
 }
-
 
 // try to create this by sending a wm_command directly to
 // the desktop.
@@ -1834,13 +1822,6 @@ public:
     {
         SHCreateThreadRef(&_cRef, &_punk);
         SHSetThreadRef(_punk);
-
-        static void (*fSetProcessReference)(IUnknown* punk) = reinterpret_cast<decltype(fSetProcessReference)>(
-            GetProcAddress(LoadLibraryW(L"api-ms-win-shcore-thread-l1-1-0"), "SetProcessReference"));
-        if (fSetProcessReference)
-        {
-            fSetProcessReference(_punk);
-        }
     }
 
     template <typename TLambda>
@@ -1878,6 +1859,19 @@ public:
 protected:
     LONG _cRef;
     IUnknown* _punk;
+};
+
+class CProcessAndThreadRefHost : public CThreadRefHost
+{
+public:
+    CProcessAndThreadRefHost()
+    {
+        static void (*fSetProcessReference)(IUnknown* punk) = reinterpret_cast<decltype(fSetProcessReference)>(GetProcAddress(LoadLibraryW(L"SHCore.dll"), "SetProcessReference"));
+        if (fSetProcessReference)
+        {
+            fSetProcessReference(_punk);
+        }
+    }
 };
 
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
@@ -2028,7 +2022,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             // Also, the PeekMsg() will cause us to set the WaitForInputIdle()
             // event so we better be ready to do all dde.
 
-            PeekMessage(&msg, NULL, WM_QUIT, WM_QUIT, PM_NOREMOVE);
+            PeekMessage(&msg, nullptr, WM_QUIT, WM_QUIT, PM_NOREMOVE);
 
             // We do this here, since FileIconInit will call SHCoInitialize anyway
             HRESULT hrInit = OleInitializeWaitForSCM();
@@ -2094,7 +2088,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             }
 
             WriteCleanShutdown(FALSE);    // assume we will have a bad shutdown
-            CThreadRefHost host;
+            CProcessAndThreadRefHost host;
 
             void(*WinList_Init)() = decltype(WinList_Init)(GetProcAddress(LoadLibrary(L"explorerframe.dll"),(LPCSTR)110));
             if (WinList_Init)
