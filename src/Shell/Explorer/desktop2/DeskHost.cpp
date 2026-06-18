@@ -1250,7 +1250,7 @@ void CDesktopHost::_MaybeShowClipBalloon()
 // EXEX-VISTA(allison): Validated.
 void CDesktopHost::OnContextMenu(LPARAM lParam)
 {
-    if (!IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOTRAYCONTEXTMENU, TEXT("Advanced"), TEXT("TaskbarContextMenu"), ROUS_KEYALLOWS | ROUS_DEFAULTALLOW))
+    if (!IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOTRAYCONTEXTMENU, L"Advanced", L"TaskbarContextMenu", ROUS_KEYALLOWS | ROUS_DEFAULTALLOW))
     {
         HMENU hmenu = SHLoadMenuPopup(g_hinstCabinet, MENU_STARTPANECONTEXT);
         if (hmenu)
@@ -1259,24 +1259,23 @@ void CDesktopHost::OnContextMenu(LPARAM lParam)
             {
                 DWORD dwValue;
                 DWORD cbData = sizeof(dwValue);
-                if (SHRegGetValue(
+                if (SHRegGetValueW(
                     HKEY_CURRENT_USER,
-                    TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"),
-                    TEXT("DisableTaskMgr"),
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                    L"DisableTaskMgr",
                     SRRF_RT_REG_DWORD,
                     nullptr,
                     &dwValue,
-                    &cbData) == ERROR_SUCCESS)
+                    &cbData) == ERROR_SUCCESS && dwValue)
                 {
-                    if (dwValue)
-                    {
-                        DeleteMenu(hmenu, 32756, 0);
-                    }
+                    DeleteMenu(hmenu, 32756, 0);
                 }
             }
 
             if (GetAsyncKeyState(VK_SHIFT) >= 0 || GetAsyncKeyState(VK_CONTROL) >= 0)
+            {
                 DeleteMenu(hmenu, 32756, 0);
+            }
 
             POINT pt;
             if (IS_WM_CONTEXTMENU_KEYBOARD(lParam))
@@ -1291,8 +1290,8 @@ void CDesktopHost::OnContextMenu(LPARAM lParam)
             }
 
             AddRef();
-            int idCmd = TrackPopupMenuEx(hmenu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN,
-                pt.x, pt.y, _hwnd, NULL);
+            int idCmd = TrackPopupMenuEx(
+                hmenu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN, pt.x, pt.y, _hwnd, nullptr);
             if (idCmd == IDSYSPOPUP_STARTMENUPROP)
             {
                 DesktopHost_Dismiss(_hwnd);
@@ -1301,7 +1300,7 @@ void CDesktopHost::OnContextMenu(LPARAM lParam)
 			else if (idCmd == 32756) // EXEX-Vista(allison): TODO: Check what this command is
             {
                 DesktopHost_Dismiss(_hwnd);
-                PostMessage(v_hwndTray, 0x5B4u, 0, 0);
+                PostMessageW(v_hwndTray, 0x5B4, 0, 0);
             }
             DestroyMenu(hmenu);
             Release();

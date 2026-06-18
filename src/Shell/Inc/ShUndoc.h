@@ -544,9 +544,7 @@ void IUnknown_SafeReleaseAndNullPtr(T **ptr)
 
 #define SERVERNAME_CURRENT  ((HANDLE)NULL)
 
-//#define SHCoUninitialize(hr) if (SUCCEEDED(hr)) CoUninitialize()
-
-void SHCoUninitialize(HRESULT hr);
+STDAPI_(void) SHCoUninitialize(HRESULT hr);
 
 #define IS_BIDI_LOCALIZED_SYSTEM()       IsBiDiLocalizedSystem()
 

@@ -426,7 +426,7 @@ HRESULT CStartButton::LockStartPane()
     return S_OK;
 }
 
-HRESULT CStartButton::GetPopupPosition(DWORD* pdwPos) // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::GetPopupPosition(DWORD* pdwPos)
 {
     if (!_pStartButtonSite)
         return E_FAIL;
@@ -451,23 +451,19 @@ HRESULT CStartButton::GetPopupPosition(DWORD* pdwPos) // taken from ep_taskbar 7
     return S_OK;
 }
 
-HRESULT CStartButton::GetWindow(HWND* phwndStart)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::GetWindow(HWND* phwndStart)
 {
     *phwndStart = _hwndStart;
     return S_OK;
 }
 
-HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)  // taken from ep_taskbar 7-stuff
+HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
 {
-    *ppvObject = NULL;
-    HRESULT hr = E_FAIL;
-
     if (IsEqualGUID(guidService, __uuidof(IStartButton)))
     {
-        hr = QueryInterface(riid, ppvObject);
+        return QueryInterface(riid, ppvObject);
     }
-
-    return hr;
+    return E_FAIL;
 }
 
 void CStartButton::BuildStartMenu() // from xp

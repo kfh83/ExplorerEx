@@ -8211,7 +8211,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 case 3:
                     DoProperties(TPF_INVOKECUSTOMIZE);
                     break;
-                case 4u:
+                case 4:
                     DoProperties(TPF_TOOLBARSPAGE);
                     break;
                 default:

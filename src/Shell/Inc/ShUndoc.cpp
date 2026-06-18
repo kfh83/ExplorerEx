@@ -564,7 +564,7 @@ BOOL CALLBACK _FixZorderEnumProc(HWND hwnd, LPARAM lParam)
     return TRUE;
 }
 
-HRESULT SHCoInitialize(void)
+HRESULT SHCoInitialize()
 {
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(hr))

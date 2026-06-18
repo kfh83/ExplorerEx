@@ -1630,29 +1630,8 @@ HRESULT AddMenuItemsCacheTask(IShellTaskScheduler* pSystemScheduler, BOOL fKeepC
     return hr;
 }
 
-DWORD WINAPI CMenuItemsCache::ReInitCacheThreadProc(void *pv)
+DWORD WINAPI CMenuItemsCache::ReInitCacheThreadProc(void* pv)
 {
-#ifdef DEAD_CODE
-    HRESULT hr = SHCoInitialize();
-
-    if (SUCCEEDED(hr))
-    {
-        CMenuItemsCache *pMenuCache = reinterpret_cast<CMenuItemsCache *>(pv);
-        pMenuCache->DelayGetFileCreationTimes();
-        pMenuCache->LockPopup();
-        pMenuCache->InitCache();
-        pMenuCache->UpdateCache();
-        pMenuCache->UnlockPopup();
-
-        // Now determine all new items
-        // Note: this is safe to do after the Unlock because we never remove anything from the _dpaAppInfo
-        pMenuCache->GetFileCreationTimes();
-        pMenuCache->Release();
-    }
-    SHCoUninitialize(hr);
-
-    return 0;
-#else
     HRESULT hr = SHCoInitialize();
 
     if (SUCCEEDED(hr))
@@ -1676,7 +1655,6 @@ DWORD WINAPI CMenuItemsCache::ReInitCacheThreadProc(void *pv)
 
     SHCoUninitialize(hr);
     return 0;
-#endif
 }
 
 HRESULT CMenuItemsCache::ReCreateMenuItemsCache(ByUsageUI *pbuUI, FILETIME *ftOSInstall, CMenuItemsCache **ppMenuCache)
