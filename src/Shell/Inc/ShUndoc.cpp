@@ -2820,6 +2820,7 @@ EXTERN_C BOOL SHUndocInit(void)
 	LOAD_MODULE(shell32);
 	LOAD_ORDINAL(shell32, SHGetUserDisplayName, 241);
     LOAD_ORDINAL(shell32, RegisterShellHook, 181);
+    LOAD_ORDINAL(shell32, ShellDDEInit, 188);
     LOAD_ORDINAL(shell32, SHSettingsChanged, 244);
     LOAD_ORDINAL(shell32, ExitWindowsDialog, 60);
     LOAD_ORDINAL(shell32, RunFileDlg, 61);
@@ -2827,6 +2828,7 @@ EXTERN_C BOOL SHUndocInit(void)
     LOAD_ORDINAL(shell32, DisconnectWindowsDialog, 254);
     LOAD_ORDINAL(shell32, SHFindComputer, 91);
     LOAD_ORDINAL(shell32, SHTestTokenPrivilegeW, 236);
+    LOAD_ORDINAL(shell32, FileIconInit, 660);
     LOAD_ORDINAL(shell32, SHMapIDListToSystemImageListIndexAsync, 787);
     LOAD_ORDINAL(shell32, SHGetUserPicturePath, 261);
     LOAD_FUNCTION(shell32, SHUpdateRecycleBinIcon);
@@ -2898,6 +2900,10 @@ EXTERN_C BOOL SHUndocInit(void)
 
     LOAD_MODULE(uxtheme);
     LOAD_ORDINAL(uxtheme, IsThemeClassDefined, 50);
+
+    LOAD_MODULE(explorerframe);
+    LOAD_ORDINAL_NO_FAIL(explorerframe, WinList_Init, 110);
+    LOAD_ORDINAL_NO_FAIL(explorerframe, WinList_Terminate, 111);
 
     LOAD_MODULE(msi);
     LOAD_FUNCTION(msi, MsiDecomposeDescriptorW);

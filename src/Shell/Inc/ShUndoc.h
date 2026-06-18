@@ -1077,6 +1077,7 @@ inline COLORREF(STDMETHODCALLTYPE* SHFillRectClr)(HDC hdc, LPRECT lprect, COLORR
 inline HMENU(STDMETHODCALLTYPE* SHGetMenuFromID)(HMENU hmMain, UINT uID);
 inline UINT(WINAPI* ImageList_GetFlags)(HIMAGELIST himl);
 
+inline void (WINAPI* FileIconInit)(BOOL fRestoreCache);
 typedef void (CALLBACK* PFNASYNCICONTASKBALLBACK)(LPVOID pvData, LPVOID pvHint, int iIconIndex, int iOpenIconIndex);
 
 inline HRESULT(WINAPI *SHMapIDListToSystemImageListIndexAsync)(
@@ -1111,6 +1112,7 @@ HRESULT SHCoInitialize(void);
 DWORD  SHProcessMessagesUntilEventEx(HWND hwnd, HANDLE hEvent, DWORD dwTimeout, DWORD dwWakeMask);
 TCHAR  SHFindMnemonic(LPCTSTR psz);
 
+inline void (WINAPI* ShellDDEInit)(BOOL fInit);
 inline BOOL(STDMETHODCALLTYPE* RegisterShellHook)(HWND hwnd, BOOL fInstall);
 DWORD Mirror_SetLayout(HDC hdc, DWORD dwLayout);
 HRESULT VariantChangeTypeForRead(VARIANT* pvar, VARTYPE vtDesired);
@@ -1541,3 +1543,7 @@ inline HRESULT (WINAPI *SHGetFolderPathEx)(REFKNOWNFOLDERID rfid, DWORD flags, H
 inline HMENU(*SHLoadMenuPopup)(HINSTANCE hinst, UINT id);
 
 inline BOOL (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const WCHAR* pszClassId, BOOL fAllowInheritance);
+
+// ExplorerFrame.dll
+inline void(* WinList_Init)();
+inline void(* WinList_Terminate)();

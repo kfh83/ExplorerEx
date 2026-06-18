@@ -47,14 +47,15 @@ ANIMATIONITEMINFO, *PANIMATIONITEMINFO;
 
 class CTaskBandSMC;
 
-class CTaskBand : public IDeskBand2
-                , public IObjectWithSite
-                , public IDropTarget
-                , public IInputObject
-                , public IPersistStream
-                , public IWinEventHandler
-                , public IOleCommandTarget
-                , public CImpWndProc
+class CTaskBand
+    : public IDeskBand2
+    , public IObjectWithSite
+    , public IDropTarget
+    , public IInputObject
+    , public IPersistStream
+    , public IWinEventHandler
+    , public IOleCommandTarget
+    , public CImpWndProc
 {
 public:
     // *** IUnknown methods ***

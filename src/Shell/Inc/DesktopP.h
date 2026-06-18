@@ -120,7 +120,7 @@ HANDLE SHCreateDesktop(IDeskTray* pdtray);
 BOOL CreateFromDesktop(PNEWFOLDERINFO pfi);
 BOOL SHCreateFromDesktop(PNEWFOLDERINFO pfi);
 BOOL SHDesktopMessageLoop(HANDLE hDesktop);
-BOOL SHExplorerParseCmdLine(PNEWFOLDERINFO pfi);
+STDAPI_(BOOL) SHExplorerParseCmdLine(const WCHAR* pszCmdLine, NEWFOLDERINFO* pfi);
 
 #define IDT_DDETIMEOUT      1
 #define IDT_ENUMHKCR        2

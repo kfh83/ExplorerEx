@@ -533,7 +533,7 @@ extern int g_iLPX;
 extern int g_iLPY;
 extern void InitDPI();
 
-void SHLogicalToPhysicalDPI(int *px, int *py)
+void SHLogicalToPhysicalDPI(int* px, int* py)
 {
     InitDPI();
     if (px)
@@ -2489,7 +2489,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
             {
                 _RemoveSelection(field_48);
             }
-            
+
             v10 = _spm.panes[2].hwnd;
             if (hwnd != v10 || field_48)
             {

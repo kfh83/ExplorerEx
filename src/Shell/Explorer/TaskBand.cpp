@@ -2472,14 +2472,9 @@ void CTaskBand::_CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows
 
 void CTaskBand::_NukeScrollbar(int fnBar)
 {
-    SCROLLINFO si;
-    si.fMask = SIF_PAGE | SIF_RANGE | SIF_POS;
+    SCROLLINFO si = {};
     si.cbSize = sizeof(si);
-    si.nMin = 0;
-    si.nMax = 0;
-    si.nPage = 0;
-    si.nPos = 0;
-
+    si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
     SetScrollInfo(_hwnd, fnBar, &si, TRUE);
 }
 

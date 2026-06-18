@@ -88,8 +88,6 @@ BOOL g_bMirroredOS = FALSE;
 
 HINSTANCE g_hinstCabinet = 0;
 
-CRITICAL_SECTION g_csDll = { 0 };
-
 HKEY g_hkeyExplorer = NULL;
 
 #define MAGIC_FAULT_TIME    (1000 * 60 * 5)
@@ -854,15 +852,19 @@ BOOL MyCreateFromDesktop(HINSTANCE hInst, LPCTSTR pszCmdLine, int nCmdShow)
 
     //  since we have browseui fill out the fi, 
     //  SHExplorerParseCmdLine() does a GetCommandLine()
-    if (SHExplorerParseCmdLine(&fi))
+    if (SHExplorerParseCmdLine(nullptr, &fi))
+    {
         bRet = SHCreateFromDesktop(&fi);
+    }
 
     //  should we also have it cleanup after itself??
 
     //  SHExplorerParseCmdLine() can allocate this buffer...
     if (fi.uFlags & COF_PARSEPATH)
+    {
         LocalFree(fi.pszPath);
-        
+    }
+
     ILFree(fi.pidl);
     ILFree(fi.pidlRoot);
 
@@ -928,73 +930,108 @@ void Cabinet_InitGlobalMetrics(WPARAM wParam, LPTSTR lpszSection)
     }
 }
 
-//---------------------------------------------------------------------------
-
-void _CreateAppGlobals()
+BOOL IsDesktopWindowAlreadyPresent()
 {
-    g_fCleanBoot = GetSystemMetrics(SM_CLEANBOOT);      // also known as "Safe Mode"
-
-    Cabinet_InitGlobalMetrics(0, NULL);
-
-    //
-    // Check if the mirroring APIs exist on the current
-    // platform.
-    //
-    g_bMirroredOS = FALSE;
+    return FindWindowW(L"Progman", nullptr) || FindWindowW(L"Proxy Desktop", nullptr);
 }
-
-//
-//  This function checks if any of the shell windows is already created by
-// another instance of explorer and returns TRUE if so.
-//
-
-BOOL IsAnyShellWindowAlreadyPresent()
-{
-    return GetShellWindow() || FindWindow(TEXT("Proxy Desktop"), NULL);
-}
-
-
-// See if the Shell= line indicates that we are the shell
 
 BOOL ExplorerIsShell()
 {
-    TCHAR *pszPathName, szPath[MAX_PATH];
-    TCHAR *pszModuleName, szModulePath[MAX_PATH];
+    WCHAR szModulePath[260];
+    GetModuleFileNameW(nullptr, szModulePath, ARRAYSIZE(szModulePath));
+    const WCHAR* pszModuleName = PathFindFileNameW(szModulePath);
 
-    ASSERT(!IsAnyShellWindowAlreadyPresent());
+    WCHAR szPath[260];
+    GetPrivateProfileStringW(L"boot", L"shell", pszModuleName, szPath, ARRAYSIZE(szPath), L"system.ini");
+    PathRemoveArgsW(szPath);
+    PathRemoveBlanksW(szPath);
 
-    GetModuleFileName(NULL, szModulePath, ARRAYSIZE(szModulePath));
-    pszModuleName = PathFindFileName(szModulePath);
-
-    GetPrivateProfileString(TEXT("boot"), TEXT("shell"), pszModuleName, szPath, ARRAYSIZE(szPath), TEXT("system.ini"));
-
-    PathRemoveArgs(szPath);
-    PathRemoveBlanks(szPath);
-    pszPathName = PathFindFileName(szPath);
-
-    // NB Special case shell=install.exe - assume we are the shell.
-    // Symantec un-installers temporarily set shell=installer.exe so
-    // we think we're not the shell when we are. They fail to clean up
-    // a bunch of links if we don't do this.
-
-    return StrCmpNI(pszPathName, pszModuleName, lstrlen(pszModuleName)) == 0 ||
-           lstrcmpi(pszPathName, TEXT("install.exe")) == 0;
+    const WCHAR* pszPathName = PathFindFileNameW(szPath);
+    return StrCmpNIW(pszPathName, pszModuleName, lstrlenW(pszModuleName)) == 0 || StrCmpICW(pszPathName, L"install.exe") == 0;
 }
 
+DEFINE_GUID(CLSID_ExplorerHostCreator, 0xAB0B37EC, 0x56F6, 0x4A0E, 0xA8, 0xFD, 0x7A, 0x8B, 0xF7, 0xC2, 0xDA, 0x96);
 
-// Returns TRUE of this is the first time the explorer is run
+MIDL_INTERFACE("c4de032a-d902-450a-bc43-d9df6d0fd48c")
+IExplorerHostCreator : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE CreateHost(REFCLSID) = 0;
+    virtual HRESULT STDMETHODCALLTYPE RunHost() = 0;
+};
 
+DEFINE_GUID(CLSID_DesktopExplorerHost, 0x682159D9, 0xC321, 0x47CA, 0xB3, 0xF1, 0x30, 0xE3, 0x6B, 0x2E, 0xC8, 0xB9);
+DEFINE_GUID(CLSID_SeparateMultipleProcessExplorerHost, 0x75DFF2B7, 0x6936, 0x4C06, 0xA8, 0xBB, 0x67, 0x6A, 0x7B, 0x00, 0xB2, 0x4B);
+
+enum LAUNCHEXPLORERFLAGS : int
+{
+    LE_NONE = 0x0000,
+    LE_NEWWINDOW = 0x0001,
+    LE_NEWPROCESS = 0x0002,
+    LE_SELECTITEM = 0x0004,
+    LE_EXPLORE = 0x0008,
+    LE_EXPAND = 0x0010,
+    LE_INCURRENTTABGROUP = 0x0020,
+};
+
+struct IBrowserThreadHandshake;
+
+// This changed sometime after 14361
+MIDL_INTERFACE("9b25c299-03b6-4a14-827d-095485d0c022")
+IExplorerLauncher : IUnknown
+{
+    virtual HRESULT ShowWindow(
+        REFCLSID, LPCITEMIDLIST, LAUNCHEXPLORERFLAGS, POINT, int, HWND, IUnknown*, IBrowserThreadHandshake*) = 0;
+    virtual HRESULT ShowWindowUsingDefaultPolicyAtRect(LPCITEMIDLIST, LAUNCHEXPLORERFLAGS, const RECT*, int) = 0;
+};
+
+DEFINE_GUID(CLSID_ExplorerLauncher, 0x1F849CCE, 0x2546, 0x4B9F, 0xB0, 0x3E, 0x40, 0x04, 0x78, 0x1B, 0xDC, 0x40);
+
+// @Note: This is from build 6519/6593, there should a few more entries.
+enum EXPLORERSERVER
+{
+    EXPLORERSERVER_UNDETERMINED = 0x0,
+    EXPLORERSERVER_SEPARATE = 0x1,
+    EXPLORERSERVER_DESKTOP = 0x2,
+    EXPLORERSERVER_FACTORY = 0x3,
+    EXPLORERSERVER_NONE = 0x4,
+};
+
+#ifdef DEAD_CODE
 BOOL ShouldStartDesktopAndTray()
 {
-    // We need to be careful on which window we look for.  If we look for
-    // our desktop window class and Progman is running we will find the
-    // progman window.  So Instead we should ask user for the shell window.
-
-    // We can not depend on any values being set here as this is the
-    // start of a new process.  This wont be called when we start new
-    // threads.
-    return !IsAnyShellWindowAlreadyPresent() && ExplorerIsShell();
+    return !IsDesktopWindowAlreadyPresent() && ExplorerIsShell();
 }
+#else
+EXPLORERSERVER ShouldStartDesktopAndTray()
+{
+    EXPLORERSERVER es;
+
+    const WCHAR* CommandLineW = GetCommandLineW();
+    const WCHAR* pszCmdLine = PathGetArgsW(CommandLineW);
+    if (pszCmdLine && *pszCmdLine)
+    {
+        NEWFOLDERINFO fi = {};
+        es = EXPLORERSERVER_SEPARATE;
+        if (SHExplorerParseCmdLine(pszCmdLine, &fi))
+        {
+            if (!IsEqualCLSID(fi.clsid, CLSID_NULL))
+            {
+                es = EXPLORERSERVER_FACTORY;
+            }
+            ILFree(fi.pidl);
+        }
+    }
+    else if (ExplorerIsShell())
+    {
+        return IsDesktopWindowAlreadyPresent() != 0 ? EXPLORERSERVER_NONE : EXPLORERSERVER_UNDETERMINED;
+    }
+    else
+    {
+        return EXPLORERSERVER_SEPARATE;
+    }
+    return es;
+}
+#endif
 
 void DisplayCleanBootMsg()
 {
@@ -1304,25 +1341,20 @@ BOOL ShouldDisplaySafeMode()
     return fRet;
 }
 
-//
-//  dwValue is FALSE if this is startup, TRUE if this is shutdown,
-//
 void WriteCleanShutdown(DWORD dwValue)
 {
-    RegSetValueEx(g_hkeyExplorer, TEXT("CleanShutdown"), 0, REG_DWORD, (LPBYTE)&dwValue, sizeof(dwValue));
+    RegSetValueExW(
+        g_hkeyExplorer, L"CleanShutdown", 0, REG_DWORD, reinterpret_cast<const BYTE*>(dwValue), sizeof(dwValue));
 
-    // If we are shutting down for real (i.e., not fake), then clean up the
-    // session key so we don't leak a bazillion volatile keys into the
-    // registry on a TS system when people log on and off and on and off...
-    if (dwValue && !g_fFakeShutdown) 
+    if (dwValue && !g_fFakeShutdown)
     {
-        NukeSessionKey();
+        // UpdateSqmFolderSettings();
     }
 }
 
-BOOL ReadCleanShutdown()
+BOOL WasPrevShutdownClean()
 {
-    DWORD dwValue = 1;  // default: it was clean
+    DWORD dwValue = 1; // default: it was clean
     DWORD dwSize = sizeof(dwValue);
 
     RegQueryValueEx(g_hkeyExplorer, TEXT("CleanShutdown"), NULL, NULL, (LPBYTE)&dwValue, &dwSize);
@@ -1398,15 +1430,19 @@ HRESULT WaitForSCMToInitialize()
     return HRESULT_FROM_WIN32(GetLastError());  // event creation failed or WFSO failed.
 }
 
-STDAPI OleInitializeWaitForSCM()
+HRESULT WINAPI _OleCoInitializeWaitForSCM()
 {
-    HRESULT hr = WaitForSCMToInitialize();
-    // SECURITY: Ignore result otherwise a guest could squat on this event
-    hr = SHCoInitialize();  // make sure we get no OLE1 DDE crap
-    OleInitialize(NULL);
+    WaitForSCMToInitialize();
+    HRESULT hr = SHCoInitialize();
+    OleInitialize(nullptr);
     return hr;
 }
 
+void WINAPI _OleCoUninitialize(HRESULT hr)
+{
+    OleUninitialize();
+    SHCoUninitialize(hr);
+}
 
 // we need to figure out the fFirstShellBoot on a per-user
 // basis rather than once per machine.  We want the welcome
@@ -1544,9 +1580,6 @@ void ChangeUIfontsToNewDPI()
         }
     }
 }
-
-
-#define SZ_EXPLORERMUTEX    TEXT("ExplorerIsShellMutex")
 
 CComModule _Module;
 BEGIN_OBJECT_MAP(ObjectMap)
@@ -1768,12 +1801,6 @@ void _FixWordMailRegKey(void)
     }
 }
 
-//
-//  If this is the first logon, check if we have a server
-//  administrator.  If so, then change some defaults
-//  to match the server administrator UI style.
-//
-
 void CheckForServerAdminUI()
 {
     DWORD dwServerAdminUI;
@@ -1874,6 +1901,254 @@ public:
     }
 };
 
+void StartExplorerWindow()
+{
+    SHELLEXECUTEINFOW sei = {};
+    sei.cbSize = sizeof(sei);
+    sei.nShow = SW_SHOWNORMAL;
+    sei.fMask = 0x2000100;
+    sei.lpVerb = L"explore";
+    ShellExecuteExW(&sei);
+}
+
+#if 0
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int nCmdShow)
+{
+#if !defined(_WIN64)
+    BOOL bNoHeapTerminationOnCorruption = FALSE;
+    SHRegGetBOOLW(
+        HKEY_LOCAL_MACHINE, L"Software\\Policies\\Microsoft\\Windows\\Explorer", L"NoHeapTerminationOnCorruption",
+        &bNoHeapTerminationOnCorruption);
+    if (!bNoHeapTerminationOnCorruption)
+    {
+        HeapSetInformation(nullptr, HeapEnableTerminationOnCorruption, nullptr, 0);
+    }
+#endif
+
+    // WPP_INIT_CONTROL_ARRAY(&WPP_MAIN_CB);
+    // WPP_REGISTRATION_GUIDS = WPP_ThisDir_CTLGUID_ShellTraceProvider;
+    // WPP_GLOBAL_Control = &WPP_MAIN_CB;
+    // WppInitUm(L"Microsoft\\Shell");
+
+    // EventRegister(&Microsoft_Windows_Shell_Core_Provider, nullptr, nullptr, &g_SHPerfRegHandle);
+    // Skipped telemetry ShellTraceId_Explorer_InitializingExplorer_Start
+
+    SetErrorMode(SEM_FAILCRITICALERRORS);
+
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+
+    SHFusionInitializeFromModule(hInstance);
+    //CcshellGetDebugFlags();
+
+    g_hinstCabinet = hInstance;
+
+    if (SUCCEEDED(_Module.Init(nullptr, hInstance, nullptr)))
+    {
+        Cabinet_InitGlobalMetrics(0, nullptr);
+
+        RegCreateKeyW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer", &g_hkeyExplorer);
+        if (!g_hkeyExplorer)
+        {
+            // CcshellDebugMsgW(2, "ExplorerWinMain: unable to create reg explorer key");
+        }
+
+        HANDLE hMutex = nullptr;
+
+        EXPLORERSERVER es = ShouldStartDesktopAndTray();
+        if (es == EXPLORERSERVER_UNDETERMINED)
+        {
+            hMutex = CreateMutexW(nullptr, 0, L"Local\\ExplorerIsShellMutex");
+            if (hMutex)
+            {
+                WaitForSingleObject(hMutex, INFINITE);
+            }
+            es = IsDesktopWindowAlreadyPresent() != 0 ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
+        }
+
+        if (es == EXPLORERSERVER_DESKTOP)
+        {
+            ShellDDEInit(TRUE);
+
+            SetProcessShutdownParameters(3, 0);
+            _AutoRunTaskMan();
+
+            MSG msg;
+            PeekMessageW(&msg, nullptr, WM_QUIT, WM_QUIT, PM_NOREMOVE);
+
+            HRESULT hrInit = _OleCoInitializeWaitForSCM();
+            FileIconInit(TRUE);
+
+            CheckDefaultUIFonts();
+            ChangeUIfontsToNewDPI();
+            CheckForServerAdminUI();
+            CheckHighContrast();
+
+            DoRunOnceIfNeeded();
+            CreateShellDirectories();
+
+            ProcessInstallUninstallStubsIfNeeded();
+            WasPrevShutdownClean();
+            WriteCleanShutdown(0);
+
+            WinList_Init();
+
+            CProcessAndThreadRefHost host;
+
+            HANDLE hDesktop;
+            if (IsDesktopWindowAlreadyPresent())
+                hDesktop = nullptr;
+            else
+                hDesktop = CreateDesktopAndTray();
+
+            if (hMutex)
+            {
+                ReleaseMutex(hMutex);
+                CloseHandle(hMutex);
+            }
+
+            if (hDesktop)
+            {
+                PostMessageW(v_hwndTray, 0x590, 1, 0);
+                //InitSoundWindow();
+
+                SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+
+                RegisterApplicationRestart(L"", 0x80000008);
+
+                IExplorerHostCreator* pehc = nullptr;
+                if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerHostCreator, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pehc))))
+                {
+                    pehc->CreateHost(CLSID_DesktopExplorerHost);
+                }
+
+                // Skipped telemetry Explorer_MessageLoop_Start
+                SHDesktopMessageLoop(hDesktop);
+                // Skipped telemetry Explorer_MessageLoop_Stop
+
+                host.WaitForRefs();
+                IUnknown_SafeReleaseAndNullPtr(&pehc);
+
+                WriteCleanShutdown(1);
+            }
+
+            WinList_Terminate();
+            _OleCoUninitialize(hrInit);
+
+            ShellDDEInit(FALSE);
+        }
+        else
+        {
+            if (hMutex)
+            {
+                ReleaseMutex(hMutex);
+                CloseHandle(hMutex);
+            }
+
+            SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+
+            if (es == EXPLORERSERVER_NONE)
+            {
+                StartExplorerWindow();
+            }
+            else
+            {
+                HRESULT hrInit = SHCoInitialize();
+                if (SUCCEEDED(hrInit))
+                {
+                    NEWFOLDERINFO fi = {};
+                    const WCHAR* CommandLineW = GetCommandLineW();
+                    const WCHAR* ArgsW = PathGetArgsW(CommandLineW);
+                    if (SHExplorerParseCmdLine(ArgsW, &fi))
+                    {
+                        if (es == EXPLORERSERVER_FACTORY)
+                        {
+                            IExplorerHostCreator* pehc;
+                            if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerHostCreator, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pehc))))
+                            {
+                                if (SUCCEEDED(pehc->CreateHost(fi.clsid)))
+                                {
+                                    pehc->RunHost();
+                                }
+                                pehc->Release();
+                            }
+                        }
+                        else
+                        {
+                            ASSERT(es == EXPLORERSERVER_SEPARATE);
+
+                            IExplorerLauncher* pel;
+                            if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerLauncher, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pel))))
+                            {
+                                STARTUPINFOW si = { sizeof(si) };
+                                GetStartupInfoW(&si);
+
+                                POINT ptZero = {};
+                                int wShowWindow;
+                                if ((si.dwFlags & 1) != 0)
+                                    wShowWindow = si.wShowWindow;
+                                else
+                                    wShowWindow = SW_SHOWNORMAL;
+
+                                pel->ShowWindow(
+                                    CLSID_SeparateMultipleProcessExplorerHost, fi.pidl,
+                                    (LAUNCHEXPLORERFLAGS)fi.uFlags, ptZero, wShowWindow, nullptr, nullptr, nullptr);
+                                pel->Release();
+                            }
+                        }
+                        ILFree(fi.pidl);
+                    }
+
+                    SHCoUninitialize(hrInit);
+                }
+            }
+        }
+
+        _Module.Term();
+    }
+
+    const WCHAR* v13 = GetCommandLineW();
+    const WCHAR* v14 = PathGetArgsW(v13);
+    FreeSharedMemInCmdLine(v14);
+
+    SHFusionUninitialize();
+    // _DebugMsgW(4, L"c.App Exit.");
+    // c_tray.Cleanup();
+
+    // EventUnregister(g_SHPerfRegHandle);
+    // WppCleanupUm();
+
+    if (g_fExitExplorer)
+    {
+        ExitProcess(1);
+    }
+
+    return 1;
+}
+#endif
+
+int ProcessInstallUninstallStubs()
+{
+    if (!GetSystemMetrics(SM_CLEANBOOT))
+    {
+        //RunInstallUninstallStubs(0);
+    }
+    return 0;
+}
+
+void ProcessInstallUninstallStubsIfNeeded()
+{
+    if (!GetSystemMetrics(SM_CLEANBOOT))
+    {
+        HANDLE hCanRegister = CreateEventW(nullptr, 1, 1, L"Local\\_fCanRegisterWithShellService");
+        ProcessInstallUninstallStubs();
+        if (hCanRegister)
+        {
+            CloseHandle(hCanRegister);
+        }
+    }
+}
+
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
 #ifndef RELEASE
@@ -1923,124 +2198,58 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
 #ifndef EXEX_DLL
     SHFusionInitializeFromModule(hInstance);
 #endif
-
-    typedef void(__stdcall* ShellDDEInit_t)(bool bInit);
-    ShellDDEInit_t ShellDDEInit;
-    ShellDDEInit = (ShellDDEInit_t)GetProcAddress(GetModuleHandle(L"shell32.dll") ,(LPSTR)188);
-    
-    typedef void(__stdcall* FileIconInit_t)(bool);
-    FileIconInit_t FileIconInit;
-    FileIconInit = (FileIconInit_t)GetProcAddress(GetModuleHandle(L"shell32.dll"), (LPSTR)660);
-
-    if (g_dwProfileCAP & 0x00000001)
-        StartCAP();
-
     g_hinstCabinet = hInstance;
 
     if (SUCCEEDED(_Module.Init(ObjectMap, hInstance)))
     {
-        _CreateAppGlobals();
+        Cabinet_InitGlobalMetrics(0, nullptr);
 
-        // Run IEAK via Wininet initialization if the autoconfig url is present.
-        // No need to unload wininet in this case. Also only do this first time
-        // Explorer loads (GetShellWindow() returns NULL).
-        if (!GetShellWindow() && !g_fCleanBoot && SHRegGetUSValue(TEXT("Software\\Microsoft\\Windows\\Internet Settings"),
-                                             TEXT("AutoConfigURL"),
-                                             NULL, NULL, NULL, FALSE, NULL, 0) == ERROR_SUCCESS)
-        {
-            LoadLibrary(TEXT("WININET.DLL"));
-        }
-
-
-        // Very Important: Make sure to init dde prior to any Get/Peek/Wait().
-        InitializeCriticalSection(&g_csDll);
-
-#ifdef FULL_DEBUG
-        // Turn off GDI batching so that paints are performed immediately
-        GdiSetBatchLimit(1);
-#endif
-
-        RegCreateKey(HKEY_CURRENT_USER, REGSTR_PATH_EXPLORER, &g_hkeyExplorer);
-        if (g_hkeyExplorer == NULL)
+        RegCreateKeyW(HKEY_CURRENT_USER, REGSTR_PATH_EXPLORER, &g_hkeyExplorer);
+        if (g_hkeyExplorer == nullptr)
         {
         }
 
-        HANDLE hMutex = NULL;
+        HANDLE hMutex = nullptr;
 
 #ifndef EXEX_DLL
-        BOOL fExplorerIsShell = ShouldStartDesktopAndTray();
-        if (fExplorerIsShell)
+        EXPLORERSERVER es = ShouldStartDesktopAndTray();
+        if (es == EXPLORERSERVER_UNDETERMINED)
         {
-            // Grab the mutex and do the check again.  We do it this
-            // way so that we don't bother with the mutex for the common
-            // case of opening a browser window.
-            
-            hMutex = CreateMutex(NULL, FALSE, SZ_EXPLORERMUTEX);
+            hMutex = CreateMutexW(nullptr, FALSE, L"Local\\ExplorerIsShellMutex");
             if (hMutex)
             {
                 WaitForSingleObject(hMutex, INFINITE);
             }
 
-            fExplorerIsShell = ShouldStartDesktopAndTray();
-        } 
+            es = IsDesktopWindowAlreadyPresent() != 0 ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
+        }
 #endif
 
 #ifndef EXEX_DLL
-        if (!fExplorerIsShell)
+        if (es == EXPLORERSERVER_DESKTOP)
         {
-            // We're not going to be the shell, relinquish the mutex
-            if (hMutex)
-                ReleaseMutex(hMutex);
+            ShellDDEInit(TRUE);
 
-            // we purposely do NOT want to init OLE or COM in this case since we are delegating the creation work
-            // to an existing explorer and we want to keep from loading lots of extra dlls that would slow us down.
-            MyCreateFromDesktop(hInstance, pszCmdLine, nCmdShow);
-        }
-        else
-        {
-            MSG msg;
-
-            DWORD dwShellStartTime = GetTickCount();    // Compute shell startup time for perf automation
-
-
-            ShellDDEInit(TRUE);        // use shdocvw shell DDE code.
-
-            //  Specify the shutdown order of the shell process.  2 means
-            //  the explorer should shutdown after everything but ntsd/windbg
-            //  (level 0).  (Taskman used to use 1, but is no more.)
-
-            SetProcessShutdownParameters(2, 0);
-
+            SetProcessShutdownParameters(3, 0);
             _AutoRunTaskMan();
 
-            // NB Make this the primary thread by calling peek message
-            // for a message we know we're not going to get.
-            // If we don't do it really soon, the notify thread can sometimes
-            // become the primary thread by accident. There's a bunch of
-            // special code in user to implement DDE hacks by assuming that
-            // the primary thread is handling DDE.
-            // Also, the PeekMsg() will cause us to set the WaitForInputIdle()
-            // event so we better be ready to do all dde.
+            MSG msg;
+            PeekMessageW(&msg, nullptr, WM_QUIT, WM_QUIT, PM_NOREMOVE);
 
-            PeekMessage(&msg, nullptr, WM_QUIT, WM_QUIT, PM_NOREMOVE);
-
-            // We do this here, since FileIconInit will call SHCoInitialize anyway
-            HRESULT hrInit = OleInitializeWaitForSCM();
-
-            // Make sure we are the first one to call the FileIconInit...
-            FileIconInit(TRUE); // Tell the shell we want to play with a full deck
+            HRESULT hrInit = _OleCoInitializeWaitForSCM();
+            FileIconInit(TRUE);
 #endif
             g_fLogonCycle = IsFirstInstanceAfterLogon();
-            g_fCleanShutdown = ReadCleanShutdown();
+            g_fCleanShutdown = WasPrevShutdownClean();
 
-            //CheckDefaultUIFonts();
-            //ChangeUIfontsToNewDPI(); //Check dpi values and update the fonts if needed.
-            //CheckForServerAdminUI();
+            CheckDefaultUIFonts();
+            ChangeUIfontsToNewDPI(); //Check dpi values and update the fonts if needed.
+            CheckForServerAdminUI();
 
             if (g_fLogonCycle)
             {
                 _ProcessRunOnceEx();
-                
+
                 _ProcessRunOnce();
             }
 
@@ -2068,91 +2277,55 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                     CloseHandle(hCanRegister);
                 }
             }
-            
-            if (!g_fCleanShutdown)
-            {
-                IActiveDesktopP *piadp;
-                DWORD dwFaultCount;
+            WriteCleanShutdown(FALSE);
 
-                // Increment and store away fault count
-                dwFaultCount = ReadFaultCount();
-                WriteFaultCount(++dwFaultCount);
-
-                // Put the active desktop in safe mode if we faulted 3 times previously and this is a subsequent instance
-
-                if (ShouldDisplaySafeMode() && SUCCEEDED(CoCreateInstanceHook(CLSID_ActiveDesktop, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&piadp))))
-                {
-                    piadp->SetSafeMode(SSM_SET | SSM_UPDATE);
-                    piadp->Release();
-                }
-            }
-
-            WriteCleanShutdown(FALSE);    // assume we will have a bad shutdown
-            CProcessAndThreadRefHost host;
-
-            void(*WinList_Init)() = decltype(WinList_Init)(GetProcAddress(LoadLibrary(L"explorerframe.dll"),(LPCSTR)110));
             if (WinList_Init)
                 WinList_Init();
 
-            // If any of the shellwindows are already present, then we want to bail out.
-            //
-            // NOTE: Compaq shell changes the "shell=" line during RunOnce time and
-            // that will make ShouldStartDesktopAndTray() return FALSE
+            CProcessAndThreadRefHost host;
 
 #endif
 #ifndef EXEX_DLL
-            HANDLE hDesktop = NULL;
+            HANDLE hDesktop = nullptr;
 
-            if (!IsAnyShellWindowAlreadyPresent())
+            if (!IsDesktopWindowAlreadyPresent())
             {
-                //temp
-                // SetThemeAppProperties(0);
                 hDesktop = CreateDesktopAndTray();
             }
 
-            // Now that we've had a chance to create the desktop, release the mutex
             if (hMutex)
             {
                 ReleaseMutex(hMutex);
+                CloseHandle(hMutex);
             }
 
             if (hDesktop)
             {
-                // Enable display of balloons in the tray...
-                PostMessage(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
-
-                //_CheckScreenResolution();
-
-                //_OfferTour();
-
-                _FixWordMailRegKey();
-
-                _RunWinComCmdLine(pszCmdLine, nCmdShow);
-
-
-                if (g_dwProfileCAP & 0x00010000)
-                    StopCAP();
-
-                PERFSETMARK("ExplorerStartMsgLoop");
+                PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
 
                 SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 
-                // this must be whomever is the window on this thread
+                IExplorerHostCreator* pehc = nullptr;
+                if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerHostCreator, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pehc))))
+                {
+                    pehc->CreateHost(CLSID_DesktopExplorerHost);
+                }
+
                 SHDesktopMessageLoop(hDesktop);
 
-                WriteCleanShutdown(TRUE);    // we made it out ok, record that fact
-                WriteFaultCount(0);          // clear our count of faults, we are exiting normally
+                host.WaitForRefs();
+                IUnknown_SafeReleaseAndNullPtr(&pehc);
+
+                WriteCleanShutdown(TRUE);
             }
 
             // Needed to start up properly on Windows 7:
-			void(*WinList_Terminate)() = decltype(WinList_Terminate)(GetProcAddress(LoadLibrary(L"explorerframe.dll"), (LPCSTR)111));
-			if (WinList_Terminate)
+            if (WinList_Terminate)
                 WinList_Terminate();
 
-            OleUninitialize();
-            SHCoUninitialize(hrInit);
+            _OleCoUninitialize(hrInit);
 
-            ShellDDEInit(FALSE);    // use shdocvw shell DDE code
+            ShellDDEInit(FALSE);
         }
 
         _Module.Term();
