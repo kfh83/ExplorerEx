@@ -88,10 +88,11 @@ BOOL g_bMirroredOS = FALSE;
 
 HINSTANCE g_hinstCabinet = 0;
 
-HKEY g_hkeyExplorer = NULL;
+HKEY g_hkeyExplorer = nullptr;
 
 #define MAGIC_FAULT_TIME    (1000 * 60 * 5)
 #define MAGIC_FAULT_LIMIT   (2)
+
 BOOL g_fLogonCycle = FALSE;
 BOOL g_fCleanShutdown = TRUE;
 BOOL g_fExitExplorer = TRUE; // set to FALSE on WM_ENDSESSION shutdown case
@@ -1174,11 +1175,6 @@ STDAPI_(int) ModuleEntry()
     if (!SHUndocInit())
         return -1;
 
-    //LoadLibrary(L"shdocvw.dll");
-    //SHLoadInProc(CLSID_WinListShellProc);
-    //LoadLibrary(L"shell32.dll");
-    //LoadLibrary(L"explorerframe.dll");
-
     InitDesktopFuncs();
 
 
@@ -1216,10 +1212,7 @@ extern "C" __declspec(dllexport)
 #endif
 HANDLE CreateDesktopAndTray()
 {
-    HANDLE hDesktop = NULL;
-
-    if (g_dwProfileCAP & 0x00008000)
-        StartCAPAll();
+    HANDLE hDesktop = nullptr;
 
     if (v_hwndTray || c_tray.Init())
     {
@@ -1235,9 +1228,6 @@ HANDLE CreateDesktopAndTray()
 #endif
         }
     }
-
-    if (g_dwProfileCAP & 0x80000000)
-        StopCAPAll();
 
     return hDesktop;
 }
@@ -1706,60 +1696,6 @@ void _ConditionalBalloonLaunch(CHECKFUNCTION pCheckFct, SHELLREMINDER* psr)
 	}
 }
 
-
-void _CheckScreenResolution(void)
-{
-    WCHAR szTitle[256];
-    WCHAR szText[512];
-    SHELLREMINDER sr = {0};
-
-    LoadString(g_hinstCabinet, IDS_FIXSCREENRES_TITLE, szTitle, ARRAYSIZE(szTitle));
-    LoadString(g_hinstCabinet, IDS_FIXSCREENRES_TEXT, szText, ARRAYSIZE(szText));
-
-    sr.cbSize = sizeof (sr);
-    sr.pszName = L"Microsoft.FixScreenResolution";
-    //wsprintf(sr.pszName, L"Microsoft.FixScreenResolution");
-    sr.pszTitle = szTitle;
-    sr.pszText = szText;
-    sr.pszIconResource = L"explorer.exe,9";
-    //wsprintf(sr.pszIconResource, L"explorer.exe,9");
-    sr.dwTypeFlags = NIIF_INFO;
-    GUID CLSID_ScreenResFixer;
-    CLSIDFromString(L"5a3d988e-820d-4aaf-ba87-440081768a17", &CLSID_ScreenResFixer);
-    sr.pclsid = (GUID*)&CLSID_ScreenResFixer; // Try to run the Screen Resolution Fixing code over in ThemeUI
-    sr.pszShellExecute = L"desk.cpl"; // Open the Display Control Panel as a backup
-    //wsprintf(sr.pszShellExecute, L"desk.cpl");
-
-
-    _ConditionalBalloonLaunch(_ShouldFixResolution, &sr);
-}
-
-
-void _OfferTour(void)
-{
-    WCHAR szTitle[256];
-    WCHAR szText[512];
-    SHELLREMINDER sr = {0};
-
-    LoadString(g_hinstCabinet, IDS_OFFERTOUR_TITLE, szTitle, ARRAYSIZE(szTitle));
-    LoadString(g_hinstCabinet, IDS_OFFERTOUR_TEXT, szText, ARRAYSIZE(szText));
-
-    sr.cbSize = sizeof (sr);
-    sr.pszName = L"Microsoft.OfferTour";
-    //wsprintf(sr.pszName, L"Microsoft.OfferTour");
-    sr.pszTitle = szTitle;
-    sr.pszText = szText;
-    sr.pszIconResource = L"tourstart.exe,0";
-    //wsprintf(sr.pszIconResource, L"tourstart.exe,0");
-    sr.dwTypeFlags = NIIF_INFO;
-    sr.pszShellExecute = L"tourstart.exe";
-    //wsprintf(sr.pszShellExecute, L"tourstart.exe");
-    sr.dwShowTime = 60000;
-
-    _ConditionalBalloonLaunch(_ShouldOfferTour, &sr);
-}
-
-
 void _FixWordMailRegKey(void)
 {
     // If we don't have permissions, fine this is just correction code
@@ -1905,9 +1841,9 @@ void StartExplorerWindow()
 {
     SHELLEXECUTEINFOW sei = {};
     sei.cbSize = sizeof(sei);
-    sei.nShow = SW_SHOWNORMAL;
-    sei.fMask = 0x2000100;
+    sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_WAITFORINPUTIDLE;
     sei.lpVerb = L"explore";
+    sei.nShow = SW_SHOWNORMAL;
     ShellExecuteExW(&sei);
 }
 
@@ -2140,7 +2076,7 @@ void ProcessInstallUninstallStubsIfNeeded()
 {
     if (!GetSystemMetrics(SM_CLEANBOOT))
     {
-        HANDLE hCanRegister = CreateEventW(nullptr, 1, 1, L"Local\\_fCanRegisterWithShellService");
+        HANDLE hCanRegister = CreateEventW(nullptr, TRUE, TRUE, L"Local\\_fCanRegisterWithShellService");
         ProcessInstallUninstallStubs();
         if (hCanRegister)
         {
@@ -2149,6 +2085,8 @@ void ProcessInstallUninstallStubsIfNeeded()
     }
 }
 
+// Hybrid of 6519/6583 rather than vista due to refactoring code into ExplorerFrame.
+// Also a hybrid of the XP ExplorerWinMain due to needing dll support still.
 int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int nCmdShow)
 {
 #ifndef RELEASE
@@ -2221,7 +2159,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 WaitForSingleObject(hMutex, INFINITE);
             }
 
-            es = IsDesktopWindowAlreadyPresent() != 0 ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
+            es = IsDesktopWindowAlreadyPresent() ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
         }
 #endif
 
@@ -2240,10 +2178,9 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             FileIconInit(TRUE);
 #endif
             g_fLogonCycle = IsFirstInstanceAfterLogon();
-            g_fCleanShutdown = WasPrevShutdownClean();
 
             CheckDefaultUIFonts();
-            ChangeUIfontsToNewDPI(); //Check dpi values and update the fonts if needed.
+            ChangeUIfontsToNewDPI();
             CheckForServerAdminUI();
 
             if (g_fLogonCycle)
@@ -2253,30 +2190,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 _ProcessRunOnce();
             }
 
-            if (g_fCleanBoot)
-            {
-                // let users know we are in safe mode
-                DisplayCleanBootMsg();
-            }
-
-            // Create the other special folders.
             CreateShellDirectories();
 
 #ifndef EXEX_DLL
-            // Run install stubs for the current user, mostly to propagate
-            // shortcuts to apps installed by another user.
-            if (!g_fCleanBoot)
-            {
-                HANDLE hCanRegister = CreateEvent(NULL, TRUE, TRUE, TEXT("_fCanRegisterWithShellService"));
+            ProcessInstallUninstallStubsIfNeeded();
 
-                //dont need for now, its dead anyways
-                //RunInstallUninstallStubs();
-
-                if (hCanRegister)
-                {
-                    CloseHandle(hCanRegister);
-                }
-            }
+            WasPrevShutdownClean();
             WriteCleanShutdown(FALSE);
 
             if (WinList_Init)
@@ -2326,6 +2245,71 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             _OleCoUninitialize(hrInit);
 
             ShellDDEInit(FALSE);
+        }
+        else
+        {
+            if (hMutex)
+            {
+                ReleaseMutex(hMutex);
+                CloseHandle(hMutex);
+            }
+
+            SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+
+            if (es == EXPLORERSERVER_NONE)
+            {
+                StartExplorerWindow();
+            }
+            else
+            {
+                HRESULT hrInit = SHCoInitialize();
+                if (SUCCEEDED(hrInit))
+                {
+                    NEWFOLDERINFO fi = {};
+                    if (SHExplorerParseCmdLine(PathGetArgsW(GetCommandLineW()), &fi))
+                    {
+                        if (es == EXPLORERSERVER_FACTORY)
+                        {
+                            IExplorerHostCreator* pehc;
+                            if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerHostCreator, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pehc))))
+                            {
+                                if (SUCCEEDED(pehc->CreateHost(fi.clsid)))
+                                {
+                                    pehc->RunHost();
+                                }
+                                pehc->Release();
+                            }
+                        }
+                        else
+                        {
+                            ASSERT(es == EXPLORERSERVER_SEPARATE);
+
+                            IExplorerLauncher* pel;
+                            if (SUCCEEDED(CoCreateInstance(CLSID_ExplorerLauncher, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pel))))
+                            {
+                                STARTUPINFOW si = { sizeof(si) };
+                                GetStartupInfoW(&si);
+
+                                POINT ptZero = {};
+                                int wShowWindow;
+                                if ((si.dwFlags & STARTF_USESHOWWINDOW) != 0)
+                                    wShowWindow = si.wShowWindow;
+                                else
+                                    wShowWindow = SW_SHOWNORMAL;
+
+                                pel->ShowWindow(
+                                    CLSID_SeparateMultipleProcessExplorerHost, fi.pidl,
+                                    (LAUNCHEXPLORERFLAGS)fi.uFlags, ptZero, wShowWindow, nullptr, nullptr, nullptr);
+                                pel->Release();
+                            }
+                        }
+
+                        ILFree(fi.pidl);
+                    }
+
+                    SHCoUninitialize(hrInit);
+                }
+            }
         }
 
         _Module.Term();
