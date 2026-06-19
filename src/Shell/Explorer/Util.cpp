@@ -1029,33 +1029,39 @@ BOOL GetMonitorRects(HMONITOR hMon, LPRECT prc, BOOL bWork)
     return FALSE;
 }
 
+DEFINE_GUID(POLID_TurnOffSPIAnimations, 0xD7AF00A, 0xB468, 0x4A39, 0xB0, 0x16, 0x33, 0x3E, 0x22, 0x77, 0xAB, 0xED);
+
 BOOL ShouldTaskbarAnimate()
 {
+    if (SHWindowsPolicy(POLID_TurnOffSPIAnimations))
+        return FALSE;
+
     BOOL fAnimate;
-    SystemParametersInfo(SPI_GETUIEFFECTS, 0, (PVOID) &fAnimate, 0);
+    SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &fAnimate, 0);
     if (fAnimate)
     {
         if (GetSystemMetrics(SM_REMOTESESSION) || GetSystemMetrics(SM_REMOTECONTROL))
         {
-            DWORD dwSessionID = NtCurrentPeb()->SessionId;
-
-            WCHAR szRegKey[MAX_PATH];
-            wnsprintf(szRegKey, ARRAYSIZE(szRegKey), L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Remote\\%d", dwSessionID);
-
-            fAnimate = SHRegGetBoolUSValue(szRegKey, TEXT("TaskbarAnimations"), FALSE, TRUE);
+            WCHAR szRegKey[260];
+            StringCchPrintfW(
+                szRegKey, ARRAYSIZE(szRegKey), L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Remote\\%d",
+                NtCurrentTeb()->ProcessEnvironmentBlock->SessionId);
+            fAnimate = _SHRegGetBoolValueFromHKCUHKLM(szRegKey, L"TaskbarAnimations", TRUE);
         }
         else
         {
-            fAnimate = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarAnimations"), FALSE, TRUE);
+            fAnimate = _SHRegGetBoolValueFromHKCUHKLM(
+                L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAnimations", TRUE);
         }
     }
+
     return fAnimate;
 }
 
-void FillRectClr(HDC hdc, LPRECT prc, COLORREF clr)
+void FillRectClr(HDC hdc, const RECT* prc, COLORREF clr)
 {
     COLORREF clrSave = SetBkColor(hdc, clr);
-    ExtTextOut(hdc,0,0,ETO_OPAQUE,prc,NULL,0,NULL);
+    SHExtTextOutW(hdc, 0, 0, ETO_OPAQUE, prc, nullptr, 0, nullptr);
     SetBkColor(hdc, clrSave);
 }
 

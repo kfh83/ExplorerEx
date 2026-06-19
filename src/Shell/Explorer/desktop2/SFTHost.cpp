@@ -2883,17 +2883,6 @@ LRESULT SFTBarHost::_OnLVSubItemPrePaint(LPNMLVCUSTOMDRAW plvcd)
 #endif
 }
 
-STDAPI_(BOOL)
-SHExtTextOutW(
-    HDC hdc,
-    int x,
-    int y,
-    UINT options,
-    CONST RECT *lprect,
-    LPCWSTR lpString,
-    UINT c,
-    CONST INT *lpDx);
-
 // QUIRK!  Listview often sends item postpaint messages even though we
 // didn't ask for one.  It does this because we set NOTIFYPOSTPAINT on
 // the CDDS_PREPAINT notification ("please notify me when the entire

@@ -321,17 +321,6 @@ LRESULT CMorePrograms::_OnCtlColorBtn(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return reinterpret_cast<LRESULT>(_hbrBk);
 }
 
-STDAPI_(BOOL)
-SHExtTextOutW(
-    HDC hdc,
-    int x,
-    int y,
-    UINT options,
-    CONST RECT *lprect,
-    LPCWSTR lpString,
-    UINT c,
-    CONST INT *lpDx);
-
 // EXEX-VISTA(allison): Validated.
 HRESULT CMorePrograms::_GetCurView(OPENHOSTVIEW *pView)
 {   

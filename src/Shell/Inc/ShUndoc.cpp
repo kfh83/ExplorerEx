@@ -3217,3 +3217,17 @@ HRESULT IUnknown_QueryServiceExec(IUnknown* punk, REFGUID guidService, const GUI
 
     return hres;
 }
+
+STDAPI_(BOOL) SHExtTextOutW(
+    HDC hdc, int x, int y, UINT options, const RECT* lprect, const WCHAR* lpString, UINT c, const int* lpDx)
+{
+    if (c)
+    {
+        DWORD dwLayout = GetLayout(hdc);
+        if (dwLayout != -1 && (dwLayout & LAYOUT_RTL) != 0)
+        {
+            --x;
+        }
+    }
+    return ExtTextOutW(hdc, x, y, options, lprect, lpString, c, lpDx);
+}

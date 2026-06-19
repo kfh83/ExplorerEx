@@ -324,20 +324,6 @@ void CClockCtl::_GetTextExtent(HDC hdc, const WCHAR* pszText, int cchText, RECT*
     }
 }
 
-STDAPI_(BOOL) SHExtTextOutW(
-    HDC hdc, int x, int y, UINT options, const RECT* lprect, const WCHAR* lpString, UINT c, const int* lpDx)
-{
-    if (c)
-    {
-        DWORD dwLayout = GetLayout(hdc);
-        if (dwLayout != -1 && (dwLayout & LAYOUT_RTL) != 0)
-        {
-            --x;
-        }
-    }
-    return ExtTextOutW(hdc, x, y, options, lprect, lpString, c, lpDx);
-}
-
 // ExEx-Vista(Allison): Verified.
 void CClockCtl::_DrawText(HDC hdc, const WCHAR* pszText, int cchText, const RECT* prcText)
 {

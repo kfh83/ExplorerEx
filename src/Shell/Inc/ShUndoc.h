@@ -1547,3 +1547,6 @@ inline BOOL (*IsThemeClassDefined)(HTHEME hTheme, const WCHAR* pszAppName, const
 // ExplorerFrame.dll
 inline void(* WinList_Init)();
 inline void(* WinList_Terminate)();
+
+STDAPI_(BOOL) SHExtTextOutW(
+    HDC hdc, int x, int y, UINT options, const RECT* lprect, const WCHAR* lpString, UINT c, const int* lpDx);
