@@ -530,65 +530,27 @@ void _AutoRunTaskMan()
     }
 }
 
-// try to create this by sending a wm_command directly to
-// the desktop.
-BOOL MyCreateFromDesktop(HINSTANCE hInst, LPCTSTR pszCmdLine, int nCmdShow)
-{
-    NEWFOLDERINFO fi = {0};
-    BOOL bRet = FALSE;
+BOOL g_fDragFullWindows = FALSE;
+int g_cxEdge = 0;
+int g_cyEdge = 0;
+int g_cySize = 0;
+int g_cyTabSpace = 0;
+int g_cxFrame = 0;
+int g_cyFrame = 0;
 
-    fi.nShow = nCmdShow;
+int g_cxMinimized = 0;
+int g_cxVScroll = 0;
+int g_cyHScroll = 0;
+UINT g_uDoubleClick = 0;
 
-    //  since we have browseui fill out the fi, 
-    //  SHExplorerParseCmdLine() does a GetCommandLine()
-    if (SHExplorerParseCmdLine(nullptr, &fi))
-    {
-        bRet = SHCreateFromDesktop(&fi);
-    }
-
-    //  should we also have it cleanup after itself??
-
-    //  SHExplorerParseCmdLine() can allocate this buffer...
-    if (fi.uFlags & COF_PARSEPATH)
-    {
-        LocalFree(fi.pszPath);
-    }
-
-    ILFree(fi.pidl);
-    ILFree(fi.pidlRoot);
-
-    return bRet;
-}
-
-BOOL g_fDragFullWindows=FALSE;
-int g_cxEdge=0;
-int g_cyEdge=0;
-int g_cxPaddedBorder=0;
-int g_cySize=0;
-int g_cxTabSpace=0;
-int g_cyTabSpace=0;
-int g_cxBorder=0;
-int g_cyBorder=0;
-int g_cxPrimaryDisplay=0;
-int g_cyPrimaryDisplay=0;
-int g_cxDlgFrame=0;
-int g_cyDlgFrame=0;
-int g_cxFrame=0;
-int g_cyFrame=0;
-
-int g_cxMinimized=0;
-//int g_fCleanBoot=0;
-int g_cxVScroll=0;
-int g_cyHScroll=0;
-UINT g_uDoubleClick=0;
-
-void Cabinet_InitGlobalMetrics(WPARAM wParam, LPTSTR lpszSection)
+// @Note: const-ness assumed
+void Cabinet_InitGlobalMetrics(WPARAM wParam, const WCHAR* lpszSection)
 {
     BOOL fForce = (!lpszSection || !*lpszSection);
 
     if (fForce || wParam == SPI_SETDRAGFULLWINDOWS)
     {
-        SystemParametersInfo(SPI_GETDRAGFULLWINDOWS, 0, &g_fDragFullWindows, 0);
+        SystemParametersInfoW(SPI_GETDRAGFULLWINDOWS, 0, &g_fDragFullWindows, 0);
     }
 
     if (fForce || !lstrcmpi(lpszSection, TEXT("WindowMetrics")) ||
@@ -596,21 +558,13 @@ void Cabinet_InitGlobalMetrics(WPARAM wParam, LPTSTR lpszSection)
     {
         g_cxEdge = GetSystemMetrics(SM_CXEDGE);
         g_cyEdge = GetSystemMetrics(SM_CYEDGE);
-        g_cxPaddedBorder = GetSystemMetrics(SM_CXPADDEDBORDER);
-        g_cxTabSpace = (g_cxEdge * 3) / 2;
-        g_cyTabSpace = (g_cyEdge * 3) / 2; // cause the graphic designers really really want 3.
+        g_cyTabSpace = (g_cyEdge * 3) / 2;
         g_cySize = GetSystemMetrics(SM_CYSIZE);
-        g_cxBorder = GetSystemMetrics(SM_CXBORDER);
-        g_cyBorder = GetSystemMetrics(SM_CYBORDER);
         g_cxVScroll = GetSystemMetrics(SM_CXVSCROLL);
         g_cyHScroll = GetSystemMetrics(SM_CYHSCROLL);
-        g_cxDlgFrame = GetSystemMetrics(SM_CXDLGFRAME);
-        g_cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
         g_cxFrame  = GetSystemMetrics(SM_CXFRAME);
         g_cyFrame  = GetSystemMetrics(SM_CYFRAME);
         g_cxMinimized = GetSystemMetrics(SM_CXMINIMIZED);
-        g_cxPrimaryDisplay = GetSystemMetrics(SM_CXSCREEN);
-        g_cyPrimaryDisplay = GetSystemMetrics(SM_CYSCREEN);
     }
 
     if (fForce || wParam == SPI_SETDOUBLECLICKTIME)
@@ -1313,65 +1267,6 @@ BOOL _ShouldOfferTour(void)
     return fRet;
 }
 
-typedef BOOL (*CHECKFUNCTION)(void);
-
-void _ConditionalBalloonLaunch(CHECKFUNCTION pCheckFct, SHELLREMINDER* psr)
-{
-	if (pCheckFct())
-	{
-		IShellReminderManager* psrm;
-		HRESULT hr = CoCreateInstance(CLSID_PostBootReminder, NULL, CLSCTX_INPROC_SERVER,
-			IID_PPV_ARG(IShellReminderManager, &psrm));
-
-		if (SUCCEEDED(hr))
-		{
-			psrm->Add(psr);
-			psrm->Release();
-		}
-	}
-}
-
-void _FixWordMailRegKey(void)
-{
-    // If we don't have permissions, fine this is just correction code
-    HKEY hkey;
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CLASSES_ROOT, L"Applications", 0, KEY_ALL_ACCESS, &hkey))
-    {
-        HKEY hkeyTemp;
-        if (ERROR_SUCCESS != RegOpenKeyEx(hkey, L"WINWORD.EXE", 0, KEY_ALL_ACCESS, &hkeyTemp))
-        {
-            HKEY hkeyWinWord;
-            DWORD dwResult;
-            if (ERROR_SUCCESS == RegCreateKeyEx(hkey, L"WINWORD.EXE", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkeyWinWord, &dwResult))
-            {
-                HKEY hkeyTBExcept;
-                if (ERROR_SUCCESS == RegCreateKeyEx(hkeyWinWord, L"TaskbarExceptionsIcons", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkeyTBExcept, &dwResult))
-                {
-                    HKEY hkeyIcon;
-                    if (ERROR_SUCCESS == RegCreateKeyEx(hkeyTBExcept, L"WordMail", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkeyIcon, &dwResult))
-                    {
-                        const WCHAR szIconPath[] = L"explorer.exe,16";
-                        DWORD cbIconPath = sizeof(szIconPath);
-                        RegSetValue(hkeyIcon, L"IconPath", REG_SZ, szIconPath, cbIconPath);
-
-                        const WCHAR szNewExeName[] = L"OUTLOOK.EXE";
-                        DWORD cbNewExeName = sizeof(szNewExeName);
-                        RegSetValue(hkeyIcon, L"NewExeName", REG_SZ, szNewExeName, cbNewExeName);
-                        RegCloseKey(hkeyIcon);
-                    }
-                    RegCloseKey(hkeyTBExcept);
-                }
-                RegCloseKey(hkeyWinWord);
-            }
-        }
-        else
-        {
-            RegCloseKey(hkeyTemp);
-        }
-        RegCloseKey(hkey);
-    }
-}
-
 void CheckForServerAdminUI()
 {
     DWORD dwServerAdminUI;
@@ -1464,10 +1359,11 @@ class CProcessAndThreadRefHost : public CThreadRefHost
 public:
     CProcessAndThreadRefHost()
     {
-        static void (*fSetProcessReference)(IUnknown* punk) = reinterpret_cast<decltype(fSetProcessReference)>(GetProcAddress(LoadLibraryW(L"SHCore.dll"), "SetProcessReference"));
-        if (fSetProcessReference)
+        void (*pfnSetProcessReference)(IUnknown* punk)
+            = reinterpret_cast<decltype(pfnSetProcessReference)>(GetProcAddress(LoadLibraryW(L"SHCore.dll"), "SetProcessReference"));
+        if (pfnSetProcessReference)
         {
-            fSetProcessReference(_punk);
+            pfnSetProcessReference(_punk);
         }
     }
 };
@@ -1529,12 +1425,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
         EXPLORERSERVER es = ShouldStartDesktopAndTray();
         if (es == EXPLORERSERVER_UNDETERMINED)
         {
-            hMutex = CreateMutexW(nullptr, 0, L"Local\\ExplorerIsShellMutex");
+            hMutex = CreateMutexW(nullptr, FALSE, L"Local\\ExplorerIsShellMutex");
             if (hMutex)
             {
                 WaitForSingleObject(hMutex, INFINITE);
             }
-            es = IsDesktopWindowAlreadyPresent() != 0 ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
+            es = IsDesktopWindowAlreadyPresent() ? EXPLORERSERVER_NONE : EXPLORERSERVER_DESKTOP;
         }
 
         if (es == EXPLORERSERVER_DESKTOP)
@@ -1581,7 +1477,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
             if (hDesktop)
             {
                 PostMessageW(v_hwndTray, 0x590, 1, 0);
-                //InitSoundWindow();
+                InitSoundWindow();
 
                 SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 
@@ -1628,9 +1524,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
                 if (SUCCEEDED(hrInit))
                 {
                     NEWFOLDERINFO fi = {};
-                    const WCHAR* CommandLineW = GetCommandLineW();
-                    const WCHAR* ArgsW = PathGetArgsW(CommandLineW);
-                    if (SHExplorerParseCmdLine(ArgsW, &fi))
+                    if (SHExplorerParseCmdLine(PathGetArgsW(GetCommandLineW()), &fi))
                     {
                         if (es == EXPLORERSERVER_FACTORY)
                         {
@@ -1678,9 +1572,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
         _Module.Term();
     }
 
-    const WCHAR* v13 = GetCommandLineW();
-    const WCHAR* v14 = PathGetArgsW(v13);
-    FreeSharedMemInCmdLine(v14);
+    FreeSharedMemInCmdLine(PathGetArgsW(GetCommandLineW()));
 
     SHFusionUninitialize();
     // _DebugMsgW(4, L"c.App Exit.");
@@ -1694,7 +1586,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
         ExitProcess(1);
     }
 
-    return 1;
+    return TRUE;
 }
 #endif
 

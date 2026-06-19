@@ -2926,15 +2926,6 @@ void CTray::_HandleSize()
     _stb.RepositionBalloon();
 }
 
-BOOL _IsSliverHeight(int cy)
-{
-    //
-    // Is this height clearly bigger than the pure-border height that you
-    // get when you resize the taskbar as small as it will go?
-    //
-    return (cy < (3 * (g_cyDlgFrame + g_cyBorder)));
-}
-
 SIZE CTray::_GetStartButtonPadding()
 {
     SIZE sizePadding;
@@ -3234,10 +3225,6 @@ void CTray::_ScreenSizeChange(HWND hwnd)
             _RecomputeAllWorkareas();
         }
     }
-
-    // screen size changed, so we need to adjust globals
-    g_cxPrimaryDisplay = GetSystemMetrics(SM_CXSCREEN);
-    g_cyPrimaryDisplay = GetSystemMetrics(SM_CYSCREEN);
 
     _ResizeStuckRects(_arStuckRects);
 
@@ -9082,8 +9069,8 @@ DWORD CTray::_RunDlgThreadProc(HANDLE hdata)
         // takes into account the frame and that right/bottom of RECT
         // is exclusive in GDI.
 
-        lDeltaX = _sStuckWidths.cx - g_cxFrame - g_cxPaddedBorder;
-        lDeltaY = _sStuckWidths.cy - g_cyFrame - g_cxPaddedBorder;
+        lDeltaX = _sStuckWidths.cx - g_cxFrame;
+        lDeltaY = _sStuckWidths.cy - g_cyFrame;
         if (rc.left < monitorInfo.rcMonitor.left)
         {
             --lDeltaX;

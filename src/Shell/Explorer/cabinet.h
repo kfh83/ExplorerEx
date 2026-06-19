@@ -97,16 +97,8 @@ extern BOOL g_fFakeShutdown;
 extern int g_fDragFullWindows;
 extern int g_cxEdge;
 extern int g_cyEdge;
-extern int g_cxPaddedBorder;
 extern int g_cySize;
 extern int g_cyTabSpace;
-extern int g_cxTabSpace;
-extern int g_cxBorder;
-extern int g_cyBorder;
-extern int g_cxPrimaryDisplay;
-extern int g_cyPrimaryDisplay;
-extern int g_cxDlgFrame;
-extern int g_cyDlgFrame;
 extern int g_cxFrame;
 extern int g_cyFrame;
 extern int g_cxMinimized;
@@ -155,7 +147,7 @@ void WriteCleanShutdown(DWORD dwValue);
 
 void InvokeURLDebugDlg(HWND hwnd);
 
-void Cabinet_InitGlobalMetrics(WPARAM, LPTSTR);
+void Cabinet_InitGlobalMetrics(WPARAM, const WCHAR*);
 
 
 #define REGSTR_PATH_ADVANCED        REGSTR_PATH_EXPLORER TEXT("\\Advanced")

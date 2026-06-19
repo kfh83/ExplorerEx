@@ -1179,10 +1179,9 @@ DrawBorder:
             // Right
             if (flags & BF_RIGHT)
             {       
-                rc.right -= g_cxBorder;
-                // PatBlt(hdc, rc.right, rc.top, g_cxBorder, rc.bottom - rc.top, PATCOPY);
+                rc.right -= GetSystemMetrics(SM_CXBORDER);
                 rcD.left = rc.right;
-                rcD.right = rc.right + g_cxBorder;
+                rcD.right = rc.right + GetSystemMetrics(SM_CXBORDER);
                 rcD.top = rc.top;
                 rcD.bottom = rc.bottom;
 
@@ -1192,12 +1191,11 @@ DrawBorder:
             // Bottom
             if (flags & BF_BOTTOM)
             {
-                rc.bottom -= g_cyBorder;
-                // PatBlt(hdc, rc.left, rc.bottom, rc.right - rc.left, g_cyBorder, PATCOPY);
+                rc.bottom -= GetSystemMetrics(SM_CYBORDER);
                 rcD.left = rc.left;
                 rcD.right = rc.right;
                 rcD.top = rc.bottom;
-                rcD.bottom = rc.bottom + g_cyBorder;
+                rcD.bottom = rc.bottom + GetSystemMetrics(SM_CYBORDER);
 
                 FillRectClr(hdc, &rcD, clrBR);
             }
@@ -1209,10 +1207,9 @@ DrawBorder:
             // Left
             if (flags & BF_LEFT)
             {
-                // PatBlt(hdc, rc.left, rc.top, g_cxBorder, rc.bottom - rc.top, PATCOPY);
-                rc.left += g_cxBorder;
+                rc.left += GetSystemMetrics(SM_CXBORDER);
 
-                rcD.left = rc.left - g_cxBorder;
+                rcD.left = rc.left - GetSystemMetrics(SM_CXBORDER);
                 rcD.right = rc.left;
                 rcD.top = rc.top;
                 rcD.bottom = rc.bottom; 
@@ -1223,12 +1220,11 @@ DrawBorder:
             // Top
             if (flags & BF_TOP)
             {
-                // PatBlt(hdc, rc.left, rc.top, rc.right - rc.left, g_cyBorder, PATCOPY);
-                rc.top += g_cyBorder;
+                rc.top += GetSystemMetrics(SM_CYBORDER);
 
                 rcD.left = rc.left;
                 rcD.right = rc.right;
-                rcD.top = rc.top - g_cyBorder;
+                rcD.top = rc.top - GetSystemMetrics(SM_CYBORDER);
                 rcD.bottom = rc.top;
 
                 FillRectClr(hdc, &rcD, clrTL);
@@ -1286,7 +1282,7 @@ void DrawBlankButton(HDC hdc, LPRECT lprc, DWORD wControlState)
         FillRectClr(hdc, lprc, GetBkColor(hdc));
     
     if (!fAdjusted)
-        InflateRect(lprc, -g_cxBorder, -g_cyBorder);
+        InflateRect(lprc, -GetSystemMetrics(SM_CXBORDER), -GetSystemMetrics(SM_CYBORDER));
 }
 
 #define CX_INCREMENT    1
