@@ -15,36 +15,28 @@
 #ifdef EXEX_DLL
 
 #include "ImmersiveInit.h"
-#include <Tray.h>
 
-// TODO: Should this be a global variable? Look into restructuring.
-IImmersiveShellHookService *g_pShellHookService = nullptr;
+#include <Tray.h>
+#include <wil/result_macros.h>
 
 // static
 HRESULT CTaskmanWindow::RegisterWindowClass()
 {
-	WNDCLASSEX wc = { 0 };
+	WNDCLASSEX wc;
 
 	wc.cbClsExtra = 0;
-	wc.cbWndExtra = sizeof(void *); // We store a single pointer here.
+	wc.cbWndExtra = sizeof(void*);
 	wc.cbSize = sizeof(wc);
-	wc.style = 8; // TODO: Document.
-	wc.hIcon = NULL;
-	wc.hIconSm = NULL;
+	wc.style = CS_DBLCLKS;
+	wc.hIcon = nullptr;
+	wc.hIconSm = nullptr;
 	wc.hInstance = g_hinstCabinet;
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wc.hbrBackground = (HBRUSH)2; // TODO: Document.
+	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+	wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND + 1);
 	wc.lpfnWndProc = s_WndProc;
-	wc.lpszClassName = TEXT("TaskmanWndClass");
+	wc.lpszClassName = L"TaskmanWndClass";
 	wc.lpszMenuName = nullptr;
-
-	if (!RegisterClassEx(&wc))
-	{
-		DWORD dwLastError = GetLastError();
-		wprintf(L"Failed to register Taskman window class (error code %d).\n", dwLastError);
-		return HRESULT_FROM_WIN32(dwLastError);
-	}
-
+	RETURN_LAST_ERROR_IF_MSG(!RegisterClassExW(&wc), "Failed to register Taskman window class");
 	return S_OK;
 }
 
@@ -61,14 +53,14 @@ CTaskmanWindow::CTaskmanWindow()
 		g_fTaskmanRegistered = true;
 	}
 
-	_hwnd = CreateWindowEx(
-		NULL,
-		TEXT("TaskmanWndClass"),
-		NULL,
+	_hwnd = SHFusionCreateWindowEx(
+		0,
+		L"TaskmanWndClass",
+		nullptr,
 		WS_POPUP | WS_CLIPCHILDREN,
 		0, 0, 0, 0,
-		NULL,
-		NULL,
+		nullptr,
+		nullptr,
 		g_hinstCabinet,
 		this
 	);
@@ -116,7 +108,7 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 			if (GetTaskmanWindow() == _hwnd)
 			{
-				SetTaskmanWindow(NULL);
+				SetTaskmanWindow(nullptr);
 			}
 
 			DeregisterShellHookWindow(_hwnd);
@@ -128,7 +120,7 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 			if (uMsg == _wmShellHook)
 			{
-				if (!g_pShellHookService)
+				if (!_spShellHookService)
 				{
 					// Initialise the shell hook service:
 					wprintf(L"Shell hook service not initialised. Initialising now.\n");
@@ -136,7 +128,7 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					if (SUCCEEDED(CoCreateInstance(CLSID_ImmersiveShell, nullptr, CLSCTX_NO_CODE_DOWNLOAD | CLSCTX_LOCAL_SERVER,
 						IID_PPV_ARGS(&pServiceProvider))))
 					{
-						if (FAILED(pServiceProvider->QueryService(SID_ImmersiveShellHookService, IID_PPV_ARGS(&g_pShellHookService))))
+						if (FAILED(pServiceProvider->QueryService(SID_ImmersiveShellHookService, IID_PPV_ARGS(&_spShellHookService))))
 						{
 							wprintf(L"Failed to query SID_ImmersiveShellHookService.\n");
 						}
@@ -155,7 +147,7 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					if (wParam == 12) // TODO: Document
 					{
 						wprintf(L"Setting the target window for serialisation to %p.\n", (HWND)lParam);
-						g_pShellHookService->SetTargetWindowForSerialization((HWND)lParam);
+						_spShellHookService->SetTargetWindowForSerialization((HWND)lParam);
 					}
 					else if (wParam == 50) // TODO: Document
 					{
@@ -172,7 +164,7 @@ LRESULT CTaskmanWindow::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 					if (fForward)
 					{
 						wprintf(L"[Shell Hook] Forwarding message 0d%d to 0x%p...\n", (WORD)wParam, (HWND)lParam);
-						g_pShellHookService->PostShellHookMessage(wParam, lParam);
+						_spShellHookService->PostShellHookMessage(wParam, lParam);
 					}
 
 					return 0;

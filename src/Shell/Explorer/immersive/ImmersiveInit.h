@@ -23,6 +23,7 @@ class CTaskmanWindow : public CImpWndProc
 	LRESULT v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 
 	UINT _wmShellHook = 0;
+	CComPtr<IImmersiveShellHookService> _spShellHookService;
 
 public:
 	static HRESULT RegisterWindowClass();
