@@ -1194,7 +1194,7 @@ void ChangeUIfontsToNewDPI()
         HINSTANCE hInst = LoadLibraryW(L"desk.cpl");
         if (hInst)
         {
-            using PFN = HRESULT(*)(int, int);
+            using PFN = HRESULT(*WINAPI)(int, int);
 
             PFN pfnUpdateUIfonts = reinterpret_cast<PFN>(GetProcAddress(hInst, "UpdateUIfontsDueToDPIchange"));
             if (pfnUpdateUIfonts)
