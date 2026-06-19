@@ -509,318 +509,6 @@ BOOL _ProcessRunOnce()
     return bRet;
 }
 
-
-
-
-typedef DWORD (*DsRoleGetPrimaryDomainInfoFunc)(
-   LPCWSTR, DSROLE_PRIMARY_DOMAIN_INFO_LEVEL, PBYTE*);
-
-typedef VOID (*DsRoleFreeMemoryFunc)(PVOID);
-
-
-   
-bool
-IsDcInUpgradePurgatory()
-{
-   bool fResult = false;
-
-   HMODULE hNetapi32 = NULL;
-
-   do
-   {
-      hNetapi32 = ::LoadLibrary(L"netapi32.dll");
-      if (!hNetapi32)
-      {
-         break;
-      }
-
-      DsRoleGetPrimaryDomainInfoFunc pDsRoleGetPrimaryDomainInformation =
-         (DsRoleGetPrimaryDomainInfoFunc) ::GetProcAddress(
-            hNetapi32,
-            "DsRoleGetPrimaryDomainInformation");
-      if (!pDsRoleGetPrimaryDomainInformation)
-      {
-         break;
-      }
-
-      DsRoleFreeMemoryFunc pDsRoleFreeMemory =
-         (DsRoleFreeMemoryFunc) ::GetProcAddress(
-            hNetapi32,
-            "DsRoleFreeMemory");
-      if (!pDsRoleFreeMemory)
-      {
-         break;
-      }
-         
-      DSROLE_UPGRADE_STATUS_INFO* pInfo = NULL;
-      DWORD dwErr =
-         pDsRoleGetPrimaryDomainInformation(
-            0,
-            ::DsRoleUpgradeStatus,
-            (PBYTE*) &pInfo);
-      if (dwErr != ERROR_SUCCESS || !pInfo)
-      {
-         break;
-      }
-
-      fResult =
-            (pInfo->OperationState & DSROLE_UPGRADE_IN_PROGRESS)
-         ?  true
-         :  false;
-         
-      pDsRoleFreeMemory(pInfo);
-
-   }
-   while (false);
-
-   if (hNetapi32)
-   {
-      ::FreeLibrary(hNetapi32);
-      hNetapi32 = NULL;
-   }
-   
-   return fResult;
-}
-
-
-
-#define REGTIPS                     REGSTR_PATH_EXPLORER TEXT("\\Tips")
-#define SZ_REGKEY_W2K               TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Setup\\Welcome")
-#define SZ_REGVAL_W2K               TEXT("srvwiz")
-#define SZ_REGKEY_SRVWIZ_ROOT       TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\srvWiz")
-#define SZ_REGVAL_SRVWIZ_RUN_ALWAYS TEXT("CYSMustRun")
-#define SZ_CYS_COMMAND_LINE	      TEXT("cys.exe")
-#define SZ_MYS_COMMAND_LINE	      TEXT("mshta.exe")
-#define SZ_CYS_COMMAND_LINE_ARGS    TEXT("/explorer")
-#define SZ_MYS_COMMAND_LINE_ARGS    TEXT("res://mys.dll/mys.hta /explorer")
-#define SZ_REGKEY_MYS_POLICY        TEXT("SOFTWARE\\Policies\\Microsoft\\Windows NT\\CurrentVersion\\MYS")
-#define SZ_REGVAL_MYS_DISABLE_SHOW  TEXT("DisableShowAtLogon")
-    
-// Srvwiz is the Configure Your Server Wizard that runs on srv and ads skus
-// returns whether or not the command should be run, and which command to run
-
-bool _ShouldStartCys(OUT PCWSTR* whichCommand, OUT PCWSTR* commandArgs)
-{
-   ASSERT(whichCommand);
-   ASSERT(commandArgs);
-
-   bool result = false;
-
-   do
-   {
-      if (!whichCommand || !commandArgs)
-      {
-         // that would be a bug in the caller, so do nothing.
-     
-         break;
-      }
-
-      *whichCommand = 0;
-      *commandArgs  = 0;
-
-      // Only run on srv or ads sku
-      // NTRAID#NTBUG9-485488-2001/11/02-JeffJon
-      // We have to run CYS on DataCenter if and only if the
-      // must run key is set
-
-      if (!IsOS(OS_SERVER) && !IsOS(OS_ADVSERVER) && !IsOS(OS_DATACENTER))
-      {
-         break;
-      }
-
-      if (!IsUserAnAdmin())
-      {
-         break;
-      }
-
-      DWORD dwType = 0;
-      DWORD dwData = 0;
-      DWORD cbSize = sizeof(dwData);
-   
-      // if the must-run value is present and non-zero, then we need to
-      // start the wizard.
-      
-      if (
-         SHGetValue(
-            HKEY_LOCAL_MACHINE,
-            SZ_REGKEY_SRVWIZ_ROOT,
-            SZ_REGVAL_SRVWIZ_RUN_ALWAYS,
-            &dwType,
-            reinterpret_cast<BYTE*>(&dwData),
-            &cbSize) == ERROR_SUCCESS)
-      {
-         if (dwData)
-         {
-            result = true;
-            *whichCommand = SZ_CYS_COMMAND_LINE;     
-            *commandArgs  = SZ_CYS_COMMAND_LINE_ARGS;
-            break;
-         }
-      }
-
-      dwData = 0;
-      cbSize = sizeof(dwData);
-
-      // If group policy is set for "Don't show MYS",
-      // then don't show MYS regardless of user setting
-      if (
-         SHGetValue(
-            HKEY_LOCAL_MACHINE,
-            SZ_REGKEY_MYS_POLICY,
-            SZ_REGVAL_MYS_DISABLE_SHOW,
-            &dwType,
-            reinterpret_cast<BYTE*>(&dwData),
-            &cbSize) == ERROR_SUCCESS)
-      {
-         if (REG_DWORD == dwType && dwData)
-         {
-            //"Don't show" policy is set, so bail on rest of checks.
-            break; 
-         }
-      }      
-
-      // If this is DataCenter and the must run key was
-      // not set then don't run CYS
-
-      if (IsOS(OS_DATACENTER))
-      {
-         break;
-      }
-
-      // If the user's preference is present and zero, then don't show
-      // the wizard, else continue with other tests
-
-      cbSize = sizeof(dwData);
-
-      if (
-         !SHGetValue(
-            HKEY_CURRENT_USER, 
-            REGTIPS, 
-            TEXT("Show"), 
-            NULL, 
-            reinterpret_cast<BYTE*>(&dwData), 
-            &cbSize))
-      {
-         if (!dwData)
-         {
-            break;
-         }
-      }
-
-      // This is to check an old W2K regkey that was documented in Q220838.
-      // If the key exists and is not zero then don't run the wizard
-
-      dwData = 0;
-      cbSize = sizeof(dwData);
-
-      if (
-         !SHGetValue(
-            HKEY_CURRENT_USER,
-            SZ_REGKEY_W2K,
-            SZ_REGVAL_W2K,
-            NULL,
-            reinterpret_cast<BYTE*>(&dwData),
-            &cbSize))
-      {
-         if (!dwData)
-         {
-            break;
-         }
-      }
-
-      // If the machine was an NT4 PDC now undergoing upgrade, dcpromo will
-      // start automatically. So we should not start.
-
-      if (IsDcInUpgradePurgatory())
-      {
-         break;
-      }
-
-      // If the user's preference is absent or non-zero, then we need to
-      // start the wizard.
-
-      dwData = 0;
-      cbSize = sizeof(dwData);
-      
-      if (
-         SHGetValue(
-            HKEY_CURRENT_USER,
-            SZ_REGKEY_SRVWIZ_ROOT,
-            NULL,
-            &dwType,
-            reinterpret_cast<BYTE*>(&dwData),
-            &cbSize) != ERROR_SUCCESS)
-      {
-         result = true;
-         *whichCommand = SZ_MYS_COMMAND_LINE;
-         *commandArgs  = SZ_MYS_COMMAND_LINE_ARGS;
-         break;
-      }
-
-      if (dwData)
-      {
-         result = true;
-         *whichCommand = SZ_MYS_COMMAND_LINE;
-         *commandArgs  = SZ_MYS_COMMAND_LINE_ARGS;
-      }
-   }
-   while (0);
-
-#ifdef DBG
-   if (result)
-   {
-      ASSERT(*whichCommand);
-      ASSERT(*commandArgs);
-   }
-#endif
-
-   return result;
-}
-         
-
-         
-void _RunWelcome()
-{
-    PCWSTR command     = 0;
-    PCWSTR commandArgs = 0;
-    
-    if (_ShouldStartCys(&command, &commandArgs))
-    {
-        // NTRAID #94718: The SHGetValue above should be replaced with an SHRestricted call.  The above is a highly non-standard
-        // place for this "policy" to live plus it doesn't allow for per machine and per user settings.
-
-        TCHAR szCmdLine[MAX_PATH];
-        PROCESS_INFORMATION pi;
-
-        // launch Configure Your Server for system administrators on Win2000 Server and Advanced Server
-        GetSystemDirectory(szCmdLine, ARRAYSIZE(szCmdLine));
-        PathAppend(szCmdLine, command);
-
-        if (CreateProcessWithArgs(szCmdLine, commandArgs, NULL, &pi))
-        {
-            // OLE created a secret window for us, so we can't use
-            // WaitForSingleObject or we will deadlock
-
-            using fnSHWaitForSendMessageThread = DWORD(WINAPI*)(HANDLE, DWORD);
-            fnSHWaitForSendMessageThread SHWaitForSendMessageThread;
-            SHWaitForSendMessageThread = reinterpret_cast<fnSHWaitForSendMessageThread>(GetProcAddress(GetModuleHandle(L"shlwapi.dll"), MAKEINTRESOURCEA(194)));
-            SHWaitForSendMessageThread(pi.hProcess, INFINITE);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-        }
-    }
-
-    // Once that's all done, see if the Start Menu needs to auto-open.
-    // Don't auto-open if we are going to offer to fix the user's screen
-    // resolution, though, because that causes us to cover up the screen
-    // resolution fix wizard!  The screen resolution fix wizard will post
-    // this message when the user has finished fixing the screen.
-    if (!_ShouldFixResolution())
-    {
-        PostMessage(v_hwndTray, RegisterWindowMessage(TEXT("Welcome Finished")), 0, 0);
-    }
-}
-
 void _AutoRunTaskMan()
 {
     WCHAR szBuffer[260];
@@ -1434,34 +1122,6 @@ void WINAPI _OleCoUninitialize(HRESULT hr)
     SHCoUninitialize(hr);
 }
 
-// we need to figure out the fFirstShellBoot on a per-user
-// basis rather than once per machine.  We want the welcome
-// splash screen to come up for every new user.
-
-BOOL IsFirstShellBoot()
-{
-    DWORD dwDisp;
-    HKEY hkey;
-    BOOL fFirstShellBoot = TRUE;  // default value
-
-    if (RegCreateKeyEx(HKEY_CURRENT_USER, REGTIPS, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE,
-                     NULL, &hkey, &dwDisp) == ERROR_SUCCESS)
-    {
-        DWORD dwSize = sizeof(fFirstShellBoot);
-
-        RegQueryValueEx(hkey, TEXT("DisplayInitialTipWindow"), NULL, NULL, (LPBYTE)&fFirstShellBoot, &dwSize);
-
-        if (fFirstShellBoot)
-        {
-            // Turn off the initial tip window for future shell starts.
-            BOOL bTemp = FALSE;
-            RegSetValueEx(hkey, TEXT("DisplayInitialTipWindow"), 0, REG_DWORD, (LPBYTE) &bTemp, sizeof(bTemp));
-        }
-        RegCloseKey(hkey);
-    }
-    return fFirstShellBoot;
-}
-
 // the following locale fixes (for NT5 378948) are dependent on desk.cpl changes
 // Since Millennium does not ship updated desk.cpl, we don't want to do this on Millennium
 //
@@ -1488,83 +1148,58 @@ UINT  GetCharsetFromLCID(LCID   lcid)
     return uiRet;
 }
 
-// In case of system locale change, the only way to update UI fonts is opening
-// Desktop->Properties->Appearance.
-// If the end user never open it the UI fonts are never changed.
-// So compare the charset from system locale with the UI fonts charset then
-// call desk.cpl if those are different.
-
-#define MAX_CHARSETS      4
-typedef HRESULT (STDAPICALLTYPE *LPUPDATECHARSETCHANGES)();
-
 void CheckDefaultUIFonts()
 {
-    UINT  uiCharsets[MAX_CHARSETS];
-    DWORD dwSize = sizeof(UINT) * MAX_CHARSETS;
-    DWORD dwError;
-
-    dwError = SHGetValue(HKEY_CURRENT_USER, TEXT("Control Panel\\Appearance"), TEXT("RecentFourCharsets"), NULL, (void *)uiCharsets, &dwSize);
-
-    if (dwError != ERROR_SUCCESS || uiCharsets[0] != GetCharsetFromLCID(GetSystemDefaultLCID()))
+    LANGID langID;
+    DWORD dwSize = sizeof(langID);
+    if (SHGetValueW(HKEY_CURRENT_USER, L"Control Panel\\Appearance", L"SchemeLangID", nullptr, &langID, &dwSize)
+        || langID != GetUserDefaultUILanguage())
     {
-        HINSTANCE   hInst;
-        LPUPDATECHARSETCHANGES pfnUpdateCharsetChanges;
-
-        if (hInst = LoadLibrary(TEXT("desk.cpl")))
+        HINSTANCE hInst = LoadLibraryW(L"desk.cpl");
+        if (hInst)
         {
-            // Call desk.cpl to change the UI fonts in case of
-            // system locale change.
-            if (pfnUpdateCharsetChanges = (LPUPDATECHARSETCHANGES)(GetProcAddress(hInst, "UpdateCharsetChanges")))
+            using PFN = HRESULT(*WINAPI)();
+
+            PFN pfnUpdateCharsetChanges = reinterpret_cast<PFN>(GetProcAddress(hInst, "UpdateCharsetChanges"));
+            if (pfnUpdateCharsetChanges)
             {
-                (*pfnUpdateCharsetChanges)();
+                pfnUpdateCharsetChanges();
             }
             FreeLibrary(hInst);
         }
     }
 }
 
-//
-// This function calls an desk.cpl function to update the UI fonts to use the new DPI value.
-// UpdateUIfonts() in desk.cpl checks to see if the DPI value has changed. If not, it returns
-// immediately; If the dpi value has changed, it changes the size of all the UI fonts to reflect
-// the dpi change and then returns.
-//
-typedef HRESULT (WINAPI *LPUPDATEUIFONTS)(int, int);
 void ChangeUIfontsToNewDPI()
 {
-    int iNewDPI, iOldDPI;
-    
-    //Get the current system DPI.
-    HDC hdc = GetDC(NULL);
-    iNewDPI = GetDeviceCaps(hdc, LOGPIXELSY);
-    ReleaseDC(NULL, hdc);
+    HDC hdc = GetDC(nullptr);
+    int iNewDPI = GetDeviceCaps(hdc, LOGPIXELSY);
+    ReleaseDC(nullptr, hdc);
 
+    int iOldDPI;
     DWORD dwSize = sizeof(iOldDPI);
-    //Get the last saved DPI value for the current user.
-    if (SHGetValue(HKEY_CURRENT_USER, SZ_WINDOWMETRICS, SZ_APPLIEDDPI, NULL, (void *)&iOldDPI, &dwSize) != ERROR_SUCCESS)
+    if (SHGetValueW(
+        HKEY_CURRENT_USER, L"Control Panel\\Desktop\\WindowMetrics", L"AppliedDPI", nullptr, &iOldDPI, &dwSize))
     {
-        //"AppliedDPI" for the current user is missing.
-        // Now, see if the "OriginalDPI" value exists under HKLM
         dwSize = sizeof(iOldDPI);
-        if (SHGetValue(HKEY_LOCAL_MACHINE, SZ_CONTROLPANEL, SZ_ORIGINALDPI, NULL, (void *)&iOldDPI, &dwSize) != ERROR_SUCCESS)
+        if (SHGetValueW(
+            HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Control Panel", L"OriginalDPI",
+            nullptr, &iOldDPI, &dwSize))
         {
-            //If "OriginalDPI" value is also missing, that means that nobody has changed DPI.
-            // Old and New are one and the same!!!
             iOldDPI = iNewDPI;
         }
     }
-        
-    if (iNewDPI != iOldDPI)  //Has the dpi value changed?
+    if (iNewDPI != iOldDPI)
     {
-        HINSTANCE hInst = LoadLibrary(TEXT("desk.cpl"));
-
+        HINSTANCE hInst = LoadLibraryW(L"desk.cpl");
         if (hInst)
         {
-	        LPUPDATEUIFONTS pfnUpdateUIfonts;
-            //Call desk.cpl to update the UI fonts to reflect the DPI change.
-            if (pfnUpdateUIfonts = (LPUPDATEUIFONTS)(GetProcAddress(hInst, "UpdateUIfontsDueToDPIchange")))
+            using PFN = HRESULT(*)(int, int);
+
+            PFN pfnUpdateUIfonts = reinterpret_cast<PFN>(GetProcAddress(hInst, "UpdateUIfontsDueToDPIchange"));
+            if (pfnUpdateUIfonts)
             {
-                (*pfnUpdateUIfonts)(iOldDPI, iNewDPI);
+                pfnUpdateUIfonts(iOldDPI, iNewDPI);
             }
             FreeLibrary(hInst);
         }
@@ -2338,7 +1973,7 @@ BOOL _ProcessRun6432()
         {
             TCHAR szWow64Path[MAX_PATH];
 
-            if (ExpandEnvironmentStrings(TEXT("%SystemRoot%\\SysWOW64"), szWow64Path, ARRAYSIZE(szWow64Path)))
+            if (ExpandEnvironmentStringsW(TEXT("%SystemRoot%\\SysWOW64"), szWow64Path, ARRAYSIZE(szWow64Path)))
             {
                 TCHAR sz32BitRunOnce[MAX_PATH];
                 PROCESS_INFORMATION pi = {0};
@@ -2465,7 +2100,7 @@ DWORD WINAPI RunStartupAppsThread(void *pv)
     // runing the synchronized objects one after another.
     if (g_fLogonCycle && !g_fCleanBoot)
     {
-        _RunWelcome();
+        //_RunWelcome();
     }
 
     PostMessage(v_hwndTray, TM_STARTUPAPPSLAUNCHED, 0, 0);
@@ -2479,7 +2114,7 @@ DWORD WINAPI RunStartupAppsThread(void *pv)
 void RunStartupApps()
 {
     DWORD dwThreadID;
-    HANDLE handle = CreateThread(NULL, 0, RunStartupAppsThread, 0, 0, &dwThreadID);
+    HANDLE handle = CreateThread(nullptr, 0, RunStartupAppsThread, 0, 0, &dwThreadID);
     if (handle)
     {
         CloseHandle(handle);
