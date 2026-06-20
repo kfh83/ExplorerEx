@@ -3,10 +3,12 @@
 #include "SrchView.h"
 
 #include "cabinet.h"
-#include "propvarutil.h"
 #include "ResourceStringHelpers.h"
 #include "SFTHost.h"
 #include "Win32ErrorHelpers.h"
+
+#include <propkey.h>
+#include <propvarutil.h>
 
 #pragma comment(lib, "propsys.lib")
 
@@ -430,7 +432,7 @@ HRESULT CSearchOpenView::OnDefaultCommand(IShellView *ppshv)
 	return hr;
 }
 
-HRESULT CSearchOpenView::OnStateChange(IShellView *ppshv, ULONG uChange)
+HRESULT CSearchOpenView::OnStateChange(IShellView* ppshv, ULONG uChange)
 {
 	HRESULT hr = S_OK;
 
@@ -439,15 +441,16 @@ HRESULT CSearchOpenView::OnStateChange(IShellView *ppshv, ULONG uChange)
 		HWND hwndFocus = GetFocus();
 		if (!IsChild(_hwnd, hwndFocus))
 		{
-			IShellView2 *psv2;
+			IShellView2* psv2;
 			hr = ppshv->QueryInterface(IID_PPV_ARGS(&psv2));
 			if (SUCCEEDED(hr))
 			{
-				hr = psv2->SelectAndPositionItem(NULL, SVSI_DESELECTOTHERS, NULL);
+				hr = psv2->SelectAndPositionItem(nullptr, SVSI_DESELECTOTHERS, nullptr);
 				psv2->Release();
 			}
 		}
 	}
+
 	return hr;
 }
 
@@ -481,11 +484,9 @@ HRESULT CSearchOpenView::GetCurrentFilter(LPWSTR pszFileSpec, int cchFileSpec)
 	return E_NOTIMPL;
 }
 
-const PROPERTYKEY PKEY_ItemNameDisplay = { { 3072717104u, 18415u, 4122u, { 165u, 241u, 2u, 96u, 140u, 158u, 235u, 172u } }, 10u };
-
 HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 {
-	_fIsBrowsing = 0;
+	_fIsBrowsing = FALSE;
 
 	IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
 
@@ -499,7 +500,7 @@ HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 	{
 		if (_hTheme)
 		{
-			IVisualProperties *pvp;
+			IVisualProperties* pvp;
 			hr = _pFolderView->QueryInterface(IID_PPV_ARGS(&pvp));
 			if (SUCCEEDED(hr))
 			{
@@ -522,7 +523,7 @@ HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 				hr = _pFolderView->SetCurrentViewMode(FVM_DETAILS);
 				if (SUCCEEDED(hr))
 				{
-					IColumnManager *pcm;
+					IColumnManager* pcm;
 					hr = _pFolderView->QueryInterface(IID_PPV_ARGS(&pcm));
 					if (SUCCEEDED(hr))
 					{
@@ -540,7 +541,7 @@ HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 	{
 		_LimitViewResults(_pFolderView, 1);
 
-		IFilterView *pfv;
+		IFilterView* pfv;
 		hr = ppshv->QueryInterface(IID_PPV_ARGS(&pfv));
 		if (SUCCEEDED(hr))
 		{
@@ -905,12 +906,12 @@ HRESULT CSearchOpenView::Initialize(HWND hwnd)
 		}
 		if (SUCCEEDED(hr))
 		{
-#ifdef SIMULATE_QUERY_PARSER_FAILURE && _DEBUG // EXEX-Vista(allison): maybe todo?
+#ifdef DEBUG
 			if (!SHRegGetBoolUSValueW(REGSTR_PATH_STARTPANE_SETTINGS, L"Start_SimulateQueryParserFailure", FALSE, FALSE))
-			{
-				InitializeQueryParser(GetUserDefaultUILanguage(), &field_54, IID_PPV_ARGS(&_pqp));
-			}
 #endif
+			{
+				//InitializeQueryParser(GetUserDefaultUILanguage(), &field_54, IID_PPV_ARGS(&_pqp));
+			}
 			hr = SHCreateConditionFactory(IID_PPV_ARGS(&_pcf));
 		}
 	}
@@ -922,9 +923,9 @@ const CLSID TOID_PathCompletion = {
 	228903948u, 12084u, 19201u, { 162u, 153u, 110u, 250u, 217u, 237u, 114u, 28u }
 };
 
-HRESULT CSearchOpenView::AddPathCompletionTask(LPCWSTR pszPath)
+HRESULT CSearchOpenView::AddPathCompletionTask(const WCHAR* pszPath)
 {
-	LPWSTR v7;
+	WCHAR* v7;
 	HRESULT hr = SHStrDupW(pszPath, &v7);
 	if (hr >= 0)
 	{
@@ -2007,8 +2008,6 @@ IScope : IUnknown
 
 DEFINE_GUID(CLSID_ScopeFactory, 0x6746C347, 0x576B, 0x4F73, 0x90, 0x12, 0xCD, 0xFE, 0xEA, 0x25, 0x1B, 0xC4); // 6746c347-576b-4f73-9012-cdfeea251bc4
 
-const PROPERTYKEY PKEY_Null = { { 0u, 0u, 0u, { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u } }, 0u };
-
 #pragma region misc
 
 struct IItemFilter;
@@ -2400,7 +2399,7 @@ HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem** ppsi)
 					}
 
 					CoTaskMemFree(ali.pszDisplayName);
-					if (hr < 0)
+					if (FAILED(hr))
 					{
 						_RevokeQuerySink();
 					}
@@ -3144,7 +3143,7 @@ LABEL_25:
 	return hr;
 }
 
-HRESULT CSearchOpenView::_UpdateSearchText(LPCWSTR psz)
+HRESULT CSearchOpenView::_UpdateSearchText(const WCHAR* psz)
 {
 	_SwitchToMode(VIEWMODE_DEFAULT, 0);
 
@@ -3238,7 +3237,7 @@ void CSearchOpenView::_CancelNavigation()
 
 void CSearchOpenView::_ConnectShellView(IShellView* psv)
 {
-	ASSERT(_pDispatchView == NULL); // 796
+	ASSERT(_pDispatchView == nullptr); // 796
 	if (SUCCEEDED(psv->GetItemObject(0, IID_PPV_ARGS(&_pDispatchView))))
 	{
 		ConnectToConnectionPoint(static_cast<IDispatch*>(this), DIID_DShellFolderViewEvents, TRUE, _pDispatchView, &field_74, nullptr);
@@ -3592,12 +3591,13 @@ void CSearchOpenView::_SwitchToMode(VIEWMODE viewModeNew, int a3)
 	VARIANT vt;
 	vt.lVal = -1;
 	vt.vt = VT_I4;
-	IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 317, 0, &vt, NULL);
+	IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 317, 0, &vt, nullptr);
 	if (_pFolderView && (viewModeNew != _viewMode || a3))
 	{
 		vt.lVal = viewModeNew;
 		vt.vt = VT_I4;
-		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 328, 0, &vt, NULL);
+		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 328, 0, &vt, nullptr);
+
 		if (viewModeNew == VIEWMODE_PATHCOMPLETE)
 		{
 			SORTCOLUMN sc;
@@ -3612,7 +3612,7 @@ void CSearchOpenView::_SwitchToMode(VIEWMODE viewModeNew, int a3)
 			if (_ppci)
 			{
 				delete _ppci;
-				_ppci = NULL;
+				_ppci = nullptr;
 			}
 		}
 

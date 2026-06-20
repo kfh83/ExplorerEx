@@ -2016,48 +2016,47 @@ void CDesktopHost::_DismissMenuPopup()
 
 BOOL CDesktopHost::_FilterMouseWheel(MSG *pmsg, HWND hwndTarget)
 {
-    BOOL fRet = 0;
+    BOOL fRet = FALSE;
     if (hwndTarget)
     {
-        SMNDIALOGMESSAGE pdm;
-        pdm.pmsg = pmsg;
-        pdm.pt.x = GET_X_LPARAM(pmsg->lParam);
-        pdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
-        return _FindChildItem(hwndTarget, &pdm, 0xBu);
+        SMNDIALOGMESSAGE nmdm;
+        nmdm.pmsg = pmsg;
+        nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
+        nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
+        fRet = _FindChildItem(hwndTarget, &nmdm, 0xB);
     }
     return fRet;
 }
 
 BOOL CDesktopHost::_FilterMouseButtonDown(MSG *pmsg, HWND hwndTarget)
 {
-    SMNDIALOGMESSAGE pdm;
-    pdm.hwnd = pmsg->hwnd;
-    pdm.pmsg = pmsg;
-    pdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
-    pdm.pt.x = GET_X_LPARAM(pmsg->lParam);
-    return _FindChildItem(hwndTarget, &pdm, 0x117u) == 0;
+    SMNDIALOGMESSAGE nmdm = {};
+    nmdm.hwnd = pmsg->hwnd;
+    nmdm.pmsg = pmsg;
+    nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
+    nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
+    return _FindChildItem(hwndTarget, &nmdm, 0x117) == 0;
 }
 
 BOOL CDesktopHost::_FilterLMouseButtonUp(MSG *pmsg, HWND hwndTarget)
 {
-    SMNDIALOGMESSAGE pdm;
-    pdm.hwnd = pmsg->hwnd;
-    pdm.pmsg = pmsg;
-    pdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
-    pdm.pt.x = GET_X_LPARAM(pmsg->lParam);
-    return _FindChildItem(hwndTarget, &pdm, 6u);
+    SMNDIALOGMESSAGE nmdm = {};
+    nmdm.hwnd = pmsg->hwnd;
+    nmdm.pmsg = pmsg;
+    nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
+    nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
+    return _FindChildItem(hwndTarget, &nmdm, 6);
 }
 
 BOOL CDesktopHost::_DlgNavigateTab(HWND hwndStart, struct tagMSG *pmsg)
 {
-    SHORT KeyState; // ax
-    SMNDIALOGMESSAGE pdm; // [esp+4h] [ebp-28h] BYREF
+    SMNDIALOGMESSAGE nmdm; // [esp+4h] [ebp-28h] BYREF
 
-    KeyState = GetKeyState(16);
-    pdm.pmsg = pmsg;
+    SHORT KeyState = GetKeyState(16);
+    nmdm.pmsg = pmsg;
     CDesktopHost::_DlgFindItem(
         hwndStart,
-        &pdm,
+        &nmdm,
         ((KeyState < 0) + 3) | 0x500,
         GetNextDlgGroupItem,
         (KeyState < 0) | 2);
@@ -2826,7 +2825,7 @@ int CDesktopHost::_FilterMouseMove(MSG *pmsg, HWND hwndTarget)
     LRESULT lres = 0;
     if (hwndTarget)
     {
-        SMNDIALOGMESSAGE nmdm;
+        SMNDIALOGMESSAGE nmdm = {};
         nmdm.pmsg = pmsg;
         nmdm.hwnd = pmsg->hwnd;
         nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
@@ -2894,11 +2893,11 @@ void CDesktopHost::_FilterMouseLeave(MSG* pmsg, HWND hwndTarget)
 // EXEX-Vista(allison): Validated.
 void CDesktopHost::_FilterMouseHover(MSG* pmsg, HWND hwndTarget)
 {
-    SMNDIALOGMESSAGE nmdm;
+    SMNDIALOGMESSAGE nmdm = {};
     nmdm.hwnd = pmsg->hwnd;
     nmdm.pmsg = pmsg;
-    nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
     nmdm.pt.x = GET_X_LPARAM(pmsg->lParam);
+    nmdm.pt.y = GET_Y_LPARAM(pmsg->lParam);
     _FindChildItem(hwndTarget, &nmdm, SMNDM_OPENCASCADE);
 }
 

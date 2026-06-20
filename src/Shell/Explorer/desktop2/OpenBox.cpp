@@ -3,90 +3,92 @@
 #include "OpenBox.h"
 
 #include "cabinet.h"
-#include <propvarutil.h>
 #include "SFTHost.h"
 #include "shstr.h"
 
+#include <propvarutil.h>
+
 HRESULT COpenBoxHost::QueryInterface(REFIID riid, void** ppvObj)
 {
-	static const QITAB qit[] =
-	{
-		QITABENT(COpenBoxHost, IServiceProvider),
-		QITABENT(COpenBoxHost, IOleCommandTarget),
-		QITABENT(COpenBoxHost, IObjectWithSite),
-		QITABENT(COpenBoxHost, IShellSearchTarget),
-		QITABENT(COpenBoxHost, IInputObjectSite),
-		QITABENT(COpenBoxHost, IAccessible),
-		QITABENT(COpenBoxHost, IDispatch),
-		QITABENT(COpenBoxHost, IEnumVARIANT),
-		{ 0 },
-	};
+    static const QITAB qit[] =
+    {
+        QITABENT(COpenBoxHost, IServiceProvider),
+        QITABENT(COpenBoxHost, IOleCommandTarget),
+        QITABENT(COpenBoxHost, IObjectWithSite),
+        QITABENT(COpenBoxHost, IShellSearchTarget),
+        QITABENT(COpenBoxHost, IInputObjectSite),
+        QITABENT(COpenBoxHost, IAccessible),
+        QITABENT(COpenBoxHost, IDispatch),
+        QITABENT(COpenBoxHost, IEnumVARIANT),
+        {},
+    };
 
-	return QISearch(this, qit, riid, ppvObj);
+    return QISearch(this, qit, riid, ppvObj);
 }
 
 ULONG COpenBoxHost::AddRef()
 {
-	return InterlockedIncrement(&_lRef);
+    return InterlockedIncrement(&_lRef);
 }
 
 ULONG COpenBoxHost::Release()
 {
-	LONG lRef = InterlockedDecrement(&_lRef);
-	if (lRef == 0 && this)
-	{
-		delete this;
-	}
-	return lRef;
+    _ASSERTE(0 != _lRef);
+
+    LONG lRef = InterlockedDecrement(&_lRef);
+    if (lRef == 0)
+    {
+        delete this;
+    }
+    return lRef;
 }
 
 HRESULT COpenBoxHost::get_accRole(VARIANT varChild, VARIANT* pvarRole)
 {
-	return CAccessible::get_accRole(varChild, pvarRole);
+    return CAccessible::get_accRole(varChild, pvarRole);
 }
 
 HRESULT COpenBoxHost::get_accState(VARIANT varChild, VARIANT* pvarState)
 {
-	return CAccessible::get_accState(varChild, pvarState);
+    return CAccessible::get_accState(varChild, pvarState);
 }
 
 HRESULT COpenBoxHost::get_accDefaultAction(VARIANT varChild, BSTR* pszDefAction)
 {
-	return CAccessible::GetRoleString(0xFFFFFCB6, pszDefAction);
+    return GetRoleString(0xFFFFFCB6, pszDefAction);
 }
 
 HRESULT COpenBoxHost::accDoDefaultAction(VARIANT varChild)
 {
-	return CAccessible::accDoDefaultAction(varChild);
+    return CAccessible::accDoDefaultAction(varChild);
 }
 
 HRESULT COpenBoxHost::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
 {
-	if (IsEqualGUID(guidService, SID_SM_OpenBox))
-	{
-		HRESULT hr = QueryInterface(riid, ppvObject);
-		if (SUCCEEDED(hr))
-			return hr;
-	}
-	return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
+    if (IsEqualGUID(guidService, SID_SM_OpenBox))
+    {
+        HRESULT hr = QueryInterface(riid, ppvObject);
+        if (SUCCEEDED(hr))
+            return hr;
+    }
+    return IUnknown_QueryService(_punkSite, guidService, riid, ppvObject);
 }
 
 HRESULT COpenBoxHost::SetSite(IUnknown* punkSite)
 {
-	CObjectWithSite::SetSite(punkSite);
+    CObjectWithSite::SetSite(punkSite);
 
-	if (!punkSite && _pssc)
-	{
-		IUnknown_SetSite(_pssc, NULL);
-		IUnknown_SafeReleaseAndNullPtr(&_pssc);
-	}
-	return S_OK;
+    if (!punkSite && _pssc)
+    {
+        IUnknown_SetSite(_pssc, nullptr);
+        IUnknown_SafeReleaseAndNullPtr(&_pssc);
+    }
+    return S_OK;
 }
 
-HRESULT COpenBoxHost::QueryStatus(const GUID* pguidCmdGroup,
-	ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT* pCmdText)
+HRESULT COpenBoxHost::QueryStatus(const GUID* pguidCmdGroup, ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT* pCmdText)
 {
-	return E_NOTIMPL;
+    return E_NOTIMPL;
 }
 
 HRESULT COpenBoxHost::Exec(
@@ -104,9 +106,9 @@ HRESULT COpenBoxHost::Exec(
             }
             case 306:
             {
-                ASSERT(pvarargIn->vt == VT_BYREF); // 627
+                _ASSERTE(pvarargIn->vt == VT_BYREF); // 627
                 HWND hwnd = static_cast<HWND>(pvarargIn->byref);
-                ASSERT(pvarargOut->vt == VT_BYREF); // 629
+                _ASSERTE(pvarargOut->vt == VT_BYREF); // 629
                 if (SHIsChildOrSelf(_hwnd, hwnd) == S_OK)
                 {
                     pvarargOut->byref = _hwnd;
@@ -120,8 +122,9 @@ HRESULT COpenBoxHost::Exec(
                 _pssc->GetText(szSearchQuery, ARRAYSIZE(szSearchQuery));
                 if (szSearchQuery[0])
                 {
-                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
-                    pvarargOut->iVal = 0;
+                    // @MOD: SSCTEXT_FORCE taken from build 6519
+                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS | SSCTEXT_FORCE);
+                    pvarargOut->boolVal = VARIANT_FALSE;
                 }
                 return S_OK;
             }
@@ -137,7 +140,8 @@ HRESULT COpenBoxHost::Exec(
                 ASSERT(pvarargIn->vt == VT_BYREF); // 608
                 _fInSetText = TRUE;
                 field_4C = 0;
-                _pssc->SetText((const WCHAR*)pvarargIn->byref, SSCTEXT_DEFAULT);
+                // @MOD: SSCTEXT_FORCE taken from build 6519
+                _pssc->SetText((const WCHAR*)pvarargIn->byref, SSCTEXT_DEFAULT | SSCTEXT_FORCE);
                 _fInSetText = FALSE;
                 return hr;
             }
@@ -167,11 +171,11 @@ HRESULT COpenBoxHost::Exec(
 
 HRESULT COpenBoxHost::Search(const WCHAR* pszSearchText, DWORD dwCommand)
 {
-    if (!dwCommand)
+    if (dwCommand == 0)
     {
-        // SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_WordWheel_Activated, 36);
-        return E_NOTIMPL;
+        //SHTracePerfSQMCountImpl(&ShellTraceId_StartMenu_WordWheel_Activated, 548);
     }
+    return E_NOTIMPL;
 }
 
 LONG g_nOpenBoxCharThreadId;
@@ -179,9 +183,9 @@ FILETIME g_ftOpenBoxChar;
 
 HRESULT COpenBoxHost::OnSearchTextNotify(const WCHAR* pszSearchText, const WCHAR* pszStrippedText, SHELLSEARCHNOTIFY sn)
 {
-    HRESULT hr = 0;
+    HRESULT hr = S_OK;
 
-    if ((sn & 9) != 0 && !_fInSetText)
+    if ((sn & (SSC_KEYPRESS | SSC_FORCE)) != 0 && !_fInSetText)
     {
         int v4 = field_4C;
         field_4C = 1;
@@ -189,14 +193,14 @@ HRESULT COpenBoxHost::OnSearchTextNotify(const WCHAR* pszSearchText, const WCHAR
         {
             if (pszSearchText && pszSearchText[0])
             {
-                DWORD dwThreadId = GetCurrentThreadId();
-                InterlockedExchange(&g_nOpenBoxCharThreadId, dwThreadId);
-                GetSystemTimeAsFileTime(&g_ftOpenBoxChar);
-                // SHTracePerf(&ShellTraceId_Explorer_StartPane_OpenBox_Char_Info);
+                // InterlockedExchange(&g_nOpenBoxCharThreadId, GetCurrentThreadId());
+                // GetSystemTimeAsFileTime(&g_ftOpenBoxChar);
+                // Skipped telemetry ShellTraceId_Explorer_StartPane_OpenBox_Char_Info
             }
             hr = _UpdateSearch();
         }
     }
+
     return hr;
 }
 
@@ -466,7 +470,7 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     _hTheme = psmpd->hTheme;
     if (_hTheme)
     {
-        GetThemeMargins(_hTheme, NULL, SPP_OPENBOX, 0, TMT_CONTENTMARGINS, 0, &margins);
+        GetThemeMargins(_hTheme, nullptr, SPP_OPENBOX, 0, TMT_CONTENTMARGINS, nullptr, &margins);
     }
     else
     {
@@ -480,7 +484,7 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
     SetWindowFont(_hwnd, GetWindowFont(GetParent(_hwnd)), FALSE);
 
-    HRESULT hr = CoCreateInstance(/*CLSID_SearchControl*/CLSID_SearchBox, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pssc));
+    HRESULT hr = CoCreateInstance(/*CLSID_SearchControl*/CLSID_SearchBox, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pssc));
     if (SUCCEEDED(hr))
     {
         RECT rc;
@@ -499,9 +503,9 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             hr = _pssc->SetFlags(SSCSTATE_DRAWCUETEXTFOCUS | SSCSTATE_APPENDTEXT | SSCSTATE_NODROPDOWN);
             if (SUCCEEDED(hr))
             {
-                WCHAR szText[MAX_PATH];
-                LoadString(g_hinstCabinet, 8246, szText, ARRAYSIZE(szText));
-                hr = _pssc->SetCueAndTooltipText(szText, 0);
+                WCHAR szText[260];
+                LoadStringW(g_hinstCabinet, 8246, szText, ARRAYSIZE(szText));
+                hr = _pssc->SetCueAndTooltipText(szText, nullptr);
                 if (SUCCEEDED(hr))
                 {
                     IUnknown_SetSite(_pssc, (IShellSearchControl*)this);
@@ -510,6 +514,7 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             }
         }
     }
+
     return SUCCEEDED(hr) ? 0 : -1;
 }
 
@@ -546,29 +551,32 @@ LRESULT COpenBoxHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 {
     HRESULT hr = E_FAIL;
 
-    LPNMHDR pnmh = reinterpret_cast<LPNMHDR>(lParam);
+    NMHDR* pnmh = reinterpret_cast<NMHDR*>(lParam);
     if (pnmh)
     {
         switch (pnmh->code)
         {
-        case 215:
-            return _OnSMNFindItem((SMNDIALOGMESSAGE *)pnmh);
-        case 222:
-            if (_pssc)
-            {
-                _pssc->SetText(L"", SSCTEXT_TAKEFOCUS);
-            }
-            break;
-        case 223:
-            return SetSite(((SMNSETSITE *)pnmh)->punkSite);
+            case 215:
+                return _OnSMNFindItem((SMNDIALOGMESSAGE*)pnmh);
+            case 222:
+                if (_pssc)
+                {
+                    // @MOD: SSCTEXT_FORCE taken from build 6519
+                    _pssc->SetText(L"", SSCTEXT_TAKEFOCUS | SSCTEXT_FORCE);
+                }
+                break;
+            case 223:
+                return SetSite(((SMNSETSITE*)pnmh)->punkSite);
         }
     }
+
     return hr;
 }
 
 LRESULT COpenBoxHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 {
     pdm->flags |= 0x7800u;
+
     switch (pdm->flags & SMNDM_FINDMASK)
     {
         case SMNDM_FINDFIRSTMATCH:
@@ -615,7 +623,9 @@ LRESULT COpenBoxHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             vt.byref = pdm->pmsg;
             pdm->flags &= ~0x1000u;
             if (IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 324, 0, &vt, 0) < 0)
+            {
                 return 0;
+            }
             pdm->flags &= ~0x100u;
             return 1;
         }
@@ -646,7 +656,7 @@ BOOL COpenBoxHost::_Mark(PSMNDIALOGMESSAGE pdm, UINT a2)
         pdm->flags |= 0x20000;
         if (_pssc)
         {
-            IInputObject *pio = NULL;
+            IInputObject* pio = nullptr;
             if (SUCCEEDED(_pssc->QueryInterface(IID_PPV_ARGS(&pio))))
             {
                 pio->UIActivateIO(1, pdm->pmsg);
@@ -687,6 +697,7 @@ HRESULT COpenBoxHost::_UpdateSearch()
             VariantClear(&varg);
         }
     }
+
     return hr;
 }
 
