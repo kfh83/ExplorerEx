@@ -451,38 +451,46 @@ EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter,
         ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems), riid, ppv);
 }
 
-HRESULT GetFilesystemInfo(IShellFolder* psf, LPITEMIDLIST* ppidlRoot, int* pcsidl)
+HRESULT GetFilesystemInfo(IShellFolder* psf, ITEMIDLIST_ABSOLUTE** ppidlRoot, int* pcsidl)
 {
     ASSERT(psf);
-    IPersistFolder3* ppf;
-    HRESULT hr = E_FAIL;
 
     *pcsidl = 0;
-    *ppidlRoot = 0;
-    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARG(IPersistFolder3, &ppf))))
-    {
-        PERSIST_FOLDER_TARGET_INFO pfti = { 0 };
+    *ppidlRoot = nullptr;
 
+    HRESULT hr = E_FAIL;
+
+    IPersistFolder3* ppf;
+    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&ppf))))
+    {
+        PERSIST_FOLDER_TARGET_INFO pfti = {};
         if (SUCCEEDED(ppf->GetFolderTargetInfo(&pfti)))
         {
             *pcsidl = pfti.csidl;
-            if (-1 != pfti.csidl)
+            if (pfti.csidl != -1)
+            {
                 hr = S_OK;
+            }
 
             ILFree(pfti.pidlTargetFolder);
         }
 
         if (SUCCEEDED(hr))
+        {
             hr = ppf->GetCurFolder(ppidlRoot);
-
+        }
         ppf->Release();
     }
+
     return hr;
 }
+
 #define IDM_MYPICTURES          518
+
 HRESULT ExecStaticStartMenuItem(int idCmd, BOOL fAllUsers, BOOL fOpen)
 {
     int csidl = -1;
+
     HRESULT hr = E_OUTOFMEMORY;
     SHELLEXECUTEINFO shei = { 0 };
     switch (idCmd)
@@ -682,7 +690,7 @@ private:
     HRESULT _Destroy(SMDATA* psmdata);
     HRESULT _GetHmenuInfo(SMDATA* psmd, SMINFO* sminfo);
     HRESULT _GetObject(SMDATA* psmd, REFIID riid, void** ppvObj);
-    HRESULT _FilterRecentPidl(IShellFolder* psf, const ITEMIDLIST* pidl);
+    HRESULT _FilterRecentPidl(IShellFolder* psf, PCUITEMID_CHILD pidl);
     HRESULT _Demote(SMDATA* psmd);
     HRESULT _GetTip(WCHAR* pstrTitle, WCHAR* pstrTip);
     DWORD _GetDemote(SMDATA* psmd);
@@ -1690,27 +1698,27 @@ HRESULT CStartMenuCallback::_ExecHmenuItem(LPSMDATA psmd)
 
 void CStartMenuCallback::_GetStaticStartMenu(HMENU* phmenu, HWND* phwnd)
 {
-    *phmenu = NULL;
-    *phwnd = NULL;
+    *phmenu = nullptr;
+    *phwnd = nullptr;
 
     IMenuPopup* pmp;
-    // The first one should be the bar that the start menu is sitting in.
-    if (SUCCEEDED(IUnknown_QueryService(_punkSite, SID_SMenuPopup, IID_PPV_ARG(IMenuPopup, &pmp))))
+    if (SUCCEEDED(IUnknown_QueryService(_punkSite, SID_SMenuPopup, IID_PPV_ARGS(&pmp))))
     {
-        // Its site should be CStartMenuHost;
-        if (SUCCEEDED(IUnknown_GetSite(pmp, IID_PPV_ARG(ITrayPriv, &_ptp))))
+        if (SUCCEEDED(IUnknown_GetSite(pmp, IID_PPV_ARGS(&_ptp))))
         {
-            // Don't get upset if this fails
-            _ptp->QueryInterface(IID_PPV_ARG(ITrayPriv2, &_ptp2));
-
+            _ptp->QueryInterface(IID_PPV_ARGS(&_ptp2));
             _ptp->GetStaticStartMenu(phmenu);
             IUnknown_GetWindow(_ptp, phwnd);
 
-            if (!_poct)
-                _ptp->QueryInterface(IID_PPV_ARG(IOleCommandTarget, &_poct));
+            if (_poct == nullptr)
+            {
+                _ptp->QueryInterface(IID_PPV_ARGS(&_poct));
+            }
         }
-        //else
-        //    TraceMsg(TF_MENUBAND, "CStartMenuCallback::_SetSite : Failed to aquire CStartMenuHost");
+        else
+        {
+            //CcshellDebugMsgW(0x2000000, "CStartMenuCallback::_SetSite : Failed to aquire CStartMenuHost");
+        }
 
         pmp->Release();
     }
@@ -1904,13 +1912,14 @@ void CStartMenuCallback::_UpdateDocumentsShellMenu(IShellMenu* psm)
     _fHasMyPictures = fMyPics;
 }
 
-STDAPI GetMyDocumentsDisplayName(LPWSTR pszPath, UINT cch)
+STDAPI GetCSIDLDisplayName(int csidl, WCHAR* pszPath, UINT cch)
 {
     *pszPath = 0;
-    LPITEMIDLIST pidl;
-    if (SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_PERSONAL, NULL, 0, &pidl)))
+
+    ITEMIDLIST_ABSOLUTE* pidl;
+    if (SUCCEEDED(SHGetFolderLocation(nullptr, csidl, nullptr, 0, &pidl)))
     {
-        SHGetNameAndFlags(pidl, SHGDN_NORMAL, pszPath, cch, NULL);
+        SHGetNameAndFlags(pidl, SHGDN_NORMAL, pszPath, cch, nullptr);
         ILFree(pidl);
     }
     return *pszPath ? S_OK : E_FAIL;
@@ -1922,13 +1931,13 @@ void CStartMenuCallback::_UpdateDocsMenuItemNames(IShellMenu* psm)
 
     if (_fHasMyDocuments)
     {
-        if (SUCCEEDED(GetMyDocumentsDisplayName(szBuffer, ARRAYSIZE(szBuffer))))
+        if (SUCCEEDED(GetCSIDLDisplayName(CSIDL_MYDOCUMENTS, szBuffer, ARRAYSIZE(szBuffer))))
             _FixMenuItemName(psm, IDM_MYDOCUMENTS, szBuffer);
     }
 
     if (_fHasMyPictures)
     {
-        if (SUCCEEDED(GetMyPicsDisplayName(szBuffer, ARRAYSIZE(szBuffer))))
+        if (SUCCEEDED(GetCSIDLDisplayName(CSIDL_MYPICTURES, szBuffer, ARRAYSIZE(szBuffer))))
             _FixMenuItemName(psm, IDM_MYPICTURES, szBuffer);
     }
 }
@@ -3061,7 +3070,7 @@ BOOL LinkGetInnerPidl(IShellFolder* psf, LPCITEMIDLIST pidl, LPITEMIDLIST* ppidl
 //  the start menu.  this means that we need to filter out all folders and 
 //  anything more than MAXRECENTDOCS
 //
-HRESULT CStartMenuCallback::_FilterRecentPidl(IShellFolder* psf, const ITEMID_CHILD* pidl)
+HRESULT CStartMenuCallback::_FilterRecentPidl(IShellFolder* psf, PCUITEMID_CHILD pidl)
 {
     HRESULT hr = S_OK;
 
@@ -3392,7 +3401,7 @@ HRESULT CPersonalProgramsMenuCallback::IncludeItem(IShellItem* psi)
 {
     VARIANT vt = {};
     vt.vt = VT_BOOL;
-    vt.boolVal = VARIANT_FALSE;
+
     _InitializePrograms();
     IUnknown_QueryServiceExec(_punkSite, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 318, 0, nullptr, &vt);
 
@@ -3405,7 +3414,7 @@ HRESULT CPersonalProgramsMenuCallback::IncludeItem(IShellItem* psi)
         hr = ppai->GetParentAndItem(nullptr, &psf, &pidl);
         if (SUCCEEDED(hr))
         {
-            if (_FilterPidl(vt.boolVal == VARIANT_TRUE ? VARIANT_FALSE : VARIANT_TRUE, psf, pidl) == S_OK || IsImmersiveShortcut(psi))
+            if (_FilterPidl(vt.boolVal == VARIANT_TRUE ? 0 : -1, psf, pidl) == S_OK || IsImmersiveShortcut(psi))
             {
                 hr = S_FALSE;
             }
@@ -3428,7 +3437,7 @@ HRESULT CPersonalProgramsMenuCallback::IsMSIAds(ITEMIDLIST_ABSOLUTE* pidl)
     return _IsDarwinAdvertisement(pidl) ? S_OK : S_FALSE;
 }
 
-EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut)
+EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppvOut)
 {
     *ppvOut = nullptr;
 

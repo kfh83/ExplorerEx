@@ -1618,7 +1618,7 @@ public:
 
 	STDMETHODIMP GetAt(UINT iElement, REFIID riid, void **ppv) override
 	{
-		*ppv = NULL;
+		*ppv = nullptr;
 
 		HRESULT hr = E_INVALIDARG;
 
@@ -1715,12 +1715,12 @@ protected:
 	CEnumerableObjectCollection(const CEnumerableObjectCollection &other) = delete;
 	~CEnumerableObjectCollection();
 
-	HRESULT InitializeClone(CEnumerableObjectCollection *peocNew);
+	HRESULT InitializeClone(CEnumerableObjectCollection* peocNew);
 
 	LONG _cRef;
 	int _iGrowBy;
 	UINT _iNext;
-	CDPA<IUnknown, CTContainer_PolicyRelease<IUnknown>> _dpaObjects;
+	CDPARelease<IUnknown> _dpaObjects;
 };
 
 #endif
@@ -3169,9 +3169,8 @@ HRESULT CSearchOpenView::_UpdateSearchText(const WCHAR* psz)
 				if (SUCCEEDED(hr))
 				{
 					_peb->SetOptions(EBO_NOTRAVELLOG | EBO_ALWAYSNAVIGATE);
-					IExplorerBrowser* peb = _peb;
 					_fIsBrowsing = v17;
-					int v10 = peb->BrowseToObject(_psiFolder, SBSP_WRITENOHISTORY);
+					HRESULT v10 = _peb->BrowseToObject(_psiFolder, SBSP_WRITENOHISTORY);
 					_fIsBrowsing = 0;
 					return v10;
 				}

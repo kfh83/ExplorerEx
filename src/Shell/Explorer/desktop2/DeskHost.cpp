@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include "cocreateinstancehook.h"
 #include "stdafx.h"
 #include "tray.h"
@@ -8,7 +9,6 @@
 #include "util.h"
 
 #include <propvarutil.h>
-
 
 #define TF_DV2HOST  0
 // #define TF_DV2HOST TF_CUSTOM1
@@ -138,22 +138,22 @@ HRESULT CPopupMenu_CreateInstance(IShellMenu* psm,
 
 //*****************************************************************
 
-const STARTPANELMETRICS g_spmDefault = {
-    {400,410},
+const STARTPANELMETRICS g_spmDefault =
+{
+    { 400, 410 },
     {
-        {L"Desktop User Pane",      0x10000000,     SPP_USERPANE,   {150,   75}, NULL, NULL, FALSE, NULL},
-        {L"Desktop Open Pane Host", 0x12000000,     SPP_PROGLIST,   {250,  330}, NULL, NULL, FALSE, NULL},
-        {L"Desktop OpenBox Host",   0x10010000,     SPP_OPENBOX,    {250,   40}, NULL, NULL, FALSE, NULL},
-        {L"DesktopSFTBarHost",      0x12000000,     SPP_PLACESLIST, {150,  295}, NULL, NULL, FALSE, NULL},
-        {L"DesktopLogoffPane",      0x10000000,     SPP_LOGOFF,     {150,   40}, NULL, NULL, FALSE, NULL},
+        { L"Desktop User Pane", WS_VISIBLE, SPP_USERPANE, { 150, 75 }, nullptr, nullptr, FALSE, nullptr },
+        { L"Desktop Open Pane Host", WS_CLIPCHILDREN | WS_VISIBLE, SPP_PROGLIST, { 250, 330 }, nullptr, nullptr, FALSE, nullptr },
+        { L"Desktop OpenBox Host", WS_TABSTOP | WS_VISIBLE, SPP_OPENBOX, { 250, 40 }, nullptr, nullptr, FALSE, nullptr },
+        { L"DesktopSFTBarHost", WS_CLIPCHILDREN | WS_VISIBLE, SPP_PLACESLIST, { 150, 295 }, nullptr, nullptr, FALSE, nullptr },
+        { L"DesktopLogoffPane", WS_VISIBLE, SPP_LOGOFF, { 150, 40 }, nullptr, nullptr, FALSE, nullptr },
     }
 };
 
 // EXEX-VISTA(allison): Validated.
-HRESULT
-CDesktopHost::Initialize(HWND hwndParent)
+HRESULT CDesktopHost::Initialize(HWND hwndParent)
 {
-	_hwndParent = hwndParent;
+    _hwndParent = hwndParent;
     ASSERT(_hwnd == NULL);
 
     //
@@ -195,27 +195,24 @@ HRESULT CDesktopHost::SetSite(IUnknown* punkSite)
     CObjectWithSite::SetSite(punkSite);
     if (!_punkSite)
     {
-        // This is our cue to break the recursive reference loop
-        // The _ppmpPrograms contains multiple backreferences to
-        // the CDesktopHost (we are its site, it also references
-        // us via CDesktopShellMenuCallback...)
         IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
 
         for (int i = 0; i < ARRAYSIZE(_spm.panes); ++i)
         {
             if (_spm.panes[i].punk)
             {
-                IUnknown_SetSite(_spm.panes[i].punk, NULL);
-				IUnknown_SafeReleaseAndNullPtr(&_spm.panes[i].punk);
+                IUnknown_SetSite(_spm.panes[i].punk, nullptr);
+                IUnknown_SafeReleaseAndNullPtr(&_spm.panes[i].punk);
             }
         }
 
         if (_hwnd)
         {
-            ASSERT(GetWindowThreadProcessId(_hwnd, NULL) == GetCurrentThreadId()) // 211
+            ASSERT(GetWindowThreadProcessId(_hwnd, nullptr) == GetCurrentThreadId()) // 211
             DestroyWindow(_hwnd);
         }
     }
+
     return S_OK;
 }
 
@@ -548,7 +545,7 @@ void SHLogicalToPhysicalDPI(int* px, int* py)
 //
 
 // EXEX-VISTA(allison): Validated. Still needs cleanup.
-void CDesktopHost::_ComputeActualSize(MONITORINFO *pminfo, LPCRECT prcExclude)
+void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prcExclude)
 {
 #ifdef DEAD_CODE
     // Compute the maximum permissible space above/below the Start Menu.
@@ -3989,21 +3986,21 @@ STDAPI DesktopV2_Build(void* pvStartPane)
     HRESULT hr = E_POINTER;
     if (pvStartPane)
     {
-        hr = reinterpret_cast<CDesktopHost*>(pvStartPane)->Build();
+        hr = static_cast<CDesktopHost*>(pvStartPane)->Build();
     }
     return hr;
 }
 
 
-STDAPI DesktopV2_Create(
-    IMenuPopup **ppmp, IMenuBand **ppmb, void **ppvStartPane, IUnknown **ppunk, HWND hwnd)
+STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd)
 {
-    *ppmp = NULL;
-    *ppmb = NULL;
-    *ppunk = NULL;
+    *ppmp = nullptr;
+    *ppmb = nullptr;
+    *ppunk = nullptr;
 
     HRESULT hr;
-    CDesktopHost *pdh = new CDesktopHost;
+
+    CDesktopHost* pdh = new CDesktopHost;
     if (pdh)
     {
         *ppvStartPane = pdh;
@@ -4029,81 +4026,10 @@ STDAPI DesktopV2_Create(
 
     if (FAILED(hr))
     {
-        ATOMICRELEASE(*ppmp);
-        ATOMICRELEASE(*ppmb);
-        ppvStartPane = NULL;
+        IUnknown_SafeReleaseAndNullPtr(ppmp);
+        IUnknown_SafeReleaseAndNullPtr(ppmb);
+        ppvStartPane = nullptr;
     }
 
     return hr;
-}
-
-DWORD Mirror_MirrorDC(HDC hdc)
-{
-	return Mirror_SetLayout(hdc, LAYOUT_RTL);
-}
-
-#define SET_DC_RTL_MIRRORED(hdc)         Mirror_MirrorDC(hdc)
-HBITMAP CreateMirroredBitmap(HBITMAP hbmOrig)
-{
-    HDC     hdc, hdcMem1, hdcMem2;
-    HBITMAP hbm = NULL, hOld_bm1, hOld_bm2;
-    BITMAP  bm;
-    int     IncOne = 0;
-
-    if (!hbmOrig)
-        return NULL;
-
-    if (!GetObject(hbmOrig, sizeof(BITMAP), &bm))
-        return NULL;
-
-    // Grab the screen DC
-    hdc = GetDC(NULL);
-
-    if (hdc)
-    {
-        hdcMem1 = CreateCompatibleDC(hdc);
-
-        if (!hdcMem1)
-        {
-            ReleaseDC(NULL, hdc);
-            return NULL;
-        }
-
-        hdcMem2 = CreateCompatibleDC(hdc);
-        if (!hdcMem2)
-        {
-            DeleteDC(hdcMem1);
-            ReleaseDC(NULL, hdc);
-            return NULL;
-        }
-
-        hbm = CreateCompatibleBitmap(hdc, bm.bmWidth, bm.bmHeight);
-
-        if (!hbm)
-        {
-            ReleaseDC(NULL, hdc);
-            DeleteDC(hdcMem1);
-            DeleteDC(hdcMem2);
-            return NULL;
-        }
-
-        //
-        // Flip the bitmap
-        //
-        hOld_bm1 = (HBITMAP)SelectObject(hdcMem1, hbmOrig);
-        hOld_bm2 = (HBITMAP)SelectObject(hdcMem2, hbm);
-
-        SET_DC_RTL_MIRRORED(hdcMem2);
-        BitBlt(hdcMem2, IncOne, 0, bm.bmWidth, bm.bmHeight, hdcMem1, 0, 0, SRCCOPY);
-
-        SelectObject(hdcMem1, hOld_bm1);
-        SelectObject(hdcMem1, hOld_bm2);
-
-        DeleteDC(hdcMem1);
-        DeleteDC(hdcMem2);
-
-        ReleaseDC(NULL, hdc);
-    }
-
-    return hbm;
 }

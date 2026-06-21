@@ -73,7 +73,7 @@ class CDesktopHost
     , public ITrayPriv2
     , public IServiceProvider
     , public IOleCommandTarget
-    , public CAccessible        // Vista - New
+    , public CAccessible
     , public CObjectWithSite
 {
     friend class CDeskHostShellMenuCallback;
@@ -257,7 +257,7 @@ class CDesktopHost
 
         void _ReadPaneSizeFromTheme(SMPANEDATA *psmpd);
 
-        void _ComputeActualSize(MONITORINFO *pminfo, LPCRECT prcExclude);
+        void _ComputeActualSize(const MONITORINFO* pminfo, const RECT* prcExclude);
         void _ChoosePopupPosition(POINT *ppt, LPCRECT prcExclude, LPRECT prcWindow, DWORD dwFlags);
         void _ReapplyRegion();
         void _SaveChildFocus();
