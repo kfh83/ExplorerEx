@@ -2,7 +2,6 @@
 #define _DESKTOP2_H
 
 #include "pch.h"
-//#include "tmschema.h"
 
 #define WC_USERPANE     TEXT("Desktop User Pane")
 #define WC_LOGOFF       TEXT("DesktopLogoffPane")
@@ -28,22 +27,19 @@ DEFINE_GUID(SID_SM_ViewControl, 0xD574C1A4, 0xC703, 0x405E, 0x8C, 0xAC, 0x5E, 0x
    STARTPANELMETRICS structure should be able to be initialized from a static.
    in the non-theme case, that static is what we'll use, otherwise we'll over-ride it with theme settings
 
- *************************
- *                       *
- *    kfh83              *
- *************************
- *           *           *
- *           *           *
- *   MFU     *    Places *
- *           *           *
- *           *           *
- *           *           *
- *************           *
- * MoreProg  *           *
- *************************
- *                       *
- *      Logoff           *
- *************************
+ ****************************
+ *               * Allison  *
+ *               *          *
+ *               *          *
+ *   MFU         *  Places  *
+ *               *          *
+ *               *          *
+ *               *          *
+ *****************          *
+ * MoreProg      *          *
+ *****************          *
+ * OpenBox       * Logoff   *
+ ****************************
 
 */
 
@@ -57,15 +53,15 @@ DEFINE_GUID(SID_SM_ViewControl, 0xD574C1A4, 0xC703, 0x405E, 0x8C, 0xAC, 0x5E, 0x
 
 // Common data which every pane will specify
 typedef struct {
-    LPCTSTR pszClassName;           // (const) window class name
+    const WCHAR* pszClassName;      // (const) window class name
     DWORD   dwStyle;                // (const) window style
     int     iPartId;                // (const) theme part id
     SIZE    size;                   // (default) initial size of this pane
     HTHEME  hTheme;                 // (runtime) theme to pass to the control
     HWND    hwnd;                   // (runtime) filled in at runtime
 
-    BOOL    bPartDefined;           // Vista - New
-	IUnknown *punk;                 // Vista - New
+    BOOL        bPartDefined;       // Vista - New
+    IUnknown*   punk;               // Vista - New
 } SMPANEDATA;
 
 typedef struct {

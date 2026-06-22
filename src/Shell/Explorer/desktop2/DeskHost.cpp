@@ -617,114 +617,102 @@ void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prc
     DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_LOGOFF].hwnd, NULL, 0, dwMoreProgBottomEdge, _rcActual.right, _spm.panes[SMPANETYPE_LOGOFF].size.cy, dwSWPFlags);
     EndDeferWindowPos(hdwp);
 #else
-    LONG cyTopHeight; // eax
+    LONG cyTopHeight;
 
-    int v4 = pminfo->rcMonitor.bottom - prcExclude->bottom;
-    if (prcExclude->top - pminfo->rcMonitor.top > v4)
-        v4 = prcExclude->top - pminfo->rcMonitor.top;
+    int cyMax = pminfo->rcMonitor.bottom - prcExclude->bottom;
+    if (prcExclude->top - pminfo->rcMonitor.top > cyMax)
+        cyMax = prcExclude->top - pminfo->rcMonitor.top;
 
     int v5 = 0;
-    if (_hTheme && !field_C4)
+    if (_hTheme != nullptr && field_C4 == 0)
     {
-        BOOL v25 = 0;
-        DwmIsCompositionEnabled(&v25);
-        if (v25)
+        BOOL fCompositionEnabled = FALSE;
+        DwmIsCompositionEnabled(&fCompositionEnabled);
+        if (fCompositionEnabled)
         {
-            SIZE v26;
-            v26.cx = 70;
-            SHLogicalToPhysicalDPI(nullptr, (int *)&v26);
-            v5 = v26.cx - _spm.panes[0].size.cy;
+            int iSomething = 70;
+            SHLogicalToPhysicalDPI(nullptr, &iSomething);
+            v5 = iSomething - _spm.panes[0].size.cy;
         }
     }
-    int v8 = v4 - v5;
 
+    int v7 = cyMax - v5;
     _rcActual = _rcDesired;
 
-    SIZE v27;
-    v27.cx = 0;
-    v27.cy = 0;
-    int DesiredHeight = GetDesiredHeight(_hwnd, &_spm.panes[1], NULL);
+    SIZE v26 = {};
+    int iMFUHeight = GetDesiredHeight(_hwnd, &_spm.panes[1], nullptr);
+    int iPlacesHeight = GetDesiredHeight(_hwnd, &_spm.panes[3], &v26);
     LONG cy = _spm.panes[2].size.cy;
-    
-    _fClipped = FALSE;
-    int v13 = GetDesiredHeight(_hwnd, &_spm.panes[3], &v27);
-    int v14 = v8 - _spm.panes[4].size.cy - _spm.panes[0].size.cy;
+    _fClipped = 0;
+    int v12 = iPlacesHeight;
+    int cyPlacesMax = v7 - _spm.panes[4].size.cy - _spm.panes[0].size.cy;
 
-    //CcshellDebugMsgW(
-    //    0,
-    //    (__int64)"MFU Desired Height=%d(cur=%d,max=%d), Places Desired Height=%d(cur=%d,max=%d)",
-    //    DesiredHeight,
-    //    _spm.panes[1].size.cy,
-    //    v8 - cy,
-    //    GetDesiredHeight(_hwnd, &_spm.panes[3], &v27),
-    //    _spm.panes[3].size.cy,
-    //    v14);
-    
-    if (DesiredHeight > v8 - cy)
+    /*CcshellDebugMsgW(
+        0,
+        "MFU Desired Height=%d(cur=%d,max=%d), Places Desired Height=%d(cur=%d,max=%d)",
+        iMFUHeight,
+        _spm.panes[1].size.cy,
+        v7 - cy,
+        iPlacesHeight,
+        _spm.panes[3].size.cy,
+        cyPlacesMax);*/
+
+    if (iMFUHeight > v7 - cy)
     {
-        DesiredHeight = v8 - cy;
+        iMFUHeight = v7 - cy;
         _fClipped = TRUE;
     }
 
-    if (v13 > v14)
+    if (v12 > cyPlacesMax)
     {
-        int v16 = v5 + v8;
+        int v15 = v5 + v7;
         field_C4 = 1;
 
-        MARGINS margins;
-        margins.cxLeftWidth = 0;
-        margins.cxRightWidth = 0;
-        margins.cyTopHeight = 0;
-        margins.cyBottomHeight = 0;
-        
-        if (_hTheme)
+        MARGINS margins = {};
+
+        if (_hTheme != nullptr)
         {
-            GetThemeMargins(_hTheme, NULL, SPP_PROGLIST, 0, TMT_CONTENTMARGINS, NULL, &margins);
+            GetThemeMargins(_hTheme, nullptr, SPP_PROGLIST, 0, TMT_CONTENTMARGINS, nullptr, &margins);
             cyTopHeight = margins.cyTopHeight;
         }
         else
         {
             cyTopHeight = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
         }
-        
+
         _spm.panes[0].size.cy = cyTopHeight;
-        int v18 = v16 - cyTopHeight - _spm.panes[4].size.cy;
-        if (v13 > v18)
+        int v17 = v15 - cyTopHeight - _spm.panes[4].size.cy;
+        if (v12 > v17)
         {
-            v13 = v18;
+            v12 = v17;
             _fClipped = TRUE;
         }
     }
-    
-    if (field_C4)
-        IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_UserPane, &SID_SM_DV2ControlHost, 323, 0, NULL, NULL);
-    
-    LONG v19 = _spm.panes[4].size.cy;
-    LONG v20 = _spm.panes[0].size.cy;
-    LONG cx = _spm.panes[1].size.cx;
 
-    int v22 = DesiredHeight + cy - v19;
-    if (v20 + v13 > v22)
+    if (field_C4 != 0)
     {
-        v22 = v20 + v13;
-    }
-    
-    int v23 = v22 + v19 - cy;
-    if (_spm.panes[4].size.cx < v27.cx)
-    {
-        _spm.panes[4].size.cx = v27.cx;
+        IUnknown_QueryServiceExec(
+            static_cast<IMenuBand*>(this), SID_SM_UserPane, &SID_SM_DV2ControlHost, 323, 0, nullptr, nullptr);
     }
 
+    int v18 = _spm.panes[4].size.cy;
+    int v19 = _spm.panes[0].size.cy;
+    int cx = _spm.panes[1].size.cx;
+    int v21 = iMFUHeight + cy - v18;
+    if (v19 + v12 > v21)
+        v21 = v19 + v12;
+    int v22 = v21 + v18 - cy;
+    if (_spm.panes[4].size.cx < v26.cx)
+        _spm.panes[4].size.cx = v26.cx;
     _rcActual.right = cx + _spm.panes[4].size.cx;
-    _rcActual.bottom = v19 + v22;
+    _rcActual.bottom = v18 + v21;
 
     HDWP hdwp = BeginDeferWindowPos(5);
-    const DWORD dwSWPFlags = SWP_NOACTIVATE | SWP_NOZORDER;
-    DeferWindowPos(hdwp, _spm.panes[0].hwnd, nullptr, cx, 0, _rcActual.right - cx, v20, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[1].hwnd, nullptr, 0, 0, cx, v23, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[2].hwnd, nullptr, 0, v23, cx, cy, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[3].hwnd, nullptr, cx, v20, _rcActual.right - cx, v22 - v20, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[4].hwnd, nullptr, cx, v22, _rcActual.right - cx, _spm.panes[4].size.cy, dwSWPFlags);
+    DeferWindowPos(hdwp, _spm.panes[0].hwnd, nullptr, cx, 0, _rcActual.right - cx, v19, 0x14);
+    DeferWindowPos(hdwp, _spm.panes[1].hwnd, nullptr, 0, 0, cx, v22, 0x14);
+    DeferWindowPos(hdwp, _spm.panes[2].hwnd, nullptr, 0, v22, cx, cy, 0x14);
+    DeferWindowPos(hdwp, _spm.panes[3].hwnd, nullptr, cx, v19, _rcActual.right - cx, v21 - v19, 0x14);
+    DeferWindowPos(hdwp, _spm.panes[4].hwnd, nullptr, cx, v21, _rcActual.right - cx, _spm.panes[4].size.cy, 0x14);
     EndDeferWindowPos(hdwp);
 #endif
 }
