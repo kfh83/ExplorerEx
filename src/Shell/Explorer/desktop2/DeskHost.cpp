@@ -236,24 +236,23 @@ CDesktopHost::~CDesktopHost()
 // EXEX-VISTA(allison): Validated.
 BOOL CDesktopHost::Register()
 {
-    _wmDragCancel = RegisterWindowMessage(TEXT("CMBDragCancel"));
+    _wmDragCancel = RegisterWindowMessageW(L"CMBDragCancel");
 
-    WNDCLASSEX  wndclass;
-
+    WNDCLASSEXW wndclass;
     wndclass.cbSize = sizeof(wndclass);
     wndclass.style = CS_DROPSHADOW;
     wndclass.lpfnWndProc = WndProc;
     wndclass.cbClsExtra = 0;
     wndclass.cbWndExtra = 0;
     wndclass.hInstance = g_hinstCabinet;
-    wndclass.hIcon = NULL;
-    wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wndclass.hIcon = nullptr;
+    wndclass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wndclass.hbrBackground = GetStockBrush(HOLLOW_BRUSH);
-    wndclass.lpszMenuName = NULL;
-    wndclass.lpszClassName = WC_DV2;
-    wndclass.hIconSm = NULL;
+    wndclass.lpszMenuName = nullptr;
+    wndclass.lpszClassName = L"DV2ControlHost";
+    wndclass.hIconSm = nullptr;
 
-    return (0 != RegisterClassEx(&wndclass));
+    return RegisterClassExW(&wndclass) != 0;
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -733,44 +732,30 @@ void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prc
 // EXEX-VISTA(allison): Validated.
 HWND CDesktopHost::_Create()
 {
-    TCHAR szTitle[MAX_PATH];
-
-    LoadString(g_hinstCabinet, IDS_STARTMENU, szTitle, MAX_PATH);
+    WCHAR szTitle[260];
+    LoadStringW(g_hinstCabinet, 510, szTitle, ARRAYSIZE(szTitle));
 
     Register();
-
-    // Must load metrics early to determine whether we are themed or not
     LoadPanelMetrics();
 
     DWORD dwExStyle = WS_EX_TOOLWINDOW;
-    if (IS_BIDI_LOCALIZED_SYSTEM())
+    if (IsBiDiLocalizedSystem())
     {
         dwExStyle |= WS_EX_LAYOUTRTL;
     }
 
-    DWORD dwStyle = WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;  // We will make it visible as part of animation
-    if (!_hTheme)
+    DWORD dwStyle = WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_POPUP;
+    if (_hTheme == nullptr)
     {
-        // Normally the theme provides the border effects, but if there is
-        // no theme then we have to do it ourselves.
         dwStyle |= WS_DLGFRAME;
     }
 
     _hwnd = SHFusionCreateWindowEx(
-        dwExStyle,
-        WC_DV2,
-        szTitle,
-        dwStyle,
-        0, 0,
-        0, 0,
-        NULL,
-        NULL,
-        g_hinstCabinet,
-        this);
-    if (_hwnd)
+        dwExStyle, L"DV2ControlHost", szTitle, dwStyle, 0, 0, 0, 0, nullptr, nullptr, g_hinstCabinet, this);
+    if (_hwnd != nullptr)
     {
         v_hwndStartPane = _hwnd;
-        if (_hwnd)
+        if (_hwnd != nullptr)
         {
             SetAccessibleSubclassWindow(_hwnd);
         }
@@ -783,11 +768,6 @@ HWND CDesktopHost::_Create()
 void CDesktopHost::_ReapplyRegion()
 {
     SMNMAPPLYREGION ar;
-
-    // If we fail to create a rectangular region, then remove the region
-    // entirely so we don't carry the old (bad) region around.
-    // Yes it means you get ugly black corners, but it's better than
-    // clipping away huge chunks of the Start Menu!
 
     if (_hTheme)
     {

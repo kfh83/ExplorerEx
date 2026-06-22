@@ -80,7 +80,7 @@ public:
     static DWORD s_FadeThreadProc(LPVOID lpParameter);
 
 private:
-    HRESULT _UpdateUserInfo(int a2);
+    HRESULT _UpdateUserInfo(BOOL fInitial);
     HRESULT _CreateUserPicture();
     void _UpdateUserImage(Gdiplus::Image* pgdiImageUserPicture);
 	
@@ -100,9 +100,9 @@ private:
 
     HBITMAP _hbmUserPicture;
     LONG _lRef;
-    LONG _fadeA;
-    LONG _fadeB;
-    LONG _fadeC;
+    LONG _lFadeA;
+    LONG _lFadeB;
+    LONG _lFadeC;
     HIMAGELIST _himl;
     CGraphicsInit _graphics;
     DWORD _dwFadeIn;

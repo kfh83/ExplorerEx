@@ -225,11 +225,11 @@ typedef struct SMNSETSITE
 
 #include "StartButton.h"
 
-struct SMNGETISTARTBUTTON
+typedef struct SMNGETISTARTBUTTON
 {
     NMHDR hdr;
-    IStartButton *pstb;
-};
+    struct IStartButton* pstb;
+} SMNGETISTARTBUTTON, *PSMNGETISTARTBUTTON;
 
 #define REGSTR_PATH_STARTPANE \
         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPageXP")
@@ -269,10 +269,5 @@ struct SMNGETISTARTBUTTON
 #define DV2_BALLOONTIP_MOREPROG     LongToHandle(1)
 #define DV2_BALLOONTIP_CLIP         LongToHandle(2)
 #define DV2_BALLOONTIP_STARTBUTTON  LongToHandle(3)
-
-// protypes of functions which live in specfldr.cpp but trayprop needs access too
-BOOL ShouldShowNetPlaces();
-BOOL ShouldShowConnectTo();
-
 
 #endif // _DESKTOP2_H

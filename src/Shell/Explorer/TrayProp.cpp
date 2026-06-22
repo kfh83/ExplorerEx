@@ -1600,18 +1600,6 @@ BOOL_PTR CCustomizeStartMenuDlg::AdvancedTabDlgProc(HWND hDlg, UINT uMsg, WPARAM
     return 0;
 }
 
-int DefaultNetConValue()
-{
-    //return ShouldShowConnectTo() ? 2 : 0;      // default to menu-style (2)
-    return 0;
-}
-
-int DefaultNetPlacesValue()
-{
-    //return ShouldShowNetPlaces() ? 1 : 0;      // default to link -style (1)
-    return 0;
-}
-
 void CCustomizeStartMenuDlg::_InitMagicEntries()
 {
     // for the admin tools radio buttons:

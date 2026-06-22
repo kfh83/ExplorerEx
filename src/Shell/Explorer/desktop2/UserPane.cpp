@@ -11,8 +11,8 @@
 
 CUserPane::CUserPane()
     : _lRef(1)
-    , _fadeA(-1)
-    , _fadeB(-1)
+    , _lFadeA(-1)
+    , _lFadeB(-1)
 {
     ASSERT(_hwnd == nullptr); // 19
     ASSERT(_hbmUserPicture == nullptr); // 20
@@ -106,9 +106,9 @@ HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexeco
                 ASSERT(V_VT(pvarargIn) == VT_I4); // 298
 
                 LONG lVal = pvarargIn->lVal;
-                if (_fadeC != lVal)
+                if (_lFadeC != lVal)
                 {
-                    _fadeC = lVal;
+                    _lFadeC = lVal;
                     KillTimer(_hwndStatic, 1);
                     SetTimer(_hwndStatic, 1, _dwFadeDelay, nullptr);
                 }
@@ -150,7 +150,7 @@ LRESULT CALLBACK CUserPane::s_WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, L
 
 void CUserPane::_UpdatePictureWindow(BYTE a2, BYTE a3)
 {
-    if (IsWindowVisible(_hwndStatic) || _fadeB == -1)
+    if (IsWindowVisible(_hwndStatic) || _lFadeB == -1)
     {
         HDC hdc = GetDC(_hwndStatic);
         _PaintPictureWindow(hdc, a2, a3);
@@ -285,12 +285,12 @@ void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a3, BYTE a4)
 
         if (a3)
         {
-            _UpdateDC(hMemDC, _fadeB, a3);
+            _UpdateDC(hMemDC, _lFadeB, a3);
         }
 
         if (a4)
         {
-            _UpdateDC(hMemDC, _fadeA, a4);
+            _UpdateDC(hMemDC, _lFadeA, a4);
         }
 
         POINT pt;
@@ -320,10 +320,10 @@ void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a3, BYTE a4)
 
 void CUserPane::_HidePictureWindow()
 {
-    if (_fadeA != -1 || _fadeB != -1)
+    if (_lFadeA != -1 || _lFadeB != -1)
     {
-        _fadeA = -1;
-        _fadeB = -1;
+        _lFadeA = -1;
+        _lFadeB = -1;
         _UpdatePictureWindow(0xFF, 0);
     }
 
@@ -335,12 +335,13 @@ void CUserPane::_HidePictureWindow()
 
 LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    SMPANEDATA *psmpd = PaneDataFromCreateStruct(lParam);
+    CREATESTRUCTW* lpcs = reinterpret_cast<CREATESTRUCTW*>(lParam);
+    SMPANEDATA* psmpd = static_cast<SMPANEDATA*>(lpcs->lpCreateParams);
 
     _hwnd = hwnd;
     _hTheme = psmpd->hTheme;
     IUnknown_Set(&psmpd->punk, static_cast<IServiceProvider*>(this));
-    if (SUCCEEDED(_UpdateUserInfo(1)))
+    if (SUCCEEDED(_UpdateUserInfo(TRUE)))
     {
         _UpdatePictureWindow(0xFF, 0);
         return 1;
@@ -350,21 +351,17 @@ LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 HWND CUserPane::_GetPictureWindowPrevHnwd()
 {
-    HWND hwnd = NULL;
+    HWND hwnd = nullptr;
 
     SMNGETISTARTBUTTON nm;
-    nm.pstb = NULL;
+    nm.pstb = nullptr;
     _SendNotify(_hwnd, 218, &nm.hdr);
     if (nm.pstb)
     {
         nm.pstb->GetWindow(&hwnd);
-		nm.pstb->Release();
+        nm.pstb->Release();
     }
-
-    if (hwnd)
-        return 0;
-    else
-        return GetWindow(0, GW_HWNDPREV);
+    return hwnd ? nullptr : GetWindow(nullptr, GW_HWNDPREV);
 }
 
 LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -526,14 +523,14 @@ void CUserPane::_DoFade()
     QueryPerformanceFrequency(&Frequency);
     QueryPerformanceCounter(&PerformanceCount);
     
-    LONG* p_fadeA = &this->_fadeA;
-    LONG fadeA = this->_fadeA;
-    LONG fadeB = this->_fadeB;
-    LONG v4 = this->_fadeA;
+    LONG* p_fadeA = &this->_lFadeA;
+    LONG fadeA = this->_lFadeA;
+    LONG fadeB = this->_lFadeB;
+    LONG v4 = this->_lFadeA;
     LONG v12 = fadeA;
     if (fadeA == v4)
     {
-        while (fadeB == this->_fadeB)
+        while (fadeB == this->_lFadeB)
         {
             QueryPerformanceCounter(&v10);
             v10.QuadPart -= PerformanceCount.QuadPart;
@@ -554,14 +551,14 @@ void CUserPane::_DoFade()
             else
                 a2 = (unsigned int)(255 * (this->_dwFadeOut - v5)) / this->_dwFadeOut;
             CUserPane::_UpdatePictureWindow(v13, a2);
-            Sleep(0xAu);
+            Sleep(10);
             if (v12 != *p_fadeA)
                 break;
         }
     }
     if (v12 == *p_fadeA)
     {
-        LONG v7 = this->_fadeB;
+        LONG v7 = this->_lFadeB;
         if (fadeB == v7)
         {
             InterlockedExchange(p_fadeA, v7);
@@ -579,13 +576,13 @@ DWORD CUserPane::s_FadeThreadProc(LPVOID lpParameter)
 
 void CUserPane::_FadePictureWindow()
 {
-    if (_fadeA != _fadeB || _fadeA != _fadeC)
+    if (_lFadeA != _lFadeB || _lFadeA != _lFadeC)
     {
-        _fadeB = _fadeC;
+        _lFadeB = _lFadeC;
         if (GetSystemMetrics(SM_REMOTESESSION) || GetSystemMetrics(SM_REMOTECONTROL))
         {
             _UpdatePictureWindow(0xFF, 0);
-            InterlockedExchange(&_fadeA, _fadeB);
+            InterlockedExchange(&_lFadeA, _lFadeB);
         }
         else
         {
@@ -604,7 +601,7 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     {
         case WM_SETCURSOR:
         {
-            if (_fadeA == -1)
+            if (_lFadeA == -1)
             {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return 1;
@@ -733,7 +730,7 @@ void CUserPane::_UpdateUserImage(Gdiplus::Image *pgdiImageUserPicture)
 void SHLogicalToPhysicalDPI(int* px, int* py);
 void RemapSizeForHighDPI(SIZE* psiz);
 
-HRESULT CUserPane::_UpdateUserInfo(int a2)
+HRESULT CUserPane::_UpdateUserInfo(int fInitial)
 {
     HRESULT hr = S_OK;
 
@@ -783,7 +780,7 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
                 _iFramedPicHeight = sizUserPic.cy;
                 _iFramedPicWidth = sizUserPic.cx;
 
-                if (a2)
+                if (fInitial)
                 {
                     hr = _CreateUserPicture();
                 }
@@ -805,7 +802,7 @@ HRESULT CUserPane::_UpdateUserInfo(int a2)
         SHGetUserDisplayName(_szUserName, &cch);
         SetWindowTextW(_hwndStatic, _szUserName);
 
-        if (!a2)
+        if (!fInitial)
         {
             IUnknown_QueryServiceExec(_punkSite, IID_IFolderView, &SID_SM_DV2ControlHost, 329, 0, nullptr, nullptr);
         }
