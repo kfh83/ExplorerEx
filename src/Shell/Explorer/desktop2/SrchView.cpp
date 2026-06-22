@@ -12,7 +12,7 @@
 
 #pragma comment(lib, "propsys.lib")
 
-#define GIT_COOKIEINVALID ((DWORD)-1) // Guessed value
+#define GIT_COOKIEINVALID 0 // CSearchOpenView treats zero as the invalid GIT cookie.
 
 struct IScope;
 struct IVisibleInList;
@@ -21,7 +21,7 @@ CSearchOpenView::CSearchOpenView()
 {
 	field_98 = 0;
 	DWORD cbData = sizeof(field_98);
-	_SHRegGetValueFromHKCUHKLM(DV2_REGPATH, L"StartPanel_TopMatch", SRRF_RT_ANY, 0, &field_98, &cbData);
+	_SHRegGetValueFromHKCUHKLM(DV2_REGPATH, L"StartPanel_TopMatch", SRRF_RT_ANY, nullptr, &field_98, &cbData);
 	if (field_98 != 2
 		&& field_98 != 3
 		&& field_98 >= 2
