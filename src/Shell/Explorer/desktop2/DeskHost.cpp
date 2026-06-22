@@ -2239,7 +2239,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
                 pt.x = GET_X_LPARAM(pmsg->lParam);
                 pt.y = GET_Y_LPARAM(pmsg->lParam);
                 MapWindowPoints(pmsg->hwnd, this->_hwnd, &pt, 1u);
-                MAKELPARAM(pt.x, pt.y);
+                pmsg->lParam = MAKELPARAM(pt.x, pt.y);
                 pmsg->hwnd = this->_hwnd;
             }
         }
@@ -2268,7 +2268,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
                     pt.x = GET_X_LPARAM(pmsg->lParam);
 					pt.y = GET_Y_LPARAM(pmsg->lParam);
                     MapWindowPoints(pmsg->hwnd, this->_hwnd, &pt, 1u);
-                    MAKELPARAM(pt.x, pt.y);
+                    pmsg->lParam = MAKELPARAM(pt.x, pt.y);
                     pmsg->hwnd = this->_hwnd;
                 }
                 return v12;
@@ -2982,13 +2982,31 @@ STDMETHODIMP  CDesktopHost::QueryStatus(const GUID* pguidCmdGroup,
 
 void CDesktopHost::_SetFocusToOpenBox()
 {
-    if (this->_fOpen)
-        _FindChildItem(this->_spm.panes[2].hwnd, 0, 0x103u);
+    if (_fOpen)
+    {
+        _FindChildItem(_spm.panes[SMPANETYPE_OPENBOX].hwnd, nullptr, 0x103);
+    }
 }
 
 BOOL CDesktopHost::_DoesOpenBoxHaveFocus()
 {
-    return SHIsChildOrSelf(this->_spm.panes[2].hwnd, GetFocus()) == 0;
+    return SHIsChildOrSelf(_spm.panes[SMPANETYPE_OPENBOX].hwnd, GetFocus()) == S_OK;
+}
+
+HRESULT CDesktopHost::_HandleOpenBoxArrowKey(VARIANT* pvar)
+{
+    HRESULT hr = E_FAIL;
+    if (field_48 == nullptr || field_48 == _spm.panes[SMPANETYPE_OPENBOX].hwnd)
+    {
+        hr = IUnknown_QueryServiceExec(
+            static_cast<IMenuBand*>(this), SID_SM_OpenHost, &SID_SM_DV2ControlHost, 324, 0, pvar, nullptr);
+    }
+    return hr;
+}
+
+void CDesktopHost::_OnGetIStartButton(NMHDR* pnm)
+{
+    ((SMNGETISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
 }
 
 // EXEX-VISTA(allison): Validated. Still needs slight cleanup.
@@ -3013,8 +3031,10 @@ STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
             case 300u:
             {
                 if (field_48)
+                {
                     _RemoveSelection(field_48);
-                field_48 = 0;
+                }
+                field_48 = nullptr;
 
                 VARIANT vt;
                 vt.vt = VT_INT;
@@ -3046,7 +3066,7 @@ STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
         if (nCmdID == 324)
         {
             ASSERT(pvarargIn->vt == VT_BYREF); // 2495
-			//return _HandleOpenBoxArrowKey(pvarargIn); // EXEX-VISTA(allison): TODO: Uncomment when implemented
+			return _HandleOpenBoxArrowKey(pvarargIn);
         }
         if (nCmdID == 326)
         {

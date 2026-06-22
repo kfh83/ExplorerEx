@@ -116,7 +116,7 @@ class CDesktopHost
         RECT            _rcDesired;         // The layout gets to specify a desired size
         RECT            _rcActual;          // And then the components can request additional resizing
 
-		RECT            field_94;           // Vista - New   
+		RECT            field_94;           // Vista - New
 
         int             _iOfferNewApps;     // number of times we should suggest to the
                                             // user that they look at the app that was installed
@@ -186,7 +186,7 @@ class CDesktopHost
         STDMETHODIMP QueryStatus(const GUID * pguidCmdGroup,
                                  ULONG cCmds, OLECMD rgCmds[], OLECMDTEXT *pcmdtext);
         STDMETHODIMP Exec(const GUID * pguidCmdGroup,
-                                 DWORD nCmdID, DWORD nCmdexecopt, 
+                                 DWORD nCmdID, DWORD nCmdexecopt,
                                  VARIANTARG *pvarargIn, VARIANTARG *pvarargOut);
 
         // *** IObjectWithSite ***
@@ -266,7 +266,9 @@ class CDesktopHost
         void _MaybeShowClipBalloon();
         void _DestroyClipBalloon();
 
-		IStartButton *_GetIStartButton();
+		IStartButton* _GetIStartButton();
+        void _OnGetIStartButton(NMHDR* pnm);
+
         void _LockStartPane();
         void _UnlockStartPane();
         void _SetFocusToStartButton();
@@ -275,11 +277,10 @@ class CDesktopHost
         void _RegisterForGlass(BOOL a2, HRGN hrgn);
         void _SetFocusToOpenBox();
         BOOL _DoesOpenBoxHaveFocus();
-        void _OnGetIStartButton(NMHDR* pnm)
-        {
-            ((SMNGETISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
-        }
+        HRESULT _HandleOpenBoxArrowKey(VARIANT* pvar);
+
         void OnThemeChanged(UINT a2);
+
 		BOOL _FilterMouseWheel(MSG *pmsg, HWND hwndTarget);
 		BOOL _FilterMouseButtonDown(MSG *pmsg, HWND hwndTarget);
 		BOOL _FilterLMouseButtonUp(MSG *pmsg, HWND hwndTarget);
