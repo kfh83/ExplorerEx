@@ -1404,7 +1404,7 @@ HRESULT ByUsage::Initialize()
     return hr;
 }
 
-void CMenuItemsCache::_InitStringList(HKEY hk, LPCTSTR pszSub, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa)
+void CMenuItemsCache::_InitStringList(HKEY hk, LPCTSTR pszSub, CDPA<TCHAR> *pdpa)
 {
     ASSERT(static_cast<HDPA>(*pdpa));
 
@@ -1821,7 +1821,7 @@ void CMenuItemsCache::_FillFolderCache(CByUsageDir *pdir, CByUsageRoot *prt)
         }
     }
 #else
-    CDPA<UNALIGNED ITEMIDLIST, CTContainer_PolicyUnOwned<UNALIGNED ITEMIDLIST>>* p_dpaDirs; // ecx
+    CDPA<UNALIGNED ITEMIDLIST>* p_dpaDirs; // ecx
     ENUMFOLDERINFO info; // [esp+8h] [ebp-20h] BYREF
     IEnumIDList* peidl; // [esp+18h] [ebp-10h] BYREF
     DWORD dwAttributes; // [esp+1Ch] [ebp-Ch] BYREF
@@ -2628,7 +2628,7 @@ BOOL IsPidlInDPA(LPCITEMIDLIST pidl, const CDPAPidl& dpa)
     return FALSE;
 }
 
-BOOL IsPidlOrParentInDPA(const ITEMIDLIST_ABSOLUTE* pidl, const CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>& dpa)
+BOOL IsPidlOrParentInDPA(const ITEMIDLIST_ABSOLUTE* pidl, const CDPA<WCHAR>& dpa)
 {
     WCHAR szPath[260];
     if (SHGetPathFromIDListW(pidl, szPath))
@@ -2644,7 +2644,7 @@ BOOL IsPidlOrParentInDPA(const ITEMIDLIST_ABSOLUTE* pidl, const CDPA<WCHAR, CTCo
     return FALSE;
 }
 
-void ByUsage::_AddNewAppPidl(CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>* pdpa, ITEMIDLIST_ABSOLUTE* pidl)
+void ByUsage::_AddNewAppPidl(CDPA<WCHAR>* pdpa, ITEMIDLIST_ABSOLUTE* pidl)
 {
     WCHAR* pszName;
     if (SUCCEEDED(DisplayNameOfAsString(nullptr, pidl, SHGDN_FORPARSING, &pszName))
@@ -2936,11 +2936,11 @@ int DPA_LocalFreeCB(T self, LPVOID)
     return TRUE;
 }
 
-BOOL CreateExcludedDirectoriesDPA(const int rgcsidlExclude[], CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpaExclude)
+BOOL CreateExcludedDirectoriesDPA(const int rgcsidlExclude[], CDPA<WCHAR>* pdpaExclude)
 {
     if (pdpaExclude)
     {
-        pdpaExclude->EnumCallback(DPA_LocalFreeCB, NULL);
+        pdpaExclude->EnumCallback(DPA_LocalFreeCB, nullptr);
         if (pdpaExclude)
         {
             pdpaExclude->DeleteAllPtrs();
@@ -3116,7 +3116,7 @@ inline LRESULT ByUsage::_OnNotify(LPNMHDR pnm)
 //
 inline LRESULT ByUsage::_OnSetNewItems(HDPA hdpaNew)
 {
-    CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> dpaNew(hdpaNew);
+    CDPA<WCHAR> dpaNew(hdpaNew);
 
     int cNew = _dpaNew ? _dpaNew.GetPtrCount() : 0;
     if (cNew == 0 && dpaNew.GetPtrCount() == 0)
@@ -4357,23 +4357,21 @@ CByUsageShortcut *CMenuItemsCache::GetNextShortcut()
 
     return pscut;
 #else
-    int iCurrentRoot; // esi
-    CByUsageShortcut *pscut; // eax
-    int iCurrentIndex; // edx
+    CByUsageShortcut* pscut; // eax
 
-    while (1)
+    while (true)
     {
-        iCurrentRoot = this->_iCurrentRoot;
+        int iCurrentRoot = this->_iCurrentRoot;
         pscut = 0;
         if (iCurrentRoot >= 7)
             break;
 
         if (this->_rgrt[iCurrentRoot]._sl)
         {
-            iCurrentIndex = this->_iCurrentIndex;
+            int iCurrentIndex = this->_iCurrentIndex;
             if (iCurrentIndex < this->_rgrt[iCurrentRoot]._sl.GetPtrCount())
             {
-				pscut = this->_rgrt[iCurrentRoot]._sl.FastGetPtr(iCurrentIndex);
+                pscut = this->_rgrt[iCurrentRoot]._sl.FastGetPtr(iCurrentIndex);
                 this->_iCurrentIndex = iCurrentIndex + 1;
                 return pscut;
             }
@@ -4387,12 +4385,12 @@ CByUsageShortcut *CMenuItemsCache::GetNextShortcut()
 
 //****************************************************************************
 
-void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* pdpa, LPCTSTR psz)
+void AppendString(CDPA<WCHAR>* pdpa, const WCHAR* psz)
 {
-    LPTSTR pszDup = StrDup(psz);
-    if (pszDup && pdpa->AppendPtr(pszDup) < 0)
+    WCHAR* pszDup = StrDupW(psz);
+    if (pszDup && FAILED(pdpa->AppendPtr(pszDup)))
     {
-        LocalFree(pszDup);  // Append failed
+        LocalFree(pszDup);
     }
 }
 

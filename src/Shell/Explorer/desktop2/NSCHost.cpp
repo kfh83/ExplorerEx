@@ -909,8 +909,6 @@ HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fDoDefault)
 			{
 				SMNMCOMMANDINVOKED ci;
 
-				HWND hwnd = _hwnd;
-
 				IShellItem* psiSelected;
 				if (SUCCEEDED(_GetSelectedItem(&psiSelected)))
 				{
@@ -928,7 +926,7 @@ HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fDoDefault)
 
 					// SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Launched, 65);
 
-					_SendNotify(GetParent(hwnd), SMN_COMMANDINVOKED, &ci.hdr);
+					_SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &ci.hdr);
 					_InstrumentLaunchData(psi);
 					psia->Release();
 				}

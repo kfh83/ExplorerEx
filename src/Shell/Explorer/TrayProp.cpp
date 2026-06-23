@@ -3004,7 +3004,7 @@ void StartMenuSort()
         LPITEMIDLIST pidl2;
         if (SUCCEEDED(SHGetSpecialFolderLocation(NULL, CSIDL_COMMON_STARTMENU, &pidl2)))
         {
-            IAugmentedShellFolder2* pasf;
+            IAugmentedShellFolder* pasf;
             IShellFolder* psfCommon;
             IShellFolder* psfUser;
             HRESULT hres = CoCreateInstanceHook(CLSID_MergedFolder, NULL, CLSCTX_INPROC_SERVER,

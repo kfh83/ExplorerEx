@@ -4648,82 +4648,80 @@ LRESULT CALLBACK CTaskBand::s_TaskbarSubclassProc(HWND hwnd, UINT uMsg, WPARAM w
 	return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
 
+// ExEx-Vista(Allison): Verified.
 LRESULT CTaskBand::_HandleCreate()
 {
-    _ASSERTE(_hwnd);
+    _ASSERTE(_hwnd); // 5222
 
-    _uCDHardError = RegisterWindowMessage( TEXT(COPYDATA_HARDERROR) );
+    _uCDHardError = RegisterWindowMessageW(L"HardError");
 
     RegisterDragDrop(_hwnd, this);
 
-    _tb.Create(_hwnd, NULL, NULL, WS_CHILD | WS_CLIPCHILDREN | WS_VISIBLE | CCS_NODIVIDER |
-                            TBSTYLE_LIST | TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | CCS_NORESIZE | TBSTYLE_TRANSPARENT);
+    _tb.Create(
+        _hwnd, nullptr, nullptr,
+        CCS_NORESIZE | CCS_NODIVIDER | TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | TBSTYLE_LIST | TBSTYLE_TRANSPARENT |
+        WS_CLIPCHILDREN | WS_VISIBLE | WS_CHILD);
     if (_tb)
     {
-        SendMessage(_tb, TB_ADDSTRING, (WPARAM)g_hinstCabinet, (LPARAM)IDS_BOGUSLABELS);
+        _tb.SendMessageW(TB_ADDSTRINGW, reinterpret_cast<WPARAM>(g_hinstCabinet), 851);
 
         _OpenTheme();
-		_SetToolbarTheme();
+        _SetToolbarTheme();
 
-        SetWindowSubclass(_tb, (SUBCLASSPROC)CTaskBand::s_TaskbarSubclassProc, 0, (DWORD_PTR)this);
-        //SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
+        SetWindowSubclass(_tb, s_TaskbarSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
 
         _tb.SetButtonStructSize();
 
-        // initial size
-        SIZE size = { 0, 0 };
-        _tb.SetButtonSize(size);
+        // Set the initial toolbar button width and height to 0.
+        _tb.SetButtonSize(0, 0);
 
-        _tb.SetExtendedStyle( TBSTYLE_EX_TRANSPARENTDEADAREA | 
-                                TBSTYLE_EX_FIXEDDROPDOWN | 
-                                TBSTYLE_EX_DOUBLEBUFFER |
-                                TBSTYLE_EX_TOOLTIPSEXCLUDETOOLBAR);
+        _tb.SetExtendedStyle(0x40 | TBSTYLE_EX_DOUBLEBUFFER | 0x100 | 0x200);
 
-        // version info
-        _tb.SendMessage(CCM_SETVERSION, COMCTL32_VERSION, 0);
+        // Make sure comctl32 version is set properly.
+        _tb.SendMessageW(CCM_SETVERSION, COMCTL32_VERSION, 0);
 
         _CreateTBImageLists();
 
         HWND hwndTT = _tb.GetToolTips();
         if (hwndTT)
         {
-            SHSetWindowBits(hwndTT, GWL_STYLE, TTS_ALWAYSTIP | TTS_NOPREFIX,
-                                               TTS_ALWAYSTIP | TTS_NOPREFIX);
+            SHSetWindowBits(hwndTT, GWL_STYLE, TTS_ALWAYSTIP | TTS_NOPREFIX, TTS_ALWAYSTIP | TTS_NOPREFIX);
         }
 
-        // set shell hook
-        WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
-        RegisterShellHook(_hwnd, 3); // 3 = magic flag
+        WM_ShellHook = RegisterWindowMessageW(L"SHELLHOOK");
 
-        // create the dwm thumbnail preview windows
+        if (_IsTrayTaskband())
+        {
+            // _fPerfTracing = g_SHPerfRegHandle && EventEnabled(g_SHPerfRegHandle, &ShellTraceId_Taskbar_Window_Count);
+            RegisterShellHook(_hwnd, 3);
+            WM_FrostWindow = RegisterWindowMessageW(L"SysFrostedWindow");
+        }
+        else
+        {
+            RegisterShellHookWindow(_hwnd);
+        }
+
         _CreateThumbnailWindows();
-
-        // force getting of font, calc of metrics
         _HandleSettingChange(0, 0, TRUE);
 
-        // populate the toolbar
-        EnumWindows(BuildEnumProc, (LPARAM)this);
+        // Add the task items to the toolbar.
+        EnumWindows(BuildEnumProc, reinterpret_cast<LPARAM>(this));
 
         SHChangeNotifyEntry fsne;
         fsne.fRecursive = FALSE;
-        fsne.pidl = NULL;
-        _uShortcutInvokeNotify = SHChangeNotifyRegister(_hwnd,
-                    SHCNRF_NewDelivery | SHCNRF_ShellLevel,
-                    SHCNE_ASSOCCHANGED |
-                    SHCNE_EXTENDED_EVENT | SHCNE_UPDATEIMAGE,
-                    TBC_CHANGENOTIFY,
-                    1, &fsne);
+        fsne.pidl = nullptr;
+        _uShortcutInvokeNotify = SHChangeNotifyRegister(
+            _hwnd, SHCNRF_ShellLevel | SHCNRF_NewDelivery,
+            SHCNE_UPDATEIMAGE | SHCNE_EXTENDED_EVENT | SHCNE_ASSOCCHANGED, 0x43A, 1, &fsne);
 
-        // set window text to give accessibility apps something to read
-        TCHAR szTitle[80];
-        LoadString(g_hinstCabinet, IDS_TASKBANDTITLE, szTitle, ARRAYSIZE(szTitle));
-        SetWindowText(_hwnd, szTitle);
-        SetWindowText(_tb, szTitle);
+        WCHAR szTitle[80];
+        LoadStringW(g_hinstCabinet, 594, szTitle, ARRAYSIZE(szTitle));
+        SetWindowTextW(_hwnd, szTitle);
+        SetWindowTextW(_tb, szTitle);
 
-        return 0;       // success
+        return 0;
     }
 
-    // Failure.
     return -1;
 }
 
@@ -7230,7 +7228,7 @@ void CTaskBand::_RefreshSettings() // EXEX-VISTA TODO: Add new argument
 
     if ((fOldGlom != _fGlom) || (iOldGroupSize != _iGroupSize))
     {
-        CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>> dpa;
+        CDPA<TASKITEM> dpa;
         _BuildTaskList(&dpa);
 
         if (dpa)

@@ -152,8 +152,8 @@ LPITEMIDLIST FullPidlFromSMData(LPSMDATA psmd)
     LPITEMIDLIST pidlItem;
     LPITEMIDLIST pidlFolder = NULL;
     LPITEMIDLIST pidlFull = NULL;
-    IAugmentedShellFolder2* pasf2;
-    if (SUCCEEDED(psmd->psf->QueryInterface(IID_IAugmentedFolder, (LPVOID*)&pasf2)))
+    IAugmentedShellFolder* pasf2;
+    if (SUCCEEDED(psmd->psf->QueryInterface(IID_PPV_ARGS(&pasf2))))
     {
         if (SUCCEEDED(pasf2->UnWrapIDList(psmd->pidlItem, 1, NULL, &pidlFolder, &pidlItem, NULL)))
         {
@@ -178,9 +178,9 @@ LPITEMIDLIST FullPidlFromSMData(LPSMDATA psmd)
 //
 BOOL IsMergedFolderGUID(IShellFolder* psf, LPCITEMIDLIST pidl, REFGUID rguid)
 {
-    IAugmentedShellFolder2* pasf;
+    IAugmentedShellFolder* pasf;
     BOOL fMatch = FALSE;
-    if (SUCCEEDED(psf->QueryInterface(IID_IAugmentedFolder, (LPVOID*)&pasf)))
+    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&pasf))))
     {
         GUID guid;
         if (SUCCEEDED(pasf->GetNameSpaceID(pidl, &guid)))
@@ -333,8 +333,8 @@ typedef struct
     UINT csidl;
     UINT uANSFlags;
     const GUID* pguidObj;
-    int field_C;
-} MERGEDFOLDERINFO, * LPMERGEDFOLDERINFO;
+    UINT uGroupID;
+} MERGEDFOLDERINFO, *LPMERGEDFOLDERINFO;
 
 typedef const MERGEDFOLDERINFO* LPCMERGEDFOLDERINFO;
 
@@ -396,7 +396,7 @@ HRESULT CreateMergedFolderHelper(REFCLSID rclsid, const MERGEDFOLDERINFO* rgmfi,
                             && !IsEqualGUID(*rgmfi[i].pguidObj, CLSID_StartMenuCommon)); // 370
                     }
 
-                    hr = pasf->AddNameSpace(rgmfi[i].pguidObj, psf, nullptr, rgmfi[i].uANSFlags, rgmfi[i].field_C);
+                    hr = pasf->AddNameSpace(rgmfi[i].pguidObj, psf, nullptr, rgmfi[i].uANSFlags, rgmfi[i].uGroupID);
                     psf->Release();
                 }
             }
