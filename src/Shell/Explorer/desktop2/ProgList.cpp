@@ -10,20 +10,29 @@
 #include "tray.h"
 #include "path.h"
 
-#define PRINT_UEMINFO(ueminfo) \
-    printf( \
-        "[%s] UEMINFO: cbSize=%u, dwMask=0x%08x, R=%.2f, cLaunches=%u, cSwitches=%u, dwTime=%u, ftExecute={%u,%u}, fExcludeFromMFU=%d\n", \
-        __FUNCTION__, \
-        (ueminfo).cbSize, \
-        (ueminfo).dwMask, \
-        (ueminfo).R, \
-        (ueminfo).cLaunches, \
-        (ueminfo).cSwitches, \
-        (ueminfo).dwTime, \
-        (ueminfo).ftExecute.dwLowDateTime, \
-        (ueminfo).ftExecute.dwHighDateTime, \
-        (ueminfo).fExcludeFromMFU \
-    )
+// For debugging purposes
+
+// #define DEBUG_UAINFO
+
+FORCEINLINE void WINAPI UADumpInfo(const UAINFO& uei)
+{
+#if defined(DEBUG_UAINFO)
+    wprintf(
+        L"[%s] UAINFO: cbSize=%u, dwMask=0x%08x, R=%.2f, cLaunches=%u, cSwitches=%u, dwTime=%u, ftExecute={%u,%u},"
+        " fExcludeFromMFU=%d\n",
+        __FUNCTION__,
+        uei.cbSize,
+        uei.dwMask,
+        uei.R,
+        uei.cLaunches,
+        uei.cSwitches,
+        uei.dwTime,
+        uei.ftExecute.dwLowDateTime,
+        uei.ftExecute.dwHighDateTime,
+        uei.fExcludeFromMFU
+    );
+#endif
+}
 
 typedef UNALIGNED const WCHAR* LPNCWSTR;
 typedef UNALIGNED WCHAR* LPNWSTR;
@@ -156,40 +165,14 @@ void GetStartTime(FILETIME *pft)
 
 //****************************************************************************
 
-//
-//  Helper template for destroying DPA's.
-//
-//  DPADELETEANDDESTROY(dpa);
-//
-//  invokes the "delete" method on each pointer in the DPA,
-//  then destroys the DPA.
-//
-
-template<class T>
-BOOL CALLBACK _DeleteCB(T *self, LPVOID)
-{
-    delete self;
-    return TRUE;
-}
-
-template<class T>
-void DPADELETEANDDESTROY(CDPA<T> &dpa)
-{
-    if (dpa)
-    {
-        dpa.DestroyCallback(_DeleteCB<T>, NULL);
-        ASSERT(dpa == NULL);
-    }
-}
-
-template <class T>
-int DPA_DeleteCB(T *self, LPVOID)
+template <typename T>
+int DPA_DeleteCB(T* self, void*)
 {
     if (self)
     {
         delete self;
     }
-    return 1;   // continue
+    return 1;
 }
 
 //****************************************************************************
@@ -200,7 +183,7 @@ void CByUsageRoot::Reset()
 	_slOld.DestroyCallback(DPA_DeleteCB);
 
     ILFree(_pidl);
-    _pidl = NULL;
+    _pidl = nullptr;
 };
 
 //****************************************************************************
@@ -235,7 +218,7 @@ public:
                 // all is well
                 return self;
             }
-            
+
             delete self;
         }
 
@@ -462,8 +445,8 @@ public:
 
     void GetUAInfo(OUT UAINFO *puei)
     {
-#ifdef DEBUG
-        PRINT_UEMINFO(*puei);
+#ifdef DEBUG_UAINFO
+        UADumpInfo(*puei);
 #endif
 		_GetUAInfo(&UAIID_APPLICATIONS, _pszAppPath, puei);
     }
@@ -633,8 +616,8 @@ public:
             if (SUCCEEDED(hr))
             {
                 _GetUAInfo(&UAIID_SHORTCUTS, szPath, puei);
-#ifdef DEBUG
-                PRINT_UEMINFO(*puei);
+#ifdef DEBUG_UAINFO
+                UADumpInfo(*puei);
 #endif
             }
             ILFree(pidlFull);
@@ -2581,8 +2564,8 @@ void ByUsage::EnumFolderFromCache()
                 UAINFO uei;
                 if (papp && pscut->GetUAInfo(&uei) >= 0)
                 {
-#ifdef DEBUG
-                    PRINT_UEMINFO(uei);
+#ifdef DEBUG_UAINFO
+                    UADumpInfo(uei);
 #endif
                     if (pscut->IsNew() && papp->_fNew)
                     {

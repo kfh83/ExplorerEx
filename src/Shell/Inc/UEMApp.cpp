@@ -222,7 +222,7 @@ IShellUserAssist* GetUserAssistWorker(REFCLSID clsidUserAssist)
 	return g_uempUa != (IShellUserAssist*)-1 ? g_uempUa : nullptr;
 }
 
-EXTERN_C HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed)
+STDAPI UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* pszPath, DWORD dwTimeElapsed)
 {
 	HRESULT hr = E_FAIL;
 	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
@@ -233,7 +233,7 @@ EXTERN_C HRESULT UAFireEvent(const GUID* pguidGrp, UAEVENT eCmd, const WCHAR* ps
 	return hr;
 }
 
-EXTERN_C HRESULT UAQueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui)
+STDAPI UAQueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO* pui)
 {
 	HRESULT hr = E_FAIL;
 	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
@@ -244,7 +244,7 @@ EXTERN_C HRESULT UAQueryEntry(const GUID* pguidGrp, const WCHAR* pszPath, UAINFO
 	return hr;
 }
 
-EXTERN_C HRESULT UADeleteEntry(const GUID* pgudGrp, const WCHAR* pszPath)
+STDAPI UADeleteEntry(const GUID* pgudGrp, const WCHAR* pszPath)
 {
 	HRESULT hr = E_FAIL;
 	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
@@ -255,7 +255,7 @@ EXTERN_C HRESULT UADeleteEntry(const GUID* pgudGrp, const WCHAR* pszPath)
 	return hr;
 }
 
-EXTERN_C HRESULT UARegisterNotify(UACallback a1, void* a2, int a3)
+STDAPI UARegisterNotify(UACallback a1, void* a2, int a3)
 {
 	HRESULT hr = E_FAIL;
 	IShellUserAssist* pua = GetUserAssistWorker(CLSID_UserAssist);
