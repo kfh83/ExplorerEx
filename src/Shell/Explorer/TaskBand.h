@@ -267,7 +267,7 @@ protected:
     void _DeleteItem(HWND hWnd, int index = -1);
     void _AttachTaskShortcut(PTASKITEM pti, LPCTSTR pszExeName);
     void _ReattachTaskShortcut();
-    void _BuildTaskList(CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>>* pDPA);
+    void _BuildTaskList(CDPA<TASKITEM>* pDPA);
 
     BOOL _ShowTooltip(const HWND hwnd);
 

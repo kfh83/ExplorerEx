@@ -1241,7 +1241,7 @@ void SFTBarHost::_RepopulateList()
         }
 
         // switch DPAs now
-        CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>> dpaTemp = _dpaEnum;
+        CDPA<PaneItem> dpaTemp = _dpaEnum;
         _dpaEnum = _dpaEnumNew;
         _dpaEnumNew = dpaTemp;
 
@@ -1262,7 +1262,7 @@ void SFTBarHost::_RepopulateList()
     int cp; // ecx
     int v8; // eax
     int i; // edi
-    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>> dpaTemp; // [esp+Ch] [ebp-4h] SPLIT BYREF
+    CDPA<PaneItem> dpaTemp; // [esp+Ch] [ebp-4h] SPLIT BYREF
     int iMax; // [esp+Ch] [ebp-4h]
 
     if (_idtAni)

@@ -2682,7 +2682,7 @@ HRESULT SplitAtMatchedFilter(
 	IShellItem *psi,
 	const ITEMIDLIST_ABSOLUTE *pidl,
 	UINT uiMatchFromLast,
-	CDPA<ITEMID_CHILD, CTContainer_PolicyUnOwned<ITEMID_CHILD>> *pdpaRight,
+	CDPA<ITEMID_CHILD> *pdpaRight,
 	ITEMIDLIST_ABSOLUTE **ppidlLeft)
 {
 	*ppidlLeft = nullptr;
@@ -2734,7 +2734,7 @@ STDAPI SHILCombine(const ITEMIDLIST_ABSOLUTE *pidl1, const ITEMIDLIST_RELATIVE *
 
 HRESULT RebuildMatchedFilterIDList(
 	const ITEMIDLIST_ABSOLUTE *pidlParent,
-	CDPA<ITEMID_CHILD, CTContainer_PolicyUnOwned<ITEMID_CHILD>> *pdpaFilters,
+	CDPA<ITEMID_CHILD>* pdpaFilters,
 	IFilterCondition *pfc,
 	ITEMIDLIST_ABSOLUTE **ppidl)
 {
@@ -2823,7 +2823,7 @@ STDAPI SHILAppend(ITEMIDLIST_RELATIVE *pidl, ITEMIDLIST_RELATIVE **ppidlCombined
 HRESULT ModifyOrRemoveFilterHelper(
 	ITEMIDLIST_ABSOLUTE *pidlParent,
 	IFilterCondition *pfc,
-	CDPA<ITEMID_CHILD, CTContainer_PolicyUnOwned<ITEMID_CHILD>> *pdpaFilters,
+	CDPA<ITEMID_CHILD>* pdpaFilters,
 	ITEMIDLIST_ABSOLUTE **ppidlFiltered)
 {
 	*ppidlFiltered = nullptr;
@@ -2862,8 +2862,8 @@ HRESULT ModifyOrRemoveFilterHelper(
 	return hr;
 }
 
-template<typename T>
-int CALLBACK DPA_ILFreeCB(T *self, void *pData)
+template <typename T>
+int CALLBACK DPA_ILFreeCB(T* self, void* pData)
 {
 	CoTaskMemFree(self);
 	return 1;
@@ -2873,7 +2873,7 @@ STDAPI ModifyOrRemoveItemFilterByIndex(IShellItem *psi, UINT uiMatchFromLast, IF
 {
 	*ppidlFiltered = nullptr;
 
-	CDPA<ITEMID_CHILD, CTContainer_PolicyUnOwned<ITEMID_CHILD>> dpaFilters;
+	CDPA<ITEMID_CHILD> dpaFilters;
 	HRESULT hr = dpaFilters.Create(uiMatchFromLast + 1) ? S_OK : E_OUTOFMEMORY;
 	if (SUCCEEDED(hr))
 	{

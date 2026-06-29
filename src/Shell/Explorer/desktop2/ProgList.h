@@ -22,14 +22,14 @@ class CByUsageHiddenData;                    // "hd", "phd"
 class ByUsageUI;
 class ByUsageDUI;
 
-typedef CDPA<CByUsageShortcut, CTContainer_PolicyUnOwned<CByUsageShortcut>> ByUsageShortcutList; // "sl", "psl"
-typedef CDPA<UNALIGNED ITEMIDLIST_ABSOLUTE, CTContainer_PolicyUnOwned<UNALIGNED ITEMIDLIST_ABSOLUTE>> CDPAPidl; // save typing
-typedef CDPA<CByUsageAppInfo, CTContainer_PolicyUnOwned<CByUsageAppInfo>> ByUsageAppInfoList;
+typedef CDPA<CByUsageShortcut> ByUsageShortcutList; // "sl", "psl"
+typedef CDPA<UNALIGNED ITEMIDLIST_ABSOLUTE> CDPAPidl; // save typing
+typedef CDPA<CByUsageAppInfo> ByUsageAppInfoList;
 
 // Helper routines
 BOOL LocalFreeCallback(LPTSTR psz, LPVOID);
 BOOL ILFreeCallback(LPITEMIDLIST pidl, LPVOID);
-void AppendString(CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>* pdpa, LPCTSTR psz);
+void AppendString(CDPA<TCHAR>* pdpa, LPCTSTR psz);
 
 class CByUsageRoot
 {                         // "rt", "prt"
@@ -227,7 +227,7 @@ protected:
     BOOL _IsExcludedDirectory(LPCITEMIDLIST a2, IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwAttributes);
     BOOL _IsInterestingDirectory(CByUsageDir *pdir);
 
-    static void _InitStringList(HKEY hk, LPCTSTR pszValue, CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>> *pdpa);
+    static void _InitStringList(HKEY hk, const WCHAR* pszValue, CDPA<WCHAR>* pdpa);
     void _InitKillList();
     void  _InitNoKillList();
     bool _SetInterestingLink(CByUsageShortcut *pscut);
@@ -266,9 +266,9 @@ protected:
 
     IQueryAssociations *    _pqa;
 
-    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaNotInteresting; // directories that yield shortcuts that we want to ignore
-    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaKill;    // program names to ignore
-    CDPA<TCHAR, CTContainer_PolicyUnOwned<TCHAR>>             _dpaKillLink;// link names (substrings) to ignore
+    CDPA<WCHAR>             _dpaNotInteresting; // directories that yield shortcuts that we want to ignore
+    CDPA<WCHAR>             _dpaKill;    // program names to ignore
+    CDPA<WCHAR>             _dpaKillLink;// link names (substrings) to ignore
 
     BOOL                    _fIsCacheUpToDate;  // Do we need to walk the start menu dirs?
     BOOL                    _fIsInited;
@@ -343,7 +343,7 @@ private:
     typedef struct AFTERENUMINFO
     {
         ByUsage* self;
-        CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>, not sure why yet.
+        CDPA<WCHAR> dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>, not sure why yet.
         int field_8; // Vista - NEW
     } AFTERENUMINFO;
 
@@ -351,7 +351,7 @@ private:
 
     static void _AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl);
     // @Note (Allison): This is a new method in 6519 and replaces _AddNewAppPidlAndParents(CDPAPidl *pdpa, ITEMIDLIST_ABSOLUTE *pidl)
-    static void _AddNewAppPidl(CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>>* pdpa, ITEMIDLIST_ABSOLUTE* pidl);
+    static void _AddNewAppPidl(CDPA<WCHAR>* pdpa, ITEMIDLIST_ABSOLUTE* pidl);
 
     static int UANotifyCB(void *param, const GUID *pguidGrp, const WCHAR *, UAEVENT eCmd);
 
@@ -373,7 +373,7 @@ public:
     static inline __int64 FT_NEWAPPGRACEPERIOD() { return FT_ONEHOUR; }
 
 private:
-    CDPA<WCHAR, CTContainer_PolicyUnOwned<WCHAR>> _dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>
+    CDPA<WCHAR> _dpaNew; // @Note (Allison): In 6519 this was changed from a CDPAPidl to a CDPA<WCHAR>
 
     IStartMenuPin *         _psmpin;     // to access the pin list
     LPITEMIDLIST            _pidlBrowser;  // Special pinned items with special names

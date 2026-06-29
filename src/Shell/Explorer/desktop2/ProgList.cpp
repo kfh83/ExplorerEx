@@ -173,7 +173,7 @@ BOOL CALLBACK _DeleteCB(T *self, LPVOID)
 }
 
 template<class T>
-void DPADELETEANDDESTROY(CDPA<T, CTContainer_PolicyUnOwned<T>> &dpa)
+void DPADELETEANDDESTROY(CDPA<T> &dpa)
 {
     if (dpa)
     {

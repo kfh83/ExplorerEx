@@ -816,8 +816,8 @@ private:
     //  _dpaEnum is the DPA of enumerated items, sorted in the
     //  _SortItemsAfterEnum sense, which prepares them for _RepopulateList.
     //  When _dpaEnum is destroyed, its pointers must be delete'd.
-    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>>          _dpaEnum;
-    CDPA<PaneItem, CTContainer_PolicyUnOwned<PaneItem>>          _dpaEnumNew; // Used during background enumerations
+    CDPA<PaneItem>          _dpaEnum;
+    CDPA<PaneItem>          _dpaEnumNew; // Used during background enumerations
 
     int                     _rgiSep[MAX_SEPARATORS];    /* Only _cSep elements are meaningful */
     int                     _cSep;          /* Number of separators */

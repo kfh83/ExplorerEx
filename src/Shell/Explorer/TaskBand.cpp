@@ -7335,7 +7335,7 @@ BOOL CTaskBand::_CanMinimizeAll()
 
 typedef struct MINALLDATAtag
 {
-    CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>> dpa;
+    CDPA<TASKITEM> dpa;
     CTray* pTray;
     HWND hwndDesktop;
     HWND hwndTray;
@@ -7399,7 +7399,7 @@ DWORD WINAPI CTaskBand::MinimizeAllThreadProc(void* pv)
     return 0;
 }
 
-void CTaskBand::_BuildTaskList(CDPA<TASKITEM, CTContainer_PolicyUnOwned<TASKITEM>>* pdpa )
+void CTaskBand::_BuildTaskList(CDPA<TASKITEM>* pdpa )
 {
     if (pdpa && _tb)
     {
