@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include "StartButton.h"
 #include "SHFusion.h"
 #include "tray.h"
@@ -311,56 +312,45 @@ HRESULT CStartButton::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
     if (!_hwndStartBalloon)
     {
         _hwndStartBalloon = SHFusionCreateWindow(
-            TOOLTIPS_CLASS, NULL,
-            WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP | TTS_BALLOON,
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            _hwndStart, NULL, g_hinstCabinet,
-            NULL);
-
+            L"tooltips_class32", nullptr, TTS_ALWAYSTIP | TTS_NOPREFIX | TTS_BALLOON | WS_POPUP,
+            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, _hwndStart, nullptr, g_hinstCabinet, nullptr);
         if (_hwndStartBalloon)
         {
-            SendMessage(_hwndStartBalloon, CCM_SETVERSION, COMCTL32_VERSION, 0);
-            SendMessage(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, (LPARAM)300);
-
-            SendMessage(_hwndStartBalloon, TTM_SETWINDOWTHEME, 0, (LPARAM)c_wzTaskbarTheme);
-
-            SetProp(_hwndStartBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_STARTBUTTON);
+            SendMessageW(_hwndStartBalloon, CCM_SETVERSION, COMCTL32_VERSION, 0);
+            SendMessageW(_hwndStartBalloon, TTM_SETMAXTIPWIDTH, 0, 300);
+            SendMessageW(_hwndStartBalloon, TTM_SETWINDOWTHEME, 0, reinterpret_cast<LPARAM>(L"TaskBar"));
+            SetPropW(_hwndStartBalloon, L"StartMenuBalloonTip", reinterpret_cast<HANDLE>(3));
         }
     }
 
     if (_hwndStartBalloon)
     {
-        WCHAR szTip[MAX_PATH];
-        szTip[0] = TEXT('\0');
-        LoadString(g_hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip));
-        if (szTip[0])
+        WCHAR szTip[260];
+        if (LoadStringW(g_hinstCabinet, idsMessage, szTip, ARRAYSIZE(szTip)))
         {
-            TOOLINFO ti = { 0 };
+            TTTOOLINFOW ti = {};
             ti.cbSize = sizeof(ti);
-            ti.hwnd = _hwndStart;
-            ti.uId = (UINT_PTR)ti.hwnd;
             ti.uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT;
-
-            SendMessage(_hwndStartBalloon, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
-            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)FALSE, (LPARAM)0);
+            ti.hwnd = _hwndStart;
+            ti.uId = reinterpret_cast<UINT_PTR>(ti.hwnd);
+            SendMessageW(_hwndStartBalloon, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+            SendMessageW(_hwndStartBalloon, TTM_TRACKACTIVATE, 0, 0);
 
             ti.lpszText = szTip;
-            SendMessage(_hwndStartBalloon, TTM_UPDATETIPTEXT, 0, (LPARAM)&ti);
-
-            LoadString(g_hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip));
-            if (szTip[0])
+            SendMessageW(_hwndStartBalloon, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&ti));
+            if (LoadStringW(g_hinstCabinet, idsTitle, szTip, ARRAYSIZE(szTip)))
             {
-                SendMessage(_hwndStartBalloon, TTM_SETTITLE, TTI_INFO, (LPARAM)szTip);
+                SendMessageW(_hwndStartBalloon, TTM_SETTITLEW, TTI_INFO, reinterpret_cast<LPARAM>(szTip));
             }
 
             RECT rc;
             GetWindowRect(_hwndStart, &rc);
-            SendMessage(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELPARAM((rc.left + rc.right) / 2, rc.top));
-            SendMessage(_hwndStartBalloon, TTM_TRACKACTIVATE, (WPARAM)TRUE, (LPARAM)&ti);
-            SetTimer(_hwndStart, 1, 10000, 0);
+            SendMessageW(_hwndStartBalloon, TTM_TRACKPOSITION, 0, MAKELPARAM((rc.left + rc.right) / 2, rc.top));
+            SendMessageW(_hwndStartBalloon, TTM_TRACKACTIVATE, TRUE, reinterpret_cast<LPARAM>(&ti));
+            SetTimer(_hwndStart, 1, 10000u, nullptr);
         }
     }
+
     return S_OK;
 }
 
@@ -466,98 +456,61 @@ HRESULT CStartButton::QueryService(REFGUID guidService, REFIID riid, void** ppvO
     return E_FAIL;
 }
 
-void CStartButton::BuildStartMenu() // from xp
+void CStartButton::BuildStartMenu()
 {
-#ifdef DEAD_CODE
+    HRESULT hr;
+
     CloseStartMenu();
     _pStartButtonSite->PurgeRebuildRequests();
     DestroyStartMenu();
+
     if (Tray_StartPanelEnabled())
     {
-        LPVOID pvStartPane;
-        DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_punkSite, v_hwndTray);
-        IUnknown_SetSite(_punkSite, static_cast<IServiceProvider *>(this));
+        void* pvStartPane;
+        // SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 0);
+        hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_punkSite, v_hwndTray);
+        IUnknown_SetSite(_punkSite, static_cast<IServiceProvider*>(this));
         DesktopV2_Build(pvStartPane);
     }
     else
     {
-        HRESULT hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu);
+        // SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 1);
+        hr = StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu, &_punkSite);
         if (SUCCEEDED(hr))
         {
-            IUnknown_SetSite(_punkSite, static_cast<IServiceProvider *>(this));
+            IUnknown_SetSite(_punkSite, static_cast<IServiceProvider*>(this));
+
             HWND hwnd;
             if (SUCCEEDED(IUnknown_GetWindow(_pmpStartMenu, &hwnd)))
             {
-                SetWindowSubclass(hwnd, s_StartMenuSubclassProc, 0, (DWORD_PTR)this);
+                SetWindowSubclass(hwnd, s_StartMenuSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
             }
 
-            IBanneredBar *pbb;
-            hr = _pmpStartMenu->QueryInterface(IID_PPV_ARG(IBanneredBar, &pbb));
+            IBanneredBar* pbb;
+            hr = _pmpStartMenu->QueryInterface(IID_PPV_ARGS(&pbb));
             if (SUCCEEDED(hr))
             {
-                pbb->SetBitmap(_hbmpStartBkg);
+                if (_hbmpStartBkg)
+                {
+                    pbb->SetBitmap(_hbmpStartBkg);
+                }
                 if (_pStartButtonSite->ShouldUseSmallIcons())
+                {
                     pbb->SetIconSize(BMICON_SMALL);
+                }
                 else
+                {
                     pbb->SetIconSize(BMICON_LARGE);
-
+                }
                 pbb->Release();
             }
         }
     }
-#else
-    HRESULT hr; // ebx
 
-    CloseStartMenu();
-    _pStartButtonSite->PurgeRebuildRequests();
-    DestroyStartMenu();
-    if (Tray_StartPanelEnabled())
+    if (FAILED(hr))
     {
-        void* pvStartPane;
-        //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 0);
-        hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_punkSite, v_hwndTray);
-        IUnknown_SetSite(_punkSite, static_cast<IServiceProvider*>(this));
-        DesktopV2_Build(pvStartPane);
-        goto LABEL_13;
+        // TraceMsg(TF_ERROR, "Could not create StartMenu");
     }
-    //SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 1);
-    if (StartMenuHost_Create(&_pmpStartMenu, &_pmbStartMenu, &_punkSite) >= 0)
-    {
-        IUnknown_SetSite(_punkSite, static_cast<IServiceProvider*>(this));
-
-        HWND hwnd;
-        if (IUnknown_GetWindow(_pmpStartMenu, &hwnd) >= 0)
-        {
-            SetWindowSubclass(hwnd, s_StartMenuSubclassProc, 0, (DWORD_PTR)this);
-        }
-
-        IBanneredBar* pbb;
-        hr = _pmpStartMenu->QueryInterface(IID_PPV_ARGS(&pbb));
-        if (hr >= 0)
-        {
-            if (_hbmpStartBkg)
-            {
-                pbb->SetBitmap(_hbmpStartBkg);
-            }
-
-            if (_pStartButtonSite->ShouldUseSmallIcons())
-            {
-                pbb->SetIconSize(BMICON_SMALL);
-            }
-            else
-            {
-                pbb->SetIconSize(BMICON_LARGE);
-            }
-            pbb->Release();
-        LABEL_13:
-            if (hr >= 0)
-            {
-                return;
-            }
-        }
-    }
-    //CcshellDebugMsgW(2, "Could not create StartMenu");
-#endif
 }
 
 void CStartButton::CloseStartMenu()
