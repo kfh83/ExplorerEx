@@ -466,8 +466,8 @@ void CStartButton::BuildStartMenu()
 
     if (Tray_StartPanelEnabled())
     {
-        void* pvStartPane;
         // SHTracePerfSQMSetValueImpl(&ShellTraceId_Explorer_StartMenu_Mode, 58, 0);
+        void* pvStartPane;
         hr = DesktopV2_Create(&_pmpStartPane, &_pmbStartPane, &pvStartPane, &_punkSite, v_hwndTray);
         IUnknown_SetSite(_punkSite, static_cast<IServiceProvider*>(this));
         DesktopV2_Build(pvStartPane);

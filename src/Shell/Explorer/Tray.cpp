@@ -7307,28 +7307,22 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     return lres;
 #else
-    LRESULT result; // eax
-    LPARAM lParam1; // ecx
-    HDC v11; // edi
-    int* p_iPaddedBorderWidth; // ebx
-    int v18; // eax
-    int v19; // eax
-    bool v20; // zf
-    BOOL idCmd; // eax
-    HWND Focus; // eax
-    MSG msg; // [esp+10h] [ebp-ACh] BYREF
-    tagRECT rcClip; // [esp+2Ch] [ebp-90h] BYREF
-    tagRECT Rect; // [esp+3Ch] [ebp-80h] BYREF
-    LRESULT lres; // [esp+4Ch] [ebp-70h] BYREF
-    WPARAM wParam_1; // [esp+50h] [ebp-6Ch]
-    LPARAM lParam_2; // [esp+54h] [ebp-68h]
-    BOOL bRefresh; // [esp+58h] [ebp-64h] SPLIT BYREF
-    HMENU hmenu; // [esp+58h] [ebp-64h] MAPDST SPLIT
-    PAINTSTRUCT ps; // [esp+60h] [ebp-5Ch] BYREF
-    //CPPEH_RECORD ms_exc; // [esp+A4h] [ebp-18h]
+    LRESULT result;
+    int v18;
+    int v19;
+    bool v20;
+    int idCmd;
+    HWND Focus;
+    RECT rcClip;
+    RECT Rect;
+    LRESULT lres;
+    BOOL bRefresh;
+    HMENU hmenu;
+    PAINTSTRUCT ps;
 
     lres = 0;
 
+    MSG msg;
     msg.hwnd = hwnd;
     msg.message = uMsg;
     msg.wParam = wParam;
@@ -7339,9 +7333,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (_pmbTasks && _pmbTasks->TranslateMenuMessage(&msg, &lres) == S_OK)
         return lres;
 
-    wParam_1 = msg.wParam;
-    lParam1 = msg.lParam;
-    lParam_2 = msg.lParam;
+    wParam = msg.wParam;
+    lParam = msg.lParam;
 
     if (uMsg <= 0x24) // WM_GETMINMAXINFO
     {
@@ -7358,7 +7351,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 // SHTracePerfSQMStreamOneImpl(&ShellTraceId_Taskbar_Glomming_Count, 155, -1u);
                 // SHTracePerfSQMStreamNineImpl(&ShellTraceId_Taskbar_Window_Count, 156, -1u, 0, 0, 0, 0, 0, 0, 0, 0);
                 // g_fEndSessionInitiated = 1;
-                if ((wParam_1 & 1) != 0)
+                if ((wParam & 1) != 0)
                 {
                     // CcshellDebugMsgW(2048, "Tray.wp WM_QUERYENDSESSION w/ ENDSESSION_CLOSEAPP");
                     if (!g_fShellShutdown)
@@ -7368,7 +7361,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     return _DoExitExplorer();
                 }
                 // CcshellDebugMsgW(2048, "Tray.wp WM_QUERYENDSESSION");
-                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
             }
             if (uMsg <= 6) // WM_ACTIVATE
             {
@@ -7398,7 +7391,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         }
                         return lres;
                     case WM_SIZE:
-                        if (msg.lParam)
+                        if (lParam)
                         {
                             if (field_679)
                             {
@@ -7419,7 +7412,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
             LABEL_213:
                 HDC hdc = (HDC)wParam;
-                if (!msg.wParam) // if (hdc == 0)
+                if (!wParam) // if (hdc == 0)
                 {
                     hdc = BeginPaint(hwnd, &ps);
                 }
@@ -7448,7 +7441,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     _DrawBackupStartButton(hdc);
                 }
-                if (!wParam_1) // if (wParam == 0)
+                if (!wParam) // if (wParam == 0)
                 {
                     EndPaint(hwnd, &ps);
                 }
@@ -7466,7 +7459,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if (_uMsgEnableUserTrackedBalloonTips == uMsg)
             {
-                PostMessageW(_hwndNotify, 0x40B, wParam_1, 0);
+                PostMessageW(_hwndNotify, 0x40B, wParam, 0);
             }
             else if (_uMsgShowOnlyQuickLaunchDeskBand == uMsg)
             {
@@ -7474,9 +7467,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if (_pSystemMixer)
             {
-                _pSystemMixer->ForwardWindowMessage(uMsg, wParam_1, lParam_2);
+                _pSystemMixer->ForwardWindowMessage(uMsg, wParam, lParam);
             }
-            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
         }
 
         switch (uMsg)
@@ -7484,17 +7477,16 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             case WM_ERASEBKGND:
                 if (!_hTheme)
                 {
-                    return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                 }
                 if (!_fSkipErase)
                 {
-                    v11 = (HDC)msg.wParam;
                     GetClientRect(hwnd, &Rect);
                     if (IsCompositionActive())
                     {
-                        SHFillRectClr(v11, &Rect, 0);
+                        SHFillRectClr((HDC)wParam, &Rect, 0);
                     }
-                    DrawThemeBackground(_hTheme, v11, _GetPart(_uStuckPlace), 0, &Rect, nullptr);
+                    DrawThemeBackground(_hTheme, (HDC)wParam, _GetPart(_uStuckPlace), 0, &Rect, nullptr);
                     _fSkipErase = 1;
                 }
                 break;
@@ -7502,14 +7494,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (!_fFromStart)
                 {
                     _OnNewSystemSizes();
-                    BandSite_HandleMessage(_ptbs, hwnd, 0x15u, wParam_1, lParam_2, nullptr);
+                    BandSite_HandleMessage(_ptbs, hwnd, 0x15u, wParam, lParam, nullptr);
                 }
-                _PropagateMessage(hwnd, 0x15, wParam_1, lParam_2);
+                _PropagateMessage(hwnd, 0x15, wParam, lParam);
                 return lres;
             case WM_ENDSESSION:
-                if (msg.wParam) // if (wParam)
+                if (wParam) // if (wParam)
                 {
-                    if (msg.lParam < 0) // if (lParam | ENDSESSION_LOGOFF)
+                    if (lParam < 0) // if (lParam | ENDSESSION_LOGOFF)
                     {
                         _fIsLogoff = 1;
                         _RecomputeAllWorkareas();
@@ -7526,29 +7518,29 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             case WM_SETTINGCHANGE:
                 if (!_fFromStart)
                 {
-                    if (!msg.lParam || StrCmpICW((LPCWSTR)msg.lParam, L"SaveTaskbar"))
-                    {
-                        BandSite_HandleMessage(_ptbs, hwnd, 0x1Au, wParam_1, lParam_2, nullptr);
-                        _PropagateMessage(hwnd, 0x1Au, wParam_1, lParam_2);
-                        _OnWinIniChange(hwnd, wParam_1, lParam_2);
-                    }
-                    else
+                    if (lParam && !StrCmpICW((const WCHAR*)lParam, L"SaveTaskbar"))
                     {
                         _SaveTrayAndDesktop();
                     }
-                    if (lParam_2) // if (lParam)
+                    else
                     {
-                        // CcshellDebugMsgW(2048, "Tray Got: lParam=%s", (const char*)lParam_2);
+                        BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, nullptr);
+                        _PropagateMessage(hwnd, uMsg, wParam, lParam);
+                        _OnWinIniChange(hwnd, wParam, lParam);
+                    }
+                    if (lParam)
+                    {
+                        // TraceMsg(TF_TRAY, "Tray Got: lParam=%s", (const char*)lParam);
                     }
                 }
                 return lres;
             case WM_TIMECHANGE:
-                _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
+                _PropagateMessage(hwnd, uMsg, wParam, lParam);
                 return lres;
             case WM_SETCURSOR:
                 if (!_iWaitCount)
                 {
-                    return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                 }
                 SetCursor(LoadCursorW(nullptr, IDC_APPSTARTING));
                 break;
@@ -7569,12 +7561,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (uMsg == WM_TIMER)
             {
-                if (msg.wParam < 0xE || msg.wParam > 0xF)
+                if (wParam < 0xE || wParam > 0xF)
                 {
-                    _HandleTimer(msg.wParam);
+                    _HandleTimer(wParam);
                     return lres;
                 }
-                return _OnTimerService(0x113u, msg.wParam, msg.lParam);
+                return _OnTimerService(0x113u, wParam, lParam);
             }
             if (uMsg <= WM_NCHITTEST)
             {
@@ -7645,11 +7637,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     {
                         NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
 
-                        if (!BandSite_HandleMessage(_ptbs, hwnd, 0x4E, msg.wParam, msg.lParam, &lres))
+                        if (!BandSite_HandleMessage(_ptbs, hwnd, 0x4E, wParam, lParam, &lres))
                         {
                             if (pnm->code == -22)
                             {
-                                goto LABEL_90;
+                                SizeWindows();
+                                return lres;
                             }
                             if (pnm->code == NM_ENDWAIT || pnm->code == NM_STARTWAIT)
                             {
@@ -7667,13 +7660,13 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         LABEL_190:
                             if (!_stb._nIsOnContextMenu)
                             {
-                                BandSite_HandleMessage(_ptbs, hwnd, uMsg, msg.wParam, msg.lParam, &lres);
+                                BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, &lres);
                             }
                             return lres;
                         }
                         if (uMsg == WM_WINDOWPOSCHANGING)
                         {
-                            _HandleWindowPosChanging((WINDOWPOS*)msg.lParam);
+                            _HandleWindowPosChanging((WINDOWPOS*)lParam);
                             return lres;
                         }
 
@@ -7681,23 +7674,23 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         {
                             _AppBarActivationChange2(hwnd, _uStuckPlace);
                             SendMessageW(_hwndNotify, 0x404u, 0, 0);
-                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                         }
 
                         if (uMsg == WM_COPYDATA)
                         {
-                            if (msg.lParam)
+                            if (lParam)
                             {
                                 switch (((COPYDATASTRUCT*)lParam)->dwData)
                                 {
                                     case 0:
                                     {
-                                        return _OnAppBarMessage((COPYDATASTRUCT*)msg.lParam);
+                                        return _OnAppBarMessage((COPYDATASTRUCT*)lParam);
                                     }
                                     case 1:
                                     {
                                         bRefresh = 0;
-                                        lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)msg.wParam, (COPYDATASTRUCT*)msg.lParam, &bRefresh);
+                                        lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)wParam, (COPYDATASTRUCT*)lParam, &bRefresh);
                                         if (bRefresh)
                                         {
                                         LABEL_90:
@@ -7708,7 +7701,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                     }
                                     case 2:
                                     {
-                                        return _LoadInProc((COPYDATASTRUCT*)msg.lParam);
+                                        return _LoadInProc((COPYDATASTRUCT*)lParam);
                                     }
                                 }
                                 return 0;
@@ -7727,16 +7720,16 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 if (uMsg == 0x7B) // WM_CONTEXTMENU
                 {
-                LABEL_168:
+                L_WM_CONTEXTMENU:
                     if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
                     {
-                        if (IsPosInHwnd(lParam_2, _hwndNotify) || (Focus = GetFocus(), !SHIsChildOrSelf(_hwndNotify, Focus)))
+                        if (IsPosInHwnd(lParam, _hwndNotify) || (Focus = GetFocus(), !SHIsChildOrSelf(_hwndNotify, Focus)))
                         {
-                            _ContextMenu(lParam_2, 1);
+                            _ContextMenu((DWORD)lParam, 1);
                         }
                         else
                         {
-                            BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam_1, lParam_2, &lres);
+                            BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, &lres);
                         }
                     }
                     return lres;
@@ -7752,14 +7745,13 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 if (uMsg == 0x83) // WM_NCCALCSIZE
                 {
-                    p_iPaddedBorderWidth = &_iPaddedBorderWidth;
-                    if (*p_iPaddedBorderWidth <= 0)
+                    if (_iPaddedBorderWidth > 0)
                     {
-                        return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                        DefWindowProcW(hwnd, uMsg, wParam, lParam);
+                        InflateRect((RECT*)lParam, _iPaddedBorderWidth, _iPaddedBorderWidth);
+                        return 0;
                     }
-                    DefWindowProcW(hwnd, 0x83u, msg.wParam, msg.lParam);
-                    InflateRect((LPRECT)lParam_2, *p_iPaddedBorderWidth, *p_iPaddedBorderWidth);
-                    return 0;
+                    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                 }
                 goto L_default;
             }
@@ -7769,20 +7761,20 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 switch (uMsg)
                 {
                     case WM_NCLBUTTONDBLCLK:
-                        if (!_TryForwardNCToClient(0xA3u, msg.lParam) && IsPosInHwnd(lParam_2, _hwndNotify))
+                        if (!_TryForwardNCToClient(0xA3u, lParam) && IsPosInHwnd(lParam, _hwndNotify))
                         {
-                            ShowClockFlyoutAsNeeded(lParam_2);
+                            ShowClockFlyoutAsNeeded(lParam);
                         }
                         return lres;
                     case WM_NCPAINT:
                         if (!_hTheme)
-                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                         UpdateWindow(_hwnd);
                         return 0;
                     case WM_NCACTIVATE:
                         if (_iPaddedBorderWidth <= 0)
                         {
-                            return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                         }
                     LABEL_147:
                         v19 = 0;
@@ -7792,7 +7784,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         {
                             if (_fMouseInTaskbar || _stb.IsButtonPushed())
                             {
-                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                             }
                             Rect.left = 0x10; // mouseEvent.cbSize
                             Rect.top = 0x13; // mouseEvent.dwFlags
@@ -7806,7 +7798,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                 || _stb.IsButtonPushed()
                                 || !IsMouseOverStartButton())
                             {
-                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                             }
                             _stb.DrawStartButton(PBS_HOT, true);
                             Rect.left = 0x10; // mouseEvent.cbSize
@@ -7820,14 +7812,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     case WM_NCLBUTTONDOWN: // WM_NCLBUTTONDOWN
                         if (IsMouseOverStartButton())
                         {
-                            if (_stb.IsButtonPushed())
+                            if (!_stb.IsButtonPushed())
                             {
-                                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                                SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
+                                return 0;
                             }
-                            SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
-                            return 0;
+                            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
                         }
-                        if (ShowClockFlyoutAsNeeded(lParam_2))
+                        if (ShowClockFlyoutAsNeeded(lParam))
                         {
                             return lres;
                         }
@@ -7838,23 +7830,23 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         goto L_default;
                 }
 
-                v20 = _TryForwardNCToClient(uMsg, lParam_2) == 0;
+                v20 = _TryForwardNCToClient(uMsg, lParam) == 0;
             LABEL_134:
                 if (!v20)
                 {
                     return lres;
                 }
-                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
             }
             if (uMsg == 0xA5) // WM_NCRBUTTONUP
             {
                 uMsg = 0x7B;
-                wParam_1 = (WPARAM)_hwndTasks;
-                goto LABEL_168;
+                wParam = (WPARAM)_hwndTasks;
+                goto L_WM_CONTEXTMENU;
             }
             if (uMsg == 0x106) // WM_SYSCHAR
             {
-                if (msg.wParam == ' ')
+                if (wParam == ' ')
                 {
                     SHSetWindowBits(hwnd, -16, 0x80000, 0x80000);
                     hmenu = GetSystemMenu(hwnd, 0);
@@ -7878,7 +7870,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (uMsg == 0x111) // WM_COMMAND
             {
-                if (!BandSite_HandleMessage(_ptbs, hwnd, 0x111u, msg.wParam, msg.lParam, &lres))
+                if (!BandSite_HandleMessage(_ptbs, hwnd, 0x111u, wParam, lParam, &lres))
                 {
                     _Command(GET_WM_COMMAND_ID(wParam, lParam), lParam);
                 }
@@ -7887,12 +7879,12 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (uMsg == 0x112)
             {
-                if ((msg.wParam & 0xFFF0) == 0xF060) // SC_CLOSE
+                if ((wParam & 0xFFF0) == 0xF060) // SC_CLOSE
                 {
                     _DoExitWindows(v_hwndDesktop, 0, 0);
                     return lres;
                 }
-                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
             }
             goto L_default;
         }
@@ -7908,7 +7900,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (uMsg == WM_MOVING)
                 {
-                    _HandleMoving(msg.wParam, (RECT*)msg.lParam);
+                    _HandleMoving(wParam, (RECT*)lParam);
                     return lres;
                 }
                 if (uMsg == WM_INITMENUPOPUP || uMsg == WM_MENUCHAR)
@@ -7924,7 +7916,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         _HandleExitMenuLoop();
                         return lres;
                     case WM_SIZING:
-                        _HandleSizing(msg.wParam, (LPRECT)msg.lParam, _uStuckPlace, _fSelfSizing);
+                        _HandleSizing(wParam, (LPRECT)lParam, _uStuckPlace, _fSelfSizing);
                         return lres;
                 }
                 goto L_default;
@@ -7932,18 +7924,18 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (uMsg == WM_POWER || uMsg == WM_POWERBROADCAST)
             {
-                _PropagateMessage(hwnd, uMsg, msg.wParam, msg.lParam);
-                _HandlePowerStatus(uMsg, wParam_1, lParam_2);
-                return DefWindowProcW(hwnd, uMsg, wParam_1, lParam_2);
+                _PropagateMessage(hwnd, uMsg, wParam, lParam);
+                _HandlePowerStatus(uMsg, wParam, lParam);
+                return DefWindowProcW(hwnd, uMsg, wParam, lParam);
             }
 
             if (uMsg == WM_DEVICECHANGE)
             {
                 if (_pSystemMixer)
                 {
-                    _pSystemMixer->ForwardWindowMessage(0x219, msg.wParam, msg.lParam);
+                    _pSystemMixer->ForwardWindowMessage(0x219, wParam, lParam);
                 }
-                lres = _OnDeviceChange(hwnd, wParam_1, lParam_2);
+                lres = _OnDeviceChange(hwnd, wParam, lParam);
                 v20 = lres == 0;
                 goto LABEL_134;
             }
@@ -7997,7 +7989,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             if (uMsg == WM_NCMOUSELEAVE)
             {
-                if (!IsPosInHwnd(msg.lParam, _hwndClock))
+                if (!IsPosInHwnd(lParam, _hwndClock))
                 {
                     SendMessageW(_hwndClock, 0x467u, 0, 0);
                     if (_hTheme && !_stb.IsButtonPushed() && !IsMouseOverStartButton())
@@ -8010,13 +8002,13 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             if (uMsg == WM_WTSSESSION_CHANGE)
             {
-                return _OnSessionChange(msg.wParam, msg.lParam);
+                return _OnSessionChange(wParam, lParam);
             }
             if (uMsg == WM_HOTKEY)
             {
-                if (msg.wParam >= 500) // GHID_FIRST
+                if (wParam >= 500) // GHID_FIRST
                 {
-                    _HandleGlobalHotkey(msg.wParam);
+                    _HandleGlobalHotkey(wParam);
                 }
                 else
                 {
@@ -8051,7 +8043,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 IWinEventHandler* pweh;
                 if (SUCCEEDED(BandSite_FindBand(_ptbs, CLSID_TaskBand, IID_PPV_ARGS(&pweh), nullptr, nullptr)))
                 {
-                    pweh->OnWinEvent(hwnd, uMsg, wParam_1, lParam_2, &lres);
+                    pweh->OnWinEvent(hwnd, uMsg, wParam, lParam, &lres);
                     pweh->Release();
                 }
                 return lres;
@@ -8060,7 +8052,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (_pSystemMixer)
                 {
-                    _pSystemMixer->ForwardWindowMessage(0x3D1, msg.wParam, msg.lParam);
+                    _pSystemMixer->ForwardWindowMessage(0x3D1, wParam, lParam);
                 }
                 return lres;
             }
@@ -8084,22 +8076,22 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         switch (uMsg)
         {
             case 0x4E5:
-                // result = _UpdateHotkey(hwnd, (const ITEMIDLIST_ABSOLUTE*)msg.wParam, (const ITEMIDLIST_ABSOLUTE*)msg.lParam);
+                // result = _UpdateHotkey(hwnd, (const ITEMIDLIST_ABSOLUTE*)wParam, (const ITEMIDLIST_ABSOLUTE*)lParam);
                 break;
             case 0x4E6:
-                result = _RegisterHotkey(hwnd, msg.wParam);
+                result = _RegisterHotkey(hwnd, wParam);
                 break;
             case 0x4E7:
-                result = _UnregisterHotkey(hwnd, msg.wParam);
+                result = _UnregisterHotkey(hwnd, wParam);
                 break;
             case 0x4E8:
-                result = _SetHotkeyEnable(hwnd, msg.wParam);
+                result = _SetHotkeyEnable(hwnd, wParam);
                 break;
             case 0x4E9:
-                result = _ShortcutRegisterHotkey(hwnd, msg.wParam, msg.lParam);
+                result = _ShortcutRegisterHotkey(hwnd, wParam, lParam);
                 break;
             case 0x4EA:
-                result = _ShortcutUnregisterHotkey(hwnd, msg.wParam);
+                result = _ShortcutUnregisterHotkey(hwnd, wParam);
                 break;
             case 0x4EB: // WMTRAY_QUERY_MENU
                 ASSERT(!"Nobody should be sending WMTRAY_QUERY_MENU; it never worked anyway"); // 7589
@@ -8108,7 +8100,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 result = (LRESULT)_hwndTasks;
                 break;
             case 0x4ED:
-                result = _ToggleQL(msg.lParam, _pcbm);
+                result = _ToggleQL(lParam, _pcbm);
                 break;
             case 0x4EF:
                 // result = QueryUserNotificationState();
@@ -8117,21 +8109,21 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 result = (LRESULT)_stb._hwndStart;
                 break;
             case 0x503:
-                result = _OnFactoryMessage(msg.wParam, msg.lParam);
+                result = _OnFactoryMessage(wParam, lParam);
                 break;
             case 0x504:
                 _ActAsSwitcher();
                 return lres;
             case 0x505:
-                PostMessageW(hwnd, 0x506, 0, msg.lParam);
-                result = lParam_2;
+                PostMessageW(hwnd, 0x506, 0, lParam);
+                result = lParam;
                 break;
             case 0x506:
                 if (!_ptbs)
                 {
                     return 0;
                 }
-                result = _ToggleLanguageBand(msg.lParam);
+                result = _ToggleLanguageBand(lParam);
                 break;
             default:
                 goto L_default;
@@ -8142,15 +8134,14 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
         case TM_CHANGENOTIFY:
-            _HandleChangeNotify(msg.wParam, msg.lParam);
+            _HandleChangeNotify(wParam, lParam);
             return lres;
         case TM_BRINGTOTOP:
-            SetWindowPos((HWND)msg.wParam, nullptr, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+            SetWindowPos((HWND)wParam, nullptr, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
             return lres;
         case TM_WARNNOAUTOHIDE:
             // _DebugMsgW(DM_TRAYDOCK, L"TRAYDOCK.twp collision UI request");
-
-            if ((!_fSysSizing || !g_fDragFullWindows) && (!wParam_1 || LOWORD(_SetAutoHideState(0))))
+            if ((!_fSysSizing || !g_fDragFullWindows) && (!wParam || LOWORD(_SetAutoHideState(0))))
             {
                 ShellMessageBoxW(g_hinstCabinet, hwnd, MAKEINTRESOURCEW(705), MAKEINTRESOURCEW(518), 0x40u);
             }
@@ -8163,7 +8154,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             _DoExitWindows(v_hwndDesktop, 0, 0);
             return lres;
         case TM_DESKTOPSTATE:
-            _OnDesktopState(msg.lParam);
+            _OnDesktopState(lParam);
             return lres;
         case TM_HANDLEDELAYBOOTSTUFF:
             _HandleDelayBootStuff();
@@ -8187,7 +8178,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case TM_SETTIMER:
             return _OnTimerService(uMsg, wParam, lParam);
         case TM_DOTRAYPROPERTIES:
-            switch (msg.wParam)
+            switch (wParam)
             {
                 case 1:
                     DoProperties(TPF_STARTMENUPAGE);
@@ -8217,7 +8208,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             PostMessageW(_hwndNotify, 0x40A, 0, 0);
             return lres;
         case TM_RAISEDESKTOP:
-            _RaiseDesktop(msg.wParam, msg.lParam);
+            _RaiseDesktop(wParam, lParam);
             return lres;
         case TM_SETPUMPHOOK:
             IUnknown_SafeReleaseAndNullPtr(&_pmbTasks);
@@ -8232,21 +8223,21 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             return lres;
         case TM_WORKSTATIONLOCKED:
-            if (_fIsDesktopLocked == msg.wParam)
+            if (_fIsDesktopLocked == wParam)
             {
                 return lres;
             }
 
-            _fIsDesktopLocked = msg.wParam;
+            _fIsDesktopLocked = wParam;
             _fIsLogoff = FALSE;
             _RecomputeAllWorkareas();
-            PostMessageW(_hwndNotify, 0x440, wParam_1, 0);
+            PostMessageW(_hwndNotify, 0x440, wParam, 0);
             return lres;
         case TM_STARTMENUDISMISSED:
             SetTimer(_hwnd, 24, 180000, nullptr);
             return lres;
         case TM_SHOWTRAYBALLOON:
-            PostMessageW(_hwndNotify, 0x45A, msg.wParam, 0);
+            PostMessageW(_hwndNotify, 0x45A, wParam, 0);
             return lres;
         case 0x5A3:
             return _fHideClock;
@@ -8265,7 +8256,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case 0x5B6:
             if (_ptbs)
             {
-                BandSite_AccountAllBandsForTaskbarSizingBar(_ptbs, msg.wParam);
+                BandSite_AccountAllBandsForTaskbarSizingBar(_ptbs, wParam);
             }
             return lres;
         case 0x5B7:
