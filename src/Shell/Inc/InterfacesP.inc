@@ -268,6 +268,17 @@ ITrayNotify : IUnknown
 };
 #pragma optimize( "", on )
 
+struct QUERYNAMESPACEINFO
+{
+	DWORD cbSize;
+	DWORD dwMask;
+	DWORD dwFlags;
+	IShellFolder* psf;
+	GUID guidObject;
+	PIDLIST_ABSOLUTE pidl;
+	UINT uGroupID;
+};
+
 MIDL_INTERFACE("2f711b17-773c-41d4-93fa-7f23edcecb66")
 IAugmentedShellFolder : IShellFolder
 {

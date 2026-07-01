@@ -410,6 +410,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="immersive\ImmersiveInit.h" />
     <ClInclude Include="PatternHelper.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="SoundWnd.h" />
     <ClInclude Include="StartButton.h" />
     <ClInclude Include="ThemeManager.h" />
     <ClInclude Include="..\Inc\WTL\atlapp.h" />
@@ -613,6 +614,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SoundWnd.cpp" />
     <ClCompile Include="StartButton.cpp" />
     <ClCompile Include="StartMnu.cpp" />
     <ClCompile Include="TaskBand.cpp" />

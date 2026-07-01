@@ -4,6 +4,7 @@
 #include "shguidp.h"
 #include "cabinet.h"
 #include "dlg.h"
+#include "SoundWnd.h"
 #include "trayclok.h"
 #include "util.h"
 #include "tray.h"
@@ -6250,15 +6251,13 @@ LRESULT CTray::_OnSessionChange(WPARAM wParam, LPARAM lParam)
     return 1;
 }
 
-HWND TermSoundWindow()
+void TermSoundWindow()
 {
-    // EXEX-VISTA: Uncomment when implemented g_hwndSound
-    return nullptr;
-    /*if (g_hwndSound)
+    if (g_hwndSound)
     {
         PostMessageW(g_hwndSound, WM_CLOSE, 0, 0);
-        g_hwndSound = 0;
-    }*/
+        g_hwndSound = nullptr;
+    }
 }
 
 static BOOL g_fShellShutdown = FALSE;
@@ -7693,7 +7692,6 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                         lres = _trayNotify.TrayNotify(_hwndNotify, (HWND)wParam, (COPYDATASTRUCT*)lParam, &bRefresh);
                                         if (bRefresh)
                                         {
-                                        LABEL_90:
                                             SizeWindows();
                                             return lres;
                                         }

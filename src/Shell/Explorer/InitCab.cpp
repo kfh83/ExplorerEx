@@ -8,6 +8,7 @@
 #include "rcids.h"
 #include "startmnu.h"
 #include "shdguid.h"    // for IID_IShellService
+#include "SoundWnd.h"
 #include "tray.h"
 #include "util.h"
 
@@ -1748,6 +1749,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
             if (hDesktop)
             {
                 PostMessageW(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
+                InitSoundWindow();
 
                 SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 
