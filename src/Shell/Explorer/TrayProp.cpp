@@ -1228,6 +1228,27 @@ void ClearUEMData()
     }
 }
 
+const WCHAR* const c_rgpszRegMruKeysToDelete[] =
+{
+    L"Software\\Microsoft\\Internet Explorer\\TypedURLs",
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU",
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Doc Find Spec MRU",
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Comdlg32\\OpenSavePidlMRU",
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Comdlg32\\LastVisitedPidlMRU"
+};
+
+void __stdcall ClearMRUStuff(int a1)
+{
+    for (unsigned int i = 0; i < 5; ++i)
+    {
+        SHDeleteKeyW(HKEY_CURRENT_USER, c_rgpszRegMruKeysToDelete[i]);
+        if (a1 != 0)
+        {
+            SHSendMessageBroadcastW(0x1Au, 0, (LPARAM)c_rgpszRegMruKeysToDelete[i]);
+        }
+    }
+}
+
 void AdjustNumOfProgsOnStartMenu(HWND hwndDlg, UINT Id)
 {
     int v4;
@@ -1711,17 +1732,17 @@ void SetTaskbarIcon(HWND hDlg)
 
 BOOL_PTR CTaskBarPropertySheet::s_TaskbarOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CTaskBarPropertySheet* self = NULL;
+    CTaskBarPropertySheet* self = nullptr;
 
     if (uMsg == WM_INITDIALOG)
     {
         SetTaskbarIcon(hDlg);
-        ::SetWindowLongPtr(hDlg, DWLP_USER, lParam);
-        self = (CTaskBarPropertySheet*) ((PROPSHEETPAGE*)lParam)->lParam;
+        ::SetWindowLongPtrW(hDlg, DWLP_USER, lParam);
+        self = (CTaskBarPropertySheet*) ((PROPSHEETPAGEW*)lParam)->lParam;
     }
     else
     {
-        PROPSHEETPAGE* psp = (PROPSHEETPAGE*)::GetWindowLongPtr(hDlg, DWLP_USER);
+        PROPSHEETPAGEW* psp = (PROPSHEETPAGEW*)::GetWindowLongPtrW(hDlg, DWLP_USER);
         if (psp)
             self = (CTaskBarPropertySheet*)psp->lParam;
     }
@@ -2010,7 +2031,6 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
     return FALSE;
 }
 
-//---------------------------------------------------------------------------
 void _TaskbarOptionsDestroyBitmaps(HWND hDlg)
 {
     SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, 0);
@@ -2046,13 +2066,9 @@ void _TaskbarOptionsUpdateDisplay(HWND hDlg)
 
     int iBmp;
     if (IsDlgButtonChecked(hDlg, 1102))
-    {
         iBmp = 145;
-    }
     else
-    {
         iBmp = _TaskbarPickBitmap(hDlg, 146, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
-    }
     SetDlgItemBitmap(hDlg, 1111, iBmp);
 }
 
@@ -2087,22 +2103,19 @@ BOOL _ToggleDeskbandItem(HWND hwnd, HTREEITEM hti)
     BOOL fToggled = FALSE;
 
     TVITEMW tvi = {};
-    tvi.mask = 0x32;
+    tvi.mask = TVIF_IMAGE | TVIF_HANDLE | TVIF_SELECTEDIMAGE;
     tvi.hItem = hti;
-    if (SendMessageW(hwnd, TVM_GETITEMW, 0, (LPARAM)&tvi))
+    if (TreeView_GetItem(hwnd, &tvi))
     {
-        tvi.iImage = tvi.iImage == 0;
+        tvi.iImage = !tvi.iImage; // flip the image index between checked/unchecked.
         tvi.iSelectedImage = tvi.iImage;
-        fToggled = SendMessageW(hwnd, TVM_SETITEMW, 0, (LPARAM)&tvi);
+        fToggled = TreeView_SetItem(hwnd, &tvi);
     }
     return fToggled;
 }
 
-
-
 BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#if 1
     if (uMsg == WM_NOTIFY)
     {
         NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
@@ -2179,7 +2192,6 @@ BOOL_PTR CTaskBarPropertySheet::DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WP
         }
         SendPSMChanged(hDlg);
     }
-#endif
     return 0;
 }
 
@@ -2370,10 +2382,12 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
             _TaskbarOptionsUpdateDisplay(hDlg);
         }
     }
-    BOOL fChanged = LOWORD(lRet);
 
+    BOOL fChanged = LOWORD(lRet);
     if (fChanged)
-        c_tray._AppBarNotifyAll(NULL, ABN_STATECHANGE, NULL, 0);
+    {
+        c_tray._AppBarNotifyAll(nullptr, ABN_STATECHANGE, nullptr, 0);
+    }
 
     if (!tvo.fNoTrayItemsDisplayPolicyEnabled && !tvo.fNoAutoTrayPolicyEnabled)
     {
@@ -2389,9 +2403,9 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
 
     if (::IsWindowEnabled(::GetDlgItem(hDlg, IDC_SHOW_THUMBNAILS)))
     {
-        BOOL v4 = ::IsDlgButtonChecked(hDlg, IDC_SHOW_THUMBNAILS);
-        tvo.fNoThumbnails = !v4;
-        SendMessage(c_tray._hwndTasks, 0x43F, 0, v4);
+        BOOL fEnabled = ::IsDlgButtonChecked(hDlg, IDC_SHOW_THUMBNAILS);
+        tvo.fNoThumbnails = !fEnabled;
+        SendMessage(c_tray._hwndTasks, 0x43F, 0, fEnabled);
     }
 
     c_tray.SetTrayViewOpts(&tvo, _pcbm);
@@ -2475,7 +2489,7 @@ void CTaskBarPropertySheet::_ApplyStartOptionsFromDialog(HWND hDlg)
         if (!v4)
         {
             ClearUEMData();
-            // ClearMRUStuff(1);
+            ClearMRUStuff(1);
         }
         // UEMEnable(v4);
     }

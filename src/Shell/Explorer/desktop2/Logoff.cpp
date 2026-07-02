@@ -372,40 +372,44 @@ void CLogoffPane::_OnDestroy()
     }
 }
 
+void SHLogicalToPhysicalDPI(int* px, int* py);
+
 int CLogoffPane::_GetThemeBitmapSize(int iPartId, int iStateId, int id)
 {
-    int cx = 0;
+    int cxBitmap = 0;
+
     if (_hTheme && iPartId)
     {
         SIZE siz;
-        if (GetThemePartSize(_hTheme, nullptr, iPartId, iStateId, nullptr, TS_TRUE, &siz) >= 0)
+        if (SUCCEEDED(GetThemePartSize(_hTheme, nullptr, iPartId, iStateId, nullptr, TS_TRUE, &siz)))
         {
-            cx = siz.cx;
+            cxBitmap = siz.cx;
         }
     }
     else
     {
-        HBITMAP hBitmap = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(id));
+        HBITMAP hBitmap = LoadBitmapW(g_hinstCabinet, MAKEINTRESOURCEW(id));
         if (hBitmap)
         {
-            BITMAP bm; // [esp+4h] [ebp-24h] BYREF
-            if (GetObject(hBitmap, sizeof(BITMAP), &bm))
+            BITMAP bm;
+            if (GetObjectW(hBitmap, sizeof(BITMAP), &bm))
             {
-                cx = bm.bmWidth;
+                cxBitmap = bm.bmWidth;
             }
             DeleteObject(hBitmap);
         }
     }
-    //SHLogicalToPhysicalDPI(&cx, 0);
-    return cx;
+
+    SHLogicalToPhysicalDPI(&cxBitmap, nullptr);
+    return cxBitmap;
 }
 
 class CSplitButtonAccessible : public CAccessible
 {
 public:
     CSplitButtonAccessible(HWND hwnd)
-        : _hwnd(hwnd)
-        , _cRef(1)
+        : _cRef(1)
+        , _hwnd(hwnd)
     {
     }
 
@@ -734,7 +738,7 @@ void CLogoffPane::_SetShutdownButtonProperties(int a2)
         TBBUTTONINFOW tbbi = {};
         tbbi.cbSize = sizeof(tbbi);
         tbbi.dwMask = TBIF_IMAGE;
-        tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice);
+        tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice) + 2; // 1 = shutdown + update, 2 = sleep
 
         (void)sdChoice; // Skipped telemetry StartMenu_Right_Control_Button_Label
         SendMessageW(_hwndTB, TB_SETBUTTONINFOW, 1, (LPARAM)&tbbi);

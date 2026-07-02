@@ -408,6 +408,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="desktop2\UserPane.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
+    <ClInclude Include="Logo.h" />
     <ClInclude Include="PatternHelper.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SoundWnd.h" />
@@ -601,6 +602,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
+    <ClCompile Include="Logo.cpp" />
     <ClCompile Include="Mixer.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">Create</PrecompiledHeader>
