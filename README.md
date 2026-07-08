@@ -43,6 +43,10 @@ your regular explorer shell.
 
 **INSTALLING THE PROGRAM**
 
+
+> [!NOTE]
+> Microsoft broke some parts of the Start menu in recent Windows 10 updates. To fix them, refer to [this issue](https://github.com/kfh83/ExplorerEx/issues/83) before proceeding.
+
 If you have fetched a GitHub actions artifact, you *need* to fetch the release package for the "Import Me!.reg" file which includes some important tweaks. Please apply this .reg file before proceeding.
 
 <details>
