@@ -4244,7 +4244,7 @@ void CTray::_AppBarGetTaskBarPos(PTRAYAPPBARDATA ptabd)
 {
     APPBARDATA3264* pabd;
 
-    pabd = (APPBARDATA3264*)SHLockShared(UlongToPtr(ptabd->hSharedABD), ptabd->dwProcId);
+    pabd = (APPBARDATA3264*)SHLockShared((HANDLE)ptabd->hSharedABD, ptabd->dwProcId);
     if (pabd)
     {
         pabd->rc = _arStuckRects[_uStuckPlace];
@@ -4401,7 +4401,7 @@ void CTray::_AppBarQueryPos(PTRAYAPPBARDATA ptabd)
     {
         APPBARDATA3264* pabd;
 
-        pabd = (APPBARDATA3264*)SHLockShared(UlongToPtr(ptabd->hSharedABD), ptabd->dwProcId);
+        pabd = (APPBARDATA3264*)SHLockShared((HANDLE)ptabd->hSharedABD, ptabd->dwProcId);
         if (pabd)
         {
             HMONITOR hmon;
@@ -4475,7 +4475,7 @@ void CTray::_AppBarSetPos(PTRAYAPPBARDATA ptabd)
 
         _AppBarQueryPos(ptabd);
 
-        pabd = (APPBARDATA3264*)SHLockShared(UlongToPtr(ptabd->hSharedABD), ptabd->dwProcId);
+        pabd = (APPBARDATA3264*)SHLockShared((HANDLE)ptabd->hSharedABD, ptabd->dwProcId);
         if (pabd)
         {
             if (!EqualRect(&pab->rc, &pabd->rc)) {
@@ -6137,6 +6137,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                     case TCDM_LOADINPROC:
                         return (UINT)_LoadInProc((PCOPYDATASTRUCT)lParam);
+
+                    case TCMD_NOTIFYINFO:
+                        return _trayNotify.TrayNotifyInfo(_hwndNotify, (HWND)wParam, (PCOPYDATASTRUCT)lParam);
                 }
             }
             return FALSE;
@@ -7487,6 +7490,10 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                     case 2:
                                     {
                                         return _LoadInProc((COPYDATASTRUCT*)lParam);
+                                    }
+                                    case 3:
+                                    {
+                                        return _trayNotify.TrayNotifyInfo(_hwndNotify, (HWND)wParam, (COPYDATASTRUCT*)lParam);
                                     }
                                 }
                                 return 0;
