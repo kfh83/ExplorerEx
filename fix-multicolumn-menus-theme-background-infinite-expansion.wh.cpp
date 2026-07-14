@@ -2,10 +2,7 @@
 // @id              fix-multicolumn-menus-theme-background-infinite-expansion
 // @name            Fix Multicolumn Shell Menus Infinite Expansion with Theme Background Margins
 // @version         1.0
-// @author          Isabella Lulamoon (kawapure)
-// @github          https://github.com/kawapure
-// @twitter         https://twitter.com/kawaipure
-// @homepage        https://kawapure.github.io/
+// @author          neptune
 // @include         explorer.exe
 // @compilerOptions -lcomdlg32
 // @license         MIT
