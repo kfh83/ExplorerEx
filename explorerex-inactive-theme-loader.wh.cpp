@@ -3,9 +3,7 @@
 // @name            ExplorerEx Inactive Theme Loader
 // @description     Loads an "inactive theme", or alternate visual style, for the taskbar in ExplorerEx.
 // @version         1.1
-// @author          Isabella Lulamoon (kawapure)
-// @github          https://github.com/kawapure
-// @twitter         https://twitter.com/kawaipure
+// @author          neptune
 // @include         explorer.exe
 // @compilerOptions -luxtheme -ldwmapi -lshlwapi
 // ==/WindhawkMod==
