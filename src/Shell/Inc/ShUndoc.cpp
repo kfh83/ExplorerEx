@@ -2822,6 +2822,7 @@ EXTERN_C BOOL SHUndocInit(void)
     LOAD_ORDINAL(shell32, RegisterShellHook, 181);
     LOAD_ORDINAL(shell32, ShellDDEInit, 188);
     LOAD_ORDINAL(shell32, SHSettingsChanged, 244);
+    LOAD_ORDINAL(shell32, ShellExecCmdLine, 265);
     LOAD_ORDINAL(shell32, ExitWindowsDialog, 60);
     LOAD_ORDINAL(shell32, RunFileDlg, 61);
     LOAD_ORDINAL(shell32, LogoffWindowsDialog, 54);

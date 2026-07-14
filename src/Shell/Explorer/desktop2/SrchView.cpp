@@ -944,9 +944,36 @@ HRESULT CSearchOpenView::AddPathCompletionTask(const WCHAR* pszPath)
 	return hr;
 }
 
-DWORD CSearchOpenView::s_ExecuteCommandLine(LPVOID lpv)
+struct EXECUTEINFO
 {
-	return 0; // EXEX-Vista(allison): TODO.
+	HWND hwnd;
+	WCHAR* pszCmd;
+	BOOL fModifier;
+};
+
+DWORD CSearchOpenView::s_ExecuteCommandLine(LPVOID pv)
+{
+	EXECUTEINFO* pInfo = static_cast<EXECUTEINFO*>(pv);
+
+	WCHAR szProfile[260];
+	if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, SHGFP_TYPE_CURRENT, szProfile)))
+	{
+		DWORD dwFlags = 0x1 | 0x8 | 0x10 | 0x20;
+		if (pInfo->fModifier)
+			dwFlags |= 0x40;
+		ShellExecCmdLine(pInfo->hwnd, pInfo->pszCmd, szProfile, SW_SHOWNORMAL, nullptr, dwFlags);
+	}
+
+	WCHAR szPath[260];
+	if (SUCCEEDED(StringCchCopyW(szPath, ARRAYSIZE(szPath), pInfo->pszCmd)))
+	{
+		PathRemoveArgsW(szPath);
+		UAFireEvent(&UAIID_APPLICATIONS, UAE_LAUNCH, szPath, 0);
+	}
+
+	CoTaskMemFree(pInfo->pszCmd);
+	operator delete(pInfo);
+	return 0;
 }
 
 DWORD CSearchOpenView::s_ExecuteIDList(LPVOID lpv)
@@ -1357,13 +1384,6 @@ int CSearchOpenView::_GetItemCount()
 	return cItems;
 }
 
-struct EXECUTEINFO
-{
-	HWND field_0;
-	LPVOID field_4;
-	BOOL field_8;
-};
-
 HRESULT CSearchOpenView::_ActivateItem(int iItem)
 {
 	bool v3; // zf
@@ -1391,7 +1411,7 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 	v16 = v3;
 	if (iItem == -1)
 	{
-		(void)120; // Skopped telemetry StartMenu_Search_URL_Count
+		(void)120; // Skipped telemetry StartMenu_Search_URL_Count
 		hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 308, 0, nullptr, &varIn);
 		if (hr < 0)
 		{
@@ -1421,13 +1441,13 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 		if (hr < 0)
 			goto LABEL_38;
 
-		EXECUTEINFO *v5 = new EXECUTEINFO;
+		EXECUTEINFO* v5 = new EXECUTEINFO;
 		if (v5)
 		{
-			v5->field_0 = GetAncestor(_hwnd, 2u);
-			v5->field_4 = v17;
+			v5->hwnd = GetAncestor(_hwnd, 2u);
+			v5->pszCmd = v17;
 			v6 = GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_CONTROL) < 0;
-			v5->field_8 = v6;
+			v5->fModifier = v6;
 			if (SHCreateThread(s_ExecuteCommandLine, v5, 8u, nullptr))
 			{
 				v17 = nullptr;
@@ -1476,10 +1496,10 @@ LABEL_6:
 	v7 = new EXECUTEINFO;
 	if (v7)
 	{
-		v7->field_0 = GetAncestor(_hwnd, 2u);
-		v7->field_4 = &ppidl->mkid.cb;
-		v8 = GetAsyncKeyState(16) < 0 && GetAsyncKeyState(17) < 0;
-		v7->field_8 = v8;
+		v7->hwnd = GetAncestor(_hwnd, 2u);
+		v7->pszCmd = reinterpret_cast<WCHAR*>(&ppidl->mkid.cb);
+		v8 = GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_CONTROL) < 0;
+		v7->fModifier = v8;
 		if (!SHCreateThread(s_ExecuteIDList, v7, 8u, nullptr))
 		{
 			operator delete(v7);
