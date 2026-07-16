@@ -91,6 +91,7 @@ private:
     int _cxPicMargin; // Seems to  be unused anyway, the frame is always centered horizontally.
     int _cyPicInset;
     int _cyPicMargin;
+
     int _iFramedPicHeight;
     int _iFramedPicWidth;
     int _iUnframedPicHeight;

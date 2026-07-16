@@ -1195,7 +1195,7 @@ void CTray::_StarterWatermarkCreate(BOOL fCreate)
     if ((SUCCEEDED(SLGetWindowsInformationDWORD(L"explorer-StarterEditionWatermark", &_dwWatermarkPolicy)) && _dwWatermarkPolicy == 1)
         || SHRegGetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowStarterWatermark"), NULL, &dwWatermarkOverride, &cbData, FALSE, 0, 0) == ERROR_SUCCESS && dwWatermarkOverride == 1)
     {
-        if (fCreate == 1)
+        if (fCreate)
             CreateWatermark(g_hinstCabinet);
         else
             DeleteWatermark(g_hinstCabinet);
@@ -7444,7 +7444,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         if (uMsg <= WM_MEASUREITEM)
                         {
                         LABEL_190:
-                            if (!_stb._nIsOnContextMenu)
+                            if (!_stb.field_40)
                             {
                                 BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, &lres);
                             }
@@ -10728,14 +10728,6 @@ int CTray::_ToggleQL(int iVisible, ICatBandManager* pcbm)
     return static_cast<int>(dwBandID);
 }
 
-//
-// *** WARNING ***
-//
-//  This is a private interface EXPLORER.EXE exposes to SHDOCVW, which
-// allows SHDOCVW (mostly desktop) to access tray. All member must be
-// thread safe!
-//
-
 CDeskTray::CDeskTray()
 {
     _ptray = IToClass(CTray, _desktray, this);
@@ -10743,16 +10735,9 @@ CDeskTray::CDeskTray()
 
 HRESULT CDeskTray::QueryInterface(REFIID riid, void** ppvObj)
 {
-    #if 0   // no IID_IDeskTray yet defined
-    static const QITAB qit[] =
-    {
-        QITABENT(CDeskTray, IDeskTray),
-        { 0 },
-    };
-    return QISearch(this, qit, riid, ppvObj);
-    #else
+    if (ppvObj)
+        *ppvObj = nullptr;
     return E_NOTIMPL;
-    #endif
 }
 
 ULONG CDeskTray::AddRef()
@@ -10781,8 +10766,8 @@ HRESULT CDeskTray::SetDesktopWindow(HWND hwndDesktop)
 
 UINT CDeskTray::AppBarGetState()
 {
-    return (_ptray->_uAutoHide ? ABS_AUTOHIDE : 0) |
-        (_ptray->_fAlwaysOnTop ? ABS_ALWAYSONTOP : 0);
+    return (_ptray->_uAutoHide ? ABS_AUTOHIDE : 0)
+        | (_ptray->_fAlwaysOnTop ? ABS_ALWAYSONTOP : 0);
 }
 
 //***   CDeskTray::SetVar -- set an explorer variable (var#i := value)

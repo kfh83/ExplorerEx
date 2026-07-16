@@ -9,7 +9,7 @@ int g_bmpWidth = 0;
 int g_bmpHeight = 0;
 HWND g_hwndWatermark = nullptr;
 
-BOOL WINAPI DrawLogoBitmap(HDC hdc, HBITMAP hbm)
+BOOL DrawLogoBitmap(HDC hdc, HBITMAP hbm)
 {
     BOOL fRet = FALSE;
     HDC hdcMem = CreateCompatibleDC(hdc);
@@ -23,7 +23,7 @@ BOOL WINAPI DrawLogoBitmap(HDC hdc, HBITMAP hbm)
     return fRet;
 }
 
-void WINAPI GetWatermarkOffset(POINT* pPt, RECT* pClientRect)
+void GetWatermarkOffset(POINT* pPt, RECT* pClientRect)
 {
     ASSERT(pPt != NULL); // 419
     ASSERT(pClientRect != NULL); // 420
@@ -32,7 +32,7 @@ void WINAPI GetWatermarkOffset(POINT* pPt, RECT* pClientRect)
     pPt->y = pClientRect->bottom - g_bmpHeight - 10;
 }
 
-void WINAPI RePositionWatermark(HWND hWnd, BOOL bRepaint)
+void RePositionWatermark(HWND hWnd, BOOL bRepaint)
 {
     RECT rcWorkArea = {};
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
@@ -120,32 +120,31 @@ LRESULT CALLBACK WatermarkWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
     return 0;
 }
 
-HWND WINAPI CreateWatermark(HINSTANCE hInstance)
+HWND CreateWatermark(HINSTANCE hInstance)
 {
     COLORREF crKey = CLR_INVALID;
-    HWND hwnd = nullptr;
-    HDC hDC = nullptr;
+    HWND hwnd = NULL;
+    HDC hDC = NULL;
 
     if (g_hwndWatermark)
         DeleteWatermark(hInstance);
 
-    WNDCLASSEXW wcex = {};
-    wcex.hInstance = hInstance;
-    wcex.cbSize = sizeof(wcex);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc = WatermarkWndProc;
-    wcex.lpszClassName = L"CSWatermark";
-
-    if (!RegisterClassEx(&wcex))
-        return nullptr;
+    WNDCLASSEX wc = {};
+    wc.hInstance = hInstance;
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = WatermarkWndProc;
+    wc.lpszClassName = L"CSWatermark";
+    if (!RegisterClassEx(&wc))
+        return NULL;
 
     HBITMAP hbmWatermark = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(IDB_STARTER_WATERMARK));
     if (!hbmWatermark)
-        return nullptr;
+        return NULL;
 
     HWND hwndDesktop = GetDesktopWindow();
 
-    BITMAP bm = { 0 };
+    BITMAP bm = {};
     if (GetObject(hbmWatermark, sizeof(BITMAP), &bm))
     {
         g_bmpWidth = bm.bmWidth;
@@ -168,19 +167,18 @@ HWND WINAPI CreateWatermark(HINSTANCE hInstance)
                 RECT rcWorkArea;
                 if (crKey != CLR_INVALID && SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0))
                 {
-                    POINT pPt{ 0, 0 };
-                    GetWatermarkOffset(&pPt, &rcWorkArea);
+                    POINT ptWatermark = { 0, 0 };
+                    GetWatermarkOffset(&ptWatermark, &rcWorkArea);
                     hwnd = SHFusionCreateWindowEx(
                         WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED,
                         TEXT("CSWatermark"),
-                        nullptr,
+                        NULL,
                         WS_POPUP,
-                        pPt.x, pPt.y,
+                        ptWatermark.x, ptWatermark.y,
                         g_bmpWidth, g_bmpHeight,
-                        nullptr,
-                        nullptr,
-                        hInstance,
-                    nullptr);
+                        NULL,
+                        NULL,
+                        hInstance, NULL);
                 }
             }
         }
@@ -198,7 +196,7 @@ HWND WINAPI CreateWatermark(HINSTANCE hInstance)
     return hwnd;
 }
 
-void WINAPI DeleteWatermark(HINSTANCE hInstance)
+void DeleteWatermark(HINSTANCE hInstance)
 {
     if (g_hwndWatermark)
     {
@@ -208,7 +206,7 @@ void WINAPI DeleteWatermark(HINSTANCE hInstance)
     }
 }
 
-void WINAPI UpdateWatermark()
+void UpdateWatermark()
 {
     if (g_hwndWatermark)
     {

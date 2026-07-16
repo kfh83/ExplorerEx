@@ -1,5 +1,5 @@
 #pragma once
 
-HWND WINAPI CreateWatermark(HINSTANCE hInstance);
-void WINAPI DeleteWatermark(HINSTANCE hInstance);
-void WINAPI UpdateWatermark();
+HWND CreateWatermark(HINSTANCE hInstance);
+void DeleteWatermark(HINSTANCE hInstance);
+void UpdateWatermark();

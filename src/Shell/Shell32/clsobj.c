@@ -98,7 +98,7 @@ const IClassFactoryVtbl c_CFVtbl = {
     CCF_LockServer
 };
 
-EXTERN_C BOOL ShundocInit(void);
+EXTERN_C BOOL SHUndocInit(void);
 
 EXTERN_C BOOL WINAPI ExplorerExShell32_EnsureRuntimeInit(void)
 {

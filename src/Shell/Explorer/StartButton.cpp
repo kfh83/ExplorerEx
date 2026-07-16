@@ -7,7 +7,7 @@
 #include "DeskHost.h"
 
 CStartButton::CStartButton(IStartButtonSite* pStartButtonSite)
-    : _nSettingsChangeType(true)
+    : field_4C(true)
     , _pStartButtonSite(pStartButtonSite)
 {
 }
@@ -179,7 +179,7 @@ EXTERN_C NTSTATUS LUAGetUserType(HANDLE hToken, LUAUSERTYPE* pLuaUserType)
 
 HRESULT CStartButton::OnContextMenu(HWND hwnd, LPARAM lParam)
 {
-    _nIsOnContextMenu = 1;
+    field_40 = 1;
     _pStartButtonSite->HandleFullScreenApp(nullptr);
     SetForegroundWindow(hwnd);
 
@@ -303,7 +303,7 @@ HRESULT CStartButton::OnContextMenu(HWND hwnd, LPARAM lParam)
     }
 
     ILFree(pidlStart);
-    _nIsOnContextMenu = 0;
+    field_40 = 0;
     return S_OK;
 }
 
@@ -519,7 +519,6 @@ void CStartButton::CloseStartMenu()
     {
         _pmpStartMenu->OnSelect(MPOS_FULLCANCEL);
     }
-
     if (_pmpStartPane)
     {
         _pmpStartPane->OnSelect(MPOS_FULLCANCEL);
@@ -699,12 +698,9 @@ void CStartButton::ExecRefresh()
     {
         IUnknown_Exec(_pmbStartMenu, &CLSID_MenuBand, MBANDCID_REFRESH, 0, nullptr, nullptr);
     }
-    else
+    else if (_pmpStartPane)
     {
-        if (_pmpStartPane)
-        {
-            IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, nullptr, nullptr);
-        }
+        IUnknown_Exec(_pmpStartPane, &CLSID_MenuBand, MBANDCID_REFRESH, 0, nullptr, nullptr);
     }
 }
 
@@ -739,19 +735,19 @@ void CStartButton::GetSizeAndFont(const HTHEME hTheme)
         // XXX(isabella): Looks to be DPI resolution?
         if (iDpi < 120)
         {
-            _nSomeSize = 8;
+            field_C = 8;
         }
         else if (iDpi < 144)
         {
-            _nSomeSize = 9;
+            field_C = 9;
         }
         else if (iDpi < 192)
         {
-            _nSomeSize = 11;
+            field_C = 11;
         }
         else
         {
-            _nSomeSize = 14;
+            field_C = 14;
         }
 
         ReleaseDC(_hwndStart, hdc);
@@ -870,7 +866,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         if (rcTrayWnd.bottom <= cyFrameHalf)
             pPoint->y = rcTrayWnd.top - _sizeStart.cy - cyFrameHalf;
         else
-            pPoint->y = rcTrayWnd.bottom + _nSomeSize - _sizeStart.cy;
+            pPoint->y = rcTrayWnd.bottom + field_C - _sizeStart.cy;
     }
     else if (_pszThemeName == L"StartBottom")
     {
@@ -884,7 +880,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
         if (rc.bottom - rcTrayWnd.top <= cyFrameHalf)
             pPoint->y = cyFrameHalf + rcTrayWnd.top;
         else
-            pPoint->y = rcTrayWnd.top - _nSomeSize;
+            pPoint->y = rcTrayWnd.top - field_C;
     }
     else if (_hTheme)
     {
@@ -1230,13 +1226,13 @@ void CStartButton::_OnSettingChanged(UINT a2)
 {
     if (!_hTheme && a2 != 0x2F)
     {
-        bool v3 = !_nSettingsChangeType;
-        if (_nSettingsChangeType)
+        bool v3 = !field_4C;
+        if (field_4C)
         {
             PostMessage(_hwndStart, 0x31Au, 0, 0);
-            v3 = !_nSettingsChangeType;
+            v3 = !field_4C;
         }
-        _nSettingsChangeType = v3;
+        field_4C = v3;
     }
 }
 
@@ -1259,7 +1255,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
     else if (!bForceUpdate)
     {
         _pszThemeName = nullptr;
-        if (!_nSettingsChangeType)
+        if (!field_4C)
         {
             StartButtonReset();
             DrawStartButton(PBS_NORMAL, true);
@@ -1269,7 +1265,7 @@ bool CStartButton::_OnThemeChanged(bool bForceUpdate)
         {
             PostMessage(_hwndStart, 0x31Au, 0, 0);
         }
-        _nSettingsChangeType = !_nSettingsChangeType;
+        field_4C = !field_4C;
     }
 
     return bThemeApplied;
@@ -1305,7 +1301,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
                 _pStartButtonSite->EnableTooltips(FALSE);
 
                 // Show the button down.
-                _fDisableVisualUpdateFromMouse = TRUE;
+                field_14 = TRUE;
                 LRESULT lRet = DefSubclassProc(hWnd, BM_SETSTATE, wParam, lParam);
                 DrawStartButton(PBS_PRESSED, true);
                 _pStartButtonSite->StartButtonClicked();
@@ -1332,7 +1328,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
             {
 
                 // Nope, Forward it on.
-                _fDisableVisualUpdateFromMouse = FALSE;
+                field_14 = FALSE;
                 LRESULT lr = DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
                 DrawStartButton(PBS_NORMAL, true);
                 _pStartButtonSite->EnableTooltips(TRUE);
@@ -1383,7 +1379,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_KILLFOCUS:
             {
-                if (!_mouseOver && _hTheme && !_uDown)
+                if (!field_10 && _hTheme && !_uDown)
                 {
                     DrawStartButton(PBS_NORMAL, true);
                 }
@@ -1404,7 +1400,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
             case WM_MOUSEMOVE:
             {
-                if (_hTheme && !_mouseOver && !_fDisableVisualUpdateFromMouse)
+                if (_hTheme && !field_10 && !field_14)
                 {
                     DrawStartButton(PBS_HOT, true);
 
@@ -1416,19 +1412,18 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
                     TrackMouseEvent(&tme);
 
-                    _mouseOver = 1;
+                    field_10 = 1;
                 }
                 break;
             }
 
             case WM_MOUSELEAVE:
             {
-                if (_hTheme && !_fDisableVisualUpdateFromMouse && !c_tray.IsMouseOverStartButton())
+                if (_hTheme && !field_14 && !c_tray.IsMouseOverStartButton())
                 {
                     DrawStartButton(PBS_NORMAL, true);
                 }
-
-                _mouseOver = 0;
+                field_10 = 0;
                 return 0;
             }
 

@@ -88,14 +88,14 @@ public:
     void StartButtonReset();
     int TrackMenu(HMENU hMenu);
     HRESULT TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
-    void UpdateStartButton(bool a2 /*allegedly*/);
+    void UpdateStartButton(bool a2);
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
     const WCHAR* _pszThemeName;
-    int _nSomeSize;
-    int _mouseOver; // verify
-    BOOL _fDisableVisualUpdateFromMouse;
+    int field_C;
+    int field_10;
+    BOOL field_14;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
     SIZE _sizeStart;
@@ -104,10 +104,10 @@ public:
     HFONT _hStartFont;
     UINT _uDown;
     BOOL _fAllowUp;
-    int _nIsOnContextMenu;
+    int field_40;
     BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;
-    bool _nSettingsChangeType;
+    bool field_4C;
     UINT _uStartButtonState;
     DWORD _tmOpen;
     HIMAGELIST _himlStartFlag;
