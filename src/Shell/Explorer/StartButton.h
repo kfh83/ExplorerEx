@@ -73,7 +73,7 @@ public:
     HWND CreateStartButton(HWND hwndParent);
     void DestroyStartMenu();
     void DisplayStartMenu();
-    void DrawStartButton(int iStateId, bool bRepaint /*allegedly*/);
+    void DrawStartButton(int iStateId, bool bRepaint);
     void ExecRefresh();
     void ForceButtonUp();
     void GetRect(RECT* lpRect);
@@ -89,6 +89,7 @@ public:
     int TrackMenu(HMENU hMenu);
     HRESULT TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
     void UpdateStartButton(bool a2);
+
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
 
@@ -121,7 +122,6 @@ public:
     WCHAR _szWindowName[50];
 
 private:
-
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
     void _CalcExcludeRect(RECTL* lprcDst);
     BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);

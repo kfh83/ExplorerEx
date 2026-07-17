@@ -380,19 +380,15 @@ protected:
 
     BOOL _IsPopupMenuVisible();
     BOOL _IsActive();
-    void _AlignStartButton();
     void _GetWindowSizes(UINT uStuckPlace, const RECT* prcClient, RECT* prcView, RECT* prcNotify);
     void _GetStuckDisplayRect(UINT uStuckPlace, RECT* prcDisplay);
     void _Hide();
     HWND _GetClockWindow();
     HRESULT _LoadInProc(PCOPYDATASTRUCT pcds);
 
-    // Vista composition related
-    BOOL _fGlassEnabled;
-
 public:
     BOOL GlassEnabled();
-    void EnableGlass(BOOL bEnable);
+    void EnableGlass(BOOL fEnable);
 
 protected:
     void _RegisterForGlass();
@@ -611,6 +607,9 @@ protected:
     HWND _hwndRude;
     HWND _hwndTrayTips;
     HWND _hwndTasks;
+
+    // Vista composition related
+    BOOL _fGlassEnabled;
 
 public: // @TEMP
     int _iSizingBarHeight;

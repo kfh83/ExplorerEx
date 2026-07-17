@@ -1193,7 +1193,8 @@ void CTray::_StarterWatermarkCreate(BOOL fCreate)
     DWORD dwWatermarkOverride;
     DWORD cbData = sizeof(dwWatermarkOverride); // @MOD: Add override for showing the watermark
     if ((SUCCEEDED(SLGetWindowsInformationDWORD(L"explorer-StarterEditionWatermark", &_dwWatermarkPolicy)) && _dwWatermarkPolicy == 1)
-        || SHRegGetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowStarterWatermark"), NULL, &dwWatermarkOverride, &cbData, FALSE, 0, 0) == ERROR_SUCCESS && dwWatermarkOverride == 1)
+        || (SHRegGetUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ShowStarterWatermark"), NULL, &dwWatermarkOverride, &cbData,
+                            FALSE, NULL, 0) == ERROR_SUCCESS && dwWatermarkOverride == 1))
     {
         if (fCreate)
             CreateWatermark(g_hinstCabinet);
@@ -1304,11 +1305,7 @@ void CTray::OnStartMenuDismissed()
 // EXEX-VISTA: Reimplemented.
 int CTray::GetStartButtonMinHeight()
 {
-    if (_hwndTasks)
-    {
-        return SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0);
-    }
-    return 0;
+    return _hwndTasks ? SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, 0) : 0;
 }
 
 UINT CTray::GetStartMenuStuckPlace()
@@ -4669,11 +4666,11 @@ BOOL CTray::GlassEnabled()
     return _fGlassEnabled;
 }
 
-void CTray::EnableGlass(BOOL bEnable)
+void CTray::EnableGlass(BOOL fEnable)
 {
-    if (_fGlassEnabled != bEnable)
+    if (_fGlassEnabled != fEnable)
     {
-        _fGlassEnabled = bEnable;
+        _fGlassEnabled = fEnable;
         _RegisterForGlass();
         _OnThemeChanged();
     }
