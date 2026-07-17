@@ -3,20 +3,28 @@
 #include "resource.h"
 #include "windows.h"
 
+STRINGTABLE
+BEGIN
+    IDS_CUSTOMTIP_MYDOCS    "Store letters, reports, notes, and other kinds of documents."
+    IDS_CUSTOMTIP_RECENT    "Displays recently opened documents and folders."
+    IDS_CUSTOMTIP_MYMUSIC   "Store and play music and other audio files."
+    IDS_CUSTOMTIP_MYPICS    "Store pictures and other graphics files."
+END
 
 STRINGTABLE
-{
-    //304, "See the disk drives and other hardware connected to your computer."
-    //305, "Gives access to, and information about, folders and files on other computers."
-    //306, "See the computers and devices that are on your network."
-    //307, "Customize the appearance and functionality of your computer, add or remove programs, and set up network connections and user accounts."
-    308, "Opens the Contacts folder, where you can manage your contacts."
-    312, "Play and manage games on your computer."
-    316, "Choose default programs for web browsing, e-mail, playing music, and other activities."
-    317, "Opens the %1!s! folder, where you can find folders for Documents, Pictures, Music, and other files that belong to you."
-    318, "See the available wireless networks, dial-up, and VPN connections that you can connect to."
-    319, "See installed printers and add new ones."
-}
+BEGIN
+    IDS_CUSTOMTIP_MYCOMP        "See the disk drives and other hardware connected to your computer."
+    IDS_CUSTOMTIP_MYNETPLACES   "Gives access to, and information about, folders and files on other computers."
+    IDS_CUSTOMTIP_CONNECTTO     "See the computers and devices that are on your network."
+    IDS_CUSTOMTIP_CTRLPANEL     "Customize the appearance and functionality of your computer, add or remove programs, and set up network connections and user accounts."
+
+    308     "Opens the Contacts folder, where you can manage your contacts."
+    312     "Play and manage games on your computer."
+    316     "Choose default programs for web browsing, e-mail, playing music, and other activities."
+    317     "Opens the %1!s! folder, where you can find folders for Documents, Pictures, Music, and other files that belong to you."
+    318     "See the available wireless networks, dial-up, and VPN connections that you can connect to."
+    319     "See installed printers and add new ones."
+END
 
 STRINGTABLE
 BEGIN
@@ -34,18 +42,19 @@ BEGIN
     IDS_STARTPANE_TITLE_CLIENTINET "Internet"
     IDS_STARTPANE_TITLE_CLIENTMAIL "E-mail"
 	IDS_STARTPANE_TITLE_SPLITTER   "More"
-    7030                           "Removes your laptop or notebook computer from a docking station."
-    7031                           "Close programs and log off."
-    7032                           "Provides options for turning off or restarting your computer, or for activating Stand By or Hibernate modes."
-    7033                           "Disconnects your session.  You can reconnect to the session when you log on again."
+
+    IDS_LOGOFF_TIP_EJECT           "Removes your laptop or notebook computer from a docking station."
+    IDS_LOGOFF_TIP_LOGOFF          "Close programs and log off."
+    IDS_LOGOFF_TIP_SHUTDOWN        "Provides options for turning off or restarting your computer, or for activating Stand By or Hibernate modes."
+    IDS_LOGOFF_TIP_DISCONNECT      "Disconnects your session.  You can reconnect to the session when you log on again."
     7034                           "Lock this computer."
     7035                           " Switch users without closing programs."
 END
 
 STRINGTABLE
-{
-    7050, "Search failed to initialize."
-}
+BEGIN
+    7050                           "Search failed to initialize."
+END
 
 STRINGTABLE
 BEGIN
@@ -70,31 +79,24 @@ click Customize, and select the appropriate check box."
     IDS_STARTPANE_CLIPPED_TEXT      "There is not enough room to show all the items you have added \
 to the Start menu.  To display them, please choose smaller menu icons, \
 choose a smaller number of items, or unpin some items."
-
-    IDS_LOGOFF_TEXT_FRIENDLY    "|Undock Comput&er|&Log Off|T&urn Off Computer|D&isconnect||"
-    IDS_LOGOFF_TEXT_DOMAIN      "|Undock Comput&er|&Log Off|Sh&ut Down|D&isconnect||"
-
-    IDS_LOGOFF_TIP_EJECT       "Removes your laptop or notebook computer from a docking station."
-    IDS_LOGOFF_TIP_LOGOFF      "Provides options for closing your programs and logging off, or for leaving your programs running and switching to another user."
-    IDS_LOGOFF_TIP_SHUTDOWN    "Provides options for turning off or restarting your computer, or for activating Stand By or Hibernate modes."
-    IDS_LOGOFF_TIP_DISCONNECT  "Disconnects your session.  You can reconnect to the session when you log on again."
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    IDS_CUSTOMTIP_MYDOCS    "Store letters, reports, notes, and other kinds of documents."
-    IDS_CUSTOMTIP_RECENT    "Displays recently opened documents and folders."
-    IDS_CUSTOMTIP_MYMUSIC   "Store and play music and other audio files."
-    IDS_CUSTOMTIP_MYPICS    "Store pictures and other graphics files."
-    IDS_CUSTOMTIP_MYNETPLACES "Gives access to, and information about, folders and files on other computers."
-    IDS_CUSTOMTIP_MYCOMP    "See the disk drives and other hardware connected to your computer."
-    IDS_CUSTOMTIP_CONNECTTO "See the computers and devices that are on your network."
-    IDS_CUSTOMTIP_CTRLPANEL "Customize the appearance and functionality of your computer, add or remove programs, and set up network connections and user accounts."
-
     IDS_STARTPANE_CONNECTTO         "Network"
     IDS_STARTPANE_CONTROLPANEL      "Control Panel"
     IDS_STARTPANE_FAVORITES         "Favorites"
     IDS_STARTPANE_RECENT            "Recent Items"
+END
+
+STRINGTABLE
+BEGIN
+    8241                            "Back"
+    8242                            "See all results"
+    8243                            "Search Everywhere"
+    8244                            "Search the Internet"
+    8245                            "Return to previous view."
+    8246                            "Start Search"
 END
 
 STRINGTABLE
@@ -104,16 +106,6 @@ BEGIN
     IDS_STARTPANE_USERHEIGHT        "75"
     IDS_STARTPANE_MOREPROGHEIGHT    "40"
     IDS_STARTPANE_LOGOFFHEIGHT      "40"
-END
-
-STRINGTABLE
-BEGIN
-    8241 "Back"
-    8242 "See all results"
-    8243 "Search Everywhere"
-    8244 "Search the Internet"
-    8245 "Return to previous view."
-    8246 "Start Search"
 END
 
 MENU_CONNECTTO MENUEX PRELOAD DISCARDABLE
@@ -135,7 +127,6 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 }
 
 IDB_LOGOFF_NORMAL               BITMAP      "resources\\LogoffButtons.bmp"
-// IDB_LOGOFF_HOT                  BITMAP      "resources\\LogoffButtonsHot.bmp"
 IDB_LOGOFF_PRESSED              BITMAP      "resources\\LogoffButtonsPressed.bmp"
 
 IDB_LOGOFF_EXPANDER             BITMAP      "resources\\LogoffButtonsExpander.bmp"

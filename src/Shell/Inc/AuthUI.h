@@ -1,0 +1,94 @@
+#pragma once
+
+// {14CE31DC-ABC2-484C-B061-CF3416AED8FF}
+DEFINE_GUID(CLSID_AuthUIShutdownChoices, 0x14CE31DC, 0xABC2, 0x484C, 0xB0, 0x61, 0xCF, 0x34, 0x16, 0xAE, 0xD8, 0xFF);
+
+enum SHTDN
+{
+    SHTDN_NONE = 0x0,
+    SHTDN_LOGOFF = 0x1,
+    SHTDN_SHUTDOWN = 0x2,
+    SHTDN_RESTART = 0x4,
+    SHTDN_RESTART_DOS = 0x8,
+    SHTDN_SLEEP = 0x10,
+    SHTDN_SLEEP2 = 0x20,
+    SHTDN_HIBERNATE = 0x40,
+    SHTDN_DISCONNECT = 0x80,
+    SHTDN_SWITCHUSER = 0x100,
+    SHTDN_LOCK = 0x200,
+    SHTDN_EJECT = 0x400,
+    SHTDN_MODIFIER_FORCE = 0x10000,
+    SHTDN_MODIFIER_INSTALL_UPDATES = 0x20000,
+    SHTDN_MODIFIER_ACCESS_DENIED = 0x40000,
+    SHTDN_MODIFIER_BROKEN = 0x80000,
+    SHTDN_MODIFIER_NO_WAKE = 0x100000,
+    SHTDN_MODIFIER_SEPARATOR = 0x400000,
+    SHTDN_MODIFIER_HYBRID = 0x800000,
+    SHTDN_MODIFIER_FORCE_OTHERS = 0x1000000,
+    SHTDN_MODIFIER_BOOTOPTIONS = 0x2000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SHTDN);
+
+typedef DWORD SHUTDOWN_CHOICE;
+
+enum SHUTDOWN_CHOICE_ICON
+{
+    SHUTDOWN_CHOICE_ICON_1 = 0x1,
+    SHUTDOWN_CHOICE_ICON_2 = 0x2,
+    SHUTDOWN_CHOICE_ICON_3 = 0x3,
+    SHUTDOWN_CHOICE_ICON_4 = 0x4,
+    SHUTDOWN_CHOICE_ICON_5 = 0x5,
+};
+
+MIDL_INTERFACE("a0b16477-52f1-4cfe-b1cc-388cd0e3e23a")
+IEnumShutdownChoices : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Next(DWORD, DWORD*, DWORD*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Skip(DWORD) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Reset() = 0;
+    virtual HRESULT STDMETHODCALLTYPE Clone(IEnumShutdownChoices**) = 0;
+};
+
+MIDL_INTERFACE("79D6926F-5F85-4F37-B3AE-427A9B015CB2")
+IShutdownChoiceListener : IUnknown
+{
+    STDMETHOD(SetNotifyWnd)(HWND hwnd, UINT a3) PURE;
+    STDMETHOD(GetMessageWnd)(HWND *phwnd) PURE;
+    STDMETHOD(ScanForPassiveChange)() PURE;
+    STDMETHOD(StartListening)() PURE;
+    STDMETHOD(StopListening)() PURE;
+};
+
+// Windows Vista version of the interface. Here for reference purposes.
+MIDL_INTERFACE("a5dbd3dc-ee32-497a-ab84-f2c6aa5913f5")
+IShutdownChoices_Vista : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Refresh() = 0;
+    virtual HRESULT STDMETHODCALLTYPE CreateListener(IShutdownChoiceListener**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetShowBadChoices(BOOL) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceEnumerator(IEnumShutdownChoices**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDefaultChoice(SHUTDOWN_CHOICE*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMenuChoices(IEnumShutdownChoices**) = 0;
+    virtual BOOL STDMETHODCALLTYPE UserHasShutdownRights() = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceName(SHUTDOWN_CHOICE, int, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceDesc(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceVerb(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceIcon(SHUTDOWN_CHOICE, SHUTDOWN_CHOICE_ICON*) = 0;
+};
+
+// Windows 10 version of the interface. Missing many of the important methods from the Vista version.
+MIDL_INTERFACE("bfdc5e2f-3402-49b3-8740-91d6dc5dbb15")
+IShutdownChoices : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE Refresh() = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetChoiceMask(SHUTDOWN_CHOICE) = 0;
+    virtual void STDMETHODCALLTYPE GetChoiceMask(SHUTDOWN_CHOICE*) = 0;
+    virtual void STDMETHODCALLTYPE GetDefaultUIChoiceMask(SHUTDOWN_CHOICE*) = 0;
+    virtual HRESULT STDMETHODCALLTYPE SetShowBadChoices(BOOL) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceEnumerator(IEnumShutdownChoices**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetDefaultChoice(SHUTDOWN_CHOICE*) = 0;
+    virtual BOOL STDMETHODCALLTYPE UserHasShutdownRights() = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceName(SHUTDOWN_CHOICE, int, WCHAR*, UINT) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChoiceDesc(SHUTDOWN_CHOICE, WCHAR*, UINT) = 0;
+};

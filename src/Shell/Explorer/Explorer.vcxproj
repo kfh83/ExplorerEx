@@ -639,6 +639,9 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
   <ItemGroup>
     <Xml Include="muiconfig.xml" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="desktop2\StartPane.rc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
