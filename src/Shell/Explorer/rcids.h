@@ -143,14 +143,20 @@
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #define IDB_TAAUTOHIDE              145
-#define IDB_TAQLLOCKGROUP           146
-#define IDB_TAQLNOLOCKGROUP         147
-#define IDB_TAQLLOCKNOGROUP         148
-#define IDB_TAQLNOLOCKNOGROUP       149
-#define IDB_TALOCKGROUP             150
-#define IDB_TANOLOCKGROUP           151
-#define IDB_TALOCKNOGROUP           152
-#define IDB_TANOLOCKNOGROUP         153
+// @Note(allison): For some reason, Microsoft decided to
+// reorder all of these in Vista to follow a flipped version of the XP mapping
+// that now follows:
+// base +1 = Quick Launch
+// base +2 = Group
+// base +4 = Lock
+#define IDB_TANOLOCKNOGROUP         146
+#define IDB_TAQLNOLOCKNOGROUP       147
+#define IDB_TANOLOCKGROUP           148
+#define IDB_TAQLNOLOCKGROUP         149
+#define IDB_TALOCKNOGROUP           150
+#define IDB_TAQLLOCKNOGROUP         151
+#define IDB_TALOCKGROUP             152
+#define IDB_TAQLLOCKGROUP           153
 
 #define IDB_TRAYCHEVRONHORIZ        172
 #define IDB_TRAYCHEVRONHORIZOPEN    173

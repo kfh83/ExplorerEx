@@ -2059,17 +2059,21 @@ void _TaskbarOptionsUpdateDisplay(HWND hDlg)
 {
     static const CONTROLBITMAP c_caTaskbar[] =
     {
-        { 1107, 1 },
-        { 1104, 2 },
-        { 1105, 4 }
+        { IDC_QUICKLAUNCH, 1 },
+        { IDC_GROUPITEMS, 2 },
+        { IDC_LOCKTASKBAR, 4 },
     };
 
     int iBmp;
-    if (IsDlgButtonChecked(hDlg, 1102))
-        iBmp = 145;
+    if (IsDlgButtonChecked(hDlg, IDC_TRAYOPTAUTOHIDE))
+    {
+        iBmp = IDB_TAAUTOHIDE;
+    }
     else
-        iBmp = _TaskbarPickBitmap(hDlg, 146, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
-    SetDlgItemBitmap(hDlg, 1111, iBmp);
+    {
+        iBmp = _TaskbarPickBitmap(hDlg, IDB_TANOLOCKNOGROUP, c_caTaskbar, ARRAYSIZE(c_caTaskbar));
+    }
+    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, iBmp);
 }
 
 BOOL_PTR CTaskBarPropertySheet::s_DeskbandsOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
