@@ -736,7 +736,7 @@ protected:
     BOOL _fIsDesktopLocked;
     BOOL _fIsDesktopConnected;
 
-    CSystemMixer* _pSystemMixer;    // EXEX-VISTA
+    CSystemMixer* _pMixer;          // EXEX-VISTA
 	int field_634;                  // EXEX-VISTA
 	int field_638;                  // EXEX-VISTA
 	DWORD _dwWatermarkPolicy;       // EXEX-VISTA

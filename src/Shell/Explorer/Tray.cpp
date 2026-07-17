@@ -1221,7 +1221,7 @@ LRESULT CTray::_OnCreate()
     LRESULT lres = -1;
     v_hwndTray = _hwnd;
 
-    _pSystemMixer = new CSystemMixer(_hwnd);
+    _pMixer = new CSystemMixer(_hwnd);
 
     SendMessage(_hwnd, WM_CHANGEUISTATE, MAKEWPARAM(UIS_INITIALIZE, 0), 0);
 
@@ -3772,10 +3772,10 @@ LRESULT CTray::_HandleDestroy()
     _RevokeDropTargets();
     _DestroyStartMenu();
 
-    if (_pSystemMixer)
+    if (_pMixer)
     {
-        _pSystemMixer->Release();
-        _pSystemMixer = nullptr;
+        _pMixer->Release();
+        _pMixer = nullptr;
     }
 
     // Tell the start menu to free all its cached darwin links
@@ -6395,9 +6395,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             // EXEX-VISTA TODO: Uncomment when implemented CSystemMixer:
             #if 0
-            if (_pSystemMixer)
+            if (_pMixer)
             {
-                _pSystemMixer->ForwardWindowMessage(uMsg, wParam, lParam);
+                _pMixer->ForwardWindowMessage(uMsg, wParam, lParam);
             }
             #endif
 
@@ -7248,9 +7248,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 _ShowOnlyQuickLaunchDeskBand();
             }
-            else if (_pSystemMixer)
+            else if (_pMixer)
             {
-                _pSystemMixer->ForwardWindowMessage(uMsg, wParam, lParam);
+                _pMixer->ForwardWindowMessage(uMsg, wParam, lParam);
             }
             return DefWindowProcW(hwnd, uMsg, wParam, lParam);
         }
@@ -7713,9 +7713,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if (uMsg == WM_DEVICECHANGE)
             {
-                if (_pSystemMixer)
+                if (_pMixer)
                 {
-                    _pSystemMixer->ForwardWindowMessage(0x219, wParam, lParam);
+                    _pMixer->ForwardWindowMessage(0x219, wParam, lParam);
                 }
                 lres = _OnDeviceChange(hwnd, wParam, lParam);
                 v20 = lres == 0;
@@ -7832,9 +7832,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             case 0x3D1:
             {
-                if (_pSystemMixer)
+                if (_pMixer)
                 {
-                    _pSystemMixer->ForwardWindowMessage(0x3D1, wParam, lParam);
+                    _pMixer->ForwardWindowMessage(0x3D1, wParam, lParam);
                 }
                 return lres;
             }

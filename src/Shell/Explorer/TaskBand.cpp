@@ -6227,28 +6227,28 @@ LRESULT CTaskBand::_OnAppCommand(int cmd)
         break;
 
     case APPCOMMAND_VOLUME_MUTE:
-        Mixer_ToggleMute();
+        // Mixer_ToggleMute();
         return 0;
     case APPCOMMAND_VOLUME_DOWN:
-        Mixer_SetVolume(-MIXER_DEFAULT_STEP);
+        // Mixer_SetVolume(-MIXER_DEFAULT_STEP);
         return 0;
     case APPCOMMAND_VOLUME_UP:
-        Mixer_SetVolume(MIXER_DEFAULT_STEP);
+        // Mixer_SetVolume(MIXER_DEFAULT_STEP);
         return 0;
     case APPCOMMAND_BASS_BOOST:
-        Mixer_ToggleBassBoost();
+        // Mixer_ToggleBassBoost();
         return 0;
     case APPCOMMAND_BASS_DOWN:
-        Mixer_SetBass(-MIXER_DEFAULT_STEP);
+        // Mixer_SetBass(-MIXER_DEFAULT_STEP);
         return 0;
     case APPCOMMAND_BASS_UP:
-        Mixer_SetBass(MIXER_DEFAULT_STEP);
+        // Mixer_SetBass(MIXER_DEFAULT_STEP);
         return 0;
     case APPCOMMAND_TREBLE_DOWN:
-        Mixer_SetTreble(-MIXER_DEFAULT_STEP);
+        // Mixer_SetTreble(-MIXER_DEFAULT_STEP);
         return 0;
     case APPCOMMAND_TREBLE_UP:
-        Mixer_SetTreble(MIXER_DEFAULT_STEP);
+        // Mixer_SetTreble(MIXER_DEFAULT_STEP);
         return 0;
 
     default:
@@ -6453,7 +6453,7 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
     case HSHELL_APPCOMMAND:
         // shell gets last shot at WM_APPCOMMAND messages via our shell hook 
         // RegisterShellHookWindow() is called in shell32/.RegisterShellHook()
-        return _OnAppCommand(GET_APPCOMMAND_LPARAM(lParam));
+        // return _ptray->OnAppCommand(GET_APPCOMMAND_LPARAM(lParam));
     }
     return 0;
 }
