@@ -9,6 +9,8 @@
 #define _WIN32_WINNT _WIN32_WINNT_VISTA
 #include <commoncontrols.h>
 
+#include "DPIHelpers.h"
+
 
 #define TF_HOST     0x00000010
 #define TF_HOSTDD   0x00000040 // drag/drop

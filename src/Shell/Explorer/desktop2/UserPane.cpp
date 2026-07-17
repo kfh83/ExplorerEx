@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "DPIHelpers.h"
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"
@@ -670,7 +671,7 @@ HRESULT CUserPane::_CreateUserPicture()
         _hwndStatic, GetWindow(GetAncestor(_hwnd, GA_ROOT), GW_HWNDPREV), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
 
     IStream* pstm = nullptr;
-    HRESULT hr = SHCreateStreamOnModuleResourceW(g_hinstCabinet, MAKEINTRESOURCE(7013), L"PNGFILE", &pstm);
+    HRESULT hr = SHCreateStreamOnModuleResourceW(g_hinstCabinet, MAKEINTRESOURCE(IDR_FRAME), L"PNGFILE", &pstm);
     if (SUCCEEDED(hr))
     {
         _pgdipImage = Gdiplus::Bitmap::FromStream(pstm);
