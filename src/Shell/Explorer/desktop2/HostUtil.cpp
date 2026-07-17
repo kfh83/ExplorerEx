@@ -407,12 +407,12 @@ ENUMVARIANT_FORWARD(Clone,
                    (IEnumVARIANT **ppEnum),
 	               (ppEnum));
 
-HRESULT CAccessible::GetInnerObject(HWND hwnd, LONG idObject)
+HRESULT CAccessible::GetInnerAccessible(HWND hwnd, LPARAM lParam)
 {
     if (_pevarInner)
         return S_OK;
 
-    HRESULT hr = CreateStdAccessibleObject(hwnd, idObject, IID_PPV_ARGS(&this->_paccInner));
+    HRESULT hr = CreateStdAccessibleObject(hwnd, lParam, IID_PPV_ARGS(&_paccInner));
     if (SUCCEEDED(hr))
     {
         hr = _paccInner->QueryInterface(IID_PPV_ARGS(&_pevarInner));
@@ -437,7 +437,7 @@ LRESULT CALLBACK CAccessible::s_SubclassProc(
     case WM_GETOBJECT:
         if ((DWORD)lParam == OBJID_CLIENT)
         {
-            HRESULT hr = self->GetInnerObject(hwnd, (LONG)lParam);
+            HRESULT hr = self->GetInnerAccessible(hwnd, (LONG)lParam);
             ASSERT((self->_paccInner == NULL) == (self->_pevarInner == NULL)); // 424
             if (SUCCEEDED(hr))
             {
@@ -497,12 +497,9 @@ BOOL IsHighDPI()
 
 int SHGetSystemMetricsScaled(int nIndex)
 {
-    // eax MAPDST
-    int dpi; // eax
-
     InitDPI();
 
-    int SystemMetrics = GetSystemMetrics(nIndex);
+    int iResult = GetSystemMetrics(nIndex);
     switch (nIndex)
     {
         case SM_CXSCREEN:
@@ -533,7 +530,7 @@ int SHGetSystemMetricsScaled(int nIndex)
         case SM_XVIRTUALSCREEN:
         case SM_CXVIRTUALSCREEN:
         case SM_CXFOCUSBORDER:
-            dpi = MulDiv(SystemMetrics, g_iLPX, 96);
+            iResult = MulDiv(iResult, g_iLPX, USER_DEFAULT_SCREEN_DPI);
             break;
         case SM_CYSCREEN:
         case SM_CYHSCROLL:
@@ -567,14 +564,14 @@ int SHGetSystemMetricsScaled(int nIndex)
         case SM_YVIRTUALSCREEN:
         case SM_CYVIRTUALSCREEN:
         case SM_CYFOCUSBORDER:
-            dpi = MulDiv(SystemMetrics, g_iLPY, 96);
+            iResult = MulDiv(iResult, g_iLPY, USER_DEFAULT_SCREEN_DPI);
             break;
         default:
             ASSERTMSG(FALSE, "SHGetSystemMetricsScaled called with non-scaling metric!");
-            dpi = SystemMetrics;
             break;
     }
-    return dpi;
+
+    return iResult;
 }
 
 HBITMAP CreateBitmap(HDC hdc, int cx, int cy)

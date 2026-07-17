@@ -116,7 +116,7 @@ private:
 
     DWORD    _tmHoverStart;         // When did the user start a drag/drop hover?
 
-    RECT    field_64;
+    RECT     _rcHover;
 
     // Assorted metrics for painting
     int     _tmAscent;              // Ascent of main font

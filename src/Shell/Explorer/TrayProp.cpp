@@ -96,7 +96,7 @@ const static DWORD aStartCustAdvancedTabHelpIDs[] = {
 #define REGSTR_VAL_LARGEICONSTEMP TEXT("Start_LargeIcons")
 #define REGSTR_VAL_ADMINTOOLSTEMP TEXT("Start_AdminToolsTemp")
 
-void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fCreateDIBSection = FALSE);
+void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fAlpha = FALSE);
 void SetDlgItemIcon(HWND hDlg, int idStatic, HICON hi);
 void SetProgramIcon(HWND hDlg, int idLarge, int idSmall);
 
@@ -3340,22 +3340,14 @@ BOOL_PTR CALLBACK AdvancedOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm)
 {
-    CNotificationsDlg* v4; // esi
-
-    if ((dwFlags & 4) != 0)
+    if ((dwFlags & TPF_INVOKECUSTOMIZE) != 0)
     {
-#if 0
-        CNotificationsDlg* pNotificationsDlg = (CNotificationsDlg*)operator new(0x68u);
-        if (pNotificationsDlg)
-            v4 = ATL::CComObject<CNotificationsDlg>::CComObject<CNotificationsDlg>(pNotificationsDlg, 0);
-        else
-            v4 = nullptr;
-        if (v4)
+        CComObject<CNotificationsDlg>* pDlgNotify = new(std::nothrow) CComObject<CNotificationsDlg>();
+        if (pDlgNotify)
         {
-            (*(void (__stdcall **)(int*))(v4->field_1C + 4))(&v4->field_1C);
-            ATL::CDialogImpl<CNotificationsDlg, ATL::CWindow>::DoModal((char*)v4, hwnd, 0);
+            pDlgNotify->AddRef();
+            pDlgNotify->DoModal(hwnd);
         }
-#endif
     }
     else
     {
@@ -3385,20 +3377,19 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags, IStream* pstm)
         ICatBandManager* pcbm = nullptr;
         CoGetInterfaceAndReleaseStream(pstm, IID_PPV_ARGS(&pcbm));
         CTaskBarPropertySheet sheet = CTaskBarPropertySheet(nStartPage, hwnd, dwFlags, pcbm);
-
         sheet.DoModal(hwnd);
     }
 }
 
 // Passing iResource=0 deletes the bitmap in the control
 
-void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fCreateDIBSection)
+void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fAlpha)
 {
     HBITMAP hbm;
 
     if (iResource)
     {
-        UINT uFlags = fCreateDIBSection ? LR_CREATEDIBSECTION : LR_LOADMAP3DCOLORS;
+        UINT uFlags = fAlpha ? LR_CREATEDIBSECTION : LR_LOADMAP3DCOLORS;
         hbm = (HBITMAP)LoadImageW(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
         if (!hbm)
         {

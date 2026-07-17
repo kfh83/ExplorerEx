@@ -146,7 +146,7 @@ private:
                          HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
                          UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
-    HRESULT GetInnerObject(HWND hwnd, LONG idObject); // Vista - New
+    HRESULT GetInnerAccessible(HWND hwnd, LPARAM lParam); // Vista - New
 
 protected:
     IAccessible *_paccInner;

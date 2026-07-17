@@ -81,7 +81,7 @@ CTray c_tray;
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
-    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd);
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunkHost, HWND hwndOwner);
 STDAPI DesktopV2_Build(void* pvStartPane);
 
 // dyna-res change for multi-config hot/warm-doc
@@ -2756,7 +2756,7 @@ int _GetRebarMinHeight(const HWND hwnd)
 }
 
 // EXEX-VISTA: Validated.
-BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpdateSize)
+BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fMaintainOldRowCount)
 {
     BOOL fChangedSize = FALSE;
 
@@ -2868,35 +2868,35 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpda
 
         if (!_fCanSizeMove || (RECTHEIGHT(rcView) && RECTWIDTH(rcView)))
         {
-            int iRebarMinHeight = _GetRebarMinHeight(_hwndRebar);
+            int iMinHeight = _GetRebarMinHeight(_hwndRebar);
             if (STUCK_HORIZONTAL(uStuckPlace))
             {
-                int iMinButtonHeight = 1;
+                int cyButton = 1;
 
                 TBMETRICS tbm;
-                LRESULT tbButtonHeight1 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                auto tbButtonHeight1 = (int)SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
                 if (tbm.cyButtonSpacing + tbButtonHeight1 >= 1)
                 {
-                    LRESULT tbButtonHeight2 = SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
-                    iMinButtonHeight = tbm.cyButtonSpacing + tbButtonHeight2;
+                    auto tbButtonHeight2 = (int)SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                    cyButton = tbm.cyButtonSpacing + tbButtonHeight2;
                 }
 
                 int iMinStuckHeight;
-                if (fUpdateSize)
+                if (fMaintainOldRowCount)
                 {
-                    iMinStuckHeight = _arStuckHeights[uStuckPlace];
+                    iMinStuckHeight = _cRows[uStuckPlace];
                 }
                 else
                 {
-                    iMinStuckHeight = (tbm.cyButtonSpacing + rcView.bottom) / iMinButtonHeight;
-                    _arStuckHeights[uStuckPlace] = iMinStuckHeight;
+                    iMinStuckHeight = (tbm.cyButtonSpacing + rcView.bottom) / cyButton;
+                    _cRows[uStuckPlace] = iMinStuckHeight;
                 }
                 rcView.bottom = std::max<int>(
-                    iMinButtonHeight * iMinStuckHeight - tbm.cyButtonSpacing, iRebarMinHeight); // @MOD Don't use macro
+                    cyButton * iMinStuckHeight - tbm.cyButtonSpacing, iMinHeight); // @MOD Don't use macro
             }
-            else if (rcView.right <= iRebarMinHeight)
+            else if (rcView.right <= iMinHeight)
             {
-                rcView.right = iRebarMinHeight;
+                rcView.right = iMinHeight;
             }
         }
 
@@ -7441,7 +7441,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         if (uMsg <= WM_MEASUREITEM)
                         {
                         LABEL_190:
-                            if (!_stb.field_40)
+                            if (!_stb._fInContextMenu)
                             {
                                 BandSite_HandleMessage(_ptbs, hwnd, uMsg, wParam, lParam, &lres);
                             }
@@ -8145,17 +8145,16 @@ struct PropertiesThreadProcData
     IStream* pstm;
 };
 
-// EXEX-VISTA: SLIGHTLY MODIFIED. Definitely different than Vista.
 DWORD CTray::_PropertiesThreadProc(void* pv)
 {
     PropertiesThreadProcData* pptpd = static_cast<PropertiesThreadProcData*>(pv);
     if (pptpd)
     {
         RECT rc = pptpd->rcStartButton;
-        bool fInvokeCustomize = (pptpd->dwFlags & TPF_INVOKECUSTOMIZE) != 0;
+        bool fCustomize = (pptpd->dwFlags & TPF_INVOKECUSTOMIZE) != 0;
         DWORD dwExStyle = (IS_BIDI_LOCALIZED_SYSTEM() ? 0x400000 : 0) | 0x80;
 
-        HWND* phwndProp = fInvokeCustomize ? &_hwndPropCustomize : &_hwndProp;
+        HWND* phwnd = fCustomize ? &_hwndCustNot : &_hwndProp;
         HWND hwnd = SHFusionCreateWindowEx(
             dwExStyle,
             L"static",
@@ -8169,15 +8168,15 @@ DWORD CTray::_PropertiesThreadProc(void* pv)
             nullptr,
             g_hinstCabinet,
             nullptr);
-        *phwndProp = hwnd;
-        if (*phwndProp)
+        *phwnd = hwnd;
+        if (*phwnd)
         {
             HICON hicoStub = LoadIconW(GetModuleHandleW(L"SHELL32"), MAKEINTRESOURCEW(40));
-            SendMessageW(*phwndProp, WM_SETICON, ICON_BIG, (LPARAM)hicoStub);
+            SendMessageW(*phwnd, WM_SETICON, ICON_BIG, (LPARAM)hicoStub);
 
-            DoTaskBarProperties(*phwndProp, pptpd->dwFlags, pptpd->pstm);
+            DoTaskBarProperties(*phwnd, pptpd->dwFlags, pptpd->pstm);
 
-            *phwndProp = nullptr;
+            *phwnd = nullptr;
             DestroyWindow(hwnd);
 
             if (hicoStub)
@@ -8198,46 +8197,48 @@ DEFINE_GUID(POLID_NoSetTaskbar, 0xC67F73F8, 0xAB64, 0x422F, 0xB9, 0x52, 0x3C, 0x
 
 void CTray::DoProperties(DWORD dwFlags)
 {
+    bool fCustomize = (dwFlags & TPF_INVOKECUSTOMIZE) != 0;
+
     if (!_Restricted(_hwnd, POLID_NoSetTaskbar))
     {
-        HWND* phwndTrayProp = (dwFlags & TPF_INVOKECUSTOMIZE) != 0 ? &_hwndPropCustomize : &_hwndProp;
+        HWND* phwnd = fCustomize ? &_hwndCustNot : &_hwndProp;
 
         int i = RUNWAITSECS;
-        while (*phwndTrayProp == ((HWND)-1) && i--)
+        while (*phwnd == ((HWND)-1) && i--)
         {
             // we're in the process of coming up. wait
             Sleep(1000);
         }
 
         // failed!  blow it off.
-        if (*phwndTrayProp == (HWND)-1)
+        if (*phwnd == (HWND)-1)
         {
-            *phwndTrayProp = nullptr;
+            *phwnd = nullptr;
         }
 
-        if (*phwndTrayProp)
+        if (*phwnd)
         {
             // there's a window out there... activate it
-            SwitchToThisWindow(GetLastActivePopup(*phwndTrayProp), TRUE);
+            SwitchToThisWindow(GetLastActivePopup(*phwnd), TRUE);
         }
         else
         {
-            PropertiesThreadProcData* pParams = new(std::nothrow) PropertiesThreadProcData();
-            if (pParams)
+            PropertiesThreadProcData* pptpd = new(std::nothrow) PropertiesThreadProcData();
+            if (pptpd)
             {
-                _stb.GetRect(&pParams->rcStartButton);
-                pParams->dwFlags = dwFlags;
+                _stb.GetRect(&pptpd->rcStartButton);
+                pptpd->dwFlags = dwFlags;
 
                 if (_pcbm)
                 {
-                    CoMarshalInterThreadInterfaceInStream(IID_ICatBandManager, _pcbm, &pParams->pstm);
+                    CoMarshalInterThreadInterfaceInStream(IID_ICatBandManager, _pcbm, &pptpd->pstm);
                 }
 
-                *phwndTrayProp = (HWND)-1;
-                if (!SHCreateThread(PropertiesThreadProc, pParams, CTF_COINIT, nullptr))
+                *phwnd = (HWND)-1;
+                if (!SHCreateThread(PropertiesThreadProc, pptpd, CTF_COINIT, nullptr))
                 {
-                    delete pParams;
-                    *phwndTrayProp = nullptr;
+                    delete pptpd;
+                    *phwnd = nullptr;
                 }
             }
         }
@@ -8968,7 +8969,7 @@ DEFINE_GUID(POLID_NoRun, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 typedef struct tagRUNDLGTHREADDATA
 {
     DWORD dwThreadId;
-    RECT rcStartButton;
+    RECT rc;
 } RUNDLGTHREADDATA, * PRUNDLGTHREADDATA;
 
 // EXEX-VISTA: Validated.
@@ -9027,7 +9028,7 @@ void CTray::_RunDlg(BOOL fCreateEvent)
             pThreadParam->dwThreadId = NULL;
         }
 
-        _stb.GetRect(&pThreadParam->rcStartButton);
+        _stb.GetRect(&pThreadParam->rc);
 
         if (SHCreateThread(RunDlgThreadProc, pThreadParam, CTF_COINIT_STA, NULL))
         {

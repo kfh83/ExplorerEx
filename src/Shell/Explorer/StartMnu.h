@@ -16,7 +16,7 @@
 #define SBM_REBUILDMENU               (WM_USER + 13)
 
 
-HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite);
+HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkOut);
 HRESULT IMenuPopup_SetIconSize(IMenuPopup* punk,DWORD iIcon);
 
 STDAPI  CHotKey_Create(IShellHotKey ** ppshk);
@@ -87,8 +87,9 @@ public:
 
 protected:
     CStartMenuHost();
+    IUnknown* GetUnknown();
 
-    friend HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite);
+    friend HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkOut);
 
     int    _cRef;
 };

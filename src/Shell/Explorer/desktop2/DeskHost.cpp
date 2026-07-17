@@ -19,7 +19,7 @@
 // #define TF_DV2DIALOG TF_CUSTOM1
 
 EXTERN_C HINSTANCE g_hinstCabinet;
-HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite);
+HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkOut);
 void RegisterDesktopControlClasses();
 
 const WCHAR c_wzStartMenuTheme[] = L"StartMenu";
@@ -266,12 +266,12 @@ inline int _ClipCoord(int x, int xMin, int xMax)
 }
 
 // EXEX-VISTA(allison): Validated.
-void ClipRect(RECT *prcDst, const RECT *prcMax)
+void ClipRect(RECT* prc, const RECT* prcClip)
 {
-    prcDst->left = _ClipCoord(prcDst->left, prcMax->left, prcMax->right);
-    prcDst->right = _ClipCoord(prcDst->right, prcMax->left, prcMax->right);
-    prcDst->top = _ClipCoord(prcDst->top, prcMax->top, prcMax->bottom);
-    prcDst->bottom = _ClipCoord(prcDst->bottom, prcMax->top, prcMax->bottom);
+    prc->left   = _ClipCoord(prc->left,     prcClip->left, prcClip->right);
+    prc->right  = _ClipCoord(prc->right,    prcClip->left, prcClip->right);
+    prc->top    = _ClipCoord(prc->top,      prcClip->top, prcClip->bottom);
+    prc->bottom = _ClipCoord(prc->bottom,   prcClip->top, prcClip->bottom);
 }
 
 //
@@ -2995,7 +2995,7 @@ HRESULT CDesktopHost::_HandleOpenBoxArrowKey(VARIANT* pvar)
 
 void CDesktopHost::_OnGetIStartButton(NMHDR* pnm)
 {
-    ((SMNGETISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
+    ((SMNMISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
 }
 
 // EXEX-VISTA(allison): Validated. Still needs slight cleanup.
@@ -3233,8 +3233,8 @@ void CDesktopHost::LoadPanelMetrics()
         for (int i = 0; i < ARRAYSIZE(_spm.panes); i++)
         {
             SMPANEDATA &paneData = _spm.panes[i];
-            paneData.bPartDefined = IsThemePartDefined(_hTheme, paneData.iPartId, 0);
-            if (paneData.bPartDefined)
+            paneData.fDefined = IsThemePartDefined(_hTheme, paneData.iPartId, 0);
+            if (paneData.fDefined)
             {
                 paneData.hTheme = _hTheme;
                 _ReadPaneSizeFromTheme(&paneData);
@@ -3969,11 +3969,11 @@ STDAPI DesktopV2_Build(void* pvStartPane)
 }
 
 
-STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd)
+STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunkHost, HWND hwndOwner)
 {
     *ppmp = nullptr;
     *ppmb = nullptr;
-    *ppunk = nullptr;
+    *ppunkHost = nullptr;
 
     HRESULT hr;
 
@@ -3981,7 +3981,7 @@ STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane
     if (pdh)
     {
         *ppvStartPane = pdh;
-        hr = pdh->Initialize(hwnd);
+        hr = pdh->Initialize(hwndOwner);
         if (SUCCEEDED(hr))
         {
             hr = pdh->QueryInterface(IID_PPV_ARGS(ppmp));
@@ -3990,7 +3990,7 @@ STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane
                 hr = pdh->QueryInterface(IID_PPV_ARGS(ppmb));
                 if (SUCCEEDED(hr))
                 {
-                    hr = pdh->QueryInterface(IID_PPV_ARGS(ppunk));
+                    hr = pdh->QueryInterface(IID_PPV_ARGS(ppunkHost));
                 }
             }
         }

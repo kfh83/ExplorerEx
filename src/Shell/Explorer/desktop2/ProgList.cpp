@@ -4485,7 +4485,7 @@ HRESULT ByUsage::ContextMenuDeleteItem(PaneItem* p, IContextMenu* pcm, CMINVOKEC
 
         if (IsSpecialPinnedItem(pitem) && !IsOS(OS_SERVERADMINUI))
         {
-            SMNGETISTARTBUTTON nmgis = {};
+            SMNMISTARTBUTTON nmgis = {};
             _SendNotify(_hwnd, 218, &nmgis.hdr);
             if (nmgis.pstb)
             {

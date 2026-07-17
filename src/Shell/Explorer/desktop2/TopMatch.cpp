@@ -407,7 +407,7 @@ LRESULT CTopMatch::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			lParam = MAKELPARAM(rc.left, rc.top);
 		}
 
-		SMNGETISTARTBUTTON nm;
+		SMNMISTARTBUTTON nm;
 		nm.pstb = NULL;
 		_SendNotify(_hwnd, 218, &nm.hdr);
 		if (nm.pstb)

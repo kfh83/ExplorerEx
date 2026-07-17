@@ -22,10 +22,11 @@ public:
     TASKITEM() { ZeroMemory(this, sizeof(TASKITEM)); };
     TASKITEM(TASKITEM* pti);
     ~TASKITEM();
+
     HWND hwnd;  // NULL if this item is a group of application entries
-    HWND hwnd2;
+    HWND hwndSelected;
     DWORD dwFlags;
-    class TaskShortcut *ptsh;
+    class TaskShortcut* ptsh;
     DWORD dwTimeLastClicked;
     DWORD dwTimeFirstOpened;
     WCHAR* pszExeName;

@@ -993,19 +993,20 @@ void CMorePrograms::_PopBalloon()
 
 void CMorePrograms::_BuildHoverRect(const LPPOINT ppt)
 {
-    UINT pvParam;
-    if (!SystemParametersInfo(SPI_GETMOUSEHOVERWIDTH, 0, &pvParam, 0))
-        pvParam = 4;
+    UINT cxHover;
+    if (!SystemParametersInfo(SPI_GETMOUSEHOVERWIDTH, 0, &cxHover, 0))
+        cxHover = 4;
 
-    UINT v4;
-    if (!SystemParametersInfo(SPI_GETMOUSEHOVERHEIGHT, 0, &v4, 0))
-        v4 = 4;
+    UINT cyHover;
+    if (!SystemParametersInfo(SPI_GETMOUSEHOVERHEIGHT, 0, &cyHover, 0))
+        cyHover = 4;
 
-    this->field_64.left = ppt->x - pvParam;
-    this->field_64.right = pvParam + ppt->x;
-    this->field_64.top = ppt->y - v4;
-    this->field_64.bottom = v4 + ppt->y;
-    this->_tmHoverStart = NonzeroGetTickCount();
+    _rcHover.left       = ppt->x - cxHover;
+    _rcHover.right      = ppt->x + cxHover;
+
+    _rcHover.top        = ppt->y - cyHover;
+    _rcHover.bottom     = ppt->y + cyHover;
+    _tmHoverStart = NonzeroGetTickCount();
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -1076,7 +1077,7 @@ LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 			lParam = MAKELPARAM(rc.left, rc.top);
         }
 
-        SMNGETISTARTBUTTON nm;
+        SMNMISTARTBUTTON nm;
         nm.pstb = NULL;
         _SendNotify(_hwnd, 218, &nm.hdr);
         if (nm.pstb)
@@ -1247,7 +1248,7 @@ HRESULT CMorePrograms::DragOver(DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 
     if (_tmHoverStart)
     {
-        if (PtInRect(&field_64, pt))
+        if (PtInRect(&_rcHover, pt))
         {
             if (GetTickCount() - _tmHoverStart > 1000)
             {

@@ -2149,7 +2149,7 @@ BOOL TaskShortcut::_HandleShortcutInvoke(LPSHShortcutInvokeAsIDList psidl)
 TASKITEM::TASKITEM(TASKITEM* pti)
 {
     hwnd = pti->hwnd;
-	hwnd2 = pti->hwnd2;
+	hwndSelected = pti->hwndSelected;
     dwFlags = pti->dwFlags;
     ptsh = NULL;
     dwTimeLastClicked = pti->dwTimeLastClicked;
@@ -3192,9 +3192,9 @@ void CTaskBand::_GetItemTitle(int iIndex, WCHAR* pszTitle, int cchTitle, BOOL fC
     if (pti)
     {
         HWND hwnd = pti->hwnd;
-        if (!fCustom && pti->hwnd2)
+        if (!fCustom && pti->hwndSelected)
         {
-            hwnd = pti->hwnd2;
+            hwnd = pti->hwndSelected;
         }
         if (hwnd)
         {

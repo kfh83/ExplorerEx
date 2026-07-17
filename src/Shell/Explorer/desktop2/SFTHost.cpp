@@ -3680,7 +3680,7 @@ LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
     // eax
     PaneItem *pitem; // edi
     HRESULT hr; // eax
-    SMNGETISTARTBUTTON nm; // [esp+4h] [ebp-18h] BYREF
+    SMNMISTARTBUTTON nm; // [esp+4h] [ebp-18h] BYREF
     const ITEMID_CHILD *pidl; // [esp+14h] [ebp-8h] BYREF
     IShellFolder *psf; // [esp+18h] [ebp-4h] BYREF
     DWORD dwAttr; // [esp+28h] [ebp+Ch] SPLIT BYREF

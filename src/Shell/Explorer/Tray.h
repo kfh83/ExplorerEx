@@ -349,7 +349,7 @@ public:
     UINT _uAutoHide;     // AH_HIDING , AH_ON
 
     RECT _arStuckRects[4];
-    int _arStuckHeights[4];
+    int _cRows[4];
 
     CTrayNotify _trayNotify;
     CStartButton _stb;
@@ -438,7 +438,7 @@ protected:
     void _StuckTrayChange();
     void _ResetZorder(BOOL fForce);
     void _HandleSize();
-    BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fUpdateSize);
+    BOOL _HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fMaintainOldRowCount);
     void _RegisterGlobalHotkeys();
     void _UnregisterGlobalHotkeys();
     void _HandleGlobalHotkey(WPARAM wParam);
@@ -652,7 +652,7 @@ protected:
     POINT _ptLastHittest;
 
     HWND _hwndProp;
-    HWND _hwndPropCustomize;
+    HWND _hwndCustNot;
     HWND _hwndRebar;
 
     HACCEL _hMainAccel;     // Main accel table

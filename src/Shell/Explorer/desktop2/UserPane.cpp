@@ -354,7 +354,7 @@ HWND CUserPane::_GetPictureWindowPrevHnwd()
 {
     HWND hwnd = nullptr;
 
-    SMNGETISTARTBUTTON nm;
+    SMNMISTARTBUTTON nm;
     nm.pstb = nullptr;
     _SendNotify(_hwnd, 218, &nm.hdr);
     if (nm.pstb)

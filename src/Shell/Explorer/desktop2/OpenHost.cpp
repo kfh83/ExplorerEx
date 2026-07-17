@@ -235,9 +235,9 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		if (hTheme)
 		{
-			_aopa[i].bPartDefined = IsThemePartDefined(hTheme, _aopa[i].iPartId, 0);
+			_aopa[i].fDefined = IsThemePartDefined(hTheme, _aopa[i].iPartId, 0);
 
-			if (_aopa[i].bPartDefined)
+			if (_aopa[i].fDefined)
 				_aopa[i].hTheme = hTheme;
 
 			if (i == 3)

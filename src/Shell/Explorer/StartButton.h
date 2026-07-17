@@ -2,12 +2,11 @@
 
 // from explorer\desktop2
 STDAPI DesktopV2_Create(
-    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunk, HWND hwnd);
+    IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane, IUnknown** ppunkHost, HWND hwndOwner);
 STDAPI DesktopV2_Build(void* pvStartPane);
 
 // from tray
 EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
-
 
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
@@ -42,10 +41,10 @@ class CStartButton
     , public IServiceProvider
 {
 public:
-    CStartButton(IStartButtonSite* pStartButtonSite);
+    CStartButton(IStartButtonSite* psbs);
 
     //~ Begin IUnknown Interface
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
     STDMETHODIMP_(ULONG) AddRef() override;
     STDMETHODIMP_(ULONG) Release() override;
     //~ End IUnknown Interface
@@ -53,7 +52,7 @@ public:
     //~ Begin IStartButton Interface
     STDMETHODIMP SetFocusToStartButton() override;
     STDMETHODIMP OnContextMenu(HWND hwnd, LPARAM lParam) override;
-    STDMETHODIMP CreateStartButtonBalloon(UINT a2, UINT uID) override;
+    STDMETHODIMP CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage) override;
     STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;
@@ -63,7 +62,7 @@ public:
     //~ End IStartButton Interface
 
     //~ Begin IServiceProvider Interface
-    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
+    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObj) override;
     //~ End IServiceProvider Interface
 
     // TODO: revise
@@ -76,7 +75,7 @@ public:
     void DrawStartButton(int iStateId, bool bRepaint);
     void ExecRefresh();
     void ForceButtonUp();
-    void GetRect(RECT* lpRect);
+    void GetRect(RECT* prc);
     void GetSizeAndFont(HTHEME hTheme);
     BOOL InitBackgroundBitmap();
     void InitTheme();
@@ -86,12 +85,20 @@ public:
     void RecalcSize();
     void RepositionBalloon();
     void StartButtonReset();
-    int TrackMenu(HMENU hMenu);
-    HRESULT TranslateMenuMessage(MSG* pmsg, LRESULT* plRet);
+    int TrackMenu(HMENU hmenu);
+    HRESULT TranslateMenuMessage(MSG* pmsg, LRESULT* plres);
     void UpdateStartButton(bool a2);
 
     void _DestroyStartButtonBalloon();
     void _DontShowTheStartButtonBalloonAnyMore();
+
+    enum
+    {
+        STB_RECALCSIZE      = WM_APP,
+        STB_GETIDEALSIZE    = WM_APP + 1,
+    };
+
+    enum { IDT_STARTBUTTONBALLOON = 1 };
 
     const WCHAR* _pszThemeName;
     int field_C;
@@ -105,21 +112,21 @@ public:
     HFONT _hStartFont;
     UINT _uDown;
     BOOL _fAllowUp;
-    int field_40;
+    BOOL _fInContextMenu;
     BOOL _fForegroundLocked;
     BOOL _fBackgroundBitmapInitialized;
     bool field_4C;
     UINT _uStartButtonState;
     DWORD _tmOpen;
     HIMAGELIST _himlStartFlag;
-    IStartButtonSite* _pStartButtonSite;
+    IStartButtonSite* _psbs;
     IMenuBand* _pmbStartMenu;
     IMenuPopup* _pmpStartMenu;
     IMenuBand* _pmbStartPane;
     IMenuPopup* _pmpStartPane;
-    IUnknown* _punkSite;
+    IUnknown* _punkSMHost;
     char padding5[4];
-    WCHAR _szWindowName[50];
+    WCHAR _szStart[50];
 
 private:
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);

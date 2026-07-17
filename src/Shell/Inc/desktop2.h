@@ -59,8 +59,7 @@ typedef struct {
     SIZE    size;                   // (default) initial size of this pane
     HTHEME  hTheme;                 // (runtime) theme to pass to the control
     HWND    hwnd;                   // (runtime) filled in at runtime
-
-    BOOL        bPartDefined;       // Vista - New
+    BOOL        fDefined;           // Vista - New
     IUnknown*   punk;               // Vista - New
 } SMPANEDATA;
 
@@ -221,11 +220,11 @@ typedef struct SMNSETSITE
 
 #include "StartButton.h"
 
-typedef struct SMNGETISTARTBUTTON
+typedef struct SMNMISTARTBUTTON
 {
     NMHDR hdr;
     struct IStartButton* pstb;
-} SMNGETISTARTBUTTON, *PSMNGETISTARTBUTTON;
+} SMNMISTARTBUTTON, *PSMNMISTARTBUTTON;
 
 #define REGSTR_PATH_STARTPANE \
         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPageXP")

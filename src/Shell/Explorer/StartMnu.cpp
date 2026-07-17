@@ -193,21 +193,25 @@ CStartMenuHost::CStartMenuHost() : _cRef(1)
 {
 }
 
+IUnknown* CStartMenuHost::GetUnknown()
+{
+    return reinterpret_cast<IUnknown*>(this);
+}
 
-HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkSite)
+HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppunkOut)
 {
     HRESULT hres = E_OUTOFMEMORY;
 
     IMenuPopup* pmp = nullptr;
     IMenuBand* pmb = nullptr;
 
-    CStartMenuHost* psmh = new(std::nothrow) CStartMenuHost();
+    CStartMenuHost* psmh = new CStartMenuHost();
     if (psmh)
     {
         hres = CoCreateInstance(CLSID_StartMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pmp));
         if (SUCCEEDED(hres))
         {
-            hres = IUnknown_SetSite(pmp, static_cast<ITrayPriv*>(psmh));
+            hres = IUnknown_SetSite(pmp, psmh->GetUnknown());
             if (SUCCEEDED(hres))
             {
                 IInitializeObject* pio;
@@ -249,7 +253,7 @@ HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppu
 
     *ppmp = pmp;
     *ppmb = pmb;
-    *ppunkSite = static_cast<ITrayPriv*>(psmh);
+    *ppunkOut = psmh->GetUnknown();
     return hres;
 }
 
