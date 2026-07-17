@@ -406,6 +406,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClInclude Include="desktop2\stdafx.h" />
     <ClInclude Include="Desktop2\TopMatch.h" />
     <ClInclude Include="desktop2\UserPane.h" />
+    <ClInclude Include="DPIHelpers.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
     <ClInclude Include="Logo.h" />
@@ -599,6 +600,7 @@ link /dll /MACHINE:X64 /noentry /out:"$(OutDir)en-US\$(TargetFileName).mui" "$(I
     <ClCompile Include="desktop2\UserPane.cpp" />
     <ClCompile Include="desktop2\WrapCtl.cpp" />
     <ClCompile Include="desktop2\HostUtil.cpp" />
+    <ClCompile Include="DPIHelpers.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />

@@ -212,7 +212,7 @@ LRESULT COpenViewHost::_OnNCCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-extern void RemapSizeForHighDPI(SIZE *psiz);
+void RemapSizeForHighDPI(SIZE *psiz);
 
 LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {

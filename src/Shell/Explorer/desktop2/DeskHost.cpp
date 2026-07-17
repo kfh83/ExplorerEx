@@ -10,6 +10,8 @@
 
 #include <propvarutil.h>
 
+#include "DPIHelpers.h"
+
 #define TF_DV2HOST  0
 // #define TF_DV2HOST TF_CUSTOM1
 
@@ -523,19 +525,6 @@ int GetDesiredHeight(HWND hwndHost, SMPANEDATA* psmpd, SIZE* psizOut)
 		*psizOut = nmgms.field_14;
 
     return nmgms.siz.cy;
-}
-
-extern int g_iLPX;
-extern int g_iLPY;
-extern void InitDPI();
-
-void SHLogicalToPhysicalDPI(int* px, int* py)
-{
-    InitDPI();
-    if (px)
-        *px = MulDiv(*px, g_iLPX, USER_DEFAULT_SCREEN_DPI);
-    if (py)
-        *py = MulDiv(*py, g_iLPY, USER_DEFAULT_SCREEN_DPI);
 }
 
 //

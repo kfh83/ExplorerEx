@@ -1,12 +1,12 @@
 #include "pch.h"
+
+#include "DPIHelpers.h"
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"
 #include "shundoc.h"
 
 class CLogoffPane;
-
-// WARNING!  Must be in sync with c_rgidmLegacy
 
 #define NUM_TBBUTTON_IMAGES 6
 
@@ -15,15 +15,6 @@ static const TBBUTTON tbButtonsCreate[] =
     { 1, 1, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7032, 1 },
     { 0, 2, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7033, 2 },
     { 5, 0, TBSTATE_ENABLED, BTNS_BUTTON, { 0, 0 }, 7034, 0 }
-};
-
-// WARNING!  Must be in sync with tbButtonsCreate
-static const UINT c_rgidmLegacy[] =
-{
-    IDM_EJECTPC,
-    IDM_LOGOFF,
-    IDM_EXITWIN,
-    IDM_MU_DISCONNECT,
 };
 
 // EXEX-TODO: Move? (This one is still in use by Windows 10.)
@@ -107,7 +98,7 @@ IShutdownChoices_Vista : IUnknown
 
 // Windows 10 version of the interface. Missing many of the important methods from the Vista version.
 MIDL_INTERFACE("bfdc5e2f-3402-49b3-8740-91d6dc5dbb15")
-IShutdownChoices10 : IUnknown
+IShutdownChoices : IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE Refresh() = 0;
     virtual HRESULT STDMETHODCALLTYPE SetChoiceMask(SHUTDOWN_CHOICE) = 0;
@@ -132,9 +123,9 @@ public:
     STDMETHODIMP_(ULONG) Release() override { return CUnknown::Release(); }
 
     // *** IAccessible overridden methods ***
-    STDMETHODIMP get_accName(VARIANT varChild, BSTR* pszName);
-    STDMETHODIMP get_accKeyboardShortcut(VARIANT varChild, BSTR* pszKeyboardShortcut);
-    STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR* pszDefAction);
+    STDMETHODIMP get_accName(VARIANT varChild, BSTR* pszName) override;
+    STDMETHODIMP get_accKeyboardShortcut(VARIANT varChild, BSTR* pszKeyboardShortcut) override;
+    STDMETHODIMP get_accDefaultAction(VARIANT varChild, BSTR* pszDefAction) override;
 
     CLogoffPane();
     ~CLogoffPane() override;
@@ -179,36 +170,37 @@ private:
     HIMAGELIST _himl;
     int field_64;
     int field_68;
-    IShutdownChoices10* _psdc;
+    IShutdownChoices* _psdc;
     IShutdownChoiceListener* _psdListen;
     HWND _hwndSdListenMsg;
     IAccessible* _pAcc;
 
     // helper functions
     int _GetCurButton();
+    int _GetCurPressedButton();
+    int _GetThemeBitmapSize(int iPartId, int iStateId, int id);
     LRESULT _NextVisibleButton(PSMNDIALOGMESSAGE pdm, int i, int direction);
     BOOL _IsButtonHiddenOrDisabled(int i, DWORD dwFlags);
     TCHAR _GetButtonAccelerator(int i);
+
     void _ApplyOptions();
     HRESULT _InitShutdownObjects();
     HRESULT _AddShutdownChoiceToMenu(HMENU hMenu, SHUTDOWN_CHOICE sdChoice, UINT idMenuItem, UINT item);
 
     BOOL _SetTBButtons(int id, UINT iMsg);
-    int _GetThemeBitmapSize(int iPartId, int iStateId, int id);
 
     int _GetIdmFromIdstip(int id);
 	int _GetIdstipFromCommand(int id);
     int _GetIdmFromCommand(int id);
-    int _GetCurPressedButton();
+
     int _HitTest(HWND hwndTest, POINT ptTest);
     BOOL _IsPtInDropDownSplit(HWND hwnd, POINT pt);
     void _DoSplitButtonContextMenu(int a2);
-    BOOL _IsTBButtonEnabled(int a2);
+    BOOL _IsTBButtonEnabled(int i);
     void _SetShutdownButtonProperties(int a2);
     int _GetLocalImageForShutdownChoice(SHUTDOWN_CHOICE sdChoice);
 
     friend BOOL CLogoffPane_RegisterClass();
-
     friend class CLogOffMenuCallback;
 };
 
@@ -370,38 +362,6 @@ void CLogoffPane::_OnDestroy()
             ImageList_Destroy(himl);
         }
     }
-}
-
-void SHLogicalToPhysicalDPI(int* px, int* py);
-
-int CLogoffPane::_GetThemeBitmapSize(int iPartId, int iStateId, int id)
-{
-    int cxBitmap = 0;
-
-    if (_hTheme && iPartId)
-    {
-        SIZE siz;
-        if (SUCCEEDED(GetThemePartSize(_hTheme, nullptr, iPartId, iStateId, nullptr, TS_TRUE, &siz)))
-        {
-            cxBitmap = siz.cx;
-        }
-    }
-    else
-    {
-        HBITMAP hBitmap = LoadBitmapW(g_hinstCabinet, MAKEINTRESOURCEW(id));
-        if (hBitmap)
-        {
-            BITMAP bm;
-            if (GetObjectW(hBitmap, sizeof(BITMAP), &bm))
-            {
-                cxBitmap = bm.bmWidth;
-            }
-            DeleteObject(hBitmap);
-        }
-    }
-
-    SHLogicalToPhysicalDPI(&cxBitmap, nullptr);
-    return cxBitmap;
 }
 
 class CSplitButtonAccessible : public CAccessible
@@ -935,17 +895,6 @@ int CLogoffPane::_GetIdmFromCommand(int id)
     return _GetIdmFromIdstip(_GetIdstipFromCommand(id));
 }
 
-int CLogoffPane::_GetCurPressedButton()
-{
-    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 0, 0))
-        return 0;
-    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 1, 0))
-        return 1;
-    if ((SendMessageW(_hwndSplit, BM_GETSTATE, 0, 0) & BST_PUSHED) != 0)
-        return 99;
-    return -1;
-}
-
 HRESULT CLogOffMenuCallback_CreateInstance(IShellMenuCallback** ppsmc, CLogoffPane* pLogOffPane);
 
 void CLogoffPane::_DoSplitButtonContextMenu(int a2)
@@ -1241,6 +1190,47 @@ int CLogoffPane::_GetCurButton()
     return static_cast<int>(SendMessageW(_hwndTB, TB_GETHOTITEM, 0, 0));
 }
 
+int CLogoffPane::_GetCurPressedButton()
+{
+    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 0, 0))
+        return 0;
+    if (SendMessageW(_hwndTB, TB_ISBUTTONPRESSED, 1, 0))
+        return 1;
+    if ((SendMessageW(_hwndSplit, BM_GETSTATE, 0, 0) & BST_PUSHED) != 0)
+        return 99;
+    return -1;
+}
+
+int CLogoffPane::_GetThemeBitmapSize(int iPartId, int iStateId, int id)
+{
+    int cxBitmap = 0;
+
+    if (_hTheme && iPartId)
+    {
+        SIZE siz;
+        if (SUCCEEDED(GetThemePartSize(_hTheme, NULL, iPartId, iStateId, NULL, TS_TRUE, &siz)))
+        {
+            cxBitmap = siz.cx;
+        }
+    }
+    else
+    {
+        HBITMAP hBitmap = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(id));
+        if (hBitmap)
+        {
+            BITMAP bm;
+            if (GetObject(hBitmap, sizeof(BITMAP), &bm))
+            {
+                cxBitmap = bm.bmWidth;
+            }
+            DeleteObject(hBitmap);
+        }
+    }
+
+    SHLogicalToPhysicalDPI(&cxBitmap, NULL);
+    return cxBitmap;
+}
+
 BOOL CLogoffPane::_IsPtInDropDownSplit(HWND hwnd, POINT pt)
 {
     return _HitTest(hwnd, pt) == 99;
@@ -1471,29 +1461,24 @@ LRESULT CLogoffPane::_OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 
 int CLogoffPane::_HitTest(HWND hwndTest, POINT ptTest)
 {
-    HWND v4; // eax
-    HWND hwndTB; // ecx
-
     if (hwndTest)
-        MapWindowPoints(hwndTest, this->_hwnd, &ptTest, 1u);
-    v4 = ChildWindowFromPointEx(this->_hwnd, ptTest, 1u);
-    hwndTB = this->_hwndTB;
-    if (v4 != hwndTB)
-        return v4 != this->_hwndSplit ? -1 : 99;
-    MapWindowPoints(this->_hwnd, hwndTB, &ptTest, 1u);
-    return SendMessageW(this->_hwndTB, 0x445u, 0, (LPARAM)&ptTest);
+        MapWindowPoints(hwndTest, _hwnd, &ptTest, 1);
+
+    HWND v4 = ChildWindowFromPointEx(_hwnd, ptTest, CWP_SKIPINVISIBLE);
+    if (v4 != _hwndTB)
+        return v4 != _hwndSplit ? -1 : 99;
+
+    MapWindowPoints(_hwnd, _hwndTB, &ptTest, 1);
+    return SendMessageW(_hwndTB, TB_HITTEST, 0, (LPARAM)&ptTest);
 }
 
-int __thiscall CLogoffPane::_IsTBButtonEnabled(int wParam)
+BOOL CLogoffPane::_IsTBButtonEnabled(int i)
 {
-    HWND hwndTB; // [esp-10h] [ebp-30h]
-    TBBUTTONINFOW tbbi; // [esp+0h] [ebp-20h] BYREF
-
-    tbbi.cbSize = 0x20;
-    hwndTB = this->_hwndTB;
+    TBBUTTONINFO tbbi;
+    tbbi.cbSize = sizeof(tbbi);
     tbbi.dwMask = 0x80000004;
-    SendMessageW(hwndTB, 0x43Fu, wParam, (LPARAM)&tbbi);
-    return (tbbi.fsState >> 2) & 1;
+    SendMessage(_hwndTB, TB_GETBUTTONINFO, i, (LPARAM)&tbbi);
+    return tbbi.fsState & TBSTATE_ENABLED;
 }
 
 LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)

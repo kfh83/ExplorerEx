@@ -7,6 +7,7 @@
 #include "shellapi.h"
 #include "shundoc.h"
 #include "cocreateinstancehook.h"
+#include "DPIHelpers.h"
 
 //
 // Tray Notify Icon area implementation notes / details:
@@ -2465,8 +2466,6 @@ BOOL CTrayNotify::GetTrayItemCB(INT_PTR nIndex, void *pCallbackData, TRAYCBARG t
 
     return FALSE;
 }
-
-void SHLogicalToPhysicalDPI(SIZE* pSize);
 
 LRESULT CTrayNotify::_Create(HWND hWnd)
 {
