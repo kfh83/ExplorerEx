@@ -22,17 +22,18 @@ IStartButton : IUnknown
     virtual HRESULT STDMETHODCALLTYPE GetWindow(HWND*) = 0;
 };
 
-interface DECLSPEC_NOVTABLE IStartButtonSite
+class IStartButtonSite
 {
-    virtual void STDMETHODCALLTYPE EnableTooltips(BOOL) = 0;
-    virtual void STDMETHODCALLTYPE PurgeRebuildRequests() = 0;
-    virtual BOOL STDMETHODCALLTYPE ShouldUseSmallIcons() = 0;
-    virtual void STDMETHODCALLTYPE HandleFullScreenApp(HWND) = 0;
-    virtual void STDMETHODCALLTYPE StartButtonClicked() = 0;
+public:
+    virtual void STDMETHODCALLTYPE EnableTooltips(BOOL fEnable) {}
+    virtual void STDMETHODCALLTYPE PurgeRebuildRequests() {}
+    virtual BOOL STDMETHODCALLTYPE ShouldUseSmallIcons() { return FALSE; }
+    virtual void STDMETHODCALLTYPE HandleFullScreenApp(HWND hwnd) {}
+    virtual void STDMETHODCALLTYPE StartButtonClicked() {}
     virtual void STDMETHODCALLTYPE OnStartMenuDismissed() = 0;
-    virtual int STDMETHODCALLTYPE GetStartButtonMinHeight() = 0;
+    virtual int STDMETHODCALLTYPE GetStartButtonMinHeight() { return 0; }
     virtual UINT STDMETHODCALLTYPE GetStartMenuStuckPlace() = 0;
-    virtual void STDMETHODCALLTYPE SetUnhideTimer(LONG, LONG) = 0;
+    virtual void STDMETHODCALLTYPE SetUnhideTimer(LONG x, LONG y) = 0;
     virtual void STDMETHODCALLTYPE OnStartButtonClosing() = 0;
 };
 

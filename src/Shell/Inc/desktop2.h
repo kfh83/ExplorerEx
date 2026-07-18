@@ -223,7 +223,7 @@ typedef struct SMNSETSITE
 typedef struct SMNMISTARTBUTTON
 {
     NMHDR hdr;
-    struct IStartButton* pstb;
+    struct IStartButton* psb;
 } SMNMISTARTBUTTON, *PSMNMISTARTBUTTON;
 
 #define REGSTR_PATH_STARTPANE \

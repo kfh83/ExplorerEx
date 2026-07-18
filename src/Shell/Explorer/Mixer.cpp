@@ -242,6 +242,11 @@ MMRESULT CSystemMixer::AdjustTreble(BOOL bUp)
     return mmr;
 }
 
+CSystemMixer::~CSystemMixer()
+{
+    _Close();
+}
+
 HRESULT CSystemMixer::_CreateVolumeObject(IAudioEndpointVolume** ppVolume)
 {
     ASSERT(nullptr != ppVolume); // 173

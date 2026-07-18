@@ -2995,7 +2995,7 @@ HRESULT CDesktopHost::_HandleOpenBoxArrowKey(VARIANT* pvar)
 
 void CDesktopHost::_OnGetIStartButton(NMHDR* pnm)
 {
-    ((SMNMISTARTBUTTON*)pnm)->pstb = _GetIStartButton();
+    ((SMNMISTARTBUTTON*)pnm)->psb = _GetIStartButton();
 }
 
 // EXEX-VISTA(allison): Validated. Still needs slight cleanup.

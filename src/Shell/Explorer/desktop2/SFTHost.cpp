@@ -3685,12 +3685,12 @@ LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
     IShellFolder *psf; // [esp+18h] [ebp-4h] BYREF
     DWORD dwAttr; // [esp+28h] [ebp+Ch] SPLIT BYREF
 
-    nm.pstb = 0;
+    nm.psb = 0;
     _SendNotify(this->_hwnd, 218u, &nm.hdr);
-    if (nm.pstb)
+    if (nm.psb)
     {
-		nm.pstb->LockStartPane();
-        nm.pstb->Release();
+		nm.psb->LockStartPane();
+        nm.psb->Release();
     }
 
     DWORD dwCascadeFlags = 0;

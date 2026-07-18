@@ -4487,10 +4487,10 @@ HRESULT ByUsage::ContextMenuDeleteItem(PaneItem* p, IContextMenu* pcm, CMINVOKEC
         {
             SMNMISTARTBUTTON nmgis = {};
             _SendNotify(_hwnd, 218, &nmgis.hdr);
-            if (nmgis.pstb)
+            if (nmgis.psb)
             {
-                nmgis.pstb->CreateStartButtonBalloon(0, 8230);
-                nmgis.pstb->Release();
+                nmgis.psb->CreateStartButtonBalloon(0, 8230);
+                nmgis.psb->Release();
             }
         }
 

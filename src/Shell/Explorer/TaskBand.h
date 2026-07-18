@@ -195,6 +195,7 @@ protected:
     void _OnButtonPressed(int iIndex, PTASKITEM pti, BOOL fForceRestore);
     LRESULT _HandleNotify(LPNMHDR lpnm);
     void _SwitchToItem(int iItem, HWND hwnd, BOOL fIgnoreCtrlKey);
+    BOOL _IsTrayTaskband();
     LRESULT _HandleCreate();
     LRESULT _HandleDestroy();
     LRESULT _HandleScroll(BOOL fHoriz, UINT code, int nPos);
@@ -289,7 +290,6 @@ protected:
 
     // vista composition related
     BOOL _CanGlassifyTaskbar();
-    BOOL _IsTrayTaskband();
 
     // animation helpers
     void  _UpdateAnimationIndices();
@@ -347,7 +347,7 @@ protected:
     int _iOldPriority;
     int _iNewPriority;
 
-    int field_C8;                       // Vista - New
+    int _xDPI;                          // Vista - New
     int field_CC;                       // Vista - New
     int field_D0;                       // Vista - New
 

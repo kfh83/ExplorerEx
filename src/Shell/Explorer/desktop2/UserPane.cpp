@@ -355,12 +355,12 @@ HWND CUserPane::_GetPictureWindowPrevHnwd()
     HWND hwnd = nullptr;
 
     SMNMISTARTBUTTON nm;
-    nm.pstb = nullptr;
+    nm.psb = nullptr;
     _SendNotify(_hwnd, 218, &nm.hdr);
-    if (nm.pstb)
+    if (nm.psb)
     {
-        nm.pstb->GetWindow(&hwnd);
-        nm.pstb->Release();
+        nm.psb->GetWindow(&hwnd);
+        nm.psb->Release();
     }
     return hwnd ? nullptr : GetWindow(nullptr, GW_HWNDPREV);
 }

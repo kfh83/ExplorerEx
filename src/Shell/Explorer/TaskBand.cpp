@@ -387,13 +387,16 @@ HRESULT CTaskBand::GetWindow(HWND * lphwnd)
 }
 
 CTaskBand::CTaskBand()
-    : _dwBandID((DWORD)-1)
-    , _iDropItem(-2)
+    : _cThumbnails(3)
     , _iIndexActiveAtLDown(-1)
-    , _cRef(1)
     , _iOldPriority(INVALID_PRIORITY)
-    , _cThumbnails(3)
+    , _cRef(1)
+    , _iDropItem(-2)
+    , _dwBandID((DWORD)-1)
 {
+    HDC hdc = GetDC(NULL);
+    _xDPI = GetDeviceCaps(hdc, LOGPIXELSX);
+    ReleaseDC(NULL, hdc);
 }
 
 CTaskBand::~CTaskBand()
@@ -581,13 +584,6 @@ HRESULT CTaskBand::SetSite(IUnknown* punk)
         wprintf(L"CTaskBand::SetSite using pszTheme: %s\n", pszTheme);
         SetWindowTheme(hwnd, pszTheme, nullptr);
     }
-
-    //ATOMICRELEASE(_punkSite);
-    //if (punk)
-    //{
-    //    _punkSite = punk;
-    //    punk->AddRef();
-    //}
 
     IUnknown_Set(&_punkSite, punk);
     return S_OK;
@@ -1267,11 +1263,6 @@ int CTaskBand::_GetAnimationWidth()
 BOOL CTaskBand::_CanGlassifyTaskbar()
 {
     return c_tray.GlassEnabled() && IsCompositionActive();
-}
-
-BOOL CTaskBand::_IsTrayTaskband()
-{
-    return IsChild(v_hwndTray, _hwnd);
 }
 
 //-----------------------------------------------------------------------------
@@ -4570,6 +4561,11 @@ void CTaskBand::_SwitchToItem(int iItem, HWND hwnd, BOOL fIgnoreCtrlKey)
         _DeleteItem(hwnd);
         _SetCurSel(-1, fIgnoreCtrlKey);
     }
+}
+
+BOOL CTaskBand::_IsTrayTaskband()
+{
+    return IsChild(v_hwndTray, _hwnd);
 }
 
 BOOL WINAPI CTaskBand::BuildEnumProc(HWND hwnd, LPARAM lParam)

@@ -218,7 +218,7 @@ public:
     //~ End IUnknown Interface
 
     //~ Begin IStartButtonSite Interface
-    STDMETHODIMP_(void) EnableTooltips(BOOL bEnable) override;
+    STDMETHODIMP_(void) EnableTooltips(BOOL fEnable) override;
     STDMETHODIMP_(void) PurgeRebuildRequests() override;
     STDMETHODIMP_(BOOL) ShouldUseSmallIcons() override;
     STDMETHODIMP_(void) HandleFullScreenApp(HWND hwnd) override;

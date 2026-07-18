@@ -196,9 +196,9 @@ ULONG CTray::Release()
     return 1;
 }
 
-void CTray::EnableTooltips(BOOL bEnable)
+void CTray::EnableTooltips(BOOL fEnable)
 {
-    SendMessage(_hwndTrayTips, TTM_ACTIVATE, bEnable, NULL);
+    SendMessage(_hwndTrayTips, TTM_ACTIVATE, fEnable, NULL);
 }
 
 void CTray::PurgeRebuildRequests()
@@ -5512,7 +5512,7 @@ LRESULT CTray::_OnDeviceChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
             break;
     }
 
-    Mixer_DeviceChange(wParam, lParam);
+    // Mixer_DeviceChange(wParam, lParam);
     return 0;
 }
 

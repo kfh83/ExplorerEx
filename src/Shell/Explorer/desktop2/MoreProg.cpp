@@ -1078,12 +1078,12 @@ LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         }
 
         SMNMISTARTBUTTON nm;
-        nm.pstb = NULL;
+        nm.psb = NULL;
         _SendNotify(_hwnd, 218, &nm.hdr);
-        if (nm.pstb)
+        if (nm.psb)
         {
-            nm.pstb->OnContextMenu(_hwnd, lParam);
-			nm.pstb->Release();
+            nm.psb->OnContextMenu(_hwnd, lParam);
+			nm.psb->Release();
         }
     }
     return 0;
