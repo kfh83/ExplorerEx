@@ -809,7 +809,7 @@ private:
 
     int                     _cPinned;       /* Number of those items that are pinned */
 
-    int                     field_6C;       // Vista - NEW
+    int                     _cNormal;       /* Number of those items that are normal */
 
     DWORD                   _dwFlags;       /* Misc flags that derived classes can set */
 

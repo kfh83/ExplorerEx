@@ -503,9 +503,9 @@ void SFTBarHost::_CalculateSize(int a2)
         v3 = this->_cPinnedDesired > 0;
     int cyTile = this->_cyTile;
     if (cyTile > 0)
-        this->field_6C = (a2 - v3 * this->_cySepTile) / cyTile - this->_cPinned - this->_cSep;
-    if (this->field_6C < 0)
-        this->field_6C = 0;
+        this->_cNormal = (a2 - v3 * this->_cySepTile) / cyTile - this->_cPinned - this->_cSep;
+    if (this->_cNormal < 0)
+        this->_cNormal = 0;
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -1502,7 +1502,7 @@ void SFTBarHost::_InternalRepopulateList(BOOL a2)
     int fCheckMaxLength = this->HasDynamicContent();
 
     if (a2)
-        a2 = this->_cNormalDesired > this->_cSep + this->field_6C;
+        a2 = this->_cNormalDesired > this->_cSep + this->_cNormal;
 
     int iEnum = 0;
     int iPos = 0;
@@ -4405,7 +4405,7 @@ LRESULT SFTBarHost::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
         v5 += this->_cySep;
     pgms->field_14.cy = -1;
     pgms->siz.cy = v5;
-    int v6 = this->field_6C;
+    int v6 = this->_cNormal;
     int cNormalDesired = this->_cNormalDesired;
     if (v6 < cNormalDesired)
         pgms->field_14.cy = v5 - this->_cyTile * (cNormalDesired - v6);

@@ -1244,7 +1244,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         return FALSE;
     }
 
-    pti->fUseDefaultTip = (pnid->uFlags & NIF_SHOWTIP) != 0;
+    pti->fShowTip = (pnid->uFlags & NIF_SHOWTIP) != 0;
 
     if ((pnid->uFlags & NIF_GUID) != 0)
         memcpy(&pti->guidItem, &pnid->guidItem, sizeof(pnid->guidItem));
@@ -2060,122 +2060,55 @@ LRESULT CALLBACK CTrayNotify::s_ChevronWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
-#if 0
-    BOOL fClickDown = FALSE;
+    CTrayItem* ItemData;
+    INT_PTR i;
+    CTrayItem* pti;
+    POINT ptHittest;
+    RECT rc;
+    HWND hwndToolbarInfoTip;
+    LRESULT iIndex;
+    bool fShowInfoTip;
+    POINT ptCursor;
 
-    CTrayNotify * pTrayNotify = reinterpret_cast<CTrayNotify*>(dwRefData);
-    ASSERT((pTrayNotify != NULL));
-
-    if (pTrayNotify->_fNoTrayItemsDisplayPolicyEnabled)
-    {
-        return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-    }
-
-    switch (uMsg)
-    {
-    case WM_KEYDOWN:
-        pTrayNotify->_fReturn = (wParam == VK_RETURN);
-        break;
-
-    case WM_CONTEXTMENU:
-        {
-            INT_PTR i = SendMessage(pTrayNotify->_hwndToolbar, TB_GETHOTITEM, 0, 0);
-            if (i != -1)
-            {
-                CTrayItem * pti = pTrayNotify->m_TrayItemManager.GetItemDataByIndex(i);
-                if (lParam == (LPARAM)-1)
-                    pTrayNotify->_fKey = TRUE;
-
-                if (pTrayNotify->_fKey)
-                {
-                    pTrayNotify->_SetCursorPos(i);
-                }
-
-                if (pTrayNotify->_hwndToolbarInfoTip)
-                    SendMessage(pTrayNotify->_hwndToolbarInfoTip, TTM_POP, 0, 0);
-
-                if (pti)
-                {
-                    // Determine the anchor point command for V4:
-                    DWORD dwAnchorPointCmd = pti->uVersion >= NOTIFYICON_VERSION_4
-                        ? (lParam != TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE
-                            ? (DWORD)lParam
-                            : TRAYITEM_ANCHORPOINT_INPUTTYPE_KEYBOARD)
-                        : 0;
-
-                    SHAllowSetForegroundWindow(pti->hWnd);
-                    if (pti->uVersion >= KEYBOARD_VERSION)
-                    {
-                        pTrayNotify->_SendNotify(pti, WM_CONTEXTMENU, dwAnchorPointCmd, hwnd, i);
-                    }
-                    else
-                    {
-                        if (pTrayNotify->_fKey)
-                        {
-                            pTrayNotify->_SendNotify(pti, WM_RBUTTONDOWN, 0, nullptr, 0);
-                            pTrayNotify->_SendNotify(pti, WM_RBUTTONUP, 0, nullptr, 0);
-                        }
-                    }
-                }
-                return 0;
-            }
-        }
-        break;
-
-    default:
-        if (InRange(uMsg, WM_MOUSEFIRST, WM_MOUSELAST))
-        {
-            pTrayNotify->_OnMouseEvent(hwnd, uMsg, wParam, lParam);
-        }
-        break;
-    }
-
-    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-#endif
-    CTrayItem* ItemData; // eax
-    INT_PTR i; // eax MAPDST
-    CTrayItem* pti; // eax MAPDST
-    unsigned int v17; // eax
-    POINT ptCursor; // [esp+10h] [ebp-18h] BYREF
-    HWND hwndInfoTip; // [esp+20h] [ebp-8h]
-    // [esp+40h] [ebp+18h]
-    int iIndex; // [esp+40h] [ebp+18h]
-    bool fShowInfoTip; // [esp+47h] [ebp+1Fh]
-    NMHDR* pnm;
+    NMHDR* pnm = (NMHDR*)lParam;
 
     DWORD dwAnchorPointCmd = 0;
 
     CTrayNotify* pTrayNotify = reinterpret_cast<CTrayNotify*>(dwRefData);
-    // _AssertMsgW(pTrayNotify != nullptr, L"pTrayNotify SHOULD NOT be NULL, as passed to s_ToolbarWndProc.");
+    // _AssertMsgW(pTrayNotify != NULL, L"pTrayNotify SHOULD NOT be NULL, as passed to s_ToolbarWndProc.");
 
     if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hwnd, s_ToolbarWndProc, uIdSubclass);
     }
-    if (pTrayNotify->_fNoTrayItemsDisplayPolicyEnabled)
-    {
-        return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-    }
 
-    CTrayItemManager* ptim = hwnd == pTrayNotify->_hwndToolbarSCA ? &pTrayNotify->m_TrayItemManagerSCA : &pTrayNotify->m_TrayItemManager;
+    if (pTrayNotify->_fNoTrayItemsDisplayPolicyEnabled != 0)
+        return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+
+    CTrayItemManager* ptim = &pTrayNotify->m_TrayItemManagerSCA;
+    if (hwnd != pTrayNotify->_hwndToolbarSCA)
+    {
+        ptim = &pTrayNotify->m_TrayItemManager;
+    }
 
     if (uMsg == WM_NOTIFY)
     {
-        pnm = reinterpret_cast<NMHDR*>(lParam);
-
         ItemData = ptim->GetItemData(pnm->idFrom, 0, hwnd);
         if (!ItemData)
         {
             goto LABEL_28;
         }
 
+        fShowInfoTip = ItemData->uVersion < 4 || ItemData->fShowTip;
 
-        fShowInfoTip = ItemData->uVersion < 4 || ItemData->fUseDefaultTip;
+        if (hwnd == pTrayNotify->_hwndToolbarSCA)
+            hwndToolbarInfoTip = pTrayNotify->_hwndToolbarInfoTipSCA;
+        else
+            hwndToolbarInfoTip = pTrayNotify->_hwndToolbarInfoTip;
 
-        hwndInfoTip = hwnd == pTrayNotify->_hwndToolbarSCA ? pTrayNotify->_hwndToolbarInfoTipSCA : pTrayNotify->_hwndToolbarInfoTip;
-        if (pnm->code != -522)
+        if (pnm->code != TTN_POP)
         {
-            if (pnm->code == -521)
+            if (pnm->code == TTN_SHOW)
             {
                 if (ItemData->uVersion >= 4)
                 {
@@ -2183,10 +2116,17 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
                     if (iIndex != -1)
                     {
                         GetCursorPos(&ptCursor);
-                        MapWindowPoints(nullptr, hwnd, &ptCursor, 1u);
-                        if (iIndex == SendMessageW(hwnd, TB_HITTEST, 0, (LPARAM)&ptCursor))
+                        ptHittest = ptCursor;
+                        MapWindowPoints(nullptr, hwnd, &ptHittest, 1);
+
+                        if (iIndex == SendMessageW(hwnd, TB_HITTEST, 0, (LPARAM)&ptHittest))
                         {
-                            pTrayNotify->_SendNotify(ItemData, 0x406, MAKELONG(ptCursor.x, ptCursor.y), nullptr, 0);
+                            pTrayNotify->_SendNotify(
+                                ItemData,
+                                0x406,
+                                LOWORD(ptCursor.x) | (LOWORD(ptCursor.y) << 16),
+                                nullptr,
+                                0);
                         }
                         else
                         {
@@ -2194,9 +2134,9 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
                         }
                     }
                 }
-                if (!fShowInfoTip)
+                if (fShowInfoTip == 0)
                 {
-                    SetWindowPos(hwndInfoTip, nullptr, 0, 0, 0, 0, 0x16u);
+                    SetWindowPos(hwndToolbarInfoTip, nullptr, 0, 0, 0, 0, 0x16u);
                     return 1;
                 }
             }
@@ -2206,7 +2146,7 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
         if (ItemData->uVersion < 4)
         {
         LABEL_28:
-            if (uMsg - WM_MOUSEFIRST <= 0xE)
+            if (uMsg - 0x200 <= 0xE)
             {
                 pTrayNotify->_OnMouseEvent(hwnd, uMsg, wParam, lParam);
             }
@@ -2220,9 +2160,7 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
         i = SendMessageW(hwnd, TB_GETHOTITEM, 0, 0);
         if (i == -1)
         {
-            POINT pt;
-            RECT rc;
-            if (!GetWindowRect(hwnd, &rc) || !GetCursorPos(&pt) || PtInRect(&rc, pt))
+            if (!GetWindowRect(hwnd, &rc) || !GetCursorPos(&ptHittest) || PtInRect(&rc, ptHittest))
             {
                 return DefSubclassProc(hwnd, uMsg, wParam, lParam);
             }
@@ -2234,19 +2172,16 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
             {
                 pTrayNotify->_fKey = 1;
             }
-            if (pTrayNotify->_fKey && pti->uVersion < 4)
-            {
+            if (pTrayNotify->_fKey != 0 && pti->uVersion < 4)
                 pTrayNotify->_SetCursorPos(hwnd, i);
-            }
+
             SendMessageW(hwnd, 0x41Cu, 0, 0);
-            if (pti)
+            if (pti != nullptr)
             {
                 SHAllowSetForegroundWindow(pti->hWnd);
-
-                v17 = pti->uVersion;
-                if (v17 < 3)
+                if (pti->uVersion < 3)
                 {
-                    if (pTrayNotify->_fKey)
+                    if (pTrayNotify->_fKey != 0)
                     {
                         pTrayNotify->_SendNotify(pti, WM_RBUTTONDOWN, 0, nullptr, 0);
                         pTrayNotify->_SendNotify(pti, WM_RBUTTONUP, 0, nullptr, 0);
@@ -2254,9 +2189,9 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
                 }
                 else
                 {
-                    if (v17 >= 4)
+                    if (pti->uVersion >= 4)
                     {
-                        if (pTrayNotify->_fKey)
+                        if (pTrayNotify->_fKey != 0)
                         {
                             dwAnchorPointCmd = -2;
                         }
@@ -2265,12 +2200,13 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
                             dwAnchorPointCmd = (DWORD)lParam;
                         }
                     }
-                    pTrayNotify->_SendNotify(pti, WM_CONTEXTMENU, dwAnchorPointCmd, hwnd, i);
+                    pTrayNotify->_SendNotify(pti, 123, dwAnchorPointCmd, hwnd, i);
                 }
             }
         }
         return 0;
     }
+
     if (uMsg != WM_KEYDOWN)
     {
         goto LABEL_28;

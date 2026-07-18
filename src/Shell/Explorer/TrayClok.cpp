@@ -41,7 +41,7 @@ public:
     STDMETHODIMP_(ULONG) AddRef();
     STDMETHODIMP_(ULONG) Release();
 
-    CClockCtl() : _cRef(1) {}
+    CClockCtl() : _cRef(1), m_pAcc(NULL), m_pAccWrap(NULL) {}
 
 protected:
     // Create & Destroy
@@ -106,6 +106,9 @@ private:
     BOOL             _fClockRunning;
     BOOL             _fClockClipped;
     BOOL             _fHasFocus;
+
+    IAccessible*     m_pAcc;
+    IAccessible*     m_pAccWrap;
 
     IFlyout*        _pFlyout;
 

@@ -79,7 +79,18 @@ class CTrayItem
         UINT        uNumSeconds;
         GUID        guidItem;
 
-        BOOL         fUseDefaultTip;
+        // @Note(allison): The following 5 fields appear to be a leftover from pre-reset Longhorn and are not used
+        //                 in Vista, I am not sure why they did not just remove them rather than letting them sit
+        //                 unused.
+        BOOL        fInfo;
+        WCHAR       szInfo[256];
+        WCHAR       szInfoTitle[64];
+        UINT        uInfoTimeout;
+        DWORD       dwInfoFlags;
+
+        // @Note(allison): However, Microsoft still decided it would be a good idea to place a new field in that IS
+        //                 actually used directly after these unused fields in post-reset Longhorn.
+        BOOL        fShowTip;
 
     private:
         DWORD _GetStateFlag(ICONSTATEFLAG sf);

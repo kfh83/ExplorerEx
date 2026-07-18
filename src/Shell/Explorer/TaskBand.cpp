@@ -6450,6 +6450,7 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
         // shell gets last shot at WM_APPCOMMAND messages via our shell hook 
         // RegisterShellHookWindow() is called in shell32/.RegisterShellHook()
         // return _ptray->OnAppCommand(GET_APPCOMMAND_LPARAM(lParam));
+        break;
     }
     return 0;
 }

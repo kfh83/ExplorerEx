@@ -1054,13 +1054,13 @@ public:
     END_MSG_MAP()
 
     //~ Begin IUnknown Interface
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
     STDMETHODIMP_(ULONG) AddRef() override;
     STDMETHODIMP_(ULONG) Release() override;
     //~ End IUnknown Interface
 
     //~ Begin IServiceProvider Interface
-    STDMETHODIMP QueryService(REFGUID guidService, REFIID riid, void** ppvObject) override;
+    STDMETHODIMP QueryService(REFGUID guidService, REFIID iid, void** ppvObj) override;
     //~ End IServiceProvider Interface
 
 private:
@@ -1085,14 +1085,14 @@ private:
     friend class CTaskBarPropertySheet;
 };
 
-HRESULT CCustomizeStartMenuDlg::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT CCustomizeStartMenuDlg::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =
     {
         QITABENT(CCustomizeStartMenuDlg, IServiceProvider),
         {}
     };
-    return QISearch(this, qit, riid, ppvObject);
+    return QISearch(this, qit, riid, ppvObj);
 }
 
 ULONG CCustomizeStartMenuDlg::AddRef()
@@ -1114,10 +1114,10 @@ ULONG CCustomizeStartMenuDlg::Release()
 class CStaticDoesCsidlExist : IRegTreeItem
 {
 public:
-    explicit CStaticDoesCsidlExist(int csidl) : _csidl(csidl) {}
+    CStaticDoesCsidlExist(int csidl);
 
     //~ Begin IUnknown Interface
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override;
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override;
     STDMETHODIMP_(ULONG) AddRef() override;
     STDMETHODIMP_(ULONG) Release() override;
     //~ End IUnknown Interface
@@ -1131,14 +1131,19 @@ private:
     int _csidl;
 };
 
-HRESULT CStaticDoesCsidlExist::QueryInterface(REFIID riid, void** ppvObject)
+CStaticDoesCsidlExist::CStaticDoesCsidlExist(int csidl)
+    : _csidl(csidl)
+{
+}
+
+HRESULT CStaticDoesCsidlExist::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =
     {
         QITABENT(CStaticDoesCsidlExist, IRegTreeItem),
-        {}
+        { 0 }
     };
-    return QISearch(this, qit, riid, ppvObject);
+    return QISearch(this, qit, riid, ppvObj);
 }
 
 ULONG CStaticDoesCsidlExist::AddRef()
@@ -1153,8 +1158,8 @@ ULONG CStaticDoesCsidlExist::Release()
 
 HRESULT CStaticDoesCsidlExist::GetCheckState(BOOL* pbCheck)
 {
-    WCHAR szPath[260];
-    *pbCheck = SHGetFolderPathW(nullptr, _csidl, nullptr, 0, szPath) == 0;
+    TCHAR tszPath[MAX_PATH];
+    *pbCheck = SHGetFolderPath(NULL, _csidl, NULL, SHGFP_TYPE_CURRENT, tszPath) == 0;
     return S_OK;
 }
 
@@ -1163,20 +1168,22 @@ HRESULT CStaticDoesCsidlExist::SetCheckState(BOOL bCheck)
     return E_NOTIMPL;
 }
 
-DEFINE_GUID(stru_100AE6C, 0xE098BCD5, 0x7A3C, 0x456F, 0xB1, 0x43, 0x84, 0xDF, 0x65, 0xC1, 0x23, 0x37);
+DEFINE_GUID(SID_MyPicturesExists, 0xE098BCD5, 0x7A3C, 0x456F, 0xB1, 0x43, 0x84, 0xDF, 0x65, 0xC1, 0x23, 0x37);
 
 CStaticDoesCsidlExist c_MyPicturesExists(CSIDL_MYPICTURES);
 
-DEFINE_GUID(stru_100AE7C, 0xB5FF6591, 0x8776, 0x42A2, 0xA7, 0x04, 0x25, 0x62, 0xC7, 0xAA, 0x5A, 0x3F);
+DEFINE_GUID(SID_MyMusicExists, 0xB5FF6591, 0x8776, 0x42A2, 0xA7, 0x04, 0x25, 0x62, 0xC7, 0xAA, 0x5A, 0x3F);
 
 CStaticDoesCsidlExist c_MyMusicExists(CSIDL_MYMUSIC);
 
-HRESULT CCustomizeStartMenuDlg::QueryService(REFGUID guidService, REFIID riid, void** ppvObject)
+HRESULT CCustomizeStartMenuDlg::QueryService(REFGUID guidService, REFIID iid, void** ppvObj)
 {
-    if (IsEqualGUID(guidService, stru_100AE6C))
-        return c_MyPicturesExists.QueryInterface(riid, ppvObject);
-    if (IsEqualGUID(guidService, stru_100AE7C))
-        return c_MyMusicExists.QueryInterface(riid, ppvObject);
+    if (IsEqualGUID(guidService, SID_MyPicturesExists))
+        return c_MyPicturesExists.QueryInterface(iid, ppvObj);
+
+    if (IsEqualGUID(guidService, SID_MyMusicExists))
+        return c_MyMusicExists.QueryInterface(iid, ppvObj);
+
     return E_FAIL;
 }
 
