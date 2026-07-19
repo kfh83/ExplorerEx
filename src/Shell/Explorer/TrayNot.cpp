@@ -242,7 +242,7 @@ HRESULT CTrayNotify::RegisterCallback(INotificationCB* pNotifyCB, DWORD* pdwCBCo
 
 HRESULT CTrayNotify::UnregisterCallback(DWORD dwCBCookie)
 {
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 HRESULT CTrayNotify::SetPreference(const NOTIFYITEM* pNotifyItem)
@@ -2258,12 +2258,13 @@ HRESULT CTrayNotify::EnableAutoTray(BOOL bTraySetting)
     return S_OK;
 }
 
-HRESULT CTrayNotify::DoAction(BOOL)
+HRESULT CTrayNotify::DoAction(const NOTIFYITEM* pNotifyItem, const NOTIFYITEMACTION action)
 {
     return E_NOTIMPL;
 }
 
-HRESULT CTrayNotify::SetWindowingEnvironmentConfig(IUnknown* punk)
+HRESULT CTrayNotify::DoNotifyIconEvent(
+    const NOTIFYITEM* pNotifyItem, NotifyIconEvent event, ULONG a3, POINT a4, ULONG a5)
 {
     return E_NOTIMPL;
 }

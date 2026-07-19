@@ -34,6 +34,7 @@ public:
     inline void CopyBuffer(LPCTSTR lpszSrc, LPTSTR* plpszDest);
     inline void SetExeName(LPCTSTR lpszExeName);
     inline void SetIconText(LPCTSTR lpszIconText);
+    inline void SetAppId(LPCTSTR lpszAppId);
 };
 
 #endif // _TRAYCMN_H

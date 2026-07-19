@@ -234,18 +234,43 @@ typedef struct _TRAYAPPBARDATA
     DWORD dwProcId;
 } TRAYAPPBARDATA, * PTRAYAPPBARDATA;
 
-#pragma pack(push,0x1)
 typedef struct tagNOTIFYITEM
 {
-    LPWSTR      pszExeName;
-    LPWSTR      pszIconText;
+    PWSTR       pszExeName;
+    PWSTR       pszIconText;
     HICON       hIcon;
     HWND        hWnd;
     DWORD       dwUserPref;
     UINT        uID;
     GUID        guidItem;
-} NOTIFYITEM, * LPNOTIFYITEM;
-#pragma pack(pop)
+
+    // @Note(allison): Added in Windows 8.
+    DWORD       dwFlags;
+
+    // @Note(allison): Added in Windows 10 Build 10240.
+    int         nDisplayIndex;
+    UINT        uCallbackMsg;
+    UINT        uVersion;
+    BOOL        fUseSystemTip;
+
+    // @Note(allison): Added in Windows 10 Build 10586.
+    PWSTR       pszAppId;
+    BOOL        fIsExplicitAppId;
+} NOTIFYITEM, *LPNOTIFYITEM;
+
+#ifdef _WIN64
+static_assert(sizeof(NOTIFYITEM) == 0x60);
+static_assert(offsetof(NOTIFYITEM, dwFlags) == 0x38);
+static_assert(offsetof(NOTIFYITEM, nDisplayIndex) == 0x3C);
+static_assert(offsetof(NOTIFYITEM, pszAppId) == 0x50);
+static_assert(offsetof(NOTIFYITEM, fIsExplicitAppId) == 0x58);
+#else
+static_assert(sizeof(NOTIFYITEM) == 0x44);
+static_assert(offsetof(NOTIFYITEM, dwFlags) == 0x28);
+static_assert(offsetof(NOTIFYITEM, nDisplayIndex) == 0x2C);
+static_assert(offsetof(NOTIFYITEM, pszAppId) == 0x3C);
+static_assert(offsetof(NOTIFYITEM, fIsExplicitAppId) == 0x40);
+#endif
 
 typedef struct _NOTIFYICONDATA32A {
     DWORD cbSize;
@@ -1465,7 +1490,7 @@ EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID rii
 EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
 
-#include "interfacesp.inc"
+#include "InterfacesP.h"
 
 inline HWND WINAPI GetTaskmanWindow(void)
 {

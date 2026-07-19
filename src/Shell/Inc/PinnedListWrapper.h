@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pch.h"
-#include "InterfacesP.inc"
+#include "InterfacesP.h"
 
 class CPinnedListWrapper : public IStartMenuPin
 {

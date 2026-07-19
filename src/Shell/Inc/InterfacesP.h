@@ -245,28 +245,48 @@ INotificationCB : IUnknown
     STDMETHOD(Notify)(THIS_ ULONG, NOTIFYITEM*) PURE;
 };
 
-//MIDL_INTERFACE("fb852b2c-6bad-4605-9551-f15f87830935")
-//MIDL_INTERFACE("D133CE13-3537-48BA-93A7-AFCD5D2053B4")
-//ITrayNotify : IUnknown
-//{
-//    STDMETHOD(RegisterCallback)(INotificationCB* pNotifyCB) PURE;
-//    STDMETHOD(SetPreference)(LPNOTIFYITEM pNotifyItem) PURE;
-//    STDMETHOD(EnableAutoTray)(BOOL bTraySetting) PURE;
-//};
+MIDL_INTERFACE("fb852b2c-6bad-4605-9551-f15f87830935")
+ITrayNotify_7 : IUnknown
+{
+    STDMETHOD(RegisterCallback)(INotificationCB* pNotifyCB) PURE;
+    STDMETHOD(SetPreference)(const NOTIFYITEM* pNotifyItem) PURE;
+    STDMETHOD(EnableAutoTray)(BOOL bTraySetting) PURE;
+};
 
-#pragma optimize( "", off )
-//this is the Windows 8+ variant of ITrayNotify, probably not needed for now but might need it for later
+typedef enum tagNOTIFYITEMACTION
+{
+	NIA_DEFAULT = 0x0,
+	NIA_CLOSE	= 0x1,
+} NOTIFYITEMACTION;
+
+typedef enum __MIDL___MIDL_itf_shpriv_0000_0034_0001
+{
+	NIE_NULL				= 0,
+
+	NIE_MouseMove			= 1,
+	NIE_MouseDown			= 2,
+	NIE_MouseUp				= 3,
+	NIE_MouseClick			= 4,
+	NIE_MouseDoubleClick	= 5,
+	NIE_ContextMenu			= 6,
+	NIE_KeyDown				= 7,
+	NIE_KeyUp				= 8,
+	NIE_Tooltip				= 9,
+	NIE_Reorder				= 10,
+} NotifyIconEvent;
+
+//@Note(allison): this is the Windows 8+ variant of ITrayNotify, probably not needed for now but might need it for later
 MIDL_INTERFACE("D133CE13-3537-48BA-93A7-AFCD5D2053B4")
 ITrayNotify : IUnknown
 {
-	STDMETHOD(RegisterCallback)(INotificationCB*, DWORD*) PURE;
-	STDMETHOD(UnregisterCallback)(DWORD) PURE;
-	STDMETHOD(SetPreference)(const NOTIFYITEM*) PURE;
-	STDMETHOD(EnableAutoTray)(BOOL) PURE;
-	STDMETHOD(DoAction)(BOOL) PURE;
-	STDMETHOD(SetWindowingEnvironmentConfig)(IUnknown*) PURE;
+	STDMETHOD(RegisterCallback)(INotificationCB* pNotifyCB, DWORD* pdwCBCookie) PURE;
+	STDMETHOD(UnregisterCallback)(DWORD dwCBCookie) PURE;
+	STDMETHOD(SetPreference)(const NOTIFYITEM* pNotifyItem) PURE;
+	STDMETHOD(EnableAutoTray)(BOOL bTraySetting) PURE;
+
+	STDMETHOD(DoAction)(const NOTIFYITEM* pNotifyItem, const NOTIFYITEMACTION action) PURE;
+	STDMETHOD(DoNotifyIconEvent)(const NOTIFYITEM* pNotifyItem, NotifyIconEvent event, ULONG a3, POINT a4, ULONG a5) PURE;
 };
-#pragma optimize( "", on )
 
 struct QUERYNAMESPACEINFO
 {

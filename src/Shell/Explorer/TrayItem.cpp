@@ -303,6 +303,12 @@ BOOL CTrayItemManager::GetTrayItem(INT_PTR nIndex, CNotificationItem * pni, BOOL
             pni->SetIconText(szText);
             memcpy(&(pni->guidItem), &(pti->guidItem), sizeof(pti->guidItem));
 
+            pni->dwFlags        = 0;
+            pni->nDisplayIndex  = static_cast<int>(nIndex);
+            pni->uVersion       = pti->uVersion;
+            pni->fUseSystemTip  = pti->fShowTip;
+            pni->uCallbackMsg   = pti->uCallbackMessage;
+
             *pbStat = TRUE;
             return TRUE;
         }

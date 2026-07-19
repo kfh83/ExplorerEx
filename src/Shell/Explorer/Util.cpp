@@ -3,7 +3,7 @@
 #include "util.h"
 
 #define DECL_CRTFREE
-//#include <crtfree.h>
+#include <crtfree.h>
 #include "qsort.h"
 
 #include "shundoc.h"

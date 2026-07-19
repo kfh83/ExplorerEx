@@ -32,10 +32,17 @@ CNotificationItem::CNotificationItem(const TNPersistStreamData* ptnpd)
 
 inline void CNotificationItem::_Init()
 {
-    hIcon = nullptr;
-    pszExeName = nullptr;
-    pszIconText = nullptr;
-    guidItem = GUID_NULL;
+    hIcon               = nullptr;
+    pszExeName          = nullptr;
+    pszIconText         = nullptr;
+    pszAppId            = nullptr;
+    fIsExplicitAppId    = FALSE;
+    guidItem            = GUID_NULL;
+    nDisplayIndex       = -1;
+    dwFlags             = 0;
+    uVersion            = 0;
+    fUseSystemTip       = FALSE;
+    uCallbackMsg        = 0;
 }
 
 void CNotificationItem::CopyNotifyItem(const NOTIFYITEM& no, BOOL bInsert /* = TRUE */)
@@ -47,7 +54,13 @@ void CNotificationItem::CopyNotifyItem(const NOTIFYITEM& no, BOOL bInsert /* = T
     hIcon = CopyIcon(no.hIcon);
     SetExeName(no.pszExeName);
     SetIconText(no.pszIconText);
+    SetAppId(no.pszAppId);
+    fIsExplicitAppId = no.fIsExplicitAppId;
     memcpy(&guidItem, &(no.guidItem), sizeof(no.guidItem));
+    nDisplayIndex = no.nDisplayIndex;
+    uVersion = no.uVersion;
+    fUseSystemTip = no.fUseSystemTip;
+    uCallbackMsg = no.uCallbackMsg;
 }
 
 const CNotificationItem& CNotificationItem::operator=(const TNPersistStreamData* ptnpd)
@@ -82,6 +95,14 @@ void CNotificationItem::CopyPTNPD(const TNPersistStreamData* ptnpd)
         SetIconText(ptnpd->szIconText);
 
         memcpy(&guidItem, &ptnpd->guidItem, sizeof(ptnpd->guidItem));
+
+        nDisplayIndex = -1;
+        dwFlags = 0;
+        uVersion = 0;
+        fUseSystemTip = FALSE;
+        uCallbackMsg = 0;
+        pszAppId = nullptr;
+        fIsExplicitAppId = FALSE;
     }
 }
 
@@ -122,6 +143,12 @@ inline void CNotificationItem::SetIconText(LPCTSTR lpszIconText)
     CoAllocStringOpt(lpszIconText, &pszIconText);
 }
 
+inline void CNotificationItem::SetAppId(LPCTSTR lpszAppId)
+{
+    CoTaskMemFree(pszAppId);
+    CoAllocStringOpt(lpszAppId, &pszAppId);
+}
+
 CNotificationItem::~CNotificationItem()
 {
     _Free();
@@ -129,10 +156,17 @@ CNotificationItem::~CNotificationItem()
 
 void CNotificationItem::_Free()
 {
-    if (hIcon != nullptr)
+    if (hIcon)
         DestroyIcon(hIcon);
+
     CoTaskMemFree(pszExeName);
+    pszExeName = nullptr;
+
     CoTaskMemFree(pszIconText);
+    pszIconText = nullptr;
+
+    CoTaskMemFree(pszAppId);
+    pszAppId = nullptr;
 }
 
 BOOL CNotificationItem::operator==(CNotificationItem& ni) const

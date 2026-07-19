@@ -592,19 +592,19 @@ void CLogoffPane::_SetShutdownButtonProperties(int a2)
     SHUTDOWN_CHOICE sdChoice;
     if (_psdc && SUCCEEDED(_psdc->GetDefaultChoice(&sdChoice)))
     {
-        _ASSERT(sdChoice != SHTDN_NONE); // 780
-        if ((sdChoice & SHTDN_MODIFIER_ACCESS_DENIED) != 0 && a2)
+        ASSERT(sdChoice != SHTDN_NONE); // 780
+        if ((sdChoice & SHTDN_MODIFIER_ACCESS_DENIED) && a2)
         {
-            SendMessageW(_hwndTB, TB_SETSTATE, 1, TBSTATE_INDETERMINATE);
+            SendMessage(_hwndTB, TB_SETSTATE, 1, TBSTATE_INDETERMINATE);
         }
 
         TBBUTTONINFOW tbbi = {};
         tbbi.cbSize = sizeof(tbbi);
         tbbi.dwMask = TBIF_IMAGE;
-        tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice) + 2; // 1 = shutdown + update, 2 = sleep
+        tbbi.iImage = _GetLocalImageForShutdownChoice(sdChoice); // 1 = shutdown + update, 2 = sleep
 
         (void)sdChoice; // Skipped telemetry StartMenu_Right_Control_Button_Label
-        SendMessageW(_hwndTB, TB_SETBUTTONINFOW, 1, (LPARAM)&tbbi);
+        SendMessage(_hwndTB, TB_SETBUTTONINFO, 1, (LPARAM)&tbbi);
     }
 }
 
@@ -618,12 +618,12 @@ void CLogoffPane::_ApplyOptions()
         _psdc->Refresh();
 
     BOOL fShowShutdown = _ShowStartMenuShutdown();
-    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_TURNOFF, fShowShutdown == 0);
-    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_DISCONNECT, _ShowStartMenuDisconnect() == 0);
-    SendMessageW(_hwndTB, TB_HIDEBUTTON, SMNLC_LOGOFF, _AllowLockWorkStation() == 0);
+    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_TURNOFF, fShowShutdown == 0);
+    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_DISCONNECT, _ShowStartMenuDisconnect() == 0);
+    SendMessage(_hwndTB, TB_HIDEBUTTON, SMNLC_LOGOFF, _AllowLockWorkStation() == 0);
 
     SIZE siz;
-    if (SendMessageW(_hwndTB, TB_GETMAXSIZE, 0, reinterpret_cast<LPARAM>(&siz)))
+    if (SendMessage(_hwndTB, TB_GETMAXSIZE, 0, (LPARAM)&siz))
     {
         _cxToolbar = siz.cx;
     }
@@ -655,18 +655,13 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
             case TBN_GETINFOTIPW:
                 if (_GetCurPressedButton() == -1)
                 {
-                    NMTBGETINFOTIPW* ptbgit = reinterpret_cast<NMTBGETINFOTIPW*>(pnm);
+                    NMTBGETINFOTIP* ptbgit = reinterpret_cast<NMTBGETINFOTIP*>(pnm);
                     if (ptbgit->lParam != IDS_LOGOFF_TIP_SHUTDOWN)
                     {
-                        _ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT && ptbgit->lParam <= IDS_LOGOFF_TIP_LAST); // 879
+                        ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT && ptbgit->lParam <= IDS_LOGOFF_TIP_LAST); // 879
                         if (ptbgit->lParam)
                         {
-                            LoadStringW(g_hinstCabinet, ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
-                            wprintf(
-                                L"[LoadStringW]: lParam=%lld, pszText=%s, cchTextMax=%d\n",
-                                ptbgit->lParam,
-                                ptbgit->pszText,
-                                ptbgit->cchTextMax);
+                            LoadString(g_hinstCabinet, ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
                         }
                     }
                     else if (_psdc)
@@ -675,11 +670,6 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
                         if (SUCCEEDED(_psdc->GetDefaultChoice(&sdChoice)))
                         {
                             _psdc->GetChoiceDesc(sdChoice, ptbgit->pszText, ptbgit->cchTextMax);
-                            wprintf(
-                                L"[_psdc->GetChoiceDesc]: lParam=%lu, pszText=%s, cchTextMax=%d\n",
-                                sdChoice,
-                                ptbgit->pszText,
-                                ptbgit->cchTextMax);
                         }
                     }
                 }
@@ -707,10 +697,10 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
         case 214:
             if (GetFocus() == _hwndTB)
             {
-                v13 = SendMessageW(_hwndTB, TB_GETHOTITEM, 0, 0);
+                v13 = SendMessage(_hwndTB, TB_GETHOTITEM, 0, 0);
                 NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, v13 + 1);
             }
-            goto LABEL_29;
+            goto L_SET_FOCUS;
         case 215:
             return _OnSMNFindItem(reinterpret_cast<SMNDIALOGMESSAGE*>(pnm));
         case 221:
@@ -746,7 +736,7 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
         case 225:
             break;
         case NM_KILLFOCUS:
-        LABEL_29:
+        L_SET_FOCUS:
             if (_fSplitButtonHot || _GetCurPressedButton() == 99)
             {
                 _fSplitButtonHot = 0;

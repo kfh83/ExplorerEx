@@ -526,10 +526,12 @@ LRESULT CNotificationsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&pCB))))
         {
-            ULONG a;
-            _pTrayNotify->RegisterCallback(pCB,&a);
+            DWORD cookie;
+            _pTrayNotify->RegisterCallback(pCB, &cookie);
             if (pCB)
+            {
                 pCB->Release();
+            }
         }
     }
 
@@ -648,8 +650,8 @@ LRESULT CNotificationsDlg::OnCloseCmd(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 
     if (_pTrayNotify)
     {
-        DWORD dwToken;
-        _pTrayNotify->RegisterCallback(nullptr, &dwToken);
+        DWORD cookie;
+        _pTrayNotify->RegisterCallback(nullptr, &cookie);
     }
 
     bHandled = TRUE;
@@ -726,21 +728,18 @@ LRESULT CALLBACK CNotificationsDlg::s_ComboBoxSubClassWndProc( HWND hwnd, UINT u
 
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
-#pragma optimize( "", off )
+
 void CNotificationsDlg::ApplyChanges(void)
 {
-    if (!_fItemChanged)
-        return;
-
-    if (_pTrayNotify)
+    if (_fItemChanged && _pTrayNotify)
     {
         for (int i = 0; i < _saItems.GetSize(); i++)
         {
-            _pTrayNotify->SetPreference((NOTIFYITEM*)&_saItems[i]);
+            _pTrayNotify->SetPreference(&_saItems[i]);
         }
     }
 }
-#pragma optimize( "", on )
+
 void CNotificationsDlg::_ShowComboBox(void)
 {
     int nCurIndex = _GetCurSel();

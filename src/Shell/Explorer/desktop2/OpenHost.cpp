@@ -13,11 +13,11 @@
 
 const SMPANEDATA g_aopaDefault[] =
 {
-	{ L"DesktopSFTBarHost",				0,	SPP_PROGLIST,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
-	{ L"Desktop NSCHost",				0,	SPP_NSCHOST,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
-	{ L"Desktop Search Open View",		0,	SPP_SEARCHVIEW,		{ 0,  0}, nullptr, nullptr, FALSE, nullptr },
-	{ L"Desktop More Programs Pane",	0,	SPP_MOREPROGRAMS,	{ 0, 30}, nullptr, nullptr, FALSE, nullptr },
-	{ L"Desktop top match",				0,	SPP_TOPMATCH,		{ 0, 20}, nullptr, nullptr, FALSE, nullptr }
+	{ L"DesktopSFTBarHost",				0,	SPP_PROGLIST,		{ 0,  0}, NULL, NULL, FALSE, NULL },
+	{ L"Desktop NSCHost",				0,	SPP_NSCHOST,		{ 0,  0}, NULL, NULL, FALSE, NULL },
+	{ L"Desktop Search Open View",		0,	SPP_SEARCHVIEW,		{ 0,  0}, NULL, NULL, FALSE, NULL },
+	{ L"Desktop More Programs Pane",	0,	SPP_MOREPROGRAMS,	{ 0, 30}, NULL, NULL, FALSE, NULL },
+	{ L"Desktop top match",				0,	SPP_TOPMATCH,		{ 0, 20}, NULL, NULL, FALSE, NULL }
 };
 
 HRESULT COpenViewHost::QueryInterface(REFIID riid, void** ppvObj)

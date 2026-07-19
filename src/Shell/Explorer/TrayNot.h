@@ -135,8 +135,9 @@ public:
     STDMETHODIMP UnregisterCallback(DWORD dwCBCookie) override;
     STDMETHODIMP SetPreference(const NOTIFYITEM* pNotifyItem) override;
     STDMETHODIMP EnableAutoTray(BOOL bTraySetting) override;
-    STDMETHODIMP DoAction(BOOL) override;
-    STDMETHODIMP SetWindowingEnvironmentConfig(IUnknown* punk) override;
+    STDMETHODIMP DoAction(const NOTIFYITEM* pNotifyItem, const NOTIFYITEMACTION action) override;
+    STDMETHODIMP DoNotifyIconEvent(
+        const NOTIFYITEM* pNotifyItem, NotifyIconEvent event, ULONG a3, POINT a4, ULONG a5) override;
     //~ End ITrayNotify Interface
 
     // *** Properties Sheet methods ***
