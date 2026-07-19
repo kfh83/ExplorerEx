@@ -159,10 +159,11 @@ HRESULT COpenViewHost::SetSite(IUnknown* punkSite)
 			if (_aopa[i].punk)
 			{
 				IUnknown_SetSite(_aopa[i].punk, nullptr);
-				IUnknown_SafeReleaseAndNullPtr(&_aopa[i].punk);
+				IUnknown_SafeReleaseAndNullPtr(_aopa[i].punk);
 			}
 		}
 	}
+
 	return S_OK;
 }
 

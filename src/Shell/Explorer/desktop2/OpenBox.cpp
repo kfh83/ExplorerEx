@@ -81,7 +81,7 @@ HRESULT COpenBoxHost::SetSite(IUnknown* punkSite)
     if (!punkSite && _pssc)
     {
         IUnknown_SetSite(_pssc, nullptr);
-        IUnknown_SafeReleaseAndNullPtr(&_pssc);
+        IUnknown_SafeReleaseAndNullPtr(_pssc);
     }
     return S_OK;
 }
@@ -410,7 +410,7 @@ COpenBoxHost::COpenBoxHost(HWND hwnd)
 
 COpenBoxHost::~COpenBoxHost()
 {
-    IUnknown_SafeReleaseAndNullPtr(&_pssc);
+    IUnknown_SafeReleaseAndNullPtr(_pssc);
 	CoTaskMemFree(_pszSearchQuery);
 }
 

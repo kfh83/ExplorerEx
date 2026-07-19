@@ -486,15 +486,14 @@ typedef struct _tagSHELLREMINDER
 
 #define ATOMICRELEASET(p, type) { if(p) { type* punkT=p; p=NULL; punkT->Release();} }
 
-template <class T>
-void IUnknown_SafeReleaseAndNullPtr(T **ptr)
+template <typename T>
+void IUnknown_SafeReleaseAndNullPtr(T*& p)
 {
-    T *pRes = *ptr;
-
-    if (*ptr)
+    T* pTemp = p;
+    if (p)
     {
-        *ptr = NULL;
-        pRes->Release();
+        p = NULL;
+        pTemp->Release();
     }
 }
 

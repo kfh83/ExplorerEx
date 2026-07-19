@@ -3798,8 +3798,8 @@ LRESULT CTray::_HandleDestroy()
         _uNotify = 0;
     }
 
-    IUnknown_SafeReleaseAndNullPtr(&_ptbs);
-    IUnknown_SafeReleaseAndNullPtr(&_pdbTasks);
+    IUnknown_SafeReleaseAndNullPtr(_ptbs);
+    IUnknown_SafeReleaseAndNullPtr(_pdbTasks);
     _hwndTasks = nullptr;
 
     if (_hwndTrayTips)
@@ -6975,8 +6975,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case TM_SETPUMPHOOK:
-            IUnknown_SafeReleaseAndNullPtr(&_pmbTasks);
-            IUnknown_SafeReleaseAndNullPtr(&_pmpTasks);
+            IUnknown_SafeReleaseAndNullPtr(_pmbTasks);
+            IUnknown_SafeReleaseAndNullPtr(_pmpTasks);
             if (wParam && lParam)
             {
                 _pmbTasks = (IMenuBand*)wParam;
@@ -7993,8 +7993,8 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             _RaiseDesktop(wParam, lParam);
             return lres;
         case TM_SETPUMPHOOK:
-            IUnknown_SafeReleaseAndNullPtr(&_pmbTasks);
-            IUnknown_SafeReleaseAndNullPtr(&_pmpTasks);
+            IUnknown_SafeReleaseAndNullPtr(_pmbTasks);
+            IUnknown_SafeReleaseAndNullPtr(_pmpTasks);
             if (wParam && lParam)
             {
                 _pmbTasks = reinterpret_cast<IMenuBand*>(wParam);

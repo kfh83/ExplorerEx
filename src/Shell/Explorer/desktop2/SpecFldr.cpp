@@ -1670,7 +1670,7 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
                     psm->AddRef();
                 }
 
-                IUnknown_SafeReleaseAndNullPtr(&psmc);
+                IUnknown_SafeReleaseAndNullPtr(psmc);
             }
             psm->Release();
         }

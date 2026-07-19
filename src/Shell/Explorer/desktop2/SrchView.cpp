@@ -60,7 +60,7 @@ CSearchOpenView::~CSearchOpenView()
 	ASSERT(_psmqc == NULL);						// 280
 
 	_RevokeQuerySink();
-	IUnknown_SafeReleaseAndNullPtr(&_psmqs);
+	IUnknown_SafeReleaseAndNullPtr(_psmqs);
 }
 
 HRESULT CSearchOpenView::QueryInterface(REFIID riid, void **ppvObj)
@@ -288,18 +288,18 @@ HRESULT CSearchOpenView::SetSite(IUnknown *punkSite)
 	if (!punkSite)
 	{
 		_ReleaseExplorerBrowser();
-		IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
-		IUnknown_SafeReleaseAndNullPtr(&_psiaStartMenuProvider);
-		IUnknown_SafeReleaseAndNullPtr(&_psched);
-		IUnknown_SafeReleaseAndNullPtr(&_pqp);
-		IUnknown_SafeReleaseAndNullPtr(&_pcf);
+		IUnknown_SafeReleaseAndNullPtr(_pFolderView);
+		IUnknown_SafeReleaseAndNullPtr(_psiaStartMenuProvider);
+		IUnknown_SafeReleaseAndNullPtr(_psched);
+		IUnknown_SafeReleaseAndNullPtr(_pqp);
+		IUnknown_SafeReleaseAndNullPtr(_pcf);
 
 		if (_psmqc)
 		{
 			_psmqc->ReleaseCache();
 		}
 
-		IUnknown_SafeReleaseAndNullPtr(&_psmqc);
+		IUnknown_SafeReleaseAndNullPtr(_psmqc);
 		_DisconnectShellView();
 	}
 	return S_OK;
@@ -488,7 +488,7 @@ HRESULT CSearchOpenView::OnPreViewCreated(IShellView *ppshv)
 {
 	_fIsBrowsing = FALSE;
 
-	IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
+	IUnknown_SafeReleaseAndNullPtr(_pFolderView);
 
 	_DisconnectShellView();
 	_ConnectShellView(ppshv);
@@ -2298,7 +2298,7 @@ CStartMenuQuerySink::CStartMenuQuerySink(HWND hwnd)
 
 CStartMenuQuerySink::~CStartMenuQuerySink()
 {
-	IUnknown_SafeReleaseAndNullPtr(&m_punkMarshal);
+	IUnknown_SafeReleaseAndNullPtr(m_punkMarshal);
 }
 
 HRESULT CStartMenuQuerySink::QueryInterface(REFIID riid, void **ppvObject)
@@ -2502,7 +2502,7 @@ HRESULT CSearchOpenView::_RecreateBrowserObject()
 			delete _ppci;
 			_ppci = nullptr;
 		}
-		IUnknown_SafeReleaseAndNullPtr(&_pFolderView);
+		IUnknown_SafeReleaseAndNullPtr(_pFolderView);
 		_DisconnectShellView();
 
 		hr = _CreateExplorerBrowser(_hwnd);
@@ -3022,7 +3022,7 @@ STDAPI SHCreateFilteredIDList(
 		{
 			if (pidl)
 			{
-				IUnknown_SafeReleaseAndNullPtr(&psf3);
+				IUnknown_SafeReleaseAndNullPtr(psf3);
 				hr = SHBindToObject(psf, pidl, nullptr, IID_PPV_ARGS(&psf3));
 			}
 			if (SUCCEEDED(hr))
@@ -3038,7 +3038,7 @@ STDAPI SHCreateFilteredIDList(
 		}
 
 		ILFree(pidl);
-		IUnknown_SafeReleaseAndNullPtr(&psf3);
+		IUnknown_SafeReleaseAndNullPtr(psf3);
 	}
 
 	return hr;
@@ -3181,7 +3181,7 @@ HRESULT CSearchOpenView::_UpdateSearchText(const WCHAR* psz)
 
 			// Skipped telemetry StartPane_FindItem_Start
 
-			IUnknown_SafeReleaseAndNullPtr(&_psiFolder);
+			IUnknown_SafeReleaseAndNullPtr(_psiFolder);
 			hr = _InitRegularAutoListItem(&_psiFolder);
 			if (SUCCEEDED(hr))
 			{
@@ -3267,8 +3267,8 @@ void CSearchOpenView::_DisconnectShellView()
 {
 	if (_pDispatchView)
 	{
-		ConnectToConnectionPoint(static_cast<IDispatch *>(this), DIID_DShellFolderViewEvents, FALSE, _pDispatchView, &field_74, nullptr);
-		IUnknown_SafeReleaseAndNullPtr(&_pDispatchView);
+		ConnectToConnectionPoint(static_cast<IDispatch*>(this), DIID_DShellFolderViewEvents, FALSE, _pDispatchView, &field_74, nullptr);
+		IUnknown_SafeReleaseAndNullPtr(_pDispatchView);
 	}
 }
 
@@ -3553,7 +3553,7 @@ void CSearchOpenView::_ReleaseExplorerBrowser()
 		_peb->Destroy();
 		IUnknown_SetSite(_peb, nullptr);
 	}
-	IUnknown_SafeReleaseAndNullPtr(&_peb);
+	IUnknown_SafeReleaseAndNullPtr(_peb);
 }
 
 void RevokeFromGIT(DWORD dwCookie)

@@ -418,7 +418,7 @@ HRESULT CAccessible::GetInnerAccessible(HWND hwnd, LPARAM lParam)
         hr = _paccInner->QueryInterface(IID_PPV_ARGS(&_pevarInner));
         if (FAILED(hr))
         {
-            IUnknown_SafeReleaseAndNullPtr(&_paccInner);
+            IUnknown_SafeReleaseAndNullPtr(_paccInner);
         }
         return hr;
     }

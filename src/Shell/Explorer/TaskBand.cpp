@@ -349,7 +349,7 @@ CTaskBandSMC::CTaskBandSMC(CTaskBand* ptb)
 
 CTaskBandSMC::~CTaskBandSMC()
 {
-    IUnknown_SafeReleaseAndNullPtr(&_ptb);
+    IUnknown_SafeReleaseAndNullPtr(_ptb);
 }
 
 ////////////////////////////////////////////////////////////////////////////

@@ -197,14 +197,14 @@ HRESULT CDesktopHost::SetSite(IUnknown* punkSite)
     CObjectWithSite::SetSite(punkSite);
     if (!_punkSite)
     {
-        IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
+        IUnknown_SafeReleaseAndNullPtr(_ppmPrograms);
 
         for (int i = 0; i < ARRAYSIZE(_spm.panes); ++i)
         {
             if (_spm.panes[i].punk)
             {
                 IUnknown_SetSite(_spm.panes[i].punk, nullptr);
-                IUnknown_SafeReleaseAndNullPtr(&_spm.panes[i].punk);
+                IUnknown_SafeReleaseAndNullPtr(_spm.panes[i].punk);
             }
         }
 
@@ -226,8 +226,8 @@ CDesktopHost::~CDesktopHost()
         DeleteObject(_hbmCachedSnapshot);
     }
 
-	IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
-	IUnknown_SafeReleaseAndNullPtr(&_ppmTracking);
+	IUnknown_SafeReleaseAndNullPtr(_ppmPrograms);
+	IUnknown_SafeReleaseAndNullPtr(_ppmTracking);
 
     if (_hwnd)
     {
@@ -1953,7 +1953,7 @@ void CDesktopHost::_DismissTrackShellMenu()
 // EXEX-VISTA(allison): Validated.
 void CDesktopHost::_CleanupTrackShellMenu()
 {
-    IUnknown_SafeReleaseAndNullPtr(&_ppmTracking);
+    IUnknown_SafeReleaseAndNullPtr(_ppmTracking);
     _hwndTracking = NULL;
     _hwndAltTracking = NULL;
     KillTimer(_hwnd, IDT_MENUCHANGESEL);
@@ -3432,7 +3432,7 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
     _DestroyClipBalloon();
     if (_ppmTracking)
         _ppmTracking->OnSelect(2);
-    IUnknown_SafeReleaseAndNullPtr(&_ppmTracking);
+    IUnknown_SafeReleaseAndNullPtr(_ppmTracking);
 
     int v11 = 0;
     if (_hwndTracking == _spm.panes[2].hwnd)
@@ -3444,7 +3444,7 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
         }
         else
         {
-            IUnknown_SafeReleaseAndNullPtr(&_ppmPrograms);
+            IUnknown_SafeReleaseAndNullPtr(_ppmPrograms);
             _SubclassTrackShellMenu(ptsm->psm);
             hr = CPopupMenu_CreateInstance(ptsm->psm, GetUnknown(), this->_hwnd, &this->_ppmPrograms);
             if (hr < 0)
@@ -3867,9 +3867,9 @@ private:
 
     ~CDeskHostShellMenuCallback()
     {
-        IUnknown_SafeReleaseAndNullPtr(&_pdh);
+        IUnknown_SafeReleaseAndNullPtr(_pdh);
         IUnknown_SetSite(_psmcPrev, NULL);
-        IUnknown_SafeReleaseAndNullPtr(&_psmcPrev);
+        IUnknown_SafeReleaseAndNullPtr(_psmcPrev);
     }
 
     IShellMenuCallback* _psmcPrev;
@@ -3927,7 +3927,7 @@ HRESULT CDeskHostShellMenuCallback::SetSite(IUnknown* punkSite)
     // If the game is over, break our backreference
     if (!punkSite)
     {
-        IUnknown_SafeReleaseAndNullPtr(&_pdh);
+        IUnknown_SafeReleaseAndNullPtr(_pdh);
     }
 
     return S_OK;
@@ -4003,8 +4003,8 @@ STDAPI DesktopV2_Create(IMenuPopup** ppmp, IMenuBand** ppmb, void** ppvStartPane
 
     if (FAILED(hr))
     {
-        IUnknown_SafeReleaseAndNullPtr(ppmp);
-        IUnknown_SafeReleaseAndNullPtr(ppmb);
+        IUnknown_SafeReleaseAndNullPtr(*ppmp);
+        IUnknown_SafeReleaseAndNullPtr(*ppmb);
         ppvStartPane = nullptr;
     }
 

@@ -497,10 +497,10 @@ LRESULT CNSCHost::_OnDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	IUnknown_SetSite(_pns, nullptr);
 
-	IUnknown_SafeReleaseAndNullPtr(&_pns);
-	IUnknown_SafeReleaseAndNullPtr(&_pweh);
-	IUnknown_SafeReleaseAndNullPtr(&_psif);
-	IUnknown_SafeReleaseAndNullPtr(&_psf);
+	IUnknown_SafeReleaseAndNullPtr(_pns);
+	IUnknown_SafeReleaseAndNullPtr(_pweh);
+	IUnknown_SafeReleaseAndNullPtr(_psif);
+	IUnknown_SafeReleaseAndNullPtr(_psf);
 	ILFree(_pidl);
 	return 0;
 }

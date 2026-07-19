@@ -39,7 +39,7 @@ CMorePrograms::~CMorePrograms()
     if (_hfMarlett)
       DeleteObject(_hfMarlett);
 
-    IUnknown_SafeReleaseAndNullPtr(&_pdth);
+    IUnknown_SafeReleaseAndNullPtr(_pdth);
 
     // Note that we do not need to clean up our HWNDs.
     // USER does that for us automatically.

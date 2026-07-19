@@ -772,8 +772,8 @@ CStartMenuCallbackBase::~CStartMenuCallbackBase()
     Str_SetPtrW(&_pszPrograms, nullptr);
     Str_SetPtrW(&_pszCommonPrograms, nullptr);
 
-    IUnknown_SafeReleaseAndNullPtr(&_pgpf);
-    IUnknown_SafeReleaseAndNullPtr(&_ptp2);
+    IUnknown_SafeReleaseAndNullPtr(_pgpf);
+    IUnknown_SafeReleaseAndNullPtr(_ptp2);
 }
 
 CStartMenuCallback::~CStartMenuCallback()

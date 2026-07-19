@@ -246,9 +246,9 @@ HRESULT StartMenuHost_Create(IMenuPopup** ppmp, IMenuBand** ppmb, IUnknown** ppu
     if (FAILED(hres))
     {
         IUnknown_SetSite(pmp, nullptr);
-        IUnknown_SafeReleaseAndNullPtr(&pmp);
-        IUnknown_SafeReleaseAndNullPtr(&pmb);
-        IUnknown_SafeReleaseAndNullPtr(&psmh);
+        IUnknown_SafeReleaseAndNullPtr(pmp);
+        IUnknown_SafeReleaseAndNullPtr(pmb);
+        IUnknown_SafeReleaseAndNullPtr(psmh);
     }
 
     *ppmp = pmp;

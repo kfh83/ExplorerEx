@@ -1173,7 +1173,7 @@ exit:
         }
     }
 
-    IUnknown_SafeReleaseAndNullPtr(&psf);
+    IUnknown_SafeReleaseAndNullPtr(psf);
     CoTaskMemFree(lvi.pszText);
     return iItem;
 #endif
@@ -1674,7 +1674,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     if (!SetWindowSubclass(_hwndList, s_DropTargetSubclassProc, 0,
         reinterpret_cast<DWORD_PTR>(this)))
     {
-        IUnknown_SafeReleaseAndNullPtr(&_pdth);
+        IUnknown_SafeReleaseAndNullPtr(_pdth);
     }
 
     if (!_dpaEnum.Create(4))
@@ -5013,7 +5013,7 @@ HRESULT SFTBarHost::_TryInnerDropTarget(int iItem, DWORD grfKeyState, POINTL ptl
                 (*p_pdtDragOver)->DragLeave();
             }
             //this->_iDragState = 0;
-            IUnknown_SafeReleaseAndNullPtr(&this->_pdtDragOver);
+            IUnknown_SafeReleaseAndNullPtr(_pdtDragOver);
             goto LABEL_18;
         }
     }
@@ -5464,7 +5464,7 @@ HRESULT SFTBarHost::Drop(IDataObject *pdto, DWORD grfKeyState, POINTL ptl, DWORD
         {
             ASSERT(_iDragState == DRAGSTATE_ENTERED); // 4131
             _pdtDragOver->Drop(_pdtoDragIn, grfKeyState, ptl, pdwEffect);
-            IUnknown_SafeReleaseAndNullPtr(&_pdtDragOver);
+            IUnknown_SafeReleaseAndNullPtr(_pdtDragOver);
 #ifdef DEBUG
             _iDragState = DRAGSTATE_UNINITIALIZED;
 #endif

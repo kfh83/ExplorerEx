@@ -1876,7 +1876,7 @@ DWORD WINAPI s_DoInvokeVerb(void* pv)
                 pcm->Release();
             }
 
-            IUnknown_SafeReleaseAndNullPtr(&pbc);
+            IUnknown_SafeReleaseAndNullPtr(pbc);
             psia->Release();
         }
     }
@@ -1893,9 +1893,9 @@ DWORD WINAPI s_DoInvokeVerb(void* pv)
         SHProcessMessagesUntilTimeout(info->hwnd, 5000, 15000);
     }
 
-    IUnknown_SafeReleaseAndNullPtr(&info->punkSiteBG);
-    IUnknown_SafeReleaseAndNullPtr(&info->pstrmItems);
-    IUnknown_SafeReleaseAndNullPtr(&info->pstrmSite);
+    IUnknown_SafeReleaseAndNullPtr(info->punkSiteBG);
+    IUnknown_SafeReleaseAndNullPtr(info->pstrmItems);
+    IUnknown_SafeReleaseAndNullPtr(info->pstrmSite);
     CoTaskMemFree(info->pszVerb);
     CoTaskMemFree(info->pszWorkingDir);
     CoTaskMemFree(info);
@@ -1992,8 +1992,8 @@ EXTERN_C STDAPI SHInvokeCommandOnBackgroundThread(
 
         if (info)
         {
-            IUnknown_SafeReleaseAndNullPtr(&info->pstrmItems);
-            IUnknown_SafeReleaseAndNullPtr(&info->pstrmSite);
+            IUnknown_SafeReleaseAndNullPtr(info->pstrmItems);
+            IUnknown_SafeReleaseAndNullPtr(info->pstrmSite);
             CoTaskMemFree(info->pszVerb);
             CoTaskMemFree(info->pszWorkingDir);
             CoTaskMemFree(info);

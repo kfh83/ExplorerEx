@@ -145,7 +145,7 @@ STDAPI BindCtx_AddObjectParam(IBindCtx* pbc, const WCHAR* pszKey, IUnknown* punk
 
     hr = pbc->RegisterObjectParam((LPOLESTR)pszKey, punkValue);
 
-    IUnknown_SafeReleaseAndNullPtr(&dummy);
+    IUnknown_SafeReleaseAndNullPtr(dummy);
     return hr;
 }
 
@@ -168,7 +168,7 @@ STDAPI BindCtx_RegisterObjectParam(IBindCtx* pbc, const WCHAR* pszKey, IUnknown*
     hr = BindCtx_AddObjectParam(*ppbc, pszKey, punk);
 
     if (FAILED(hr))
-        IUnknown_SafeReleaseAndNullPtr(ppbc);
+        IUnknown_SafeReleaseAndNullPtr(*ppbc);
 
     return hr;
 }
@@ -220,7 +220,7 @@ STDAPI BindCtx_SetMode(IBindCtx* pbcIn, DWORD grfMode, IBindCtx** ppbcOut)
             hr = (*ppbcOut)->SetBindOptions(&bo);
 
         if (FAILED(hr))
-            IUnknown_SafeReleaseAndNullPtr(ppbcOut);
+            IUnknown_SafeReleaseAndNullPtr(*ppbcOut);
     }
 
     return hr;

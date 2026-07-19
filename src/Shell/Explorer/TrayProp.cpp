@@ -840,7 +840,7 @@ public:
 
     ~CTaskBarPropertySheet() override
     {
-        IUnknown_SafeReleaseAndNullPtr(&_pDlgNotify);
+        IUnknown_SafeReleaseAndNullPtr(_pDlgNotify);
     }
 
     // We aren't handling any messages special, so we just make an empty map
@@ -1416,7 +1416,7 @@ BOOL CCustomizeStartMenuDlg::OnCommand(UINT id, UINT code, HWND hwndCtl, HWND hw
             LABEL_24:
                 _SaveMagicEntries();
                 _prto->WalkTree(1u);
-                IUnknown_SafeReleaseAndNullPtr(&_prto);
+                IUnknown_SafeReleaseAndNullPtr(_prto);
                 EndDialog(id);
                 return 0;
             }

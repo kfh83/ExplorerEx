@@ -1253,8 +1253,8 @@ public:
 
     ~CCreateMenuItemCacheTask() override
     {
-        IUnknown_SafeReleaseAndNullPtr(&_pMenuCache);
-        IUnknown_SafeReleaseAndNullPtr(&_pScheduler);
+        IUnknown_SafeReleaseAndNullPtr(_pMenuCache);
+        IUnknown_SafeReleaseAndNullPtr(_pScheduler);
     }
 
     static void DummyCallBack(LPVOID pvData, LPVOID pvHint, INT iIconIndex, INT iOpenIconIndex) {}
@@ -1301,7 +1301,7 @@ public:
                     }
                     hd.Clear();
                 }
-                IUnknown_SafeReleaseAndNullPtr(&_pMenuCache->_pdirDesktop);
+                IUnknown_SafeReleaseAndNullPtr(_pMenuCache->_pdirDesktop);
             }
             _pMenuCache->UnlockPopup();
         }
@@ -1627,7 +1627,7 @@ DWORD WINAPI CMenuItemsCache::ReInitCacheThreadProc(void* pv)
             {
                 pMenuCache->InitCache();
                 pMenuCache->UpdateCache();
-                IUnknown_SafeReleaseAndNullPtr(&pMenuCache->_pdirDesktop);
+                IUnknown_SafeReleaseAndNullPtr(pMenuCache->_pdirDesktop);
             }
             pMenuCache->UnlockPopup();
         }
@@ -3444,7 +3444,7 @@ void ByUsage::EnumItems()
         EnumFolderFromCache();
 
         AfterEnumItems();
-        IUnknown_SafeReleaseAndNullPtr(&_pMenuCache->_pdirDesktop);
+        IUnknown_SafeReleaseAndNullPtr(_pMenuCache->_pdirDesktop);
     }
 
     _pMenuCache->UnlockPopup();
@@ -3624,7 +3624,7 @@ CMenuItemsCache::~CMenuItemsCache()
         _rgrt[i].Reset();
     }
 
-    IUnknown_SafeReleaseAndNullPtr(&_pqa);
+    IUnknown_SafeReleaseAndNullPtr(_pqa);
     _dpaAppInfo.DestroyCallback(DPA_DeleteCB, NULL);
 
     if (_pdirDesktop)

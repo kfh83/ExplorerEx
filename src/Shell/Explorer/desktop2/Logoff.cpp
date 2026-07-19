@@ -1829,7 +1829,7 @@ CLogOffMenuCallback::CLogOffMenuCallback(CLogoffPane* pLogOffPane)
 
 CLogOffMenuCallback::~CLogOffMenuCallback()
 {
-    IUnknown_SafeReleaseAndNullPtr(&_pLogOffPane);
+    IUnknown_SafeReleaseAndNullPtr(_pLogOffPane);
 }
 
 HRESULT CLogOffMenuCallback::QueryInterface(REFIID riid, void **ppvObj)

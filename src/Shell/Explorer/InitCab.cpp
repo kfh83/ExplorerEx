@@ -1337,7 +1337,7 @@ public:
     void WaitForRefs()
     {
         SHSetThreadRef(nullptr);
-        IUnknown_SafeReleaseAndNullPtr(&_punk);
+        IUnknown_SafeReleaseAndNullPtr(_punk);
 
         MSG msg;
         while (_cRef)
@@ -1495,7 +1495,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR pszCmdLine, int
                 // Skipped telemetry Explorer_MessageLoop_Stop
 
                 host.WaitForRefs();
-                IUnknown_SafeReleaseAndNullPtr(&pehc);
+                IUnknown_SafeReleaseAndNullPtr(pehc);
 
                 WriteCleanShutdown(1);
             }
@@ -1762,7 +1762,7 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
                 SHDesktopMessageLoop(hDesktop);
 
                 host.WaitForRefs();
-                IUnknown_SafeReleaseAndNullPtr(&pehc);
+                IUnknown_SafeReleaseAndNullPtr(pehc);
 
                 WriteCleanShutdown(TRUE);
             }

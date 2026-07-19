@@ -143,7 +143,7 @@ public:
 	~CPathCompletionTask() override
 	{
 		CoTaskMemFree(_pszPath);
-		IUnknown_SafeReleaseAndNullPtr(&_peb);
+		IUnknown_SafeReleaseAndNullPtr(_peb);
 	}
 
 	// *** IRunnableTask ***
