@@ -1575,3 +1575,33 @@ inline void(* WinList_Terminate)();
 
 STDAPI_(BOOL) SHExtTextOutW(
     HDC hdc, int x, int y, UINT options, const RECT* lprect, const WCHAR* lpString, UINT c, const int* lpDx);
+
+inline void* GetWindowPtr(HWND hWnd, int nIndex)
+{
+    return (void*)GetWindowLongPtr(hWnd, nIndex);
+}
+
+inline void* SetWindowPtr(HWND hWnd, int nIndex, void* p)
+{
+    return (void*)SetWindowLongPtr(hWnd, nIndex, (LONG_PTR)p);
+}
+
+inline LONG GetWindowLong0(HWND hWnd)
+{
+    return GetWindowLongA(hWnd, 0);
+}
+
+inline LONG SetWindowLong0(HWND hWnd, LONG l)
+{
+    return SetWindowLongA(hWnd, 0, l);
+}
+
+inline void* GetWindowPtr0(HWND hWnd)
+{
+    return (void*)GetWindowLongPtrA(hWnd, 0);
+}
+
+inline void* SetWindowPtr0(HWND hWnd, void* p)
+{
+    return (void*)SetWindowLongPtrA(hWnd, 0, (LONG_PTR)p);
+}

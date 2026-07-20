@@ -955,7 +955,7 @@ HRESULT SpecialFolderList::Exec(const GUID* pguidCmdGroup, DWORD nCmdID, DWORD n
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (pguidCmdGroup && IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup) && nCmdID == 329)
+    if (pguidCmdGroup && IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup) && nCmdID == 329)
     {
         CKnownFolderInformation* pkfi = new CKnownFolderInformation;
         if (pkfi)

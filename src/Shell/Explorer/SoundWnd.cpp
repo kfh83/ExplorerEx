@@ -61,7 +61,7 @@ BOOL CSoundWnd::Init()
 
 LRESULT CSoundWnd::s_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CSoundWnd* self = reinterpret_cast<CSoundWnd*>(GetWindowLongPtrW(hwnd, 0));
+    CSoundWnd* self = static_cast<CSoundWnd*>(GetWindowPtr0(hwnd));
     if (self)
         return self->v_WndProc(hwnd, uMsg, wParam, lParam);
     else

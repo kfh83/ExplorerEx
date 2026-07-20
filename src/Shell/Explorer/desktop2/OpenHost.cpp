@@ -4,6 +4,7 @@
 
 #include "cabinet.h"
 #include "HostUtil.h"
+#include "ShGuidP.h"
 
 #define OPENVIEW_MFU			0
 #define OPENVIEW_NSCHOST		1
@@ -97,30 +98,35 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+	if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
 	{
 		switch (nCmdID)
 		{
 			case 324:
 				ASSERT(pvarargIn->vt == VT_BYREF); // 611
 				return _HandleOpenBoxArrowKey(static_cast<MSG*>(pvarargIn->byref));
+
 			case 330:
 				ASSERT(pvarargIn->vt == VT_BYREF); // 618
 				return _HandleOpenBoxContextMenu(static_cast<MSG*>(pvarargIn->byref));
+
 			case 307:
-				IUnknown_QueryServiceExec(static_cast<IServiceProvider*>(this), SID_SM_OpenBox, &SID_SM_DV2ControlHost, nCmdID, 0, nullptr, pvarargOut);
+				IUnknown_QueryServiceExec(static_cast<IServiceProvider*>(this), SID_SM_OpenBox, &CGID_DV2ControlHost, nCmdID, 0, nullptr, pvarargOut);
 				if (pvarargOut->iVal && _iCurView)
 				{
 					_SetCurrentView(0, pvarargIn);
-					IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 310, 0, nullptr, nullptr);
+					IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 310, 0, nullptr, nullptr);
 					pvarargOut->iVal = 0;
 				}
 				return S_OK;
+
 			case 303:
 				ASSERT(pvarargOut->vt == VT_I4); // 638
 				pvarargOut->lVal = _iCurView;
 				return S_OK;
+
 			case 316:
+
 				ASSERT(pvarargIn->vt == VT_I4); // 646
 				_aopa[OPENVIEW_TOPMATCH].size.cy = pvarargIn->lVal;
 
@@ -128,8 +134,10 @@ HRESULT COpenViewHost::Exec(const GUID *pguidCmdGroup,
 				GetClientRect(_hwnd, &rc);
 				_Layout(rc.right, rc.bottom);
 				return S_OK;
+
 			case 302:
 				return _SetCurrentView(nCmdexecopt == -1 ? field_1C : nCmdexecopt, pvarargIn);
+
 			case 306:
 				if (_iCurView == 2 || _iCurView == 1)
 				{
@@ -254,10 +262,10 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 		RemapSizeForHighDPI(&_aopa[i].size);
 
-		HWND hwndPane = CreateWindowExW(
+		HWND hwndPane = CreateWindowEx(
 			0, _aopa[i].pszClassName, nullptr, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i),
 			nullptr, &_aopa[i]);
-		if (!hwndPane || !GetWindowLongPtrW(hwnd, GWL_STYLE))
+		if (!hwndPane || !GetWindowLongPtr(hwnd, GWLP_USERDATA))
 			return -1;
 
 		_aopa[i].hwnd = hwndPane;
@@ -452,7 +460,7 @@ HRESULT COpenViewHost::_SetCurrentView(int iView, VARIANT* pvararg)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_VIEWCONTROL].hwnd, FALSE);
 			IUnknown_QueryServiceExec(
-				_aopa[OPENVIEW_VIEWCONTROL].punk, SID_SM_ViewControl, &SID_SM_DV2ControlHost, 302, iView, nullptr,
+				_aopa[OPENVIEW_VIEWCONTROL].punk, SID_SM_ViewControl, &CGID_DV2ControlHost, 302, iView, nullptr,
 				nullptr);
 		}
 		if (_iCurView == OPENVIEW_SEARCHPANE)
@@ -477,6 +485,7 @@ HRESULT COpenViewHost::_SetCurrentView(int iView, VARIANT* pvararg)
 		{
 			field_1C = 0;
 		}
+
 		_iCurView = iView;
 		_ShowEnableWindow(_aopa[iView].hwnd, TRUE);
 
@@ -488,10 +497,11 @@ HRESULT COpenViewHost::_SetCurrentView(int iView, VARIANT* pvararg)
 		{
 			_ShowEnableWindow(_aopa[OPENVIEW_TOPMATCH].hwnd, TRUE);
 		}
+
 		if (_iCurView == OPENVIEW_NSCHOST)
 		{
 			IUnknown_QueryServiceExec(
-				_aopa[OPENVIEW_NSCHOST].punk, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 302, iView, pvararg, nullptr);
+				_aopa[OPENVIEW_NSCHOST].punk, SID_SM_NSCHOST, &CGID_DV2ControlHost, 302, iView, pvararg, nullptr);
 		}
 		hr = S_OK;
 	}
@@ -512,13 +522,13 @@ HRESULT COpenViewHost::_HandleOpenBoxContextMenu(MSG* pmsg)
 		VARIANT vt;
 		vt.lVal = -1;
 		vt.vt = VT_I4;
-		if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 325, 0, nullptr, &vt)) && vt.lVal != -1)
+		if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &CGID_DV2ControlHost, 325, 0, nullptr, &vt)) && vt.lVal != -1)
 		{
 			pmsg->hwnd = _aopa[OPENVIEW_SEARCHPANE].hwnd;
 		}
 		else
 		{
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 325, 0, nullptr, &vt);
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 325, 0, nullptr, &vt);
 			pmsg->hwnd = _aopa[OPENVIEW_TOPMATCH].hwnd;
 			if (vt.lVal == -1)
 			{

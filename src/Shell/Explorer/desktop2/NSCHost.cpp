@@ -225,7 +225,7 @@ HRESULT CNSCHost::ItemPrePaint(HDC hdc, RECT *prc, NSTCCUSTOMDRAW *pnstccdItem, 
 	}
 	else
 	{
-		if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &SID_SM_DV2ControlHost, 311, 0, NULL, NULL) == S_OK
+		if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &CGID_DV2ControlHost, 311, 0, NULL, NULL) == S_OK
 			&& _IsNewItem(pnstccdItem->psi) == S_OK)
 		{
 			*pclrText = _clrText;
@@ -250,7 +250,7 @@ HRESULT CNSCHost::OnDragEnter(IShellItem *psiOver, IShellItemArray *psiaData, BO
 	VARIANT vt;
 	vt.vt = VT_BOOL;
 	vt.boolVal = VARIANT_TRUE;
-	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 312, 0, &vt, NULL);
+	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 312, 0, &vt, NULL);
 
 	field_64 = fOutsideSource;
 	if (field_64 && (grfKeyState & (MK_SHIFT | MK_CONTROL | MK_XBUTTON1)) == 0)
@@ -282,7 +282,7 @@ HRESULT CNSCHost::OnDrop(IShellItem *psiOver, IShellItemArray *psiaData, int iPo
 	VARIANT vt;
 	vt.vt = VT_BOOL;
 	vt.boolVal = VARIANT_FALSE;
-	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 312, 0, &vt, NULL);
+	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 312, 0, &vt, NULL);
 
 	field_64 = 0;
 	return S_OK;
@@ -298,7 +298,7 @@ HRESULT CNSCHost::OnDragLeave(IShellItem *psiOver)
 	VARIANT vt;
 	vt.vt = VT_BOOL;
 	vt.boolVal = VARIANT_FALSE;
-	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 312, 0, &vt, NULL);
+	IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 312, 0, &vt, NULL);
 
 	field_64 = 0;
 	return S_OK;
@@ -323,7 +323,7 @@ HRESULT CNSCHost::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecop
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+	if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
 	{
 		if (nCmdID == 302)
 		{
@@ -335,7 +335,7 @@ HRESULT CNSCHost::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecop
 				{
 					if (SUCCEEDED(_pns->GetNextItem(nullptr, NSTCGNI_FIRSTVISIBLE, &psiFirstVisible)))
 					{
-						if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &SID_SM_DV2ControlHost, 311, 0, nullptr, nullptr) == S_OK)
+						if (IUnknown_QueryServiceExec(_punkSite, SID_SM_MFU, &CGID_DV2ControlHost, 311, 0, nullptr, nullptr) == S_OK)
 						{
 							IShellItem* psiCurrent = psiFirstVisible;
 							psiCurrent->AddRef();

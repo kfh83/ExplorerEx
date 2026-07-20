@@ -1130,7 +1130,7 @@ HRESULT ByUsageUI::Exec(
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (pguidCmdGroup && IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    if (pguidCmdGroup && IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
     {
         switch (nCmdID)
         {

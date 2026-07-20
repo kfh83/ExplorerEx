@@ -4,6 +4,7 @@
 
 #include <propvarutil.h>
 #include "SFTHost.h"
+#include "ShGuidP.h"
 
 CTopMatch::CTopMatch(HWND hwnd)
 	: _hwnd(hwnd)
@@ -115,7 +116,7 @@ HRESULT CTopMatch::Exec(const GUID *pguidCmdGroup,
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+	if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
 	{
 		switch (nCmdID)
 		{
@@ -569,7 +570,7 @@ void CTopMatch::_UpdateTopMatchSizeInOpenView()
 	VARIANT varg;
 	varg.vt = VT_I4;
 	varg.iVal = _margins.cyTopHeight + _margins.cyBottomHeight + cItems * _cyIcon;
-	IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 316, 0, &varg, nullptr);
+	IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 316, 0, &varg, nullptr);
 	VariantClear(&varg);
 }
 
@@ -639,7 +640,7 @@ LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 				return SUCCEEDED(hr);
 			}
 			// Skipped telemetry StartMenu_Search_Computer_Count (1141)
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 322, 0, nullptr, nullptr);
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 322, 0, nullptr, nullptr);
 		}
 		else if (lvi.lParam == 1)
 		{
@@ -648,7 +649,7 @@ LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 				return SUCCEEDED(hr);
 			}
 			// Skipped telemetry StartMenu_Search_Internet_Count (1142);
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 319, 0, nullptr, nullptr);
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 319, 0, nullptr, nullptr);
 		}
 		else
 		{
@@ -656,7 +657,7 @@ LRESULT CTopMatch::_ActivateItem(int iItem, int b)
 			{
 				return SUCCEEDED(hr);
 			}
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 321, 0, nullptr, nullptr);
+			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 321, 0, nullptr, nullptr);
 		}
 		if (SUCCEEDED(hr))
 		{

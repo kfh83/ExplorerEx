@@ -4,6 +4,7 @@
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"
+#include "ShGuidP.h"
 #include "userpane.h"
 
 #define REGSTR_VAL_DV2_STARTPANEL_FADEIN TEXT("StartPanel_FadeIn")
@@ -98,7 +99,7 @@ HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexeco
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
     {
         switch (nCmdID)
         {
@@ -407,7 +408,7 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
                 {
                     VARIANT vt;
                     vt.vt = VT_BOOL;
-                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, nullptr, &vt);
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 327, 0, nullptr, &vt);
                     if (vt.boolVal == VARIANT_FALSE)
                     {
                         EnableWindow(_hwndStatic, TRUE);
@@ -440,7 +441,7 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
                 {
                     VARIANT vt;
                     vt.vt = VT_BOOL;
-                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 327, 0, nullptr, &vt);
+                    IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 327, 0, nullptr, &vt);
                     if (vt.boolVal == VARIANT_FALSE)
                     {
                         EnableWindow(_hwndStatic, TRUE);
@@ -804,7 +805,7 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
 
         if (!fInitial)
         {
-            IUnknown_QueryServiceExec(_punkSite, IID_IFolderView, &SID_SM_DV2ControlHost, 329, 0, nullptr, nullptr);
+            IUnknown_QueryServiceExec(_punkSite, SID_SFolderView, &CGID_DV2ControlHost, 329, 0, nullptr, nullptr);
         }
     }
 

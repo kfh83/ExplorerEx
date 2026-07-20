@@ -9,6 +9,7 @@
 
 #include "pch.h"
 #include "sfthost.h"
+#include "ShGuidP.h"
 
 class CKnownFolderInformation
 {
@@ -98,11 +99,11 @@ private:
         VARIANT vt;
         vt.vt = VT_BYREF;
         vt.byref = _himl;
-        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 314, 0, &vt, NULL);
+        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 314, 0, &vt, NULL);
 
         vt.vt = VT_I4;
         vt.lVal = iImage;
-        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 313, 0, &vt, NULL);
+        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 313, 0, &vt, NULL);
     }
 
     HRESULT ContextMenuInvokeItem(PaneItem *p, IContextMenu *pcm, CMINVOKECOMMANDINFOEX *pici, LPCTSTR pszVerb);

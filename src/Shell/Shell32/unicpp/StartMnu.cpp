@@ -3403,7 +3403,7 @@ HRESULT CPersonalProgramsMenuCallback::IncludeItem(IShellItem* psi)
     vt.vt = VT_BOOL;
 
     _InitializePrograms();
-    IUnknown_QueryServiceExec(_punkSite, SID_SM_NSCHOST, &SID_SM_DV2ControlHost, 318, 0, nullptr, &vt);
+    IUnknown_QueryServiceExec(_punkSite, SID_SM_NSCHOST, &CGID_DV2ControlHost, 318, 0, nullptr, &vt);
 
     IParentAndItem* ppai;
     HRESULT hr = psi->QueryInterface(IID_PPV_ARGS(&ppai));

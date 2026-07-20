@@ -10,6 +10,7 @@
 #include <commoncontrols.h>
 
 #include "DPIHelpers.h"
+#include "ShGuidP.h"
 
 
 #define TF_HOST     0x00000010
@@ -384,9 +385,9 @@ LRESULT CALLBACK SFTBarHost::_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    SFTBarHost *self = NULL; // eax MAPDST
+    SFTBarHost* self = NULL;
 
-    SMPANEDATA *pspld = PaneDataFromCreateStruct(lParam);
+    SMPANEDATA* pspld = PaneDataFromCreateStruct(lParam);
     if (pspld->iPartId == SPP_PROGLIST)
     {
         self = ByUsage_CreateInstance();
@@ -397,21 +398,20 @@ LRESULT SFTBarHost::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
     else
     {
-        //CcshellDebugMsgW(2, "Unknown panetype %d", pspld->iPartId);
+        // TraceMsg(TF_ERROR, "Unknown panetype %d", pspld->iPartId);
         return 0;
     }
 
     if (self)
     {
-        (void*)SetWindowLongPtr(hwnd, 0, (LONG_PTR)self);
-
-        IUnknown_Set(&pspld->punk, static_cast<IServiceProvider *>(self));
+        SetWindowPtr0(hwnd, self);
+        IUnknown_Set(&pspld->punk, static_cast<IServiceProvider*>(self));
 
         self->_hwnd = hwnd;
         self->_hTheme = pspld->hTheme;
         if (FAILED(self->Initialize()))
         {
-            //CcshellDebugMsgW(2, "SFTBarHost::NcCreate Initialize call failed");
+            // TraceMsg(TF_ERROR, "SFTBarHost::NcCreate Initialize call failed");
             return 0;
         }
         return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -2159,7 +2159,7 @@ SFTBarHost::~SFTBarHost()
         {
             VARIANT vt = {};
             vt.vt = VT_BYREF;
-            IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &SID_SM_DV2ControlHost, 314, 0, &vt, nullptr);
+            IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 314, 0, &vt, nullptr);
         }
         ImageList_Destroy(_himl);
 		_himl = nullptr;
@@ -3977,7 +3977,7 @@ HRESULT SFTBarHost::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState)
 HRESULT SFTBarHost::QueryService(REFGUID guidService, REFIID riid, void **ppvObject)
 {
     HRESULT hr = E_FAIL;
-    if (IsEqualGUID(guidService, IID_IFolderView) || IsEqualGUID(guidService, SID_SM_MFU))
+    if (IsEqualGUID(guidService, SID_SFolderView) || IsEqualGUID(guidService, SID_SM_MFU))
     {
 		hr = QueryInterface(riid, ppvObject);
     }

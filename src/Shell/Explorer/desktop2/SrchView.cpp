@@ -10,6 +10,8 @@
 #include <propkey.h>
 #include <propvarutil.h>
 
+#include "ShGuidP.h"
+
 #pragma comment(lib, "propsys.lib")
 
 #define GIT_COOKIEINVALID 0 // CSearchOpenView treats zero as the invalid GIT cookie.
@@ -131,7 +133,7 @@ HRESULT CSearchOpenView::Exec(const GUID *pguidCmdGroup,
 {
 	HRESULT hr = E_INVALIDARG;
 
-	if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+	if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
 	{
 		switch (nCmdID)
 		{
@@ -175,7 +177,7 @@ HRESULT CSearchOpenView::Exec(const GUID *pguidCmdGroup,
 								{
 									hr = AddPathCompletionTask(pszPath);
 								}
-								IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 302, 2, NULL, NULL);
+								IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, 2, NULL, NULL);
 								CoTaskMemFree(pszPath1);
 							}
 							field_90 = 1;
@@ -200,7 +202,7 @@ HRESULT CSearchOpenView::Exec(const GUID *pguidCmdGroup,
 						VARIANT vt;
 						vt.vt = VT_BOOL;
 						vt.iVal = VARIANT_TRUE;
-						hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 302, -1, &vt, NULL);
+						hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, -1, &vt, NULL);
 					}
 					CoTaskMemFree(pszPath);
 				}
@@ -208,7 +210,7 @@ HRESULT CSearchOpenView::Exec(const GUID *pguidCmdGroup,
 			}
 			case 301:
 			{
-				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 301, 0, NULL, NULL);
+				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 301, 0, NULL, NULL);
 				if (FAILED(hr))
 				{
 					if (field_88 || _viewMode)
@@ -1168,7 +1170,7 @@ LRESULT CSearchOpenView::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 		case 0u:
 		case 1u:
 		{
-			IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 310, 0, nullptr, nullptr);
+			IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 310, 0, nullptr, nullptr);
 			if (pdm->pmsg)
 			{
 				pdm->pmsg->hwnd = GetFocus();
@@ -1412,7 +1414,7 @@ HRESULT CSearchOpenView::_ActivateItem(int iItem)
 	if (iItem == -1)
 	{
 		(void)120; // Skipped telemetry StartMenu_Search_URL_Count
-		hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 308, 0, nullptr, &varIn);
+		hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 308, 0, nullptr, &varIn);
 		if (hr < 0)
 		{
 			goto LABEL_38;
@@ -3610,12 +3612,12 @@ void CSearchOpenView::_SwitchToMode(VIEWMODE viewModeNew, int a3)
 	VARIANT vt;
 	vt.lVal = -1;
 	vt.vt = VT_I4;
-	IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 317, 0, &vt, nullptr);
+	IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 317, 0, &vt, nullptr);
 	if (_pFolderView && (viewModeNew != _viewMode || a3))
 	{
 		vt.lVal = viewModeNew;
 		vt.vt = VT_I4;
-		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 328, 0, &vt, nullptr);
+		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 328, 0, &vt, nullptr);
 
 		if (viewModeNew == VIEWMODE_PATHCOMPLETE)
 		{
@@ -3665,7 +3667,7 @@ void CSearchOpenView::_UpdateOpenBoxText()
 		VARIANT vt;
 		vt.vt = VT_BYREF;
 		vt.byref = szParsingName;
-		IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &SID_SM_DV2ControlHost, 315, 0, &vt, NULL);
+		IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 315, 0, &vt, NULL);
 	}
 }
 
@@ -3754,7 +3756,7 @@ void CSearchOpenView::_UpdateTopMatch(UTM_REASON reason)
 			{
 				vt.lVal = 1;
 				vt.vt = 3;
-				IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 328, 0, &vt, 0);
+				IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 328, 0, &vt, 0);
 			}
 		}
 		v14 = 0;
@@ -3836,7 +3838,7 @@ void CSearchOpenView::_UpdateTopMatch(UTM_REASON reason)
 	{
 		vt.vt = 3;
 		vt.lVal = 0;
-		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 328, 0, &vt, 0);
+		IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 328, 0, &vt, 0);
 	LABEL_48:
 		if (field_88)
 		{
@@ -3845,14 +3847,14 @@ void CSearchOpenView::_UpdateTopMatch(UTM_REASON reason)
 			varIn.lVal = v18;
 			if (!v14)
 			{
-				IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 317, 0, &varIn, 0);
+				IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 317, 0, &varIn, 0);
 				VariantClear(&varIn);
 			}
 			if (field_8C)
 			{
 				if (v9 != -1)
 				{
-					IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &SID_SM_DV2ControlHost, 301, 0, 0, 0);
+					IUnknown_QueryServiceExec(_punkSite, SID_SM_TopMatch, &CGID_DV2ControlHost, 301, 0, 0, 0);
 				}
 			}
 		}

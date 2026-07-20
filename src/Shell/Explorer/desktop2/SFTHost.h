@@ -660,23 +660,16 @@ private:
     BOOL _CreateMarlett();
     void _CreateBoldFont();
 
-    int  _GetLVCurSel()
+    int _GetLVCurSel()
     {
-#ifdef DEAD_CODE
-        return ListView_GetNextItem(_hwndList, -1, LVNI_FOCUSED);
-#else
         VARIANT vt;
         vt.vt = VT_BOOL;
-        if (IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 309, 0, 0, &vt) >= 0
-            && vt.iVal)
+        if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 309, 0, NULL, &vt))
+            && vt.boolVal)
         {
-            return SendMessageW(this->_hwndList, 0x103Du, 0, 0);
+            return ListView_GetHotItem(_hwndList);
         }
-        else
-        {
-            return SendMessageW(this->_hwndList, 0x100Cu, 0xFFFFFFFF, 1);
-        }
-#endif
+        return ListView_GetNextItem(_hwndList, -1, LVNI_FOCUSED);
     }
 
     BOOL _OnCascade(int iItem, DWORD dwFlags);

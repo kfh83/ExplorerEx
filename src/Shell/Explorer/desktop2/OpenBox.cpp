@@ -8,6 +8,8 @@
 
 #include <propvarutil.h>
 
+#include "ShGuidP.h"
+
 HRESULT COpenBoxHost::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =
@@ -96,7 +98,7 @@ HRESULT COpenBoxHost::Exec(
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
     {
         switch (nCmdID)
         {
@@ -398,7 +400,7 @@ HRESULT COpenBoxHost::OnFocusChangeIS(IUnknown* punk, BOOL fSetFocus)
     VARIANT vt;
     vt.vt = VT_INT;
     vt.lVal = fSetFocus ? 0x20000 : 0;
-    return IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, nullptr);
+    return IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &CGID_DV2ControlHost, 304, 0, &vt, nullptr);
 }
 
 COpenBoxHost::COpenBoxHost(HWND hwnd)
@@ -622,7 +624,7 @@ LRESULT COpenBoxHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             vt.vt = VT_BYREF;
             vt.byref = pdm->pmsg;
             pdm->flags &= ~0x1000u;
-            if (IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 324, 0, &vt, 0) < 0)
+            if (IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 324, 0, &vt, 0) < 0)
             {
                 return 0;
             }
@@ -634,7 +636,7 @@ LRESULT COpenBoxHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             if ((pdm->flags & 0x400) != 0)
             {
                 pdm->flags = pdm->flags & 0xFFFFEFFF;
-                IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 301, 0, 0, 0);
+                IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &CGID_DV2ControlHost, 301, 0, 0, 0);
                 //SHTracePerf(&ShellTraceId_Explorer_StartPane_OpenBox_Launch_Info);
             }
             return 0;
@@ -692,8 +694,8 @@ HRESULT COpenBoxHost::_UpdateSearch()
         hr = InitVariantFromString(szPath, &varg);
         if (SUCCEEDED(hr))
         {
-            hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &SID_SM_DV2ControlHost, 300, 0, &varg, nullptr);
-            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 300, 0, nullptr, &varg);
+            hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenView, &CGID_DV2ControlHost, 300, 0, &varg, nullptr);
+            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 300, 0, nullptr, &varg);
             VariantClear(&varg);
         }
     }

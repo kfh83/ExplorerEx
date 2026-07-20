@@ -326,7 +326,7 @@ HRESULT CMorePrograms::_GetCurView(OPENHOSTVIEW *pView)
 {   
     VARIANT var;
 	var.vt = VT_I4;
-    HRESULT hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 303, 0, 0, &var);
+    HRESULT hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 303, 0, 0, &var);
     if (SUCCEEDED(hr))
     {
         ASSERT(var.vt == VT_I4); // 487
@@ -657,9 +657,9 @@ LRESULT CMorePrograms::_OnCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
                             SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Start, 15);
 #endif
                         int v12 = view == OHVIEW_0 ? 1 : 0;
-                        if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &SID_SM_DV2ControlHost, 302, v12, NULL, NULL)))
+                        if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, v12, NULL, NULL)))
                         {
-                            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &SID_SM_DV2ControlHost, 326, 0, NULL, NULL);
+                            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 326, 0, NULL, NULL);
                         }
 
 
@@ -750,7 +750,7 @@ int CMorePrograms::_Mark(SMNDIALOGMESSAGE *pdm, UINT a3)
         return 0;
     pdm->itemID = 1;
     pdm->flags = flags | 0x80000;
-    pdm->field_24 = this->_hwndButton;
+    pdm->hwnd2 = this->_hwndButton;
     return result;
 }
 
@@ -1387,7 +1387,7 @@ HRESULT CMorePrograms::QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECM
 HRESULT CMorePrograms::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut)
 {
     HRESULT hr = E_INVALIDARG;
-    if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup) && nCmdID == 302 && nCmdexecopt != -1)
+    if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup) && nCmdID == 302 && nCmdexecopt != -1)
     {
         _OnSetCurView((OPENHOSTVIEW)nCmdexecopt);
         return S_OK;

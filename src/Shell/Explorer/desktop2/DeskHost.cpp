@@ -11,6 +11,7 @@
 #include <propvarutil.h>
 
 #include "DPIHelpers.h"
+#include "ShGuidP.h"
 
 #define TF_DV2HOST  0
 // #define TF_DV2HOST TF_CUSTOM1
@@ -681,7 +682,7 @@ void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prc
     if (field_C4 != 0)
     {
         IUnknown_QueryServiceExec(
-            static_cast<IMenuBand*>(this), SID_SM_UserPane, &SID_SM_DV2ControlHost, 323, 0, nullptr, nullptr);
+            static_cast<IMenuBand*>(this), SID_SM_UserPane, &CGID_DV2ControlHost, 323, 0, nullptr, nullptr);
     }
 
     int v18 = _spm.panes[4].size.cy;
@@ -1721,7 +1722,7 @@ LRESULT CALLBACK CDesktopHost::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         LPWINDOWPOS pwp = reinterpret_cast<LPWINDOWPOS>(lParam);
         if (pdh && (pwp->flags & SWP_HIDEWINDOW))
         {
-            IUnknown_QueryServiceExec(static_cast<IMenuBand*>(pdh), SID_SM_UserPane, &SID_SM_DV2ControlHost, 323, 0, 0, 0);
+            IUnknown_QueryServiceExec(static_cast<IMenuBand*>(pdh), SID_SM_UserPane, &CGID_DV2ControlHost, 323, 0, 0, 0);
         }
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
@@ -2191,12 +2192,12 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
                 VARIANT vtOut;
                 vtOut.vt = VT_BYREF;
                 vtOut.byref = NULL;
-                IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_OpenHost, &SID_SM_DV2ControlHost, 306, 0, &vtIn, &vtOut);
+                IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_OpenHost, &CGID_DV2ControlHost, 306, 0, &vtIn, &vtOut);
                 hwndTarget = (HWND)vtOut.byref;
 
                 if (!vtOut.byref)
                 {
-                    IUnknown_QueryServiceExec(static_cast<IMenuBand *>(this), SID_SM_OpenBox, &SID_SM_DV2ControlHost, 306, 0, &vtIn, &vtOut);
+                    IUnknown_QueryServiceExec(static_cast<IMenuBand *>(this), SID_SM_OpenBox, &CGID_DV2ControlHost, 306, 0, &vtIn, &vtOut);
                     hwndTarget = (HWND)vtOut.byref;
                 }
             }
@@ -2284,7 +2285,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
                         VARIANT vt;
                         vt.vt = VT_BYREF;
                         vt.byref = pmsg;
-                        IUnknown_QueryServiceExec(static_cast<IMenuBand *>(this), SID_SM_OpenHost, &SID_SM_DV2ControlHost, 330, 0, &vt, &vt);
+                        IUnknown_QueryServiceExec(static_cast<IMenuBand *>(this), SID_SM_OpenHost, &CGID_DV2ControlHost, 330, 0, &vt, &vt);
                     }
                     _UnlockStartPane();
                 }
@@ -2346,7 +2347,7 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
                 VARIANT vt;
                 vt.iVal = -1;
                 vt.vt = VT_BOOL;
-                IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_OpenHost, &SID_SM_DV2ControlHost, 307, 0, 0, &vt);
+                IUnknown_QueryServiceExec(static_cast<IMenuBand*>(this), SID_SM_OpenHost, &CGID_DV2ControlHost, 307, 0, 0, &vt);
                 if (vt.iVal)
                 {
                     SendMessage(this->_hwnd, 0x8000u, 0, 0);
@@ -2411,7 +2412,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
     pnmdm->hdr.hwndFrom = _hwnd;
     pnmdm->hdr.code = 215;
     pnmdm->flags = smndm;
-    pnmdm->field_24 =_hwndLastMouse;
+    pnmdm->hwnd2 =_hwndLastMouse;
     
     LRESULT lres = SendMessage(hwnd, WM_NOTIFY, 0, (LPARAM)pnmdm);
     if (lres)
@@ -2421,9 +2422,9 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
         {
             if ((flags & 0x80000) == 0)
             {
-                pnmdm->field_24 = ::GetWindow(hwnd, GW_CHILD);
+                pnmdm->hwnd2 = ::GetWindow(hwnd, GW_CHILD);
             }
-            SetFocus(pnmdm->field_24);
+            SetFocus(pnmdm->hwnd2);
             field_48 = nullptr;
         }
     }
@@ -2455,7 +2456,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
                 {
                     vt.lVal |= 0x20000u;
                 }
-                IUnknown_QueryServiceExec((IMenuBand*)this, SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, 0);
+                IUnknown_QueryServiceExec((IMenuBand*)this, SID_SM_OpenView, &CGID_DV2ControlHost, 304, 0, &vt, 0);
             }
         }
     }
@@ -2834,7 +2835,7 @@ void CDesktopHost::_FilterMouseLeave(MSG* pmsg, HWND hwndTarget)
                 vt.vt = VT_INT;
                 vt.lVal = 0x20000;
                 IUnknown_QueryServiceExec(
-                    static_cast<IMenuBand*>(this), SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, nullptr);
+                    static_cast<IMenuBand*>(this), SID_SM_OpenView, &CGID_DV2ControlHost, 304, 0, &vt, nullptr);
             }
         }
     }
@@ -2949,7 +2950,7 @@ STDMETHODIMP CDesktopHost::QueryService(REFGUID guidService, REFIID riid, void *
         ASSERT(_spm.panes[SMPANETYPE_USER].punk != NULL); // 2420
         hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_USER].punk, guidService, riid, ppvObject);
     }
-    else if (IsEqualGUID(guidService, IID_IFolderView))
+    else if (IsEqualGUID(guidService, SID_SFolderView))
     {
         ASSERT(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk != NULL); // 2425
         hr = IUnknown_QueryService(_spm.panes[SMPANETYPE_KNOWNFOLDER].punk, guidService, riid, ppvObject);
@@ -2988,7 +2989,7 @@ HRESULT CDesktopHost::_HandleOpenBoxArrowKey(VARIANT* pvar)
     if (field_48 == nullptr || field_48 == _spm.panes[SMPANETYPE_OPENBOX].hwnd)
     {
         hr = IUnknown_QueryServiceExec(
-            static_cast<IMenuBand*>(this), SID_SM_OpenHost, &SID_SM_DV2ControlHost, 324, 0, pvar, nullptr);
+            static_cast<IMenuBand*>(this), SID_SM_OpenHost, &CGID_DV2ControlHost, 324, 0, pvar, nullptr);
     }
     return hr;
 }
@@ -3013,7 +3014,7 @@ STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
         return 0;
     }
     
-    if (IsEqualGUID(SID_SM_DV2ControlHost, *pguidCmdGroup))
+    if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup))
     {
         switch (nCmdID)
         {
@@ -3028,7 +3029,7 @@ STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
                 VARIANT vt;
                 vt.vt = VT_INT;
                 vt.lVal = 0x20000;
-                IUnknown_QueryServiceExec(SAFECAST(this, IMenuBand *), SID_SM_OpenView, &SID_SM_DV2ControlHost, 304, 0, &vt, 0);
+                IUnknown_QueryServiceExec(SAFECAST(this, IMenuBand *), SID_SM_OpenView, &CGID_DV2ControlHost, 304, 0, &vt, 0);
                 return 0;
             }
             case 309u:
@@ -3040,7 +3041,9 @@ STDMETHODIMP  CDesktopHost::Exec(const GUID *pguidCmdGroup,
             case 310u:
             {
                 if (field_48)
+                {
                     _RemoveSelection(field_48);
+                }
                 field_48 = 0;
                 _SetFocusToOpenBox();
                 return 0;
