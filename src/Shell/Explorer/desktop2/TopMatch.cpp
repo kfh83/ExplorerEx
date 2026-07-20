@@ -4,7 +4,6 @@
 
 #include <propvarutil.h>
 #include "SFTHost.h"
-#include "ShGuidP.h"
 
 CTopMatch::CTopMatch(HWND hwnd)
 	: _hwnd(hwnd)

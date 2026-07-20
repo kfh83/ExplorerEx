@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "cocreateinstancehook.h"
-#include "shguidp.h"
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"

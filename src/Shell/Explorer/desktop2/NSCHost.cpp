@@ -7,7 +7,6 @@
 #include "HostUtil.h"
 #include "SFTHost.h"
 #include "Shell32Util.h"
-#include "shguidp.h"
 #include "ShUndoc.h"
 #include "util.h"
 

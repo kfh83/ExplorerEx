@@ -10,8 +10,6 @@
 #include <propkey.h>
 #include <propvarutil.h>
 
-#include "ShGuidP.h"
-
 #pragma comment(lib, "propsys.lib")
 
 #define GIT_COOKIEINVALID 0 // CSearchOpenView treats zero as the invalid GIT cookie.

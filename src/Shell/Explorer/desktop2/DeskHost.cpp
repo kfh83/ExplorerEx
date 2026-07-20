@@ -11,7 +11,6 @@
 #include <propvarutil.h>
 
 #include "DPIHelpers.h"
-#include "ShGuidP.h"
 
 #define TF_DV2HOST  0
 // #define TF_DV2HOST TF_CUSTOM1

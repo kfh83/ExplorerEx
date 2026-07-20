@@ -72,6 +72,7 @@
 #include "dpa.h"
 #include "debug.h"
 #include "ieguidp.h"
+#include "ShGuidP.h"
 #include "patternhelper.h"
 #include "rcids.h"
 #include "startids.h"

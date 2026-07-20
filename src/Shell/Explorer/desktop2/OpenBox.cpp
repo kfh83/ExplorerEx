@@ -8,8 +8,6 @@
 
 #include <propvarutil.h>
 
-#include "ShGuidP.h"
-
 HRESULT COpenBoxHost::QueryInterface(REFIID riid, void** ppvObj)
 {
     static const QITAB qit[] =

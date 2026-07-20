@@ -4,7 +4,6 @@
 #include "shundoc.h"
 #include "stdafx.h"
 #include "sfthost.h"
-#include "ShGuidP.h"
 #include "userpane.h"
 
 #define REGSTR_VAL_DV2_STARTPANEL_FADEIN TEXT("StartPanel_FadeIn")

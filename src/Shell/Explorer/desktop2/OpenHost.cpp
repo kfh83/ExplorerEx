@@ -1,10 +1,6 @@
 #include "pch.h"
-
 #include "OpenHost.h"
-
-#include "cabinet.h"
-#include "HostUtil.h"
-#include "ShGuidP.h"
+#include "SFTHost.h"
 
 #define OPENVIEW_MFU			0
 #define OPENVIEW_NSCHOST		1
@@ -226,7 +222,7 @@ void RemapSizeForHighDPI(SIZE *psiz);
 LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CREATESTRUCTW* lpcs = reinterpret_cast<CREATESTRUCTW*>(lParam);
-	SMPANEDATA* psmpd = static_cast<SMPANEDATA*>(lpcs->lpCreateParams);
+	SMPANEDATA* psmpd = PaneDataFromCreateStruct(lParam);;
 
 	HTHEME hTheme = psmpd->hTheme;
 
