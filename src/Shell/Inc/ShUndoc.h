@@ -1103,25 +1103,25 @@ inline HMENU(STDMETHODCALLTYPE* SHGetMenuFromID)(HMENU hmMain, UINT uID);
 inline UINT(WINAPI* ImageList_GetFlags)(HIMAGELIST himl);
 
 inline void (WINAPI* FileIconInit)(BOOL fRestoreCache);
-typedef void (CALLBACK* PFNASYNCICONTASKBALLBACK)(LPVOID pvData, LPVOID pvHint, int iIconIndex, int iOpenIconIndex);
 
-inline HRESULT(WINAPI *SHMapIDListToSystemImageListIndexAsync)(
+typedef void (CALLBACK* PFNASYNCICONTASKBALLBACK)(LPVOID pvData, LPVOID pvHint, int iIconIndex, int iOpenIconIndex);
+inline HRESULT (WINAPI* SHMapIDListToSystemImageListIndexAsync)(
     IShellTaskScheduler* psts,
     IShellFolder* psf,
-    LPCITEMIDLIST pidl,
-    PFNASYNCICONTASKBALLBACK pfn,
-    void *pvCallbackData,
-    void *pvCallbackHint,
-    int *outIndex1,
-    int *outIndex2
+    PCITEMID_CHILD pidlChild,
+    PFNASYNCICONTASKBALLBACK pfnCallback,
+    void* pvCallbackData,
+    void* pvCallbackHint,
+    int* piIndex,
+    int* piOpenIndex
+);
+inline HRESULT (WINAPI* SHMapIDListToSystemImageListIndex)(
+    IShellFolder* psf,
+    PCITEMID_CHILD pidlChild,
+    int* piIndex,
+    int* piOpenIndex
 );
 
-inline HRESULT(WINAPI* SHMapIDListToSystemImageListIndex)(
-	void* psf,
-	LPCITEMIDLIST pidlChild,
-	int* outIndex1,
-	int idk
-	);
 inline BOOL(WINAPI *IsShellManagedWindow)(HWND hwnd);
 inline BOOL(WINAPI *IsShellFrameWindow)(HWND hwnd);
 inline HWND(WINAPI *GhostWindowFromHungWindow)(HWND hwnd);

@@ -1289,7 +1289,7 @@ public:
                     int iIndex;
                     SHMapIDListToSystemImageListIndexAsync(_pScheduler, pscut->ParentFolder(),
                         _SHILMakeChild(pscut->RelativePidl()), DummyCallBack,
-                        0, 0, &iIndex, 0);
+                        NULL, NULL, &iIndex, NULL);
 
                     // Register Darwin shortcut so that they can be grayed out if not installed
                     // and so we can map them to local paths as necessary
