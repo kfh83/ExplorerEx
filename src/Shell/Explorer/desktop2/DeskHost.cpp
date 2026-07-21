@@ -512,7 +512,7 @@ void CDesktopHost::_ChoosePopupPosition(POINT *ppt, LPCRECT prcExclude, LPRECT p
 }
 
 // EXEX-VISTA(allison): Validated.
-int GetDesiredHeight(HWND hwndHost, SMPANEDATA* psmpd, SIZE* psizOut)
+int GetDesiredHeight(HWND hwndHost, SMPANEDATA* psmpd, SIZE* psizeContent)
 {
     SMNGETMINSIZE nmgms = { 0 };
     nmgms.hdr.hwndFrom = hwndHost;
@@ -521,8 +521,8 @@ int GetDesiredHeight(HWND hwndHost, SMPANEDATA* psmpd, SIZE* psizOut)
 
     SendMessage(psmpd->hwnd, WM_NOTIFY, nmgms.hdr.idFrom, (LPARAM)&nmgms);
 
-    if (psizOut)
-		*psizOut = nmgms.field_14;
+    if (psizeContent)
+		*psizeContent = nmgms.sizeContent;
 
     return nmgms.siz.cy;
 }

@@ -1453,7 +1453,7 @@ void HIDA_ReleaseStgMedium(LPIDA pida, STGMEDIUM* pmedium);
 
 HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* ppidl);
 
-inline HRESULT(WINAPI* SHGetUserPicturePath)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathMax);
+inline HRESULT(WINAPI* SHGetUserPicturePath)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathSize);
 
 inline HRESULT(*CFSFolder_CreateFolder)(IUnknown* punkOuter, LPBC pbc, LPCITEMIDLIST pidl, const PERSIST_FOLDER_TARGET_INFO* pf, REFIID riid, void** ppv);
 inline HRESULT(*SHCreatePropertyBagOnMemory)(DWORD grfMode, REFIID riid, void** ppv);

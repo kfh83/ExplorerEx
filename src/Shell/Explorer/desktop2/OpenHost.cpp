@@ -221,9 +221,7 @@ void RemapSizeForHighDPI(SIZE *psiz);
 
 LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	CREATESTRUCTW* lpcs = reinterpret_cast<CREATESTRUCTW*>(lParam);
 	SMPANEDATA* psmpd = PaneDataFromCreateStruct(lParam);;
-
 	HTHEME hTheme = psmpd->hTheme;
 
 	IUnknown_Set(&psmpd->punk, static_cast<IServiceProvider*>(this));
@@ -235,7 +233,7 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		if (_iCurView == i)
 			dwStyle |= WS_VISIBLE;
 
-		if (i == 3 && _iCurView < 2)
+		if (i == OPENVIEW_VIEWCONTROL && _iCurView < OPENVIEW_SEARCHPANE)
 			dwStyle |= WS_VISIBLE;
 
 		if (hTheme)
@@ -245,7 +243,7 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 			if (_aopa[i].fDefined)
 				_aopa[i].hTheme = hTheme;
 
-			if (i == 3)
+			if (i == OPENVIEW_VIEWCONTROL)
 			{
 				RECT rc;
 				if (SUCCEEDED(GetThemeRect(hTheme, _aopa[i].iPartId, 0, TMT_DEFAULTPANESIZE, &rc)))
@@ -259,8 +257,8 @@ LRESULT COpenViewHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		RemapSizeForHighDPI(&_aopa[i].size);
 
 		HWND hwndPane = CreateWindowEx(
-			0, _aopa[i].pszClassName, nullptr, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i),
-			nullptr, &_aopa[i]);
+			0, _aopa[i].pszClassName, NULL, dwStyle, 0, 0, 0, _aopa[i].size.cy, hwnd, IntToPtr_(HMENU, i),
+			NULL, &_aopa[i]);
 		if (!hwndPane || !GetWindowLongPtr(hwnd, GWLP_USERDATA))
 			return -1;
 
@@ -295,65 +293,66 @@ LRESULT COpenViewHost::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	HWND Parent;
 	int cy;
-	HWND hwndInner;
-	int DlgCtrlID;
+	HWND v9;
+	HWND hwndChild;
+	UINT_PTR DlgCtrlID;
+	HWND Parent;
 
-	NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
+	NMHDR* pnm = (NMHDR*)lParam;
+	SMNGETMINSIZE* pgms = reinterpret_cast<SMNGETMINSIZE*>(lParam);
+
 	HWND hwndFrom = pnm->hwndFrom;
-	if (hwndFrom == GetParent(_hwnd))
+	if (hwndFrom == GetParent(this->_hwnd))
 	{
-		switch (pnm->code)
+		if (pnm->code == 206)
 		{
-			case 206:
+			for (int i = 0; i < ARRAYSIZE(_aopa); ++i)
 			{
-				SMNGETMINSIZE* pnmgs = reinterpret_cast<SMNGETMINSIZE*>(lParam);
+				SMNGETMINSIZE nmgms = {0};
+				nmgms.hdr.hwndFrom = pgms->hdr.hwndFrom;
+				nmgms.siz = pgms->siz;
+				nmgms.hdr.code = SMN_GETMINSIZE;
+				SendMessageW(_aopa[i].hwnd, WM_NOTIFY, nmgms.hdr.idFrom, (LPARAM)&nmgms);
 
-				for (__int64 i = 0; i < 5; ++i)
+				cy = nmgms.siz.cy;
+				if (i < OPENVIEW_SEARCHPANE)
 				{
-					SMNGETMINSIZE nmgms = {};
-					nmgms.hdr.hwndFrom = pnm->hwndFrom;
-					nmgms.hdr.code = 206;
-					nmgms.siz = pnmgs->siz;
-					SendMessageW(_aopa[i].hwnd, WM_NOTIFY, nmgms.hdr.idFrom, reinterpret_cast<LPARAM>(&nmgms));
+					cy = _aopa[OPENVIEW_VIEWCONTROL].size.cy + nmgms.siz.cy;
+				}
 
-					cy = nmgms.siz.cy;
-					if (i < 2)
-					{
-						cy = _aopa[3].size.cy + nmgms.siz.cy;
-					}
-					if (pnmgs->siz.cy < cy)
-					{
-						pnmgs->siz.cy = cy;
-					}
-					if (pnmgs->field_14.cy < nmgms.field_14.cy)
-					{
-						pnmgs->field_14.cy = nmgms.field_14.cy;
-					}
+				if (pgms->siz.cy < cy)
+					pgms->siz.cy = cy;
+
+				if (pgms->sizeContent.cy < nmgms.sizeContent.cy)
+					pgms->sizeContent.cy = nmgms.sizeContent.cy;
+			}
+			return 0;
+		}
+
+		if (pnm->code == 210)
+		{
+			goto LABEL_14;
+		}
+		if (pnm->code != 215)
+		{
+			if (pnm->code == 217)
+			{
+				if (_iCurView < 2)
+				{
+					return SendMessageW(_aopa[3].hwnd, uMsg, wParam, lParam);
 				}
 				return 0;
 			}
-			case 210:
-				goto LABEL_14;
-			case 215:
-				return 0;
-			default:
-				break;
-		}
-
-		if (pnm->code != 217)
-		{
 			if (pnm->code != 221)
 			{
 				if (pnm->code != 222)
 				{
-					if (pnm->code == 223)
+					if (pnm->code != 223)
 					{
-						return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
+						return SendMessageW(_aopa[_iCurView].hwnd, uMsg, wParam, lParam);
 					}
-					Parent = _aopa[_iCurView].hwnd;
-					return SendMessageW(Parent, uMsg, wParam, lParam);
+					return SetSite(((SMNSETSITE*)lParam)->punkSite) >= 0;
 				}
 			LABEL_14:
 				_SetCurrentView(0, nullptr);
@@ -361,42 +360,32 @@ LRESULT COpenViewHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 				return 0;
 			}
 			_SetCurrentView(0, nullptr);
-			return 0;
 		}
-		if (_iCurView >= 2)
-		{
-			return 0;
-		}
-		Parent = _aopa[3].hwnd;
-	}
-	else
-	{
-		if (hwndFrom == _hwnd)
-		{
-			hwndInner = GetWindow(_aopa[_iCurView].hwnd, 5u);
-			pnm->hwndFrom = hwndInner;
-			DlgCtrlID = GetDlgCtrlID(hwndInner);
-			uMsg = 0x4E;
-			wParam = DlgCtrlID;
-			pnm->idFrom = DlgCtrlID;
-			Parent = _aopa[_iCurView].hwnd;
-		}
-		else
-		{
-			if (pnm->code != 202
-				&& pnm->code != 204
-				&& pnm->code != 207
-				&& pnm->code != 209
-				&& pnm->code != 212
-				&& pnm->code != 218)
-			{
-				return DefWindowProcW(hwnd, uMsg, wParam, lParam);
-			}
-			Parent = GetParent(_hwnd);
-		}
+		return 0;
 	}
 
-	return SendMessageW(Parent, uMsg, wParam, lParam);
+	v9 = _hwnd;
+	if (hwndFrom == v9)
+	{
+		hwndChild = GetWindow(_aopa[_iCurView].hwnd, GW_CHILD);
+		pnm->hwndFrom = hwndChild;
+		DlgCtrlID = GetDlgCtrlID(hwndChild);
+		wParam = DlgCtrlID;
+		pnm->idFrom = DlgCtrlID;
+		uMsg = WM_NOTIFY;
+		return SendMessageW(_aopa[_iCurView].hwnd, uMsg, wParam, lParam);
+	}
+	if (pnm->code == 202 // SMN_HAVENEWITEMS
+		|| pnm->code == 204 // SMN_COMMANDINVOKED
+		|| pnm->code == 207 // SMN_SEENNEWITEMS
+		|| pnm->code == 209 // SMN_NEEDREPAINT
+		|| pnm->code == 212 // SMN_BLOCKMENUMODE
+		|| pnm->code == 218)
+	{
+		Parent = GetParent(v9);
+		return SendMessageW(Parent, uMsg, wParam, lParam);
+	}
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 void COpenViewHost::_Layout(int cx, int cy)

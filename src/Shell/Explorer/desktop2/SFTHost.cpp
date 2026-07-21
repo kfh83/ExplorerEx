@@ -4401,13 +4401,13 @@ LRESULT SFTBarHost::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
         + cSep * this->_cySepTile;
     if (this->_iThemePart == 4)
         v5 += this->_cySep;
-    pgms->field_14.cy = -1;
+    pgms->sizeContent.cy = -1;
     pgms->siz.cy = v5;
     int v6 = this->_cNormal;
     int cNormalDesired = this->_cNormalDesired;
     if (v6 < cNormalDesired)
-        pgms->field_14.cy = v5 - this->_cyTile * (cNormalDesired - v6);
-    pgms->field_14.cx = this->_cxIndent + this->GetMinTextWidth();
+        pgms->sizeContent.cy = v5 - this->_cyTile * (cNormalDesired - v6);
+    pgms->sizeContent.cx = this->_cxIndent + this->GetMinTextWidth();
     return 0;
 #endif
 }

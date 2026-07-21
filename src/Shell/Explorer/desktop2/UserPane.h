@@ -72,7 +72,7 @@ public:
     void _UpdatePictureWindow(BYTE a2, BYTE a3);
     void _PaintPictureWindow(HDC hdc, BYTE a2, BYTE a3);
     HWND _GetPictureWindowPrevHnwd();
-    void _UpdateDC(HDC hdc, int iIndex, BYTE a3);
+    void _UpdateDC(HDC hdcDest, int iIndex, BYTE bAlpha);
     void _HidePictureWindow();
     void _FadePictureWindow();
     void _DoFade();
@@ -87,6 +87,7 @@ private:
     HWND _hwnd;
     HWND _hwndStatic;
     HTHEME _hTheme;
+    MARGINS _mrgnPictureFrame;
     int _cxPicInset;
     int _cxPicMargin; // Seems to  be unused anyway, the frame is always centered horizontally.
     int _cyPicInset;

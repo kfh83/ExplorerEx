@@ -545,7 +545,7 @@ LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
 LRESULT CTopMatch::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
 {
-	pgms->field_14.cy = -1;
+	pgms->sizeContent.cy = -1;
 	pgms->siz.cy = _margins.cyTopHeight + _margins.cyBottomHeight + _cyIcon;
 	return 0;
 }

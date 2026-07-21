@@ -15,11 +15,12 @@ void* __cdecl operator new(size_t nSize)
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, nSize);
 }
 
-void  __cdecl operator delete(void *pv)
+void __cdecl operator delete(void *pv)
 {
-    //delete and LocalFree both handle NULL, others don't
-    //If changed to GlobalFree or HeapFree - must check for NULL here
-    LocalFree((HLOCAL)pv);
+    if (pv)
+    {
+        HeapFree(GetProcessHeap(), 0, pv);
+    }
 }
 #endif
 

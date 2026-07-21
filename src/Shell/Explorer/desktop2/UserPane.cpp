@@ -6,32 +6,32 @@
 #include "sfthost.h"
 #include "userpane.h"
 
-#define REGSTR_VAL_DV2_STARTPANEL_FADEIN TEXT("StartPanel_FadeIn")
-#define REGSTR_VAL_DV2_STARTPANEL_FADEOUT TEXT("StartPanel_FadeOut")
-#define REGSTR_VAL_DV2_STARTPANEL_FADEDELAY TEXT("StartPanel_FadeDelay")
+#define REGSTR_VAL_DV2_STARTPANEL_FADEIN        TEXT("StartPanel_FadeIn")
+#define REGSTR_VAL_DV2_STARTPANEL_FADEOUT       TEXT("StartPanel_FadeOut")
+#define REGSTR_VAL_DV2_STARTPANEL_FADEDELAY     TEXT("StartPanel_FadeDelay")
 
 CUserPane::CUserPane()
     : _lRef(1)
     , _lFadeA(-1)
     , _lFadeB(-1)
 {
-    ASSERT(_hwnd == nullptr); // 19
-    ASSERT(_hbmUserPicture == nullptr); // 20
+    ASSERT(_hwnd == NULL); // 19
+    ASSERT(_hbmUserPicture == NULL); // 20
 
     DWORD cbData = sizeof(DWORD);
     _dwFadeIn = 350;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEIN, SRRF_RT_ANY, nullptr, &_dwFadeIn, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEIN, SRRF_RT_ANY, NULL, &_dwFadeIn, &cbData);
 
     cbData = sizeof(DWORD);
     _dwFadeOut = 250;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEOUT, SRRF_RT_ANY, nullptr, &_dwFadeOut, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEOUT, SRRF_RT_ANY, NULL, &_dwFadeOut, &cbData);
 
     cbData = sizeof(DWORD);
     _dwFadeDelay = 400;
     _SHRegGetValueFromHKCUHKLM(
-        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEDELAY, SRRF_RT_ANY, nullptr, &_dwFadeDelay, &cbData);
+        DV2_REGPATH, REGSTR_VAL_DV2_STARTPANEL_FADEDELAY, SRRF_RT_ANY, NULL, &_dwFadeDelay, &cbData);
 }
 
 CUserPane::~CUserPane()
@@ -64,7 +64,7 @@ ULONG CUserPane::Release()
 {
     ASSERT(0 != _lRef); // 261
     LONG lRef = InterlockedDecrement(&_lRef);
-    if (lRef == 0 && this)
+    if (lRef == 0)
     {
         delete this;
     }
@@ -132,21 +132,24 @@ HRESULT CUserPane::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexeco
 
 LRESULT CALLBACK CUserPane::s_WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CUserPane *pThis = reinterpret_cast<CUserPane *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-    if (pThis)
+    CUserPane* pThis = reinterpret_cast<CUserPane*>(GetWindowPtr(hwnd, GWLP_USERDATA));
+    if (pThis != nullptr)
+    {
         return pThis->WndProcPane(hwnd, uMsg, wParam, lParam);
-
+    }
     if (uMsg != WM_NCDESTROY)
     {
-        pThis = new CUserPane();
+        pThis = new CUserPane;
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
-        if (pThis)
-        {
-            return pThis->WndProcPane(hwnd, uMsg, wParam, lParam);
-        }
     }
-
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    if (pThis != nullptr)
+    {
+        return pThis->WndProcPane(hwnd, uMsg, wParam, lParam);
+    }
+    else
+    {
+        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    }
 }
 
 void CUserPane::_UpdatePictureWindow(BYTE a2, BYTE a3)
@@ -159,7 +162,7 @@ void CUserPane::_UpdatePictureWindow(BYTE a2, BYTE a3)
     }
 }
 
-void CUserPane::_UpdateDC(HDC hdc, int iIndex, BYTE a4)
+void CUserPane::_UpdateDC(HDC hdcDest, int iIndex, BYTE bAlpha)
 {
     HDC hDC = GetDC(_hwndStatic);
     HDC hMemDC = CreateCompatibleDC(hDC);
@@ -246,9 +249,9 @@ void CUserPane::_UpdateDC(HDC hdc, int iIndex, BYTE a4)
         BLENDFUNCTION bf;
         bf.BlendOp = AC_SRC_OVER;
         bf.BlendFlags = 0;
-        bf.SourceConstantAlpha = a4;
+        bf.SourceConstantAlpha = bAlpha;
         bf.AlphaFormat = 0;
-        GdiAlphaBlend(hdc, 0, 0, _iFramedPicWidth, _iFramedPicHeight, hMemDC, 0, 0, _iFramedPicWidth, _iFramedPicHeight, bf);
+        GdiAlphaBlend(hdcDest, 0, 0, _iFramedPicWidth, _iFramedPicHeight, hMemDC, 0, 0, _iFramedPicWidth, _iFramedPicHeight, bf);
 
         if (hOldObj)
             SelectObject(hMemDC, hOldObj);
@@ -261,7 +264,7 @@ void CUserPane::_UpdateDC(HDC hdc, int iIndex, BYTE a4)
     ReleaseDC(_hwndStatic, hDC);
 }
 
-void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a3, BYTE a4)
+void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a2, BYTE a3)
 {
     HDC hMemDC = CreateCompatibleDC(hdc);
     HGDIOBJ hOldObj = NULL;
@@ -284,14 +287,14 @@ void CUserPane::_PaintPictureWindow(HDC hdc, BYTE a3, BYTE a4)
         if (hbm)
             hOldObj = SelectObject(hMemDC, hbm);
 
-        if (a3)
+        if (a2)
         {
-            _UpdateDC(hMemDC, _lFadeB, a3);
+            _UpdateDC(hMemDC, _lFadeB, a2);
         }
 
-        if (a4)
+        if (a3)
         {
-            _UpdateDC(hMemDC, _lFadeA, a4);
+            _UpdateDC(hMemDC, _lFadeA, a3);
         }
 
         POINT pt;
@@ -336,8 +339,7 @@ void CUserPane::_HidePictureWindow()
 
 LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CREATESTRUCTW* lpcs = reinterpret_cast<CREATESTRUCTW*>(lParam);
-    SMPANEDATA* psmpd = static_cast<SMPANEDATA*>(lpcs->lpCreateParams);
+    SMPANEDATA* psmpd = PaneDataFromCreateStruct(lParam);
 
     _hwnd = hwnd;
     _hTheme = psmpd->hTheme;
@@ -499,7 +501,7 @@ LRESULT CALLBACK CUserPane::WndProcPane(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 
 LRESULT CUserPane::s_WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CUserPane *pThis = reinterpret_cast<CUserPane *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    CUserPane *pThis = reinterpret_cast<CUserPane *>(GetWindowPtr(hwnd, GWLP_USERDATA));
     if (uMsg == 0x81)
     {
         LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
@@ -644,14 +646,12 @@ LRESULT CUserPane::OnSize()
 
     if (_hwndStatic)
     {
-        int iPicOffset = rc.bottom - _cyPicMargin;
-
         RECT rcFrame;
         rcFrame.left = (rc.right - _iFramedPicWidth - rc.left) / 2;
-        rcFrame.top = iPicOffset - _iFramedPicHeight - rc.top;
+        rcFrame.top = rc.bottom - _mrgnPictureFrame.cyBottomHeight - _iFramedPicHeight - rc.top;
         rcFrame.right = rcFrame.left + _iFramedPicWidth;
-        rcFrame.bottom = iPicOffset - rc.top;
-        MapWindowRect(_hwnd, nullptr, &rcFrame);
+        rcFrame.bottom = rc.bottom - _mrgnPictureFrame.cyBottomHeight - rc.top;
+        MapWindowRect(_hwnd, NULL, &rcFrame);
         MoveWindow(_hwndStatic, rcFrame.left, rcFrame.top, RECTWIDTH(rcFrame), RECTHEIGHT(rcFrame), FALSE);
     }
     return 0;
@@ -734,12 +734,12 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
 {
     HRESULT hr = S_OK;
 
-    BOOL fShowPicture = TRUE;
+    BOOL bShowPicture = TRUE;
     if (_hTheme)
     {
-        GetThemeBool(_hTheme, SPP_USERPANE, 0, TMT_USERPICTURE, &fShowPicture);
+        GetThemeBool(_hTheme, SPP_USERPANE, 0, TMT_USERPICTURE, &bShowPicture);
     }
-    if (fShowPicture)
+    if (bShowPicture)
     {
         WCHAR szUserPicturePath[260];
         szUserPicturePath[0] = '0';
@@ -765,17 +765,17 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
                     _iUnframedPicWidth = MulDiv(_iUnframedPicHeight, iPicWidth, iPicHeight);
                 }
 
-                _cxPicInset = 8;
-                _cxPicMargin = 8;
-                _cyPicMargin = 8;
-                _cyPicInset = 8;
+                _mrgnPictureFrame.cxLeftWidth = 8;
+                _mrgnPictureFrame.cxRightWidth = 8;
+                _mrgnPictureFrame.cyBottomHeight = 8;
+                _mrgnPictureFrame.cyTopHeight = 8;
 
                 SIZE sizUserPic = { 64, 64 };
                 RemapSizeForHighDPI(&sizUserPic);
 
                 SHLogicalToPhysicalDPI(&_iUnframedPicWidth, &_iUnframedPicHeight);
-                SHLogicalToPhysicalDPI(&_cxPicInset, &_cyPicInset);
-                SHLogicalToPhysicalDPI(&_cxPicMargin, &_cyPicMargin);
+                SHLogicalToPhysicalDPI(&_mrgnPictureFrame.cxLeftWidth, &_mrgnPictureFrame.cyTopHeight);
+                SHLogicalToPhysicalDPI(&_mrgnPictureFrame.cxRightWidth, &_mrgnPictureFrame.cyBottomHeight);
 
                 _iFramedPicHeight = sizUserPic.cy;
                 _iFramedPicWidth = sizUserPic.cx;
@@ -807,15 +807,13 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
             IUnknown_QueryServiceExec(_punkSite, SID_SFolderView, &CGID_DV2ControlHost, 329, 0, nullptr, nullptr);
         }
     }
-
     OnSize();
 
     NMHDR nm;
     nm.hwndFrom = _hwnd;
     nm.idFrom = 0;
     nm.code = SMN_NEEDREPAINT;
-    HWND hwndParent = GetParent(nm.hwndFrom);
-    SendMessageW(hwndParent, WM_NOTIFY, 0, (LPARAM)&nm);
+    SendMessage(GetParent(_hwnd), WM_NOTIFY, 0, (LPARAM)&nm);
     return hr;
 }
 
