@@ -118,16 +118,16 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
     if (!SHRestricted(REST_NOSMMOREPROGRAMS))
     {
-        if (!LoadString(g_hinstCabinet,     8226,    _szMessage,        ARRAYSIZE(_szMessage))
-            || !LoadString(g_hinstCabinet,  8241,    _szMessageBack,    ARRAYSIZE(_szMessageBack))
-            || !LoadString(g_hinstCabinet,  8227,    _szTool,           ARRAYSIZE(_szTool))
-            || !LoadString(g_hinstCabinet,  8245,    _szToolBack,       ARRAYSIZE(_szToolBack)))
+        if (!LoadString(g_hinstCabinet, 8226, _szMessage, ARRAYSIZE(_szMessage))
+            || !LoadString(g_hinstCabinet, 8241, _szMessageBack, ARRAYSIZE(_szMessageBack))
+            || !LoadString(g_hinstCabinet, 8227, _szTool, ARRAYSIZE(_szTool))
+            || !LoadString(g_hinstCabinet, 8245, _szToolBack, ARRAYSIZE(_szToolBack)))
         {
             return -1;
         }
 
-        _chMnem = (WCHAR)CharUpper((LPWSTR)SHFindMnemonic(_szMessage));
-        _chMnemBack = (WCHAR)CharUpper((LPWSTR)SHFindMnemonic(_szMessageBack));
+        _chMnem     = CharUpperCharW(SHFindMnemonic(_szMessage));
+        _chMnemBack = CharUpperCharW(SHFindMnemonic(_szMessageBack));
 
         _hf = LoadControlFont(_hTheme, SPP_MOREPROGRAMS, FALSE, 0);
 
@@ -858,7 +858,7 @@ LRESULT CMorePrograms::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             pmsg = pdm->pmsg;
             if (!pmsg)
                 goto LABEL_32;
-            v9 = (unsigned __int16)CharUpperW((LPWSTR)LOWORD(pmsg->wParam));
+            v9 = CharUpperCharW(LOWORD(pmsg->wParam));
             view = OHVIEW_0;
             _GetCurView(&view);
             v6 = view ? this->_chMnemBack : this->_chMnem;
@@ -1076,13 +1076,13 @@ LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
 			lParam = MAKELPARAM(rc.left, rc.top);
         }
 
-        SMNMISTARTBUTTON nm;
-        nm.psb = NULL;
-        _SendNotify(_hwnd, 218, &nm.hdr);
-        if (nm.psb)
+        SMNMISTARTBUTTON isb;
+        isb.psb = NULL;
+        _SendNotify(_hwnd, 218, &isb.hdr);
+        if (isb.psb)
         {
-            nm.psb->OnContextMenu(_hwnd, lParam);
-			nm.psb->Release();
+            isb.psb->OnContextMenu(_hwnd, lParam);
+			isb.psb->Release();
         }
     }
     return 0;

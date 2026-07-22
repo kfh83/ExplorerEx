@@ -407,13 +407,13 @@ LRESULT CTopMatch::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			lParam = MAKELPARAM(rc.left, rc.top);
 		}
 
-		SMNMISTARTBUTTON nm;
-		nm.psb = NULL;
-		_SendNotify(_hwnd, 218, &nm.hdr);
-		if (nm.psb)
+		SMNMISTARTBUTTON isb;
+		isb.psb = NULL;
+		_SendNotify(_hwnd, 218, &isb.hdr);
+		if (isb.psb)
 		{
-			nm.psb->OnContextMenu(_hwnd, lParam);
-			nm.psb->Release();
+			isb.psb->OnContextMenu(_hwnd, lParam);
+			isb.psb->Release();
 		}
 	}
 	return 0;

@@ -354,15 +354,15 @@ LRESULT CUserPane::_OnNcCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 HWND CUserPane::_GetPictureWindowPrevHnwd()
 {
-    HWND hwnd = nullptr;
+    HWND hwnd = NULL;
 
-    SMNMISTARTBUTTON nm;
-    nm.psb = nullptr;
-    _SendNotify(_hwnd, 218, &nm.hdr);
-    if (nm.psb)
+    SMNMISTARTBUTTON isb;
+    isb.psb = NULL;
+    _SendNotify(_hwnd, 218, &isb.hdr);
+    if (isb.psb)
     {
-        nm.psb->GetWindow(&hwnd);
-        nm.psb->Release();
+        isb.psb->GetWindow(&hwnd);
+        isb.psb->Release();
     }
     return hwnd ? nullptr : GetWindow(nullptr, GW_HWNDPREV);
 }
@@ -517,11 +517,11 @@ LRESULT CUserPane::s_WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
 
 void CUserPane::_DoFade()
 {
-    LARGE_INTEGER Frequency; // [esp+8h] [ebp-28h] BYREF
-    LARGE_INTEGER PerformanceCount; // [esp+10h] [ebp-20h] BYREF
-    LARGE_INTEGER v10; // [esp+18h] [ebp-18h] BYREF
-    BYTE v13; // [esp+28h] [ebp-8h]
-    BYTE a2; // [esp+2Ch] [ebp-4h]
+    LARGE_INTEGER Frequency;
+    LARGE_INTEGER PerformanceCount;
+    LARGE_INTEGER v10;
+    BYTE v13;
+    BYTE a2;
 
     QueryPerformanceFrequency(&Frequency);
     QueryPerformanceCounter(&PerformanceCount);
@@ -606,7 +606,7 @@ LRESULT CUserPane::WndProcPicture(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         {
             if (_lFadeA == -1)
             {
-                SetCursor(LoadCursorW(nullptr, IDC_HAND));
+                SetCursor(LoadCursor(NULL, IDC_HAND));
                 return 1;
             }
             break;

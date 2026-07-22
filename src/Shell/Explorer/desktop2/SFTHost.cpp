@@ -222,7 +222,7 @@ LRESULT CALLBACK SFTBarHost::_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         {
             if (uMsg == 0x121)
             {
-				//updated = self->_OnSetIdle(hwnd, uMsg, wParam, lParam); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
+				updated = self->_OnSetIdle(hwnd, uMsg, wParam, lParam); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
                 goto LABEL_74;
             }
             if (uMsg > 0x2C)
@@ -724,7 +724,7 @@ void SFTBarHost::SetIconAsync(void* pvData, void* pvHint, int iIconIndex, int iO
     HWND hwnd = static_cast<HWND>(pvData);
     if (IsWindow(hwnd))
     {
-        SFTBarHost* self = reinterpret_cast<SFTBarHost*>(GetWindowLongPtrW(hwnd, 0));
+        SFTBarHost* self = reinterpret_cast<SFTBarHost*>(GetWindowPtr0(hwnd));
         if (self)
         {
             IImageList2* piml = nullptr;
@@ -1162,7 +1162,7 @@ exit:
                 lvi.iSubItem = 1;
                 lvi.mask = LVIF_TEXT;
                 CoTaskMemFree(lvi.pszText);
-                lvi.pszText = SubtitleOfItem(pitem, psf, (LPCITEMIDLIST)pidl);
+                lvi.pszText = SubtitleOfItem(pitem, psf, pidl);
                 if (lvi.pszText)
                 {
                     ListView_SetItem(_hwndList, &lvi);
@@ -2676,6 +2676,16 @@ void SFTBarHost::_CustomDrawPop()
     _dwCustomDrawState >>= 1;
 }
 
+LRESULT SFTBarHost::_OnSetIdle(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    if (wParam == 2 && field_16C != 0)
+    {
+        // SHTracePerf(&ShellTraceId_StartMenu_OpenContextMenu_Stop);
+        field_16C = 0;
+    }
+    return 0;
+}
+
 // EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnLVPrePaint(LPNMLVCUSTOMDRAW plvcd)
 {
@@ -3634,73 +3644,32 @@ LRESULT SFTBarHost::_OnLVNItemActivate(LPNMITEMACTIVATE pnmia)
 // EXEX-VISTA(allison): Validated. Still needs cleanup.
 LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
 {
-#ifdef DEAD_CODE
-    PaneItem *pitem;
-    IShellFolder *psf;
-    LPCITEMIDLIST pidl;
+    PaneItem* pitem;
+    HRESULT hr;
+    PCITEMID_CHILD pidl;
+    IShellFolder* psf;
+    DWORD dwAttr;
 
-    DWORD dwCascadeFlags = 0;
-    if (dwFlags & AIF_KEYBOARD)
+    SMNMISTARTBUTTON isb;
+    isb.psb = NULL;
+    _SendNotify(_hwnd, 218, &isb.hdr);
+    if (isb.psb)
     {
-        dwCascadeFlags = MPPF_KEYBOARD | MPPF_INITIALSELECT;
-    }
-
-    if (_OnCascade(iItem, dwCascadeFlags))
-    {
-        // We did the cascade thing; all finished!
-    }
-    else
-        if ((pitem = _GetItemFromLV(iItem)) &&
-            SUCCEEDED(_GetFolderAndPidl(pitem, &psf, &pidl)))
-        {
-            // See if the item is still valid.
-            // Do this only for SFGAO_FILESYSTEM objects because
-            // we can't be sure that other folders support SFGAO_VALIDATE,
-            // and besides, you can't resolve any other types of objects
-            // anyway...
-
-            DWORD dwAttr = SFGAO_FILESYSTEM | SFGAO_VALIDATE;
-            if (FAILED(psf->GetAttributesOf(1, &pidl, &dwAttr)) ||
-                (dwAttr & SFGAO_FILESYSTEM | SFGAO_VALIDATE) == SFGAO_FILESYSTEM ||
-                FAILED(_InvokeDefaultCommand(iItem, psf, pidl)))
-            {
-                // Object is bogus - offer to delete it
-                if ((_dwFlags & HOSTF_CANDELETE) && pitem->IsPinned())
-                {
-                    _OfferDeleteBrokenItem(pitem, psf, pidl);
-                }
-            }
-
-            psf->Release();
-        }
-    return 0;
-#else
-    // eax
-    PaneItem *pitem; // edi
-    HRESULT hr; // eax
-    SMNMISTARTBUTTON nm; // [esp+4h] [ebp-18h] BYREF
-    const ITEMID_CHILD *pidl; // [esp+14h] [ebp-8h] BYREF
-    IShellFolder *psf; // [esp+18h] [ebp-4h] BYREF
-    DWORD dwAttr; // [esp+28h] [ebp+Ch] SPLIT BYREF
-
-    nm.psb = 0;
-    _SendNotify(this->_hwnd, 218u, &nm.hdr);
-    if (nm.psb)
-    {
-		nm.psb->LockStartPane();
-        nm.psb->Release();
+        isb.psb->LockStartPane();
+        isb.psb->Release();
     }
 
     DWORD dwCascadeFlags = 0;
     if ((dwFlags & 1) != 0)
         dwCascadeFlags = 0x12;
-    
+
     if (!_OnCascade(iItem, dwCascadeFlags))
     {
         pitem = _GetItemFromLV(iItem);
         if (pitem)
         {
-            this->_NotifyInvoke(pitem);
+            _NotifyInvoke(pitem);
+
             if (_GetFolderAndPidlForActivate(pitem, &psf, &pidl) >= 0)
             {
                 dwAttr = 0x1000000;
@@ -3713,11 +3682,11 @@ LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
                 {
                     hr = 0;
                 }
-                
-                if (hr < 0) 
+
+                if (hr < 0)
                 {
                 LABEL_14:
-                    if ((this->_dwFlags & 2) != 0 && pitem->_iPinPos >= 0)
+                    if ((_dwFlags & 2) != 0 && pitem->_iPinPos >= 0)
                     {
                         _OfferDeleteBrokenItem(pitem, psf, pidl);
                     }
@@ -3727,8 +3696,8 @@ LRESULT SFTBarHost::_ActivateItem(int iItem, DWORD dwFlags)
             pitem->Release();
         }
     }
+
     return 0;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -5049,7 +5018,7 @@ void SFTBarHost::_PurgeDragDropData()
     _SetInsertMarkPosition(-1);
     _fForceArrowCursor = FALSE;
     _ClearInnerDropTarget();
-    ATOMICRELEASE(_pdtoDragIn);
+    IUnknown_SafeReleaseAndNullPtr(_pdtoDragIn);
 }
 
 // *** IDropTarget::DragEnter ***
@@ -5568,7 +5537,7 @@ int SFTBarHost::_CalcMaxTextWith()
 }
 
 // EXEX-VISTA(allison): Validated.
-LRESULT SFTBarHost::GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch)
+HRESULT SFTBarHost::GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch)
 {
     HRESULT hr = E_FAIL;
 

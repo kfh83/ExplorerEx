@@ -621,7 +621,7 @@ void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prc
         {
             int iSomething = 70;
             SHLogicalToPhysicalDPI(nullptr, &iSomething);
-            v5 = iSomething - _spm.panes[0].size.cy;
+            v5 = iSomething - _spm.panes[SMPANETYPE_USER].size.cy;
         }
     }
 

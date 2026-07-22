@@ -64,43 +64,50 @@ enum {
     SFD_WASSHOWN        = 0x0040,
     SFD_PREFIX          = 0x0080,
     SFD_USEBGTHREAD     = 0x0100,
+    SFD_200             = 0x0200,
+    SFD_400             = 0x0400,
+    SFD_800             = 0x0800,
+    SFD_1000            = 0x1000,
 };
 
-HRESULT SHFormatMessageArg(DWORD dwFlags, const void* lpSource, DWORD dwMessageId, DWORD dwLangID, WCHAR* pszBuffer, DWORD cchSize, ...)
+STDAPI SHFormatMessageArg(
+    DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLangID, LPWSTR pszBuffer, DWORD cchSize, ...)
 {
     va_list va;
     va_start(va, cchSize);
 
     va_list vaParamList;
     va_copy(vaParamList, va);
-    if (FormatMessageW(dwFlags, lpSource, dwMessageId, dwLangID, pszBuffer, cchSize, &vaParamList))
+
+    HRESULT hr = S_OK;
+    if (!FormatMessage(dwFlags, lpSource, dwMessageId, dwLangID, pszBuffer, cchSize, &vaParamList))
     {
-        return S_OK;
+        hr = ResultFromLastError();
     }
-    return ResultFromLastError();
+    return hr;
 }
 
-DEFINE_GUID(POLID_NoUserFolderInStartMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoSMMyDocs, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoSMMyPictures, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuMyMusic, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuHomegroup, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuVideos, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuDownloads, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuRecordedTV, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoStartMenuMyGames, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoFavoritesMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoRecentDocsMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoMyComputerIcon, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoUserFolderInStartMenu,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMMyDocs,               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMMyPictures,           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuMyMusic,       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuHomegroup,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuVideos,        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuDownloads,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuRecordedTV,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoStartMenuMyGames,       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoFavoritesMenu,          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoRecentDocsMenu,         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoMyComputerIcon,         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 DEFINE_GUID(POLID_NoStartMenuNetworkPlaces, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoNetworkConnections, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoSetFolders, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoControlPanel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoSMConfigurePrograms, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoSMHelp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoRun, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_ForceRunOnStartMenu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_NoNTSecurity, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoNetworkConnections,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSetFolders,             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoControlPanel,           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMConfigurePrograms,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoSMHelp,                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoRun,                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_ForceRunOnStartMenu,      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_NoNTSecurity,             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 #include <evntprov.h>
 
@@ -146,21 +153,13 @@ public:
         return _kfMenuId;
     }
 
-    BOOL HasFolderID() const
-    {
-        return !IsEqualGUID(_kfId, GUID_NULL);
-    }
+    BOOL HasFolderID() const        { return !IsEqualGUID(_kfId, GUID_NULL); }
+    BOOL HasMenuFolderID() const    { return !IsEqualGUID(_kfMenuId, GUID_NULL); }
 
-    BOOL HasMenuFolderID() const
-    {
-        return !IsEqualGUID(_kfMenuId, GUID_NULL);
-    }
-
-    BOOL IsDropTarget() const { return _uFlags & SFD_DROPTARGET; }
-    BOOL IsCacheable() const { return _uFlags & SFD_USEBGTHREAD; }
-
-    BOOL IsBold() const { return _uFlags & SFD_BOLD; }
-    int IsSeparator() const { return _pszTarget == SFD_SEPARATOR; }
+    BOOL IsDropTarget() const   { return _uFlags & SFD_DROPTARGET; }
+    BOOL IsCacheable() const    { return _uFlags & SFD_USEBGTHREAD; }
+    BOOL IsBold() const         { return _uFlags & SFD_BOLD; }
+    BOOL IsSeparator() const    { return _pszTarget == SFD_SEPARATOR; }
 
     HRESULT CreateShellMenuCallback(IShellMenuCallback **ppsmc) const
     {
@@ -193,10 +192,9 @@ public:
     }
 
     // Taken from ep_taskbar by @amrsatrio
-    DWORD GetDisplayMode(int *bOutIgnoreRule)
+    DWORD GetDisplayMode(BOOL* pbIgnoreRule) const
     {
-
-        *bOutIgnoreRule = FALSE;
+        *pbIgnoreRule = FALSE;
 
         if (_pguidPolicyHide && SHWindowsPolicy(*_pguidPolicyHide)
             || _pguidPolicyRestrict && SHWindowsPolicy(*_pguidPolicyRestrict))
@@ -213,7 +211,7 @@ public:
             if (_SHRegGetValueFromHKCUHKLM(L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", _pszShow, SRRF_RT_DWORD, NULL, &dwNewMode, &cb) == ERROR_SUCCESS)
             {
                 dwMode = dwNewMode;
-                *bOutIgnoreRule = TRUE;
+                *pbIgnoreRule = TRUE;
             }
             else
             {
@@ -358,11 +356,11 @@ public:
         BOOL bRet = FALSE;
 
         WCHAR szText[256];
-        if (pList->GetLVText((PaneItem*)pitem, szText, ARRAYSIZE(szText)) >= 0)
+        if (SUCCEEDED(pList->GetLVText((PaneItem*)pitem, szText, ARRAYSIZE(szText))))
         {
             WCHAR szBuf[256];
-            LoadString(g_hinstCabinet, 317, szBuf, ARRAYSIZE(szBuf));
-            bRet = SUCCEEDED(SHFormatMessageArg(0x400, szBuf, 0, 0, pszText, cch, szText)) ? TRUE : FALSE;
+            LoadString(g_hinstCabinet, IDS_CUSTOMTIP_USER, szBuf, ARRAYSIZE(szBuf));
+            bRet = SUCCEEDED(SHFormatMessageArg(FORMAT_MESSAGE_FROM_STRING, szBuf, 0, 0, pszText, cch, szText));
         }
         return bRet;
     }
@@ -371,441 +369,441 @@ public:
 static CMenuDescriptor s_rgsfd[] =
 {
     { // User (00)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_UsersFiles,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoUserFolderInStartMenu,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowUser",
-        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_200 | SFD_400,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
         /* _CustomTooltipCallback */        &CMenuDescriptor::UserTooltip,
-        /* _ShowFolder */                   nullptr,
+        /* _ShowFolder */                   NULL,
         /* _pszCanHideOnDesktop */          L"{59031a47-3f72-44a7-89c5-5595fe6b30ee}",
-        /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenProfile*/
+        /* _pEventDescriptor */             NULL, /*ExplorerFrame_OpenProfile*/
         /* _iEventId */                     582,
         /* _dwEventFlags */                 0
     },
     { // Documents (01)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Documents,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoSMMyDocs,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowMyDocs",
-        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_200 | SFD_400 | SFD_800 | SFD_1000,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     IDS_CUSTOMTIP_MYDOCS,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenDocuments*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*ExplorerFrame_OpenDocuments*/
         /* _iEventId */                     129,
         /* _dwEventFlags */                 0x10
     },
     { // Pictures (02)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Pictures,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoSMMyPictures,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowMyPics",
-        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_200 | SFD_400 | SFD_800 | SFD_1000,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     IDS_CUSTOMTIP_MYPICS,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenPictures*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*ExplorerFrame_OpenPictures*/
         /* _iEventId */                     525,
         /* _dwEventFlags */                 0x40
     },
     { // Music (03)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Music,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoStartMenuMyMusic,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowMyMusic",
-        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800 | 0x1000,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_200 | SFD_400 | SFD_800 | SFD_1000,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     IDS_CUSTOMTIP_MYMUSIC,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenMusic*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*ExplorerFrame_OpenMusic*/
         /* _iEventId */                     524,
         /* _dwEventFlags */                 0x20
     },
     { // Games (04)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Games,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoStartMenuMyGames,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowMyGames",
-        /* _uFlags */                       0x1 | 0x8 | 0x200 | 0x400 | 0x800,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_200 | SFD_400 | SFD_800,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
-        /* _iToolTip */                     312,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Games_Launch*/
+        /* _iToolTip */                     IDS_CUSTOMTIP_GAMES,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Games_Launch*/
         /* _iEventId */                     856,
         /* _dwEventFlags */                 0x8000
     },
     { // Favorites (05)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Favorites,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoFavoritesMenu,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"StartMenuFavorites",
-        /* _uFlags */                       0x8 | 0x10 | 0x80 | 0x200 | 0x800 | 0x1000,
-        /* _CreateShellMenuCallback */      nullptr,
+        /* _uFlags */                       SFD_CANCASCADE | SFD_FORCECASCADE | SFD_PREFIX | SFD_200 | SFD_800 | SFD_1000,
+        /* _CreateShellMenuCallback */      NULL,
         /* _pszCustomizeKey */              L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Favorites",
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                IDS_STARTPANE_FAVORITES,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Favorites_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Favorites_Launch*/
         /* _iEventId */                     143,
         /* _dwEventFlags */                 0x4
     },
 	{ // Separator (06)
         /* _pszTarget */                    SFD_SEPARATOR,
-        /* _kfId */                         {},
-        /* _pszPath */                      nullptr,
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
-        /* _pguidPolicyHide */              nullptr,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      nullptr,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
         /* _uFlags */                       SFD_SHOW,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL,
         /* _iEventId */                     0,
         /* _dwEventFlags */                 0
     },
     { // Recent (07)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_Recent,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
         /* _pszIconPath */                  L"::{0c39a5cf-1a7a-40c8-ba74-8900e6df5fcd}",
         /* _pguidPolicyHide */              &POLID_NoRecentDocsMenu,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_TrackDocs",
-        /* _uFlags */                       0x2 | 0x8 | 0x10 | 0x80,
+        /* _uFlags */                       SFD_CASCADE | SFD_CANCASCADE | SFD_FORCECASCADE | SFD_PREFIX,
         /* _CreateShellMenuCallback */      CRecentShellMenuCallback_CreateInstance,
-        /* _pszCustomizeKey */              nullptr,
-        /* _dwShellFolderFlags */           0x2,
+        /* _pszCustomizeKey */              NULL,
+        /* _dwShellFolderFlags */           SMINIT_RESTRICT_DRAGDROP,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                IDS_STARTPANE_RECENT,
         /* _iToolTip */                     IDS_CUSTOMTIP_RECENT,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_RecentItems_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_RecentItems_Launch*/
         /* _iEventId */                     523,
         /* _dwEventFlags */                 0x4000
     },
     { // Computer (08)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_ComputerFolder,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoMyComputerIcon,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowMyComputer",
-        /* _uFlags */                       0x1 | 0x8 | 0x400,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_400,
         /* _CreateShellMenuCallback */      CMyComputerShellMenuCallback_CreateInstance,
-        /* _pszCustomizeKey */              nullptr,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     IDS_CUSTOMTIP_MYCOMP,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
         /* _pszCanHideOnDesktop */          L"{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
-        /* _pEventDescriptor */             nullptr, /*ExplorerFrame_OpenComputer*/
+        /* _pEventDescriptor */             NULL, /*ExplorerFrame_OpenComputer*/
         /* _iEventId */                     522,
         /* _dwEventFlags */                 0x1
     },
     { // Network (09)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         FOLDERID_NetworkFolder,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoStartMenuNetworkPlaces,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowNetPlaces",
         /* _uFlags */                       SFD_SHOW,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                IDS_STARTPANE_CONNECTTO,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Network_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Network_Launch*/
         /* _iEventId */                     563,
         /* _dwEventFlags */                 0x100
     },
     { // Network Connections (10)
         /* _pszTarget */                    L"::{21EC2020-3AEA-1069-A2DD-08002B30309D}\\::{38A98528-6CBF-4CA9-8DC0-B1E1D10F7B1B}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoNetworkConnections,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowNetConn",
         /* _uFlags */                       SFD_SHOW,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
-        /* _iToolTip */                     318,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_ConnectTo_Launch*/
+        /* _iToolTip */                     IDS_CUSTOMTIP_NETCONN,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_ConnectTo_Launch*/
         /* _iEventId */                     564,
         /* _dwEventFlags */                 0x80
     },
     { // Separator (11)
         /* _pszTarget */                    SFD_SEPARATOR,
-        /* _kfId */                         {},
-        /* _pszPath */                      nullptr,
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
-        /* _pguidPolicyHide */              nullptr,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      nullptr,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
         /* _uFlags */                       SFD_SHOW,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL,
         /* _iEventId */                     0,
         /* _dwEventFlags */                 0
     },
     { // Control Panel (12)
         /* _pszTarget */                    L"::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     FOLDERID_ControlPanelFolder,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoControlPanel,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowControlPanel",
-        /* _uFlags */                       0x1 | 0x8 | 0x80,
+        /* _uFlags */                       SFD_SHOW | SFD_CANCASCADE | SFD_PREFIX,
         /* _CreateShellMenuCallback */      CNoSubMenuShellMenuCallback_CreateInstance,
-        /* _pszCustomizeKey */              nullptr,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                IDS_STARTPANE_CONTROLPANEL,
         /* _iToolTip */                     IDS_CUSTOMTIP_CTRLPANEL,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
         /* _pszCanHideOnDesktop */          L"{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}",
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_ControlPanel_Launch*/
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_ControlPanel_Launch*/
         /* _iEventId */                     128,
         /* _dwEventFlags */                 0x2
     },
     { // Set Program Access and Defaults (13)
         /* _pszTarget */                    L"::{E44E5D18-0652-4508-A4E2-8A090067BCB0}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoSMConfigurePrograms,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowSetProgramAccessAndDefaults",
         /* _uFlags */                       SFD_SHOW,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
-        /* _iToolTip */                     316,
-        /* _CustomTooltipCallback */        nullptr,
+        /* _iToolTip */                     IDS_CUSTOMTIP_SPAD,
+        /* _CustomTooltipCallback */        NULL,
         /* _ShowFolder */                   ShouldShowSPADLink,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_SPAD_Launch*/
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_SPAD_Launch*/
         /* _iEventId */                     133,
         /* _dwEventFlags */                 0x1000
     },
     { // Administrative Tools (14)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      L"Microsoft.AdministrativeTools",
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
-        /* _pguidPolicyHide */              nullptr,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_AdminToolsRoot",
-        /* _uFlags */                       0x8 | 0x10,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_CANCASCADE | SFD_FORCECASCADE,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_AdminTools_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_AdminTools_Launch*/
         /* _iEventId */                     140,
         /* _dwEventFlags */                 0x2000
     },
     { // Printers (15)
-        /* _pszTarget */                    nullptr,
+        /* _pszTarget */                    NULL,
         /* _kfId */                         GUID_NULL,
         /* _pszPath */                      L"Microsoft.Printers",
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
-        /* _pguidPolicyHide */              nullptr,
+        /* _pszIconPath */                  NULL,
+        /* _pguidPolicyHide */              NULL,
         /* _pguidPolicyRestrict */          &POLID_NoSetFolders,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowPrinters",
-        /* _uFlags */                       0,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_HIDE,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
-        /* _iToolTip */                     319,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Printers_Launch*/
+        /* _iToolTip */                     IDS_CUSTOMTIP_PRINTERS,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Printers_Launch*/
         /* _iEventId */                     138,
         /* _dwEventFlags */                 0x400
     },
     { // Help (16)
         /* _pszTarget */                    L"::{2559a1f1-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoSMHelp,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
         /* _pszShow */                      L"Start_ShowHelp",
-        /* _uFlags */                       0x1 | 0x80,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_SHOW | SFD_PREFIX,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                /*0*/IDS_STARTPANE_TITLE_HELP, // @MOD: Use string directly in binary instead of reading from registry which points to normal explorer.exe
         /* _iToolTip */                     /*0*/IDS_STARTPANE_INFOTIP_HELP, // @MOD: Use string directly in binary instead of reading from registry which points to normal explorer.exe
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Help_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Help_Launch*/
         /* _iEventId */                     131,
         /* _dwEventFlags */                 0x8
     },
     { // Run (17)
         /* _pszTarget */                    L"::{2559a1f3-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoRun,
-        /* _pguidPolicyRestrict */          nullptr,
+        /* _pguidPolicyRestrict */          NULL,
         /* _pguidPolicyForceShow */         &POLID_ForceRunOnStartMenu,
         /* _pszShow */                      L"Start_ShowRun",
-        /* _uFlags */                       0x80,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _uFlags */                       SFD_PREFIX,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr, /*Explorer_StartMenu_Run_Launch*/
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL, /*Explorer_StartMenu_Run_Launch*/
         /* _iEventId */                     139,
         /* _dwEventFlags */                 0
     },
     { // Separator (18)
         /* _pszTarget */                    SFD_SEPARATOR,
-        /* _kfId */                         {},
-        /* _pszPath */                      nullptr,
+        /* _kfId */                         GUID_NULL,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     0,
         /* _pszIconPath */                  0,
         /* _pguidPolicyHide */              0,
@@ -817,36 +815,36 @@ static CMenuDescriptor s_rgsfd[] =
         /* _pszCustomizeKey */              0,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
-        /* _idsCustomName */                nullptr,
-        /* _iToolTip */                     nullptr,
-        /* _CustomTooltipCallback */        nullptr,
-        /* _ShowFolder */                   nullptr,
-        /* _pszCanHideOnDesktop */          nullptr,
+        /* _idsCustomName */                0,
+        /* _iToolTip */                     0,
+        /* _CustomTooltipCallback */        NULL,
+        /* _ShowFolder */                   NULL,
+        /* _pszCanHideOnDesktop */          NULL,
         /* _pEventDescriptor */             0,
-        /* _iEventId */                     nullptr,
-        /* _dwEventFlags */                 nullptr
+        /* _iEventId */                     NULL,
+        /* _dwEventFlags */                 NULL
     },
     { // Windows Security (19)
         /* _pszTarget */                    L"::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}",
         /* _kfId */                         GUID_NULL,
-        /* _pszPath */                      nullptr,
+        /* _pszPath */                      NULL,
         /* _kfMenuId */                     GUID_NULL,
-        /* _pszIconPath */                  nullptr,
+        /* _pszIconPath */                  NULL,
         /* _pguidPolicyHide */              &POLID_NoNTSecurity,
-        /* _pguidPolicyRestrict */          nullptr,
-        /* _pguidPolicyForceShow */         nullptr,
-        /* _pszShow */                      nullptr,
-        /* _uFlags */                       0x1 | 0x80,
-        /* _CreateShellMenuCallback */      nullptr,
-        /* _pszCustomizeKey */              nullptr,
+        /* _pguidPolicyRestrict */          NULL,
+        /* _pguidPolicyForceShow */         NULL,
+        /* _pszShow */                      NULL,
+        /* _uFlags */                       SFD_SHOW | SFD_PREFIX,
+        /* _CreateShellMenuCallback */      NULL,
+        /* _pszCustomizeKey */              NULL,
         /* _dwShellFolderFlags */           0,
         /* _dwShellMenuSetFlags */          0,
         /* _idsCustomName */                0,
         /* _iToolTip */                     0,
-        /* _CustomTooltipCallback */        nullptr,
+        /* _CustomTooltipCallback */        NULL,
         /* _ShowFolder */                   ShouldShowWindowsSecurity,
-        /* _pszCanHideOnDesktop */          nullptr,
-        /* _pEventDescriptor */             nullptr,
+        /* _pszCanHideOnDesktop */          NULL,
+        /* _pEventDescriptor */             NULL,
         /* _iEventId */                     0,
         /* _dwEventFlags */                 0,
     }
@@ -882,13 +880,13 @@ public:
         }
         else if (psfd->HasFolderID())
         {
-            if ((psfd->_uFlags & 0x1000) != 0) // Probably something like psfd->IsSimple()
+            if ((psfd->_uFlags & SFD_1000) != 0) // Probably something like psfd->IsSimple()
             {
-                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_VERIFY, nullptr, &_pidlSimple);
+                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_VERIFY, NULL, &_pidlSimple);
             }
             else
             {
-                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_DEFAULT, nullptr, &_pidl);
+                SHGetKnownFolderIDList(psfd->_kfId, KF_FLAG_DEFAULT, NULL, &_pidl);
             }
         }
         else
@@ -896,18 +894,18 @@ public:
             IBindCtx* pbc;
             if (psfd->_pszTarget && SUCCEEDED(BindCtx_CreateWithMode(STGM_CREATE, &pbc)))
             {
-                SHParseDisplayName(psfd->GetItemName(), pbc, &_pidl, 0, nullptr);
+                SHParseDisplayName(psfd->GetItemName(), pbc, &_pidl, 0, NULL);
                 pbc->Release();
                 return;
             }
 
-            IOpenControlPanel* pocp = nullptr;
-            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pocp))))
+            IOpenControlPanel* pocp = NULL;
+            if (SUCCEEDED(CoCreateInstance(CLSID_OpenControlPanel, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pocp))))
             {
                 WCHAR szPath[260];
                 if (SUCCEEDED(pocp->GetPath(psfd->_pszPath, szPath, ARRAYSIZE(szPath))))
                 {
-                    SHParseDisplayName(szPath, nullptr, &_pidl, 0, nullptr);
+                    SHParseDisplayName(szPath, NULL, &_pidl, 0, NULL);
                 }
             }
             if (pocp)
@@ -918,7 +916,7 @@ public:
 
         if (psfd->HasMenuFolderID())
         {
-            SHGetKnownFolderIDList(psfd->GetMenuFolderID(), KF_FLAG_DEFAULT, nullptr, &_pidlCascade);
+            SHGetKnownFolderIDList(psfd->GetMenuFolderID(), KF_FLAG_DEFAULT, NULL, &_pidlCascade);
         }
         _iImageIndex = -1;
     }
@@ -932,10 +930,9 @@ public:
         CoTaskMemFree(_pszDispName);
     }
 
-    int GetPrivateIcon() override
-    {
-        return _iImageIndex;
-    }
+    BOOL CanItemWrap() const { return _psfd->_uFlags & SFD_400; }
+    BOOL IsHiddenInSafeMode() const { return _psfd->_uFlags & SFD_800; }
+    int GetPrivateIcon() { return _iImageIndex; }
 
     void ReplaceLastPidlElement(LPCITEMIDLIST pidlNew)
     {
@@ -1108,10 +1105,11 @@ DWORD WINAPI SpecialFolderList::_HasEnoughChildrenThreadProc(void* pvData)
     {
         for (DWORD dwIndex = 0; dwIndex < ARRAYSIZE(s_rgsfd); dwIndex++)
         {
-            CMenuDescriptor* pdesc = &s_rgsfd[dwIndex];
+            const CMenuDescriptor* pdesc = &s_rgsfd[dwIndex];
 
             BOOL bIgnoreRule;
             DWORD dwMode = pdesc->GetDisplayMode(&bIgnoreRule);
+
             if (pdesc->IsCacheable() && pdesc->_ShowFolder)
             {
                 ASSERT(pdesc->_pszShow); // 943
@@ -1138,7 +1136,7 @@ DWORD WINAPI SpecialFolderList::_HasEnoughChildrenThreadProc(void* pvData)
                         if (pitem->_pidl)
                         {
                             ASSERT(pThis->_cNotify < SFTHOST_MAXNOTIFY); // 973
-                            if (pThis->RegisterNotify(pThis->_cNotify, 4106, pitem->_pidl, FALSE))
+                            if (pThis->RegisterNotify(pThis->_cNotify, 0x2 | 0x8 | 0x1000, pitem->_pidl, FALSE))
                             {
                                 pThis->_cNotify++;
                             }
@@ -1417,7 +1415,7 @@ LPTSTR SpecialFolderList::DisplayNameOfItem(PaneItem* p, IShellFolder* psf, LPCI
         CoTaskMemFree(pitem->_pszAccelerator);
         pitem->_pszAccelerator = nullptr;
         SHStrDupW(psz, &pitem->_pszAccelerator);
-        pitem->_chMnem = (unsigned __int16)CharUpperW((LPWSTR)SHStripMneumonicW(psz));
+        pitem->_chMnem = CharUpperCharW(SHStripMneumonicW(psz));
     }
     return psz;
 }
@@ -1483,6 +1481,23 @@ void SpecialFolderList::GetItemInfoTip(PaneItem *p, LPTSTR pszText, DWORD cch)
 #endif
 }
 
+void SpecialFolderList::UpdateImage(int iImage)
+{
+    PostMessage(_hwnd, 0x40A, 1, 0);
+}
+
+void SpecialFolderList::_NotifyHoverImage(int iImage)
+{
+    VARIANT vt;
+    vt.vt = VT_BYREF;
+    vt.byref = _himl;
+    IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 314, 0, &vt, NULL);
+
+    vt.vt = VT_I4;
+    vt.lVal = iImage;
+    IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 313, 0, &vt, NULL);
+}
+
 HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewName)
 {
 #ifdef DEAD_CODE
@@ -1522,20 +1537,19 @@ HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewNam
 #endif
 }
 
+constexpr int SBM_REBUILDMENU_1 = (WM_USER + 13);
+
 void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
 {
-    UINT v6 = 0;
-    UINT* p_cNotify = &this->_cNotify;
-    bool v8 = this->_cNotify == 0;
     Invalidate();
-    if (!v8)
+
+    for (UINT i = 0; i < _cNotify; ++i)
     {
-        do
-            UnregisterNotify(v6++);
-        while (v6 < *p_cNotify);
+        UnregisterNotify(i);
     }
-    *p_cNotify = 0;
-    PostMessageW(this->_hwnd, 0x40Au, 1u, 0);
+
+    _cNotify = 0;
+    PostMessage(_hwnd, 0x40A, 1, 0);
 }
 
 
@@ -1619,22 +1633,22 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
 
     return hr;
 #else
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
+    SpecialFolderListItem* pitem = static_cast<SpecialFolderListItem*>(p);
     PIDLIST_RELATIVE pidl = pitem->_pidlCascade;
     if (!pidl)
     {
         pidl = pitem->_pidl;
     }
 
-    IShellFolder *psf = 0;
-    HRESULT hr = pidl ? SHBindToObject(0, pidl, 0, IID_IShellFolder, (void **)&psf) : E_FAIL;
+    IShellFolder* psf = NULL;
+    HRESULT hr = pidl ? SHBindToObject(0, pidl, 0, IID_IShellFolder, (void**)&psf) : E_FAIL;
     if (hr >= 0)
     {
-        IShellMenu *psm;
-        hr = CoCreateInstance(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_IShellMenu, (LPVOID *)&psm);
+        IShellMenu* psm;
+        hr = CoCreateInstance(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psm));
         if (hr >= 0)
         {
-            IShellMenuCallback *psmc = NULL;
+            IShellMenuCallback* psmc = NULL;
             hr = pitem->_psfd->CreateShellMenuCallback(&psmc);
             if (hr >= 0)
             {
@@ -1646,28 +1660,25 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
                     TEXT("Start_EnableDragDrop"),
                     0))
                 {
-                    dwFlags |= 3;
+                    dwFlags |= 0x1 | SMINIT_RESTRICT_DRAGDROP;
                 }
                 psm->Initialize(psmc, 0, 0, dwFlags);
 
-                HKEY hkCustom = 0;
+                HKEY hkCustom = NULL;
                 if (pitem->_psfd->_pszCustomizeKey)
                 {
                     RegCreateKeyEx(HKEY_CURRENT_USER, pitem->_psfd->_pszCustomizeKey, 0, 0, 0, 0x2001Fu, 0, &hkCustom, 0);
                 }
 
-                hr = psm->SetShellFolder(psf, (PIDLIST_ABSOLUTE)pidl, hkCustom, pitem->_psfd->_dwShellMenuSetFlags | 8);
-                if (hr < 0)
-                {
-                    if (hkCustom)
-                    {
-                        RegCloseKey(hkCustom);
-                    }
-                }
-                else
+                hr = psm->SetShellFolder(psf, pidl, hkCustom, pitem->_psfd->_dwShellMenuSetFlags | 8);
+                if (hr >= 0)
                 {
                     *ppsm = psm;
                     psm->AddRef();
+                }
+                else if (hkCustom)
+                {
+                    RegCloseKey(hkCustom);
                 }
 
                 IUnknown_SafeReleaseAndNullPtr(psmc);

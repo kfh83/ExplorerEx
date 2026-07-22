@@ -9,6 +9,12 @@
 #define IDS_CUSTOMTIP_MYNETPLACES       305
 #define IDS_CUSTOMTIP_CONNECTTO         306
 #define IDS_CUSTOMTIP_CTRLPANEL         307
+#define IDS_CUSTOMTIP_CONTACTS          308
+#define IDS_CUSTOMTIP_GAMES             312
+#define IDS_CUSTOMTIP_SPAD              316
+#define IDS_CUSTOMTIP_USER              317
+#define IDS_CUSTOMTIP_NETCONN           318
+#define IDS_CUSTOMTIP_PRINTERS          319
 
 #define ID_CMD_CHANGE_PICTURE   42
 

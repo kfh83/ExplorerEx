@@ -4485,12 +4485,13 @@ HRESULT ByUsage::ContextMenuDeleteItem(PaneItem* p, IContextMenu* pcm, CMINVOKEC
 
         if (IsSpecialPinnedItem(pitem) && !IsOS(OS_SERVERADMINUI))
         {
-            SMNMISTARTBUTTON nmgis = {};
-            _SendNotify(_hwnd, 218, &nmgis.hdr);
-            if (nmgis.psb)
+            SMNMISTARTBUTTON isb;
+            isb.psb = NULL;
+            _SendNotify(_hwnd, 218, &isb.hdr);
+            if (isb.psb)
             {
-                nmgis.psb->CreateStartButtonBalloon(0, 8230);
-                nmgis.psb->Release();
+                isb.psb->CreateStartButtonBalloon(0, 8230);
+                isb.psb->Release();
             }
         }
 

@@ -18,12 +18,12 @@ BEGIN
     IDS_CUSTOMTIP_CONNECTTO     "See the computers and devices that are on your network."
     IDS_CUSTOMTIP_CTRLPANEL     "Customize the appearance and functionality of your computer, add or remove programs, and set up network connections and user accounts."
 
-    308     "Opens the Contacts folder, where you can manage your contacts."
-    312     "Play and manage games on your computer."
-    316     "Choose default programs for web browsing, e-mail, playing music, and other activities."
-    317     "Opens the %1!s! folder, where you can find folders for Documents, Pictures, Music, and other files that belong to you."
-    318     "See the available wireless networks, dial-up, and VPN connections that you can connect to."
-    319     "See installed printers and add new ones."
+    IDS_CUSTOMTIP_CONTACTS      "Opens the Contacts folder, where you can manage your contacts."
+    IDS_CUSTOMTIP_GAMES         "Play and manage games on your computer."
+    IDS_CUSTOMTIP_SPAD          "Choose default programs for web browsing, e-mail, playing music, and other activities."
+    IDS_CUSTOMTIP_USER          "Opens the %1!s! folder, where you can find folders for Documents, Pictures, Music, and other files that belong to you."
+    IDS_CUSTOMTIP_NETCONN       "See the available wireless networks, dial-up, and VPN connections that you can connect to."
+    IDS_CUSTOMTIP_PRINTERS      "See installed printers and add new ones."
 END
 
 STRINGTABLE

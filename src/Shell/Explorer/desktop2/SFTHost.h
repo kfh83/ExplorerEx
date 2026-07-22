@@ -378,11 +378,7 @@ protected:
      * Hooking into change notifications
      */
     enum {
-#ifdef DEAD_CODE
-        SFTHOST_MAXCLIENTNOTIFY = 7,        // Clients get this many notifications
-#else
         SFTHOST_MAXCLIENTNOTIFY = 8,        // Clients get this many notifications
-#endif
         SFTHOST_MAXHOSTNOTIFY = 1,          // We use this many ourselves
         SFTHOST_HOSTNOTIFY_UPDATEIMAGE = SFTHOST_MAXCLIENTNOTIFY,
         SFTHOST_MAXNOTIFY = SFTHOST_MAXCLIENTNOTIFY + SFTHOST_MAXHOSTNOTIFY,
@@ -514,7 +510,7 @@ public:
 
     int _CalcMaxTextWith();
 
-    LRESULT GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch);
+    HRESULT GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch);
 
     /*
      *  End of drag/drop stuff...
@@ -625,6 +621,7 @@ private:
     LRESULT _OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm);
     LRESULT _OnSMNDismiss();
     LRESULT _OnHover();
+    LRESULT _OnSetIdle(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     /* Custom draw helpers */
     LRESULT _OnLVPrePaint(LPNMLVCUSTOMDRAW plvcd);

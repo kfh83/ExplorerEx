@@ -89,22 +89,9 @@ private:
     BOOL IsBold(PaneItem *pitem);
     void GetItemInfoTip(PaneItem *pitem, LPTSTR pszText, DWORD cch);
 
-    void UpdateImage(int iImage)
-    {
-        PostMessage(_hwnd, 0x40A, 1u, 0);
-    }
+    void UpdateImage(int iImage) override;
 
-    void _NotifyHoverImage(int iImage)
-    {
-        VARIANT vt;
-        vt.vt = VT_BYREF;
-        vt.byref = _himl;
-        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 314, 0, &vt, NULL);
-
-        vt.vt = VT_I4;
-        vt.lVal = iImage;
-        IUnknown_QueryServiceExec(_punkSite, SID_SM_UserPane, &CGID_DV2ControlHost, 313, 0, &vt, NULL);
-    }
+    void _NotifyHoverImage(int iImage);
 
     HRESULT ContextMenuInvokeItem(PaneItem *p, IContextMenu *pcm, CMINVOKECOMMANDINFOEX *pici, LPCTSTR pszVerb);
     UINT AdjustDeleteMenuItem(PaneItem *pitem, UINT *puiFlags);
