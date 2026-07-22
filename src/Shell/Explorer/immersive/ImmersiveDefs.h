@@ -127,21 +127,6 @@ IImmersiveApplicationWindow : IUnknown
     virtual HRESULT STDMETHODCALLTYPE GetThreadId(DWORD*) = 0;
 };
 
-typedef enum __MIDL___MIDL_itf_shpriv_0000_0034_0001
-{
-    NIE_NULL = 0x0,
-    NIE_MouseMove = 0x1,
-    NIE_MouseDown = 0x2,
-    NIE_MouseUp = 0x3,
-    NIE_MouseClick = 0x4,
-    NIE_MouseDoubleClick = 0x5,
-    NIE_ContextMenu = 0x6,
-    NIE_KeyDown = 0x7,
-    NIE_KeyUp = 0x8,
-    NIE_Tooltip = 0x9,
-    NIE_Reorder = 0xA,
-} NotifyIconEvent;
-
 enum IMMERSIVE_APPLICATION_GET_WINDOWS_FILTER
 {
     IAGWF_ANY = 0,
