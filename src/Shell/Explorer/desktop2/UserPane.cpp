@@ -217,8 +217,8 @@ void CUserPane::_UpdateDC(HDC hdcDest, int iIndex, BYTE bAlpha)
                 hOldObj = SelectObject(hMemDC, hbmTemp);
             }
 
-            int cxLeftWidth = _cxPicInset;
-            int cyTopHeight = _cyPicInset;
+            int cxLeftWidth = _mrgnPictureFrame.cxLeftWidth;;
+            int cyTopHeight = _mrgnPictureFrame.cyTopHeight;
             int v9 = rc.right - _iFramedPicWidth - rc.left;
             int v22 = (rc.bottom - rc.top - _iFramedPicHeight) / 2;
             int v21 = v9 / 2;
