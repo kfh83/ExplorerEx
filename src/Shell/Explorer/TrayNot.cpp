@@ -1244,7 +1244,7 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL *pbR
         return FALSE;
     }
 
-    pti->fShowTip = (pnid->uFlags & NIF_SHOWTIP) != 0;
+    pti->fUseSystemTip = (pnid->uFlags & NIF_SHOWTIP) != 0;
 
     if ((pnid->uFlags & NIF_GUID) != 0)
         memcpy(&pti->guidItem, &pnid->guidItem, sizeof(pnid->guidItem));
@@ -2099,7 +2099,7 @@ LRESULT CALLBACK CTrayNotify::s_ToolbarWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
             goto LABEL_28;
         }
 
-        fShowInfoTip = ItemData->uVersion < 4 || ItemData->fShowTip;
+        fShowInfoTip = ItemData->uVersion < 4 || ItemData->fUseSystemTip;
 
         if (hwnd == pTrayNotify->_hwndToolbarSCA)
             hwndToolbarInfoTip = pTrayNotify->_hwndToolbarInfoTipSCA;

@@ -538,7 +538,7 @@ void CStartButton::DestroyStartMenu()
 // EXEX-VISTA: REVALIDATE. Partially reversed from Vista.
 void CStartButton::DisplayStartMenu()
 {
-    RECTL    rcExclude;
+    RECT    rcExclude;
     POINTL   ptPop;
     DWORD dwFlags = MPPF_KEYBOARD;      // Assume that we're popuping
     // up because of the keyboard
@@ -592,7 +592,7 @@ void CStartButton::DisplayStartMenu()
     ptPop.x = rcExclude.left;
     ptPop.y = rcExclude.top;
 
-    if (*ppmpToDisplay && SUCCEEDED((*ppmpToDisplay)->Popup(&ptPop, &rcExclude, dwFlags)))
+    if (*ppmpToDisplay && SUCCEEDED((*ppmpToDisplay)->Popup(&ptPop, (RECTL*)&rcExclude, dwFlags)))
     {
         // All is well - the menu is up
         //TraceMsg(DM_MISC, "e.tbm: dwFlags=%x (0=mouse 1=key)", dwFlags);
@@ -831,7 +831,7 @@ void CStartButton::InitTheme()
 
 BOOL CStartButton::IsButtonPushed()
 {
-    return SendMessageW(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
+    return SendMessage(_hwndStart, BM_GETSTATE, 0, 0) & BST_PUSHED;
 }
 
 HRESULT CStartButton::IsMenuMessage(MSG* pmsg)
@@ -849,33 +849,33 @@ BOOL CStartButton::IsPopupMenuVisible()
 
 BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 {
-    RECT rcTrayWnd;
-    GetWindowRect(v_hwndTray, &rcTrayWnd);
+    RECT rcTray;
+    GetWindowRect(v_hwndTray, &rcTray);
 
     LONG cyFrameHalf = g_cyFrame / 2;
 
     if (_pszThemeName == L"StartTop")
     {
-        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTray.right - _sizeStart.cx : rcTray.left;
 
-        if (rcTrayWnd.bottom <= cyFrameHalf)
-            pPoint->y = rcTrayWnd.top - _sizeStart.cy - cyFrameHalf;
+        if (rcTray.bottom <= cyFrameHalf)
+            pPoint->y = rcTray.top - _sizeStart.cy - cyFrameHalf;
         else
-            pPoint->y = rcTrayWnd.bottom + field_C - _sizeStart.cy;
+            pPoint->y = rcTray.bottom + field_C - _sizeStart.cy;
     }
     else if (_pszThemeName == L"StartBottom")
     {
         RECT rc;
 
-        pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
+        pPoint->x = IsBiDiLocalizedSystem() ? rcTray.right - _sizeStart.cx : rcTray.left;
 
-        HMONITOR hMon = MonitorFromRect(&rcTrayWnd, MONITOR_DEFAULTTONEAREST);
+        HMONITOR hMon = MonitorFromRect(&rcTray, MONITOR_DEFAULTTONEAREST);
         GetMonitorRects(hMon, &rc, FALSE);
 
-        if (rc.bottom - rcTrayWnd.top <= cyFrameHalf)
-            pPoint->y = cyFrameHalf + rcTrayWnd.top;
+        if (rc.bottom - rcTray.top <= cyFrameHalf)
+            pPoint->y = cyFrameHalf + rcTray.top;
         else
-            pPoint->y = rcTrayWnd.top - field_C;
+            pPoint->y = rcTray.top - field_C;
     }
     else if (_hTheme)
     {
@@ -883,26 +883,26 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
 
         if (STUCK_HORIZONTAL(c_tray._uStuckPlace))
         {
-            pPoint->x = IsBiDiLocalizedSystem() ? rcTrayWnd.right - _sizeStart.cx : rcTrayWnd.left;
-            height = rcTrayWnd.bottom - _sizeStart.cy - rcTrayWnd.top;
+            pPoint->x = IsBiDiLocalizedSystem() ? rcTray.right - _sizeStart.cx : rcTray.left;
+            height = rcTray.bottom - _sizeStart.cy - rcTray.top;
         }
         else
         {
-            pPoint->x = rcTrayWnd.left + (rcTrayWnd.right - _sizeStart.cx - rcTrayWnd.left) / 2;
+            pPoint->x = rcTray.left + (rcTray.right - _sizeStart.cx - rcTray.left) / 2;
             height = g_cyTabSpace;
         }
 
-        pPoint->y = rcTrayWnd.top +  height / 2;
+        pPoint->y = rcTray.top +  height / 2;
     }
     else
     {
         int cyDlgFrame = GetSystemMetrics(SM_CYDLGFRAME);
         int cyBorder = GetSystemMetrics(SM_CYBORDER);
         if (IsBiDiLocalizedSystem() && (c_tray._uStuckPlace == 1 || c_tray._uStuckPlace == 3) != 0)
-            pPoint->x = rcTrayWnd.right - _sizeStart.cx - cyBorder - cyDlgFrame;
+            pPoint->x = rcTray.right - _sizeStart.cx - cyBorder - cyDlgFrame;
         else
-            pPoint->x = rcTrayWnd.left + cyBorder + cyDlgFrame;
-        pPoint->y = rcTrayWnd.top + cyDlgFrame + cyBorder;
+            pPoint->x = rcTray.left + cyBorder + cyDlgFrame;
+        pPoint->y = rcTray.top + cyDlgFrame + cyBorder;
     }
 
     // XXX(isabella): Inlined function? New result variable in the middle of the call may be indicative.
@@ -1094,22 +1094,8 @@ LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
     return lRes;
 }
 
-void CStartButton::_CalcExcludeRect(RECTL* lprcDst) // from xp
+void CStartButton::_CalcExcludeRect(RECT* lprcDst) // from xp
 {
-#if 0
-    RECTL rcExclude;
-    RECT rcParent;
-
-    GetClientRect(_hwndStart, (RECT*)&rcExclude);
-    MapWindowRect(_hwndStart, HWND_DESKTOP, &rcExclude);
-
-    GetClientRect(v_hwndTray, &rcParent);
-    MapWindowRect(v_hwndTray, HWND_DESKTOP, &rcParent);
-
-    IntersectRect((RECT*)&rcExclude, (RECT*)&rcExclude, &rcParent);
-
-    *lprcDst = rcExclude;
-#else
     RECT rcStart;
     GetWindowRect(_hwndStart, &rcStart);
 
@@ -1130,8 +1116,7 @@ void CStartButton::_CalcExcludeRect(RECTL* lprcDst) // from xp
         rcStart.bottom = rcStuck.bottom;
     }
 
-    IntersectRect((RECT*)lprcDst, &rcMonitor, &rcStart);
-#endif
+    IntersectRect(lprcDst, &rcMonitor, &rcStart);
 }
 
 HFONT CStartButton::_CreateStartFont()  // taken from xp

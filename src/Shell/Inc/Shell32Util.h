@@ -1,3 +1,3 @@
 #pragma once
 
-EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut);
+EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** ppsf, ITEMIDLIST_ABSOLUTE** ppidl);

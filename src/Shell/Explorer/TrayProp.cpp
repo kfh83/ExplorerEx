@@ -1915,12 +1915,6 @@ void _StartOptions_OnInitDialog(HWND hDlg)
     }
 }
 
-// On destroy, clean up the bitmaps we loaded so we don't leak them
-void _StartOptions_OnDestroy(HWND hDlg)
-{
-    SetDlgItemBitmap(hDlg, IDC_STARTMENUPREVIEW, 0);
-}
-
 BOOL_PTR CTaskBarPropertySheet::s_StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     CTaskBarPropertySheet* self = NULL;
@@ -2005,10 +1999,6 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
         _StartOptions_OnInitDialog(hDlg);
         break;
 
-    case WM_DESTROY:
-        _StartOptions_OnDestroy(hDlg);
-        break;
-
     case WM_NOTIFY:
         switch (((NMHDR *)lParam)->code)
         {
@@ -2039,8 +2029,7 @@ BOOL_PTR CTaskBarPropertySheet::StartMenuDlgProc(HWND hDlg, UINT uMsg, WPARAM wP
 
 void _TaskbarOptionsDestroyBitmaps(HWND hDlg)
 {
-    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, 0);
-    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, 0);
+    SetDlgItemBitmap(hDlg, IDC_TASKBARAPPEARANCE, FALSE);
 }
 
 typedef struct
@@ -2233,7 +2222,7 @@ BOOL_PTR CTaskBarPropertySheet::s_NotificationOptionsDlgProc(HWND hDlg, UINT uMs
 
 void _NotificationOptionsDestroyBitmaps(HWND hDlg)
 {
-    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, 0);
+    SetDlgItemBitmap(hDlg, IDC_NOTIFYAPPEARANCE, FALSE);
 }
 
 void _NotificationOptionsUpdateDisplay(HWND hDlg)
@@ -2248,9 +2237,9 @@ void _NotificationOptionsUpdateDisplay(HWND hDlg)
     };
 
     int iBmp = _TaskbarPickBitmap(hDlg, 190, c_caNotify, ARRAYSIZE(c_caNotify));
-    SetDlgItemBitmap(hDlg, 1112, iBmp, 0);
+    SetDlgItemBitmap(hDlg, 1112, iBmp, FALSE);
 
-    EnableWindow(::GetDlgItem(hDlg, 1007), ::IsDlgButtonChecked(hDlg, 1000));
+    EnableWindow(GetDlgItem(hDlg, 1007), IsDlgButtonChecked(hDlg, 1000));
 }
 
 
@@ -3396,18 +3385,18 @@ void SetDlgItemBitmap(HWND hDlg, int idStatic, int iResource, BOOL fAlpha)
     if (iResource)
     {
         UINT uFlags = fAlpha ? LR_CREATEDIBSECTION : LR_LOADMAP3DCOLORS;
-        hbm = (HBITMAP)LoadImageW(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
+        hbm = (HBITMAP)LoadImage(g_hinstCabinet, MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
         if (!hbm)
         {
-            //hbm = (HBITMAP)BrandingLoadImage(L"Shellbrd", MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
+            // hbm = (HBITMAP)BrandingLoadImage(L"Shellbrd", MAKEINTRESOURCE(iResource), IMAGE_BITMAP, 0, 0, uFlags);
         }
     }
     else
     {
-        hbm = nullptr;
+        hbm = NULL;
     }
 
-    hbm = (HBITMAP)SendDlgItemMessageW(hDlg, idStatic, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbm);
+    hbm = (HBITMAP)SendDlgItemMessage(hDlg, idStatic, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hbm);
     if (hbm)
     {
         DeleteObject(hbm);

@@ -264,7 +264,7 @@ public:
     HWND GetTaskWindow() { return _hwndTasks; }
     HWND GetTrayTips() { return _hwndTrayTips; }
     IDeskTray* GetDeskTray() { return &_desktray; }
-    IMenuPopup* GetStartMenu() { return _stb._pmpStartMenu; };
+    IMenuPopup* GetStartMenu() { return _stb.GetStartMenu(); };
     BOOL IsTaskbarFading() { return _fTaskbarFading; };
     void GetStuckMonitorRect(RECT* prcStuck);
     BOOL IsMouseOverStartButton();
@@ -615,7 +615,7 @@ public: // @TEMP
     int _iSizingBarHeight;
 
 protected:
-    IOleCommandTarget* _pSysTray;
+    IOleCommandTarget* _poctSysTray;
     SIZE _sizeSizingBar;
     int  _iAlpha;
 

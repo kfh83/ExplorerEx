@@ -535,159 +535,94 @@ int GetDesiredHeight(HWND hwndHost, SMPANEDATA* psmpd, SIZE* psizeContent)
 // EXEX-VISTA(allison): Validated. Still needs cleanup.
 void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prcExclude)
 {
-#ifdef DEAD_CODE
-    // Compute the maximum permissible space above/below the Start Menu.
-    // Designers don't want the Start Menu to slide horizontally; it must
-    // fit entirely above or below.
-
-    int cxMax = RECTWIDTH(pminfo->rcWork);
-    int cyMax = max(prcExclude->top - pminfo->rcMonitor.top,
-        pminfo->rcMonitor.bottom - prcExclude->bottom);
-
-    // Start at the minimum size and grow as necesary
-    _rcActual = _rcDesired;
-
-    // Ask the windows if they wants any adjustments
-    int iMFUHeight = GetDesiredHeight(_hwnd, &_spm.panes[SMPANETYPE_MFU], 0);
-    int iPlacesHeight = GetDesiredHeight(_hwnd, &_spm.panes[SMPANETYPE_PLACES], 0);
-    int iMoreProgHeight = _spm.panes[SMPANETYPE_MOREPROG].size.cy;
-
-    // Figure out the maximum size for each pane
-    int cyPlacesMax = cyMax - (_spm.panes[SMPANETYPE_USER].size.cy + _spm.panes[SMPANETYPE_LOGOFF].size.cy);
-    int cyMFUMax = cyPlacesMax - _spm.panes[SMPANETYPE_MOREPROG].size.cy;
-
-
-    //TraceMsg(TF_DV2HOST, "MFU Desired Height=%d(cur=%d,max=%d), Places Desired Height=%d(cur=%d,max=%d)",
-    //    iMFUHeight, _spm.panes[SMPANETYPE_MFU].size.cy, cyMFUMax,
-    //    iPlacesHeight, _spm.panes[SMPANETYPE_PLACES].size.cy, cyPlacesMax);
-
-    // Clip each pane to its max - the smaller of (The largest possible or The largest we want to be)
-    _fClipped = FALSE;
-    if (iMFUHeight > cyMFUMax)
-    {
-        iMFUHeight = cyMFUMax;
-        _fClipped = TRUE;
-    }
-
-    if (iPlacesHeight > cyPlacesMax)
-    {
-        iPlacesHeight = cyPlacesMax;
-        _fClipped = TRUE;
-    }
-
-    // ensure that places == mfu + moreprog by growing the smaller of the two.
-    if (iPlacesHeight > iMFUHeight + iMoreProgHeight)
-        iMFUHeight = iPlacesHeight - iMoreProgHeight;
-    else
-        iPlacesHeight = iMFUHeight + iMoreProgHeight;
-
-    //
-    // move the actual windows
-    // See diagram of layout in deskhost.h for the hardcoded assumptions here.
-    //  this could be made more flexible/variable, but we want to lock in this layout
-    //
-
-    // helper variables...
-    DWORD dwUserBottomEdge = _spm.panes[SMPANETYPE_USER].size.cy;
-    DWORD dwMFURightEdge = _spm.panes[SMPANETYPE_MFU].size.cx;
-    DWORD dwMFUBottomEdge = dwUserBottomEdge + iMFUHeight;
-    DWORD dwMoreProgBottomEdge = dwMFUBottomEdge + iMoreProgHeight;
-
-    // set the size of the overall pane
-    _rcActual.right = _spm.panes[SMPANETYPE_USER].size.cx;
-    _rcActual.bottom = dwMoreProgBottomEdge + _spm.panes[SMPANETYPE_LOGOFF].size.cy;
-
-    HDWP hdwp = BeginDeferWindowPos(5);
-    const DWORD dwSWPFlags = SWP_NOACTIVATE | SWP_NOZORDER;
-    DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_USER].hwnd, NULL, 0, 0, _rcActual.right, dwUserBottomEdge, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_MFU].hwnd, NULL, 0, dwUserBottomEdge, dwMFURightEdge, iMFUHeight, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_MOREPROG].hwnd, NULL, 0, dwMFUBottomEdge, dwMFURightEdge, iMoreProgHeight, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_PLACES].hwnd, NULL, dwMFURightEdge, dwUserBottomEdge, _rcActual.right - dwMFURightEdge, iPlacesHeight, dwSWPFlags);
-    DeferWindowPos(hdwp, _spm.panes[SMPANETYPE_LOGOFF].hwnd, NULL, 0, dwMoreProgBottomEdge, _rcActual.right, _spm.panes[SMPANETYPE_LOGOFF].size.cy, dwSWPFlags);
-    EndDeferWindowPos(hdwp);
-#else
-    LONG cyTopHeight;
+    int cyTopHeight;
+    int fEnabled;
+    int iSomething;
+    SIZE v26;
+    MARGINS margins;
 
     int cyMax = pminfo->rcMonitor.bottom - prcExclude->bottom;
     if (prcExclude->top - pminfo->rcMonitor.top > cyMax)
         cyMax = prcExclude->top - pminfo->rcMonitor.top;
 
     int v5 = 0;
-    if (_hTheme != nullptr && field_C4 == 0)
+    if (_hTheme != NULL && field_C4 == 0)
     {
-        BOOL fCompositionEnabled = FALSE;
-        DwmIsCompositionEnabled(&fCompositionEnabled);
-        if (fCompositionEnabled)
+        fEnabled = 0;
+        DwmIsCompositionEnabled(&fEnabled);
+        if (fEnabled != 0)
         {
-            int iSomething = 70;
-            SHLogicalToPhysicalDPI(nullptr, &iSomething);
-            v5 = iSomething - _spm.panes[SMPANETYPE_USER].size.cy;
+            iSomething = 70;
+            SHLogicalToPhysicalDPI(NULL, &iSomething);
+            v5 = iSomething - _spm.panes[0].size.cy;
         }
     }
 
+    HWND hwnd = _hwnd;
     int v7 = cyMax - v5;
     _rcActual = _rcDesired;
 
-    SIZE v26 = {};
-    int iMFUHeight = GetDesiredHeight(_hwnd, &_spm.panes[1], nullptr);
-    int iPlacesHeight = GetDesiredHeight(_hwnd, &_spm.panes[3], &v26);
+    v26.cx = 0;
+    v26.cy = 0;
+    int DesiredHeight = GetDesiredHeight(hwnd, &_spm.panes[1], NULL);
+    int v9 = GetDesiredHeight(_hwnd, &_spm.panes[3], &v26);
     LONG cy = _spm.panes[2].size.cy;
+    LONG v11 = _spm.panes[1].size.cy;
     _fClipped = 0;
-    int v12 = iPlacesHeight;
+    int v12 = v9;
     int cyPlacesMax = v7 - _spm.panes[4].size.cy - _spm.panes[0].size.cy;
-
-    /*CcshellDebugMsgW(
-        0,
+    /*TraceMsg(
+        TF_DV2HOST,
         "MFU Desired Height=%d(cur=%d,max=%d), Places Desired Height=%d(cur=%d,max=%d)",
-        iMFUHeight,
-        _spm.panes[1].size.cy,
+        DesiredHeight,
+        v11,
         v7 - cy,
-        iPlacesHeight,
+        v9,
         _spm.panes[3].size.cy,
         cyPlacesMax);*/
 
-    if (iMFUHeight > v7 - cy)
+    if (DesiredHeight > v7 - cy)
     {
-        iMFUHeight = v7 - cy;
-        _fClipped = TRUE;
+        DesiredHeight = v7 - cy;
+        _fClipped = 1;
     }
 
     if (v12 > cyPlacesMax)
     {
         int v15 = v5 + v7;
         field_C4 = 1;
-
-        MARGINS margins = {};
-
-        if (_hTheme != nullptr)
+        margins.cxLeftWidth = 0;
+        margins.cxRightWidth = 0;
+        margins.cyTopHeight = 0;
+        margins.cyBottomHeight = 0;
+        if (_hTheme != NULL)
         {
-            GetThemeMargins(_hTheme, nullptr, SPP_PROGLIST, 0, TMT_CONTENTMARGINS, nullptr, &margins);
+            GetThemeMargins(_hTheme, NULL, SPP_PROGLIST, 0, TMT_CONTENTMARGINS, NULL, &margins);
             cyTopHeight = margins.cyTopHeight;
         }
         else
         {
             cyTopHeight = 2 * SHGetSystemMetricsScaled(SM_CXEDGE);
         }
-
         _spm.panes[0].size.cy = cyTopHeight;
         int v17 = v15 - cyTopHeight - _spm.panes[4].size.cy;
         if (v12 > v17)
         {
             v12 = v17;
-            _fClipped = TRUE;
+            _fClipped = 1;
         }
     }
 
     if (field_C4 != 0)
     {
         IUnknown_QueryServiceExec(
-            static_cast<IMenuBand*>(this), SID_SM_UserPane, &CGID_DV2ControlHost, 323, 0, nullptr, nullptr);
+            static_cast<IMenuBand*>(this), SID_SM_UserPane, &CGID_DV2ControlHost, 323, 0, NULL, NULL);
     }
 
     int v18 = _spm.panes[4].size.cy;
     int v19 = _spm.panes[0].size.cy;
     int cx = _spm.panes[1].size.cx;
-    int v21 = iMFUHeight + cy - v18;
+    int v21 = DesiredHeight + cy - v18;
     if (v19 + v12 > v21)
         v21 = v19 + v12;
     int v22 = v21 + v18 - cy;
@@ -697,20 +632,19 @@ void CDesktopHost::_ComputeActualSize(const MONITORINFO* pminfo, const RECT* prc
     _rcActual.bottom = v18 + v21;
 
     HDWP hdwp = BeginDeferWindowPos(5);
-    DeferWindowPos(hdwp, _spm.panes[0].hwnd, nullptr, cx, 0, _rcActual.right - cx, v19, 0x14);
-    DeferWindowPos(hdwp, _spm.panes[1].hwnd, nullptr, 0, 0, cx, v22, 0x14);
-    DeferWindowPos(hdwp, _spm.panes[2].hwnd, nullptr, 0, v22, cx, cy, 0x14);
-    DeferWindowPos(hdwp, _spm.panes[3].hwnd, nullptr, cx, v19, _rcActual.right - cx, v21 - v19, 0x14);
-    DeferWindowPos(hdwp, _spm.panes[4].hwnd, nullptr, cx, v21, _rcActual.right - cx, _spm.panes[4].size.cy, 0x14);
+    DeferWindowPos(hdwp, _spm.panes[0].hwnd, NULL, cx, 0, _rcActual.right - cx, v19, 0x14u);
+    DeferWindowPos(hdwp, _spm.panes[1].hwnd, NULL, 0, 0, cx, v22, 0x14u);
+    DeferWindowPos(hdwp, _spm.panes[2].hwnd, NULL, 0, v22, cx, cy, 0x14u);
+    DeferWindowPos(hdwp, _spm.panes[3].hwnd, NULL, cx, v19, _rcActual.right - cx, v21 - v19, 0x14u);
+    DeferWindowPos(hdwp, _spm.panes[4].hwnd, NULL, cx, v21, _rcActual.right - cx, _spm.panes[4].size.cy, 0x14u);
     EndDeferWindowPos(hdwp);
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
 HWND CDesktopHost::_Create()
 {
     WCHAR szTitle[260];
-    LoadStringW(g_hinstCabinet, 510, szTitle, ARRAYSIZE(szTitle));
+    LoadString(g_hinstCabinet, 510, szTitle, ARRAYSIZE(szTitle));
 
     Register();
     LoadPanelMetrics();
@@ -722,17 +656,16 @@ HWND CDesktopHost::_Create()
     }
 
     DWORD dwStyle = WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_POPUP;
-    if (_hTheme == nullptr)
+    if (_hTheme == NULL)
     {
         dwStyle |= WS_DLGFRAME;
     }
 
-    _hwnd = SHFusionCreateWindowEx(
-        dwExStyle, L"DV2ControlHost", szTitle, dwStyle, 0, 0, 0, 0, nullptr, nullptr, g_hinstCabinet, this);
-    if (_hwnd != nullptr)
+    _hwnd = SHFusionCreateWindowEx(dwExStyle, WC_DV2, szTitle, dwStyle, 0, 0, 0, 0, NULL, NULL, g_hinstCabinet, this);
+    if (_hwnd)
     {
         v_hwndStartPane = _hwnd;
-        if (_hwnd != nullptr)
+        if (_hwnd)
         {
             SetAccessibleSubclassWindow(_hwnd);
         }
@@ -760,15 +693,15 @@ void CDesktopHost::_ReapplyRegion()
 
             RECT rc;
             RECT rcNew = {0};
-            GetWindowRect(_spm.panes[0].hwnd, &rc);
+            GetWindowRect(_spm.panes[SMPANETYPE_USER].hwnd, &rc);
             MapWindowRect(NULL, _hwnd, &rc);
             UnionRect(&rcNew, &rcNew, &rc);
 
-            GetWindowRect(_spm.panes[3].hwnd, &rc);
+            GetWindowRect(_spm.panes[SMPANETYPE_KNOWNFOLDER].hwnd, &rc);
             MapWindowRect(NULL, _hwnd, &rc);
             UnionRect(&rcNew, &rcNew, &rc);
 
-            GetWindowRect(_spm.panes[4].hwnd, &rc);
+            GetWindowRect(_spm.panes[SMPANETYPE_LOGOFF].hwnd, &rc);
             MapWindowRect(NULL, _hwnd, &rc);
             UnionRect(&rcNew, &rcNew, &rc);
 
@@ -1049,7 +982,7 @@ HRESULT CDesktopHost::_Popup(POINT *ppt, RECT *prcExclude, DWORD dwFlags)
         }
         else
         {
-            SendMessage(this->_hwnd, WM_CHANGEUISTATE, 0x30001u, 0);
+            SendMessage(_hwnd, WM_CHANGEUISTATE, 0x30001u, 0);
 
             if (!_TryShowBuffered())
             {
@@ -2019,7 +1952,7 @@ BOOL CDesktopHost::_DlgNavigateTab(HWND hwndStart, struct tagMSG *pmsg)
 
 void CDesktopHost::_RemoveKeyboardCues()
 {
-    SendMessage(this->_hwnd, 0x127u, 0x30001u, 0);
+    SendMessage(_hwnd, 0x127u, 0x30001u, 0);
 }
 
 //
@@ -2705,46 +2638,17 @@ HWND CDesktopHost::_FindNextDlgChar(HWND hwndStart, SMNDIALOGMESSAGE* pnmdm, UIN
 // EXEX-VISTA(allison): Validated.
 BOOL CDesktopHost::_DlgNavigateChar(HWND hwndStart, MSG *pmsg)
 {
-#ifdef DEAD_CODE
-    SMNDIALOGMESSAGE nmdm;
-    nmdm.pmsg = pmsg;   // other fields will be filled in by _FindChildItem
-
-    //
-    //  See if there is a match in the hwndStart control.
-    //
-    HWND hwndFound = _FindNextDlgChar(hwndStart, &nmdm, SMNDM_SELECT);
-    if (hwndFound)
-    {
-        LRESULT idFound = nmdm.itemID;
-
-        //
-        //  See if there is another match for this character.
-        //  We are only looking, so don't pass SMNDM_SELECT.
-        //
-        HWND hwndFound2 = _FindNextDlgChar(hwndFound, &nmdm, 0);
-        if (hwndFound2 == hwndFound && nmdm.itemID == idFound)
-        {
-            //
-            //  There is only one item that begins with this character.
-            //  Invoke it!
-            //
-            UpdateWindow(_hwnd);
-            _FindChildItem(hwndFound2, &nmdm, SMNDM_INVOKECURRENTITEM | SMNDM_KEYBOARD);
-        }
-    }
-
-    return TRUE;
-#else
     BOOL bRet = FALSE;
-    if (SHIsChildOrSelf(_spm.panes[2].hwnd, pmsg->hwnd))
+    if (SHIsChildOrSelf(_spm.panes[SMPANETYPE_OPENBOX].hwnd, pmsg->hwnd))
     {
         SMNDIALOGMESSAGE nmdm;
         nmdm.pmsg = pmsg;
         if (_FindNextDlgChar(hwndStart, &nmdm, SMNDM_SELECT))
+        {
             bRet = TRUE;
+        }
     }
     return bRet;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
@@ -3209,11 +3113,11 @@ void CDesktopHost::LoadPanelMetrics()
 {
     _spm = g_spmDefault;
 
-    LoadResourceInt(0x2040, &_spm.sizPanel.cy);
-    LoadResourceInt(0x2041, &_spm.sizPanel.cx);
-    LoadResourceInt(0x2042, &_spm.panes[SMPANETYPE_USER].size.cy);
-    LoadResourceInt(0x2043, &_spm.panes[SMPANETYPE_OPENBOX].size.cy);
-    LoadResourceInt(0x2044, &_spm.panes[SMPANETYPE_LOGOFF].size.cy);
+    LoadResourceInt(IDS_STARTPANE_TOTALHEIGHT,      &_spm.sizPanel.cy);
+    LoadResourceInt(IDS_STARTPANE_TOTALWIDTH,       &_spm.sizPanel.cx);
+    LoadResourceInt(IDS_STARTPANE_USERHEIGHT,       &_spm.panes[SMPANETYPE_USER].size.cy);
+    LoadResourceInt(IDS_STARTPANE_MOREPROGHEIGHT,   &_spm.panes[SMPANETYPE_OPENBOX].size.cy);
+    LoadResourceInt(IDS_STARTPANE_LOGOFFHEIGHT,     &_spm.panes[SMPANETYPE_LOGOFF].size.cy);
 
     for (int i = 0; i < ARRAYSIZE(_spm.panes); i++)
     {
@@ -3234,39 +3138,38 @@ void CDesktopHost::LoadPanelMetrics()
 
         for (int i = 0; i < ARRAYSIZE(_spm.panes); i++)
         {
-            SMPANEDATA &paneData = _spm.panes[i];
-            paneData.fDefined = IsThemePartDefined(_hTheme, paneData.iPartId, 0);
-            if (paneData.fDefined)
+            _spm.panes[i].fDefined = IsThemePartDefined(_hTheme, _spm.panes[i].iPartId, 0);
+            if (_spm.panes[i].fDefined)
             {
-                paneData.hTheme = _hTheme;
-                _ReadPaneSizeFromTheme(&paneData);
+                _spm.panes[i].hTheme = _hTheme;
+                _ReadPaneSizeFromTheme(&_spm.panes[i]);
             }
             else
             {
-                paneData.size.cx = 0;
-                paneData.size.cy = 0;
+                _spm.panes[i].size.cx = 0;
+                _spm.panes[i].size.cy = 0;
             }
         }
     }
 
     ASSERT(_spm.sizPanel.cx == _spm.panes[SMPANETYPE_OPENVIEWHOST].size.cx + _spm.panes[SMPANETYPE_KNOWNFOLDER].size.cx); // 2719
 
-    //CcshellDebugMsgW(
-    //    0,
-    //    "sizPanel.cy = %d, OpenViewHost =%d, openbox=%d, logoff=%d",
-    //    _spm.sizPanel.cy,
-    //    _spm.panes[2].size.cy,
-    //    _spm.panes[2].size.cy,
-    //    _spm.panes[4].size.cy);
+    // @Note(allison): Yes Microsoft did accidentally use SMPANETYPE_OPENBOX twice.
+    /*TraceMsg(
+        TF_DV2HOST,
+        "sizPanel.cy = %d, OpenViewHost =%d, openbox=%d, logoff=%d",
+        _spm.sizPanel.cy,
+        _spm.panes[SMPANETYPE_OPENBOX].size.cy,
+        _spm.panes[SMPANETYPE_OPENBOX].size.cy,
+        _spm.panes[SMPANETYPE_LOGOFF].size.cy);*/
 
     ASSERT(_spm.sizPanel.cy == _spm.panes[SMPANETYPE_USER].size.cy + _spm.panes[SMPANETYPE_KNOWNFOLDER].size.cy + _spm.panes[SMPANETYPE_LOGOFF].size.cy); // 2725
 
     RemapSizeForHighDPI(&_spm.sizPanel);
-    for (int i = 0; i < ARRAYSIZE(_spm.panes); i++)
+    for (int i = 0; i < ARRAYSIZE(_spm.panes); ++i)
     {
         RemapSizeForHighDPI(&_spm.panes[i].size);
     }
-
     SetRect(&_rcDesired, 0, 0, _spm.sizPanel.cx, _spm.sizPanel.cy);
 }
 

@@ -90,7 +90,7 @@ class CTrayItem
 
         // @Note(allison): However, Microsoft still decided it would be a good idea to place a new field in that IS
         //                 actually used directly after these unused fields in post-reset Longhorn.
-        BOOL        fShowTip;
+        BOOL        fUseSystemTip;
 
     private:
         DWORD _GetStateFlag(ICONSTATEFLAG sf);

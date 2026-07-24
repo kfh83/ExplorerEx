@@ -2388,9 +2388,9 @@ LRESULT SFTBarHost::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
         {
             _EnumerateContents(0);
         }
-        else if (pnm->code == 201)
+        else if (pnm->code == SMN_APPLYREGION)
         {
-            if (_iThemePart != 6)
+            if (_iThemePart != SPP_PLACESLIST)
             {
                 return HandleApplyRegion(_hwnd, _hTheme, (SMNMAPPLYREGION*)lParam, _iThemePart, 0);
             }

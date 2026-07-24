@@ -3,28 +3,28 @@
 #include "Shell32Util.h"
 
 // Thanks to ep_taskbar by @amrsatrio
-EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut)
+EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** ppsf, ITEMIDLIST_ABSOLUTE** ppidl)
 {
-    if (psfOut)
-        *psfOut = nullptr;
+    if (ppsf)
+        *ppsf = nullptr;
 
-    *pidlOut = nullptr;
+    *ppidl = nullptr;
 
-    WCHAR szPath[47] = L"shell:::";
-    StringFromGUID2(rclsid, &szPath[8], 39);
+    WCHAR szBindPath[47] = L"shell:::";
+    StringFromGUID2(rclsid, &szBindPath[8], 39);
 
     ITEMIDLIST_ABSOLUTE* pidl;
-    HRESULT hr = SHILCreateFromPath(szPath, &pidl, nullptr);
+    HRESULT hr = SHILCreateFromPath(szBindPath, &pidl, nullptr);
     if (SUCCEEDED(hr))
     {
-        if (psfOut)
+        if (ppsf)
         {
-            hr = SHBindToObject(nullptr, pidl, nullptr, IID_PPV_ARGS(psfOut));
+            hr = SHBindToObject(nullptr, pidl, nullptr, IID_PPV_ARGS(ppsf));
         }
 
         if (SUCCEEDED(hr))
         {
-            *pidlOut = pidl;
+            *ppidl = pidl;
             pidl = nullptr;
         }
 

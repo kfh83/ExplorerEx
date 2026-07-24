@@ -220,21 +220,21 @@ typedef struct tagFSEPDATA
     RECT* prc;
     HMONITOR hmon;
     CTray* ptray;
-    BOOL field_C; // EXEX-VISTA(allison): NEW
+    BOOL fProcessingDesktopRaise; // EXEX-VISTA(allison): NEW
 } FSEPDATA, *PFSEPDATA;
 
 // EXEX-VISTA(allison): Validated
 void CTray::HandleFullScreenApp(HWND hwnd)
 {
     if (g_fDesktopRaised || _fProcessingDesktopRaise)
-        hwnd = nullptr;
+        hwnd = NULL;
 
-    BOOL fStuckRudeApp = _fStuckRudeApp;
+    BOOL fWasStuckRudeApp = _fStuckRudeApp;
 
     _hwndRude = hwnd;
 
     FSEPDATA d = {};
-    d.field_C = _fProcessingDesktopRaise;
+    d.fProcessingDesktopRaise = _fProcessingDesktopRaise;
 
     RECT rc;
     if (hwnd && GetWindowRect(hwnd, &rc))
@@ -244,16 +244,16 @@ void CTray::HandleFullScreenApp(HWND hwnd)
     }
     d.ptray = this;
 
-    EnumDisplayMonitors(nullptr, nullptr, FullScreenEnumProc, reinterpret_cast<LPARAM>(&d));
-    if (fStuckRudeApp != _fStuckRudeApp)
+    EnumDisplayMonitors(NULL, NULL, FullScreenEnumProc, reinterpret_cast<LPARAM>(&d));
+    if (fWasStuckRudeApp != _fStuckRudeApp)
     {
         _ResetZorder(FALSE);
-        SendMessageW(_hwndNotify, TNM_TRAYHIDE, 0, _fStuckRudeApp);
-        SendMessageW(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
+        SendMessage(_hwndNotify, TNM_TRAYHIDE, 0, _fStuckRudeApp);
+        SendMessage(_hwndNotify, TNM_RUDEAPP, _fStuckRudeApp, 0);
     }
 }
 
-EXTERN_C BOOL WINAPI Tray_StartPanelEnabled()
+BOOL Tray_StartPanelEnabled()
 {
     SHELLSTATE  ss = { 0 };
     SHGetSetSettings(&ss, SSF_STARTPANELON, FALSE);
@@ -687,8 +687,8 @@ HWND CTray::_CreateStartButton()
     _uLogoffUser = RegisterWindowMessage(TEXT("Logoff User"));
 
     HWND hwndStart = _stb.CreateStartButton(_hwnd);
-    BOOL fFlip3dAttribute = TRUE;
-    DwmSetWindowAttribute(hwndStart, DWMWA_FLIP3D_POLICY, &fFlip3dAttribute, sizeof(fFlip3dAttribute));
+    DWMFLIP3DWINDOWPOLICY flipPolicy = DWMFLIP3D_EXCLUDEBELOW;
+    DwmSetWindowAttribute(hwndStart, DWMWA_FLIP3D_POLICY, &flipPolicy, sizeof(flipPolicy));
     wprintf(L"Returning hwndStart %p\n", hwndStart);
     return hwndStart;
 }
@@ -1250,7 +1250,11 @@ BOOL WINAPI CTray::FullScreenEnumProc(HMONITOR hmon, HDC hdc, LPRECT prc, LPARAM
     BOOL fFullScreen;   // Is there a rude app on this monitor?
 
     PFSEPDATA pd = (PFSEPDATA)dwData;
-    if (pd->hmon == hmon)
+    if (g_fDesktopRaised || pd->fProcessingDesktopRaise)
+    {
+        fFullScreen = FALSE;
+    }
+    else if (pd->hmon == hmon)
     {
         fFullScreen = TRUE;
     }
@@ -1515,7 +1519,7 @@ void CTray::_MessageLoop()
 
     while (true)
     {
-        while (!PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        while (!PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
             // _responseMonitor.IndicateIdle();
             WaitMessage();
@@ -1545,7 +1549,7 @@ void CTray::_MessageLoop()
             {
                 if (_hwndTasks)
                 {
-                    SendMessageW(_hwndTasks, 0x438, 0, 0);
+                    SendMessage(_hwndTasks, TBC_FREEPOPUPMENUS, 0, 0);
                 }
                 goto LABEL_17;
             }
@@ -1559,10 +1563,10 @@ void CTray::_MessageLoop()
         LABEL_17:
             if (_stb.IsMenuMessage(&msg) != S_OK)
             {
-                if (!_hMainAccel || !TranslateAcceleratorW(_hwnd, _hMainAccel, &msg))
+                if (!_hMainAccel || !TranslateAccelerator(_hwnd, _hMainAccel, &msg))
                 {
                     TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
+                    DispatchMessage(&msg);
                 }
             }
         }
@@ -1570,7 +1574,7 @@ void CTray::_MessageLoop()
 
     if (_hwnd && IsWindow(_hwnd))
     {
-        SendMessageW(_hwnd, WM_ENDSESSION, 1, 0);
+        SendMessage(_hwnd, WM_ENDSESSION, 1, 0);
     }
 }
 
@@ -1596,11 +1600,11 @@ int CTray::_GetPart(UINT uStuckPlace)
 
 void CTray::_UpdateVertical(UINT uStuckPlace, BOOL fForce)
 {
-    static UINT _uOldStuckPlace = STICK_MAX + 1;
+    static UINT s_uOldStuckPlace = STICK_MAX + 1;
 
-    if ((_uOldStuckPlace != uStuckPlace) || fForce)
+    if ((s_uOldStuckPlace != uStuckPlace) || fForce)
     {
-        _uOldStuckPlace = uStuckPlace;
+        s_uOldStuckPlace = uStuckPlace;
 
         //DebugMsg(DM_TRAYDOCK, TEXT("TRAYDOCK.t_uv tray is now %s"), STUCK_HORIZONTAL(uStuckPlace) ? TEXT("HORIZONTAL") : TEXT("VERTICAL"));
 
@@ -3775,19 +3779,19 @@ LRESULT CTray::_HandleDestroy()
     if (_pMixer)
     {
         _pMixer->Release();
-        _pMixer = nullptr;
+        _pMixer = NULL;
     }
 
     // Tell the start menu to free all its cached darwin links
-    SHRegisterDarwinLink(nullptr, nullptr, TRUE);
+    SHRegisterDarwinLink(NULL, NULL, TRUE);
 
     _DestroySavedWindowPositions(_pPositions);
-    _pPositions = nullptr;
+    _pPositions = NULL;
 
     if (_hTheme)
     {
         CloseThemeData(_hTheme);
-        _hTheme = nullptr;
+        _hTheme = NULL;
     }
 
     _UnregisterGlobalHotkeys();
@@ -3800,29 +3804,29 @@ LRESULT CTray::_HandleDestroy()
 
     IUnknown_SafeReleaseAndNullPtr(_ptbs);
     IUnknown_SafeReleaseAndNullPtr(_pdbTasks);
-    _hwndTasks = nullptr;
+    _hwndTasks = NULL;
 
     if (_hwndTrayTips)
     {
         DestroyWindow(_hwndTrayTips);
-        _hwndTrayTips = nullptr;
+        _hwndTrayTips = NULL;
     }
 
     PostQuitMessage(0);
 
-    if (_pSysTray)
+    if (_poctSysTray)
     {
-        _pSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_CLOSE, 0, nullptr, nullptr);
-        _pSysTray->Release();
-        _pSysTray = nullptr;
+        _poctSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_CLOSE, 0, NULL, NULL);
+        _poctSysTray->Release();
+        _poctSysTray = NULL;
     }
 
     DeleteCriticalSection(&_csHotkey);
 
     _StarterWatermarkCreate(FALSE);
 
-    v_hwndTray = nullptr;
-    _stb._hwndStart = nullptr;
+    v_hwndTray = NULL;
+    _stb._hwndStart = NULL;
 
     //TraceMsg(DM_SHUTDOWN, "_HD: leave");
     return 0;
@@ -4653,11 +4657,11 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
         return E_FAIL;
     }
 
-    if (!_pSysTray)
+    if (!_poctSysTray)
     {
         return E_FAIL;
     }
-    HRESULT hr = _pSysTray->Exec(&plipd->clsid, 2, plipd->dwFlags, nullptr, nullptr);
+    HRESULT hr = _poctSysTray->Exec(&plipd->clsid, 2, plipd->dwFlags, nullptr, nullptr);
     return hr;
 }
 
@@ -5451,9 +5455,9 @@ void CTray::_HandleDelayBootStuff()
 
         _fHandledDelayBootStuff = TRUE;
 
-        if (SUCCEEDED(CoCreateInstance(CLSID_SysTray, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pSysTray))))
+        if (SUCCEEDED(CoCreateInstance(CLSID_SysTray, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_poctSysTray))))
         {
-            _pSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_OPEN, 0, nullptr, nullptr);
+            _poctSysTray->Exec(&CGID_ShellServiceObject, SSOCMDID_OPEN, 0, nullptr, nullptr);
         }
 
         _CheckForRogueProgramFile();

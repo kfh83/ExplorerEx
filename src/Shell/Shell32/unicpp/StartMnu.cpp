@@ -348,7 +348,7 @@ ISetFolderEnumRestriction : IUnknown
 
 DEFINE_GUID(POLID_NoStartMenuSubFolders, 0x78627E11, 0xEC80, 0x49A3, 0xB3, 0xB7, 0x6A, 0xBE, 0x73, 0x96, 0x93, 0xFC);
 
-EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** psfOut, ITEMIDLIST_ABSOLUTE** pidlOut);
+EXTERN_C HRESULT BindToGetFolderAndPidl(REFCLSID rclsid, IShellFolder** ppsf, ITEMIDLIST_ABSOLUTE** ppidl);
 
 DEFINE_GUID(CLSID_StartMenuCommon, 0x2981C306, 0x09EA, 0x405D, 0x9D, 0x0F, 0x83, 0x33, 0x78, 0x27, 0xBD, 0x35);
 DEFINE_GUID(CLSID_ProgramsFolderCommon, 0xFC1EE10B, 0x7EF6, 0x41B5, 0xBB, 0x60, 0x98, 0xD2, 0x6D, 0xD9, 0xFC, 0xD1);
@@ -2682,25 +2682,25 @@ HRESULT CStartMenuCallback::InitializeProgramsShellMenu(IShellMenu* psm)
     HKEY hkeyPrograms = nullptr;
     ITEMIDLIST* pidl = nullptr;
 
-    DWORD dwInitFlags = 0x10000000;
+    DWORD dwInitFlags = SMINIT_VERTICAL;
     if (!FeatureEnabled(L"StartMenuScrollPrograms") && !_fIsStartPanel)
-        dwInitFlags = 0x50000000;
+        dwInitFlags |= 0x40000000;
     if (IsStartMenuChangeNotAllowed(_fIsStartPanel))
         dwInitFlags |= 0x3;
     if (_fIsStartPanel)
         dwInitFlags |= 0x20004;
 
-    HRESULT hr = psm->Initialize(this, 504, 504, dwInitFlags);
+    HRESULT hr = psm->Initialize(this, IDM_PROGRAMS, IDM_PROGRAMS, dwInitFlags);
     if (SUCCEEDED(hr))
     {
         _InitializePrograms();
-        const WCHAR* pszOrderKey =
+        LPCWSTR pszOrderKey =
             _fIsStartPanel
             ? L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Start Menu2\\Programs"
             : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MenuOrder\\Start Menu\\Programs";
-        RegCreateKeyExW(
-            HKEY_CURRENT_USER, pszOrderKey, 0, nullptr, REG_OPTION_NON_VOLATILE, (KEY_READ | KEY_WRITE),
-            nullptr, &hkeyPrograms, nullptr);
+        RegCreateKeyEx(
+            HKEY_CURRENT_USER, pszOrderKey, 0, NULL, REG_OPTION_NON_VOLATILE, (KEY_READ | KEY_WRITE),
+            NULL, &hkeyPrograms, NULL);
 
         IShellFolder* psf;
         DWORD dwSmset = SMSET_TOP;

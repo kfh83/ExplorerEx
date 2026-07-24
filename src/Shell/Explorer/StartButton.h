@@ -6,7 +6,7 @@ STDAPI DesktopV2_Create(
 STDAPI DesktopV2_Build(void* pvStartPane);
 
 // from tray
-EXTERN_C BOOL WINAPI Tray_StartPanelEnabled();
+BOOL Tray_StartPanelEnabled();
 
 MIDL_INTERFACE("8B62940C-7ED5-4DE6-9BDC-4CA4346AAE3B")
 IStartButton : IUnknown
@@ -70,6 +70,7 @@ public:
 
     void BuildStartMenu();
     void CloseStartMenu();
+    IMenuPopup* GetStartMenu() { return _pmpStartMenu; }
     HWND CreateStartButton(HWND hwndParent);
     void DestroyStartMenu();
     void DisplayStartMenu();
@@ -131,12 +132,12 @@ public:
 
 private:
     LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
-    void _CalcExcludeRect(RECTL* lprcDst);
+    void _CalcExcludeRect(RECT* lprcDst);
     BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 
-    const WCHAR* _GetCurrentThemeName();
+    LPCWSTR _GetCurrentThemeName();
 
     void _HandleDestroy();
     void _OnSettingChanged(UINT a2);

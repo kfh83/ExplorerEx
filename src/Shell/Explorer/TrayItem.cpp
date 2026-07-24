@@ -306,7 +306,7 @@ BOOL CTrayItemManager::GetTrayItem(INT_PTR nIndex, CNotificationItem * pni, BOOL
             pni->dwFlags        = 0;
             pni->nDisplayIndex  = static_cast<int>(nIndex);
             pni->uVersion       = pti->uVersion;
-            pni->fUseSystemTip  = pti->fShowTip;
+            pni->fUseSystemTip  = pti->fUseSystemTip;
             pni->uCallbackMsg   = pti->uCallbackMessage;
 
             *pbStat = TRUE;
