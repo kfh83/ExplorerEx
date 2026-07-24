@@ -248,12 +248,15 @@ HRESULT CStartButton::OnContextMenu(HWND hwnd, LPARAM lParam)
                             case 32752:
                                 _ExploreCommonStartMenu(FALSE);
                                 break;
+
                             case 32753:
                                 _ExploreCommonStartMenu(TRUE);
                                 break;
+
                             case 32755:
-                                Tray_DoProperties(2);
+                                Tray_DoProperties(TPF_STARTMENUPAGE);
                                 break;
+
                             default:
                                 WCHAR szVerb[260];
                                 ContextMenu_GetCommandStringVerb(pcm, idCmd - 2, szVerb, ARRAYSIZE(szVerb));
@@ -303,7 +306,8 @@ HRESULT CStartButton::OnContextMenu(HWND hwnd, LPARAM lParam)
     }
 
     ILFree(pidlStart);
-    _fInContextMenu = 0;
+
+    _fInContextMenu = FALSE;
     return S_OK;
 }
 
@@ -629,7 +633,8 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
 {
     POINT pptDst;
     HRGN hRgn;
-    BOOL fCalculated = CStartButton::_CalcStartButtonPos(&pptDst, &hRgn);
+
+    BOOL fCalculated = _CalcStartButtonPos(&pptDst, &hRgn);
 
     if (bRepaint)
     {
@@ -639,9 +644,13 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
             HDC hdcMem = CreateCompatibleDC(hdc);
             if (hdcMem)
             {
-                RECT rcStart = { 0, 0, _sizeStart.cx, _sizeStart.cy };
+                RECT rcStart;
+                rcStart.left    = 0;
+                rcStart.top     = 0;
+                rcStart.right   = _sizeStart.cx;
+                rcStart.bottom  = _sizeStart.cy;
 
-                BITMAPINFO bmi = { 0 };
+                BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
                 bmi.bmiHeader.biWidth = rcStart.right;
                 bmi.bmiHeader.biHeight = -rcStart.bottom;
@@ -649,7 +658,7 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
                 bmi.bmiHeader.biBitCount = 32;
                 bmi.bmiHeader.biCompression = BI_RGB;
 
-                HBITMAP hbmStartButton = CreateDIBSection(hdc, &bmi, 0, 0, 0, 0);
+                HBITMAP hbmStartButton = CreateDIBSection(hdc, &bmi, 0, NULL, NULL, 0);
                 if (hbmStartButton)
                 {
                     HBITMAP hbmMem = (HBITMAP)SelectObject(hdcMem, hbmStartButton);
@@ -659,19 +668,19 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
                     if (!_hTheme)
                     {
                         SendMessage(_hwndStart, WM_PRINTCLIENT, (WPARAM)hdcMem, PRF_CLIENT);
-                        UpdateLayeredWindow(_hwndStart, hdcDst, 0, &_sizeStart, hdcMem, &ptStart, 0, 0, ULW_OPAQUE);
+                        UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &_sizeStart, hdcMem, &ptStart, 0, NULL, ULW_OPAQUE);
                     }
                     else
                     {
                         SHFillRectClr(hdcMem, &rcStart, 0);
-                        DrawThemeBackground(_hTheme, hdcMem, 1, iStateId, &rcStart, 0);
+                        DrawThemeBackground(_hTheme, hdcMem, 1, iStateId, &rcStart, NULL);
 
                         BLENDFUNCTION bf;
                         bf.BlendOp = 0;
                         bf.BlendFlags = 0;
                         bf.SourceConstantAlpha = 255;
                         bf.AlphaFormat = 1;
-                        UpdateLayeredWindow(_hwndStart, hdcDst, 0, &_sizeStart, hdcMem, &ptStart, 0, &bf, ULW_ALPHA);
+                        UpdateLayeredWindow(_hwndStart, hdcDst, NULL, &_sizeStart, hdcMem, &ptStart, 0, &bf, ULW_ALPHA);
                     }
                     ReleaseDC(NULL, hdcDst);
                     SelectObject(hdcMem, hbmMem);
@@ -682,10 +691,12 @@ void CStartButton::DrawStartButton(int iStateId, bool bRepaint)
             ReleaseDC(_hwndStart, hdc);
         }
     }
-    UpdateLayeredWindow(_hwndStart, nullptr, &pptDst, nullptr, nullptr, nullptr, 0, nullptr, 0);
 
+    UpdateLayeredWindow(_hwndStart, NULL, &pptDst, NULL, NULL, NULL, 0, NULL, 0);
     if (fCalculated)
+    {
         SetWindowRgn(_hwndStart, hRgn, TRUE);
+    }
 }
 
 void CStartButton::ExecRefresh()
@@ -707,10 +718,10 @@ void CStartButton::ForceButtonUp()
         _fAllowUp = TRUE;
 
         MSG msg;
-        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
-        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
-        SendMessageW(_hwndStart, BM_SETSTATE, FALSE, 0);
-        PeekMessageW(&msg, _hwndStart, WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK, PM_REMOVE);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_REMOVE);
+        SendMessage(_hwndStart, BM_SETSTATE, FALSE, 0);
+        PeekMessage(&msg, _hwndStart, WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK, PM_REMOVE);
     }
 }
 
@@ -983,7 +994,7 @@ void CStartButton::RecalcSize()
         {
             pszWindowName = _szStart;
         }
-        SetWindowTextW(_hwndStart, pszWindowName);
+        SetWindowText(_hwndStart, pszWindowName);
 
         int cyStart = _psbs->GetStartButtonMinHeight();
         if (!cyStart && _sizeStart.cy >= 0)
@@ -1016,7 +1027,6 @@ void CStartButton::StartButtonReset()
 int CStartButton::TrackMenu(HMENU hmenu)
 {
     TPMPARAMS tpm;
-
     tpm.cbSize = sizeof(tpm);
     GetClientRect(_hwndStart, &tpm.rcExclude);
 
@@ -1193,17 +1203,17 @@ void CStartButton::_HandleDestroy()
     if (_himlStartFlag)
         ImageList_Destroy(_himlStartFlag);
 
-    RemovePropW(_hwndStart, L"StartButtonTag");
+    RemoveProp(_hwndStart, L"StartButtonTag");
 }
 
-void CStartButton::_OnSettingChanged(UINT a2)
+void CStartButton::_OnSettingChanged(WPARAM wParam)
 {
-    if (!_hTheme && a2 != 0x2F)
+    if (!_hTheme && wParam != SPI_SETWORKAREA)
     {
         bool v3 = !field_4C;
         if (field_4C)
         {
-            PostMessage(_hwndStart, 0x31Au, 0, 0);
+            PostMessage(_hwndStart, WM_THEMECHANGED, 0, 0);
             v3 = !field_4C;
         }
         field_4C = v3;
@@ -1258,281 +1268,234 @@ BOOL CStartButton::_ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2)
     return EqualRect(&rc1, &rcDst);
 }
 
-LRESULT CStartButton::_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CStartButton::_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (uMsg == BM_SETSTATE)
+    UINT v7;
+    IStartButtonSite* psbs;
+    LRESULT lRet;
+    HWND Ancestor;
+    HWND v13;
+    HWND v14;
+    LRESULT lres;
+    TRACKMOUSEEVENT tme;
+    POINT pt;
+    LPWINDOWPOS lpwp = (LPWINDOWPOS)lParam;
+
+    if (uMsg > 0x46)
     {
-        // this part is mixed with xp code, 
-        if (wParam)
+        if (uMsg == 0x200)
         {
-            if (!_uDown)
+            if (_hTheme != nullptr && field_10 == 0 && field_14 == 0)
             {
-                // Nope.
-                INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_DOWN);
-                _uDown = 1;
-
-                _fAllowUp = FALSE;
-                _psbs->EnableTooltips(FALSE);
-
-                // Show the button down.
-                field_14 = TRUE;
-                LRESULT lRet = DefSubclassProc(hWnd, BM_SETSTATE, wParam, lParam);
-                DrawStartButton(PBS_PRESSED, true);
-                _psbs->StartButtonClicked();
-                _tmOpen = GetTickCount();
-                return lRet;
+                DrawStartButton(2, true);
+                tme.dwHoverTime = 0;
+                tme.hwndTrack = hwnd;
+                tme.cbSize = sizeof(tme);
+                tme.dwFlags = 2;
+                TrackMouseEvent(&tme);
+                field_10 = 1;
             }
-            else
-            {
-                // Yep. Do nothing.
-                // fDown = FALSE;
-                return DefWindowProc(hWnd, uMsg, wParam, lParam);
-            }
+            return 0;
         }
-        else
+        if (uMsg == 0x2A3)
         {
-            if (_uDown == 1 || !_fAllowUp)
+            if (_hTheme != NULL && field_14 == 0 && !c_tray.IsMouseOverStartButton())
             {
-                INSTRUMENT_STATECHANGE(SHCNFI_STATE_START_UP);
-
-                _uDown = 2;
-                return DefWindowProc(hWnd, uMsg, 0, lParam);
+                DrawStartButton(1, true);
             }
-            else
-            {
-
-                // Nope, Forward it on.
-                field_14 = FALSE;
-                LRESULT lr = DefSubclassProc(hWnd, BM_SETSTATE, 0, lParam);
-                DrawStartButton(PBS_NORMAL, true);
-                _psbs->EnableTooltips(TRUE);
-                _uDown = 0;
-                return lr;
-            }
+            field_10 = 0;
+            return 0;
         }
+        if ((uMsg == 0x31A || uMsg == 0x31E) && _OnThemeChanged(uMsg == 0x31E) != 0)
+        {
+            return 0;
+        }
+        goto LABEL_41;
     }
-    else
+
+    switch (uMsg)
     {
-        // all vista reimpl'd code
-
-        if (_uStartButtonState == 2 && uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)
+        case WM_WINDOWPOSCHANGING:
         {
-            _uStartButtonState = 0; // SBSM_NORMAL
-            CloseStartMenu();
-        }
-
-        switch (uMsg)
-        {
-            case WM_WINDOWPOSCHANGING:
+            if ((lpwp->flags & 2) == 0)
             {
-                WINDOWPOS* pWindowPos = (WINDOWPOS*)lParam;
-
-                if (!(pWindowPos->flags & SWP_NOMOVE))
+                _CalcStartButtonPos(&pt, NULL);
+                if (lpwp->x != pt.x || lpwp->y != pt.y)
                 {
-                    POINT pt;
-                    _CalcStartButtonPos(&pt, NULL);
-
-                    if (pWindowPos->x != pt.x || pWindowPos->y != pt.y)
+                    lpwp->x = pt.x;
+                    lpwp->y = pt.y;
+                    return 0;
+                }
+            }
+            goto LABEL_8;
+        }
+        case WM_SETFOCUS:
+            if (_hTheme != NULL && _uDown == 0)
+            {
+                DrawStartButton(2, true);
+            }
+        LABEL_8:
+            if (uMsg != 0x201 && uMsg != 0x204 && uMsg != 0x207 || OnMouseClick(hwnd, lParam) == 0)
+            {
+                if (_uStartButtonState == 2 && uMsg - 512 <= 0xE)
+                {
+                    _uStartButtonState = 0;
+                    CloseStartMenu();
+                }
+                if (uMsg <= 0x100)
+                {
+                    if (uMsg != 0x100)
                     {
-                        pWindowPos->x = pt.x;
-                        pWindowPos->y = pt.y;
+                        switch (uMsg)
+                        {
+                            case WM_DESTROY:
+                                _HandleDestroy();
+                                return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                            case WM_MOUSEACTIVATE:
+                                if (_uStartButtonState != 0)
+                                {
+                                    _uStartButtonState = 2;
+                                    return 2;
+                                }
+                                return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                            case WM_CONTEXTMENU:
+                                if (SHRestricted(REST_NOTRAYCONTEXTMENU) == 0)
+                                {
+                                    OnContextMenu(hwnd, lParam);
+                                }
+                                break;
+                            case WM_NCDESTROY:
+                                RemoveWindowSubclass(hwnd, s_StartButtonSubclassProc, 0);
+                                return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                            case WM_NCHITTEST:
+                                v7 = GetTickCount() - _tmOpen;
+                                if (v7 >= GetDoubleClickTime())
+                                {
+                                    _psbs->SetUnhideTimer(lParam, GET_Y_LPARAM(lParam));
+                                    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                                }
+                                break;
+                            default:
+                                return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                        }
                         return 0;
                     }
-                }
-                break;
-            }
 
-            case WM_SETFOCUS:
-            {
-                if (_hTheme && !_uDown)
+                    Ancestor = GetAncestor(hwnd, 3u);
+                    SendMessage(Ancestor, 0x128u, 0x10002u, 0);
+                    if (wParam == 13)
+                    {
+                        v13 = GetAncestor(hwnd, 3u);
+                        PostMessage(v13, 0x111u, 0x131u, 0);
+                    }
+                ProcessCapture:
+                    lres = DefSubclassProc(hwnd, uMsg, wParam, lParam);
+                    SetCapture(NULL);
+                    return lres;
+                }
+                if (uMsg == 0x113)
                 {
-                    DrawStartButton(PBS_HOT, true);
+                    if (wParam == 1)
+                    {
+                        _DestroyStartButtonBalloon();
+                    }
+                    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
                 }
-                break;
-            }
-
-            case WM_KILLFOCUS:
-            {
-                if (!field_10 && _hTheme && !_uDown)
+                if (uMsg == 0x201)
                 {
-                    DrawStartButton(PBS_NORMAL, true);
+                    v14 = GetAncestor(hwnd, 3u);
+                    SendMessage(v14, 0x128u, 0x10001u, 0);
+                    goto ProcessCapture;
                 }
-                break;
-            }
-
-            case WM_CLOSE:
-            {
-                _psbs->OnStartButtonClosing();
-                return 0;
-            }
-
-            case WM_SETTINGCHANGE:
-            {
-                _OnSettingChanged(wParam);
-                break;
-            }
-
-            case WM_MOUSEMOVE:
-            {
-                if (_hTheme && !field_10 && !field_14)
+                if (uMsg != 0x8000)
                 {
-                    DrawStartButton(PBS_HOT, true);
-
-                    TRACKMOUSEEVENT tme;
-                    tme.cbSize = sizeof(TRACKMOUSEEVENT);
-                    tme.dwFlags = TME_LEAVE;
-                    tme.hwndTrack = _hwndStart;
-                    tme.dwHoverTime = 0;
-
-                    TrackMouseEvent(&tme);
-
-                    field_10 = 1;
+                    if (uMsg == 32769)
+                    {
+                        return LOWORD(_sizeStart.cx) | (LOWORD(_sizeStart.cy) << 16);
+                    }
+                    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
                 }
-                break;
-            }
-
-            case WM_MOUSELEAVE:
-            {
-                if (_hTheme && !field_14 && !c_tray.IsMouseOverStartButton())
-                {
-                    DrawStartButton(PBS_NORMAL, true);
-                }
-                field_10 = 0;
-                return 0;
-            }
-
-            case WM_THEMECHANGED:
-            case WM_DWMCOMPOSITIONCHANGED:
-            {
-                if (_OnThemeChanged(uMsg == WM_DWMCOMPOSITIONCHANGED))
-                {
-                    return 0;
-                }
-
-                break;
-            }
-
-            case WM_LBUTTONDOWN:
-            case WM_RBUTTONDOWN:
-            case WM_MBUTTONDOWN:
-            {
-                if (OnMouseClick(hWnd, lParam))
-                {
-                    return 0;   
-                }
-                if (uMsg == WM_LBUTTONDOWN)
-                {
-                    SendMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
-                    LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-                    SetCapture(nullptr);
-                    return lr;
-                }
-
-                break;
-            }
-
-            // _nStatePaneActiveState... HERE
-
-            case WM_TIMER:
-            {
-                if (wParam == IDT_STARTBUTTONBALLOON)
-                {
-                    _DestroyStartButtonBalloon();
-                }
-
-                return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            }
-
-            case STB_RECALCSIZE:
-            {
                 RecalcSize();
-                return 0;
             }
-
-            case STB_GETIDEALSIZE:
+            return 0;
+        case WM_KILLFOCUS:
+            if (field_10 == 0 && _hTheme != NULL && _uDown == 0)
             {
-                return MAKELRESULT(_sizeStart.cx, _sizeStart.cy);
+                DrawStartButton(1, true);
             }
-
-            case WM_KEYDOWN:
-            {
-                SendMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_UPDATEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEACCEL), 0);
-
-                if (wParam == VK_RETURN)
-                {
-                    PostMessage(GetAncestor(hWnd, GA_ROOTOWNER), WM_COMMAND, 0x131, 0);
-                }
-
-                LRESULT lr = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-                return lr;
-            }
-
-            case WM_DESTROY:
-            {
-                _HandleDestroy();
-                return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            }
-
-            case WM_CONTEXTMENU:
-            {
-                if (!SHRestricted(REST_NOTRAYCONTEXTMENU))
-                    OnContextMenu(hWnd, lParam);
-                return 0;
-            }
-            case WM_NCDESTROY:
-            {
-                RemoveWindowSubclass(hWnd, s_StartButtonSubclassProc, 0);
-                break;
-            }
-            case WM_NCHITTEST:
-            {
-                if (GetTickCount() - _tmOpen < GetDoubleClickTime())
-                {
-                    return 0;
-                }
-
-                _psbs->SetUnhideTimer(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-                break;
-            }
-
-            case WM_MOUSEACTIVATE:
-            {
-                if (!_uStartButtonState)
-                {
-                    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-                }
-
-                _uStartButtonState = 2;
-                return 2;
-            }
-            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        }
+            goto LABEL_8;
+        case WM_CLOSE:
+            _psbs->OnStartButtonClosing();
+            return 0;
+        case WM_SETTINGCHANGE:
+            _OnSettingChanged(wParam);
+            goto LABEL_8;
+        default:
+            break;
     }
-
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-}
-
-LRESULT CStartButton::s_StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
-{
-    return reinterpret_cast<CStartButton*>(dwRefData)->_StartButtonSubclassProc(hWnd, uMsg, wParam, lParam);
-}
-
-LRESULT CStartButton::s_StartMenuSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
-{
-    if (uMsg == WM_WINDOWPOSCHANGING)
+LABEL_41:
+    if (uMsg != 0xF3)
     {
-        PWINDOWPOS pwp = (WINDOWPOS*)lParam;
-        if ((pwp->flags & SWP_NOZORDER) != 0 || c_tray._uStuckPlace != 1 && c_tray._uStuckPlace != 3)
+        goto LABEL_8;
+    }
+    if (wParam == 0)
+    {
+        if (_uDown == 1 || !_fAllowUp)
         {
-            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            _uDown = 2;
+            return DefWindowProc(hwnd, 0xF3u, 0, lParam);
         }
-        pwp->hwndInsertAfter = v_hwndTray;
-
-        return 0;
+        field_14 = 0;
+        lRet = DefSubclassProc(hwnd, 0xF3u, 0, lParam);
+        DrawStartButton(1, true);
+        _psbs->EnableTooltips(TRUE);
+        _uDown = 0;
+        return lRet;
     }
-    if (uMsg == WM_NCDESTROY)
+    if (_uDown == 0)
     {
-        RemoveWindowSubclass(hWnd, s_StartMenuSubclassProc, uIdSubclass);
+        psbs = _psbs;
+        _uDown = 1;
+        _fAllowUp = FALSE;
+        psbs->EnableTooltips(FALSE);
+        lRet = DefSubclassProc(hwnd, 0xF3u, wParam, lParam);
+        field_14 = 1;
+        DrawStartButton(3, true);
+        _psbs->StartButtonClicked();
+        _tmOpen = GetTickCount();
+        return lRet;
     }
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    return DefWindowProc(hwnd, 0xF3, wParam, lParam);
+}
+
+LRESULT CStartButton::s_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    return reinterpret_cast<CStartButton*>(dwRefData)->_StartButtonSubclassProc(hwnd, uMsg, wParam, lParam);
+}
+
+LRESULT CStartButton::s_StartMenuSubclassProc(
+    HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    switch (uMsg)
+    {
+        case WM_WINDOWPOSCHANGING:
+        {
+            LPWINDOWPOS pwp = (LPWINDOWPOS)lParam;
+            if (!(pwp->flags & SWP_NOZORDER)
+                && (c_tray._uStuckPlace == STICK_TOP || c_tray._uStuckPlace == STICK_BOTTOM))
+            {
+                pwp->hwndInsertAfter = v_hwndTray;
+                return 0;
+            }
+            break;
+        }
+        case WM_NCDESTROY:
+        {
+            RemoveWindowSubclass(hwnd, s_StartMenuSubclassProc, uIdSubclass);
+            break;
+        }
+    }
+
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }

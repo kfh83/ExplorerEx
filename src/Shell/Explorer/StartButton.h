@@ -54,7 +54,7 @@ public:
     STDMETHODIMP SetFocusToStartButton() override;
     STDMETHODIMP OnContextMenu(HWND hwnd, LPARAM lParam) override;
     STDMETHODIMP CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage) override;
-    STDMETHODIMP SetStartPaneActive(BOOL bActive) override;
+    STDMETHODIMP SetStartPaneActive(BOOL fActive) override;
     STDMETHODIMP OnStartMenuDismissed() override;
     STDMETHODIMP UnlockStartPane() override;
     STDMETHODIMP LockStartPane() override;
@@ -140,13 +140,13 @@ private:
     LPCWSTR _GetCurrentThemeName();
 
     void _HandleDestroy();
-    void _OnSettingChanged(UINT a2);
+    void _OnSettingChanged(WPARAM wParam);
     bool _OnThemeChanged(bool bForceUpdate);
     BOOL _ShouldDelayClip(const RECT* a2, const RECT* lprcSrc2);
-    LRESULT _StartButtonSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT _StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static LRESULT s_StartButtonSubclassProc(
-        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
     static LRESULT s_StartMenuSubclassProc(
-        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 };
