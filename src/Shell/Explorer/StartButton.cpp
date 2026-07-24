@@ -1104,7 +1104,7 @@ LRESULT CStartButton::OnMouseClick(HWND hWndTo, LPARAM lParam)
     return lRes;
 }
 
-void CStartButton::_CalcExcludeRect(RECT* lprcDst) // from xp
+void CStartButton::_CalcExcludeRect(LPRECT prcExclude)
 {
     RECT rcStart;
     GetWindowRect(_hwndStart, &rcStart);
@@ -1112,7 +1112,7 @@ void CStartButton::_CalcExcludeRect(RECT* lprcDst) // from xp
     RECT rcMonitor;
     GetMonitorRect(MonitorFromRect(&rcStart, 0), &rcMonitor);
 
-    UINT uStuckPlace = c_tray.GetStartMenuStuckPlace();
+    UINT uStuckPlace = c_tray._uStuckPlace;
 
     RECT rcStuck = c_tray._arStuckRects[uStuckPlace];
     if (IsBiDiLocalizedSystem() && STUCK_HORIZONTAL(uStuckPlace))
@@ -1125,8 +1125,7 @@ void CStartButton::_CalcExcludeRect(RECT* lprcDst) // from xp
         rcStart.top = rcStuck.top;
         rcStart.bottom = rcStuck.bottom;
     }
-
-    IntersectRect(lprcDst, &rcMonitor, &rcStart);
+    IntersectRect(prcExclude, &rcMonitor, &rcStart);
 }
 
 HFONT CStartButton::_CreateStartFont()  // taken from xp
@@ -1158,8 +1157,7 @@ void CStartButton::_ExploreCommonStartMenu(BOOL bExplore)
     LPITEMIDLIST pidl;
     if (SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_COMMON_STARTMENU, NULL, KF_FLAG_DEFAULT, &pidl)))
     {
-        SHELLEXECUTEINFO sei = { 0 };
-
+        SHELLEXECUTEINFO sei = {0};
 		sei.cbSize       = sizeof(sei);
         sei.fMask        = SEE_MASK_IDLIST | SEE_MASK_ASYNCOK;
         sei.lpVerb       = bExplore ? TEXT("explore") : TEXT("open");
