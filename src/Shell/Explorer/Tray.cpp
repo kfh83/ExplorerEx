@@ -960,61 +960,6 @@ DEFINE_GUID(POLID_NoRestartOnTimer, 0x58AE0986, 0x0358, 0x4A44, 0x80, 0x89, 0x9C
 // EXEX-VISTA: Slightly modified. Revalidate later.
 LRESULT CTray::_CreateWindows()
 {
-#ifdef DEAD_CODE
-    if (_CreateStartButton() && _CreateClockWindow())
-    {
-        // Initialise the theme.
-        _OnThemeChanged();
-
-        //
-        //  We need to set the tray position, before creating
-        // the view window, because it will call back our
-        // GetWindowRect member functions.
-        //
-        _RestoreWindowPos();
-
-        _CreateTrayTips();
-
-        SendMessage(_hwndNotify, TNM_HIDECLOCK, 0, _fHideClock);
-
-        _ptbs = BandSite_CreateView();
-        if (_ptbs)
-        {
-            IUnknown_GetWindow(_ptbs, &_hwndRebar);
-            _SetRebarTheme();
-            SetWindowStyle(_hwndRebar, RBS_BANDBORDERS, FALSE);
-            SetWindowStyle(_hwndRebar, 0x10, 1);
-
-            // No need to check the disk space thing for non-privileged users, this reduces activity in the TS case
-            // and only admins can properly free disk space anyways.
-            if (IsUserAnAdmin() && !SHRestricted(REST_NOLOWDISKSPACECHECKS))
-            {
-                SetTimer(_hwnd, IDT_CHECKDISKSPACE, 60 * 1000, NULL);   // 60 seconds poll
-            }
-
-            if (!SHRestricted(REST_NOCDBURNING))
-            {
-                PIDLIST_ABSOLUTE pidlStaging;
-                if (SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_CDBURN_AREA | CSIDL_FLAG_CREATE, NULL, 0, &pidlStaging)))
-                {
-                    SHChangeNotifyEntry fsne;
-                    fsne.fRecursive = FALSE;
-                    fsne.pidl = pidlStaging;
-                    _uNotify = SHChangeNotifyRegister(_hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel | SHCNRF_InterruptLevel,
-                        SHCNE_STAGINGAREANOTIFICATIONS, TM_CHANGENOTIFY, 1, &fsne);
-
-                    // start off by checking the first time.
-                    _CheckStagingAreaOnTimer();
-
-                    ILFree(pidlStaging);
-                }
-            }
-            return 1;
-        }
-    }
-
-    return -1;
-#endif
     // Bail out if we fail to create either the start button or clock window.
     if (!_CreateStartButton() || !_CreateClockWindow())
         return -1;
@@ -1040,7 +985,7 @@ LRESULT CTray::_CreateWindows()
     if (!SHRestricted(REST_NOLOWDISKSPACECHECKS))
         SetTimer(_hwnd, 21, 60000, nullptr);
 
-    LPITEMIDLIST pidlStaging;
+    PIDLIST_ABSOLUTE pidlStaging;
     if (!SHRestricted(REST_NOCDBURNING) && SHGetFolderLocation(nullptr, 0x803B, nullptr, 0, &pidlStaging) >= 0 && ILRemoveLastID(pidlStaging))
     {
         SHChangeNotifyEntry fsne;

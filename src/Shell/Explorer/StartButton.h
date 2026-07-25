@@ -96,15 +96,15 @@ public:
 
     enum
     {
-        STB_RECALCSIZE      = WM_APP,
-        STB_GETIDEALSIZE    = WM_APP + 1,
+        STB_RECALCSIZE = WM_APP,
+        STB_GETIDEALSIZE,
     };
 
     enum { IDT_STARTBUTTONBALLOON = 1 };
 
     const WCHAR* _pszThemeName;
     int field_C;
-    int field_10;
+    int _fHovered;
     BOOL field_14;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
