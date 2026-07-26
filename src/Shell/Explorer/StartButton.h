@@ -105,7 +105,7 @@ public:
     LPCWSTR _pszThemeName;
     int _xPadding;
     BOOL _fHovered;
-    BOOL field_14;
+    BOOL _fVisualsDrawn;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
     SIZE _sizeStart;

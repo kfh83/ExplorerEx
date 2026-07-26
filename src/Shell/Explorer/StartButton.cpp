@@ -978,6 +978,7 @@ BOOL CStartButton::_CalcStartButtonPos(POINT *pPoint, HRGN *phRgn)
             }
         }
     }
+
     return fRes;
 }
 
@@ -1087,10 +1088,14 @@ BOOL CStartButton::OnMouseClick(HWND hwnd, LPARAM lParam)
 
     if (_hwndStartBalloon)
     {
+        POINT pt;
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+
         RECT rc;
         GetWindowRect(_hwndStartBalloon, &rc);
         MapWindowRect(NULL, hwnd, &rc);
-        if (PtInRect(&rc, { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }))
+        if (PtInRect(&rc, pt))
         {
             ShowWindow(_hwndStartBalloon, SW_HIDE);
             _DontShowTheStartButtonBalloonAnyMore();
@@ -1289,14 +1294,14 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPar
         }
 
         case WM_SETFOCUS:
-            if (_hTheme && _uDown == 0)
+            if (_hTheme && !_uDown)
             {
                 DrawStartButton(PBS_HOT, true);
             }
             break;
 
         case WM_KILLFOCUS:
-            if (!_fHovered && _hTheme && _uDown == 0)
+            if (!_fHovered && _hTheme && !_uDown)
             {
                 DrawStartButton(PBS_NORMAL, true);
             }
@@ -1312,7 +1317,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPar
 
         case WM_MOUSEMOVE:
         {
-            if (_hTheme && !_fHovered && !field_14)
+            if (_hTheme && !_fHovered && !_fVisualsDrawn)
             {
                 DrawStartButton(PBS_HOT, true);
 
@@ -1330,7 +1335,7 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPar
 
         case WM_MOUSELEAVE:
         {
-            if (_hTheme && !field_14 && !c_tray.IsMouseOverStartButton())
+            if (_hTheme && !_fVisualsDrawn && !c_tray.IsMouseOverStartButton())
             {
                 DrawStartButton(PBS_NORMAL, true);
             }
@@ -1356,34 +1361,39 @@ LRESULT CStartButton::_StartButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPar
     {
         if (wParam)
         {
-            if (_uDown == 0)
+            if (!_uDown)
             {
                 _uDown = 1;
                 _fAllowUp = FALSE;
-
                 _psbs->EnableTooltips(FALSE);
-                lRet = DefSubclassProc(hwnd, BM_SETSTATE, wParam, lParam);
-                field_14 = 1;
+
+                lRet = DefSubclassProc(hwnd, uMsg, wParam, lParam);
+
+                _fVisualsDrawn = TRUE;
                 DrawStartButton(PBS_PRESSED, true);
                 _psbs->StartButtonClicked();
                 _tmOpen = GetTickCount();
+
                 return lRet;
             }
 
-            return DefWindowProc(hwnd, BM_SETSTATE, wParam, lParam);
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
 
         if (_uDown == 1 || !_fAllowUp)
         {
             _uDown = 2;
-            return DefWindowProc(hwnd, BM_SETSTATE, 0, lParam);
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
 
-        field_14 = 0;
-        lRet = DefSubclassProc(hwnd, BM_SETSTATE, 0, lParam);
+        _fVisualsDrawn = FALSE;
+
+        lRet = DefSubclassProc(hwnd, uMsg, wParam, lParam);
+
         DrawStartButton(PBS_NORMAL, true);
         _psbs->EnableTooltips(TRUE);
         _uDown = 0;
+
         return lRet;
     }
 
