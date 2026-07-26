@@ -1704,7 +1704,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     if (SUCCEEDED(SHGetImageList(iImageList, IID_PPV_ARGS(&piml))))
     {
         if (SUCCEEDED(piml->Resize(_cxIcon, _cyIcon)))
-            _himl = (HIMAGELIST)piml;
+            _himl = IImageListToHIMAGELIST(piml);
         else
             piml->Release();
     }

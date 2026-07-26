@@ -122,25 +122,6 @@ public:
     CByUsageAppInfo *GetAppInfoFromHiddenData(CByUsageHiddenData *phd);
     CByUsageAppInfo *GetAppInfoFromSpecialPidl(LPCITEMIDLIST pidl);
 
-    PIDLIST_ABSOLUTE GetPerUserVersionOfSharedItem(PCIDLIST_ABSOLUTE pidlChild)
-    {
-        ITEMIDLIST_ABSOLUTE *v3; // esi
-        ITEMIDLIST *pidl; // eax
-        const ITEMIDLIST *v5; // eax
-        v3 = 0;
-        if (this->_rgrt[1]._pidl)
-        {
-            pidl = this->_rgrt[3]._pidl;
-            if (pidl)
-            {
-                v5 = ILFindChild(pidl, pidlChild);
-                if (v5)
-                    return ILCombine(this->_rgrt[1]._pidl, v5);
-            }
-        }
-        return v3;
-    }
-
     void StartEnum();
     void EndEnum();
     CByUsageShortcut *GetNextShortcut();
@@ -151,6 +132,22 @@ public:
     void RefreshCachedDarwinShortcuts();
 
     CByUsageShortcut *CreateShortcutFromHiddenData(CByUsageDir *pdir, LPCITEMIDLIST pidl, CByUsageHiddenData *phd, BOOL fForce = FALSE);
+
+    PIDLIST_ABSOLUTE GetPerUserVersionOfSharedItem(PCIDLIST_ABSOLUTE pidl)
+    {
+        PIDLIST_ABSOLUTE pidlRet = NULL;
+
+        if (_rgrt[1]._pidl && _rgrt[3]._pidl)
+        {
+            PIDLIST_RELATIVE pidlRest = ILFindChild(_rgrt[3]._pidl, pidl);
+            if (pidlRest)
+            {
+                pidlRet = ILCombine(_rgrt[1]._pidl, pidlRest);
+            }
+        }
+
+        return pidlRet;
+    }
 
     //
     //  Called from helper objects.

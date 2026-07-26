@@ -102,22 +102,23 @@ public:
 
     enum { IDT_STARTBUTTONBALLOON = 1 };
 
-    const WCHAR* _pszThemeName;
-    int field_C;
-    int _fHovered;
+    LPCWSTR _pszThemeName;
+    int _xPadding;
+    BOOL _fHovered;
     BOOL field_14;
     HWND _hwndStart;
     HWND _hwndStartBalloon;
     SIZE _sizeStart;
     HTHEME _hTheme;
     HBITMAP _hbmpStartBkg;
-    HFONT _hStartFont;
+    HFONT _hFontStart;
+    WNDPROC _pfnButtonProc;
     UINT _uDown;
     BOOL _fAllowUp;
     BOOL _fInContextMenu;
     BOOL _fForegroundLocked;
-    BOOL _fBackgroundBitmapInitialized;
-    bool field_4C;
+    BOOL _fInitialized;
+    bool _fSettingChanged;
     UINT _uStartButtonState;
     DWORD _tmOpen;
     HIMAGELIST _himlStartFlag;
@@ -127,11 +128,11 @@ public:
     IMenuBand* _pmbStartPane;
     IMenuPopup* _pmpStartPane;
     IUnknown* _punkSMHost;
-    char padding5[4];
+    IUnknown* _pPinnedList;
     WCHAR _szStart[50];
 
 private:
-    LRESULT OnMouseClick(HWND hWndTo, LPARAM lParam);
+    BOOL OnMouseClick(HWND hwnd, LPARAM lParam);
     void _CalcExcludeRect(LPRECT prcExclude);
     BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);
     HFONT _CreateStartFont();

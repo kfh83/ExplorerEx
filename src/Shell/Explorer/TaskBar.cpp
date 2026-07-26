@@ -201,7 +201,7 @@ HRESULT CTaskBar::OnPosRectChangeDB(LPRECT prc)
 {
     HRESULT hr = S_FALSE;
 
-    if (c_tray._stb._fBackgroundBitmapInitialized && !c_tray._fDeferedPosRectChange)
+    if (c_tray._stb._fInitialized && !c_tray._fDeferedPosRectChange)
     {
         BOOL fHiding = c_tray._uAutoHide & AH_ON;
         hr = S_OK;

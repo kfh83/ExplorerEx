@@ -370,133 +370,6 @@ DWORD _GetDefaultTVSDFlags()
 // EXEX-VISTA: SLIGHTLY MODIFIED. Revalidate later.
 void CTray::_GetSaveStateAndInitRects()
 {
-#if 0
-    TVSDCOMPAT tvsd;
-    RECT rcDisplay;
-    DWORD dwTrayFlags;
-    SIZE size;
-
-    // first fill in the defaults
-    SetRect(&rcDisplay, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
-
-    WCHAR szClassList[260];
-    StringCchPrintfW(szClassList, ARRAYSIZE(szClassList), L"%s::%s", L"StartBottom", L"Button");
-
-    HTHEME hTheme = OpenThemeData(nullptr, szClassList);
-    _stb.GetSizeAndFont(hTheme);
-    if (hTheme)
-    {
-        CloseThemeData(hTheme);
-    }
-
-    SIZE sizeStartPadding;
-    _GetStartButtonPadding(&sizeStartPadding);
-
-    // size gets defaults
-    size.cx = sizeStartPadding.cx + _stb._sizeStart.cx;
-    size.cy = sizeStartPadding.cy + _stb._sizeStart.cy;
-
-    // sStuckWidths gets minimum
-    _sStuckWidths.cx = size.cx;
-    _sStuckWidths.cy = size.cy;
-
-    _uStuckPlace = STICK_BOTTOM;
-    dwTrayFlags = _GetDefaultTVSDFlags();
-
-    _uAutoHide = 0;
-
-    // now try to load saved vaules
-
-    // BUG : 231077
-    // Since Tasbar properties don't roam from NT5 to NT4, (NT4 -> NT5 yes)
-    // Allow roaming from NT4 to NT5 only for the first time the User logs
-    // on to NT5, so that future changes to NT5 are not lost when the user
-    // logs on to NT4 after customizing the taskbar properties on NT5.
-
-    DWORD cbData1 = sizeof(tvsd);
-    DWORD cbData2 = sizeof(tvsd);
-    if (Reg_GetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"),
-        &tvsd, &cbData1)
-        ||
-        Reg_GetStruct(g_hkeyExplorer, TEXT("StuckRectsXP"), TEXT("Settings"),
-            &tvsd, &cbData2))
-    {
-        if (IS_CURRENT_TVSD(tvsd.t) && IsValidSTUCKPLACE(tvsd.t.uStuckPlace))
-        {
-            _GetDisplayRectFromRect(&rcDisplay, &tvsd.t.rcLastStuck,
-                MONITOR_DEFAULTTONEAREST);
-
-            size = tvsd.t.sStuckWidths;
-            _uStuckPlace = tvsd.t.uStuckPlace;
-
-            dwTrayFlags = tvsd.t.dwFlags;
-        }
-        else if (MAYBE_WIN95_TVSD(tvsd.w95) &&
-            IsValidSTUCKPLACE(tvsd.w95.uStuckPlace))
-        {
-            _uStuckPlace = tvsd.w95.uStuckPlace;
-            dwTrayFlags = tvsd.w95.dwFlags;
-            if (tvsd.w95.uAutoHide & AH_ON)
-                dwTrayFlags |= TVSD_AUTOHIDE;
-
-            switch (_uStuckPlace)
-            {
-                case STICK_LEFT:
-                    size.cx = tvsd.w95.dxLeft;
-                    break;
-
-                case STICK_RIGHT:
-                    size.cx = tvsd.w95.dxRight;
-                    break;
-
-                case STICK_BOTTOM:
-                    size.cy = tvsd.w95.dyBottom;
-                    break;
-
-                case STICK_TOP:
-                    size.cy = tvsd.w95.dyTop;
-                    break;
-            }
-        }
-    }
-
-
-    ASSERT(IsValidSTUCKPLACE(_uStuckPlace));
-
-    //
-    // use the size only if it is not bogus
-    //
-    if (_sStuckWidths.cx < size.cx)
-        _sStuckWidths.cx = size.cx;
-
-    if (_sStuckWidths.cy < size.cy)
-        _sStuckWidths.cy = size.cy;
-
-    //
-    // set the tray flags
-    //
-    _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
-    _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
-    _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
-	_fNoThumbnails = SHWindowsPolicy(POLID_TaskbarNoThumbnail) || BOOLIFY(dwTrayFlags & 0x80);
-
-    _rgfHideSCA[SCA_VOLUME] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAVOLUME);
-    _rgfHideSCA[SCA_NETWORK] = BOOLIFY(dwTrayFlags & TVSD_HIDESCANETWORK);
-    _rgfHideSCA[SCA_POWER] = BOOLIFY(dwTrayFlags & TVSD_HIDESCAPOWER);
-
-    _uAutoHide = (dwTrayFlags & TVSD_AUTOHIDE) ? AH_ON | AH_HIDING : 0;
-    _RefreshSettings();
-
-    //
-    // initialize stuck rects
-    //
-    for (UINT uStick = STICK_LEFT; uStick <= STICK_BOTTOM; uStick++)
-        _MakeStuckRect(&_arStuckRects[uStick], &rcDisplay, _sStuckWidths, uStick);
-
-    _UpdateVertical(_uStuckPlace);
-    // Determine which monitor the tray is on using its stuck rectangles
-    _SetStuckMonitor();
-#endif
     RECT rcDisplay;
     SetRect(&rcDisplay, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
 
@@ -595,11 +468,10 @@ void CTray::_GetSaveStateAndInitRects()
     _uAutoHide = (dwTrayFlags & 1) != 0 ? 3 : 0;
     _RefreshSettings();
 
-    UINT uStick = STICK_LEFT;
-    RECT* arStuckRects = _arStuckRects;
-    do
-        _MakeStuckRect(arStuckRects++, &rcDisplay, _sStuckWidths, uStick++);
-    while (uStick <= 3);
+    for (UINT uStick = STICK_LEFT; uStick <= STICK_BOTTOM; uStick++)
+    {
+        _MakeStuckRect(&_arStuckRects[uStick], &rcDisplay, _sStuckWidths, uStick);
+    }
 
     _UpdateVertical(_uStuckPlace);
     _SetStuckMonitor();
@@ -685,6 +557,12 @@ EXTERN_C const WCHAR c_wzTaskbarVertTheme[] = L"TaskbarVert";
 HWND CTray::_CreateStartButton()
 {
     _uLogoffUser = RegisterWindowMessage(TEXT("Logoff User"));
+
+#if defined (_WIN64)
+    static_assert(sizeof(CStartButton) == 0x128, "Unexpected size of CStartButton!");
+#else
+    static_assert(sizeof(CStartButton) == 0xDC, "Unexpected size of CStartButton!");
+#endif
 
     HWND hwndStart = _stb.CreateStartButton(_hwnd);
     DWMFLIP3DWINDOWPOLICY flipPolicy = DWMFLIP3D_EXCLUDEBELOW;
@@ -2057,8 +1935,6 @@ void CTray::ForceStartButtonUp()
 **------------------------------------------------------------------*/
 void CTray::_ToolbarMenu()
 {
-    // EXEX-VISTA: Completely reversed from Vista.
-
     if (_hwndTasks)
         SendMessage(_hwndTasks, TBC_FREEPOPUPMENUS, 0, 0);
 
@@ -2823,10 +2699,10 @@ BOOL CTray::_HandleSizing(WPARAM code, LPRECT lprc, UINT uStuckPlace, BOOL fMain
                 int cyButton = 1;
 
                 TBMETRICS tbm;
-                auto tbButtonHeight1 = (int)SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                auto tbButtonHeight1 = (int)SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
                 if (tbm.cyButtonSpacing + tbButtonHeight1 >= 1)
                 {
-                    auto tbButtonHeight2 = (int)SendMessageW(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
+                    auto tbButtonHeight2 = (int)SendMessage(_hwndTasks, TBC_BUTTONHEIGHT, 0, (LPARAM)&tbm);
                     cyButton = tbm.cyButtonSpacing + tbButtonHeight2;
                 }
 
@@ -7981,7 +7857,7 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             _DoExitExplorer();
             return lres;
         case 0x5B5:
-            field_4B8 = 1;
+            field_4B8 = true;
             // _SignalShellDesktopSwitchEvent();
             return 0;
         case 0x5B6:

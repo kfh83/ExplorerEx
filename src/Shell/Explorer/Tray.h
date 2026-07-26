@@ -354,7 +354,7 @@ public:
     CTrayNotify _trayNotify;
     CStartButton _stb;
 
-    char field_4B8;
+    bool field_4B8;
     char field_4B9;
     char field_4BA;
     char field_4BB;
@@ -770,7 +770,7 @@ protected:
     friend class CStartDropTarget;
     friend class CTrayDropTarget;
     friend class CDropTargetBase;
-    friend class CStartButton; // XXX (isabella): Temporary?
+    friend class CStartButton;
 
     friend void Tray_OnStartMenuDismissed();
     friend void Tray_SetStartPaneActive(BOOL fActive);

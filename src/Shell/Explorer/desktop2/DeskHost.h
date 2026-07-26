@@ -91,7 +91,7 @@ class CDesktopHost
     private:
         HWND            _hwnd;             // window handle
 
-        HWND            _hwndParent;       // Vista - New
+        HWND            _hwndOwner;       // Vista - New
 
         HTHEME          _hTheme;
 
@@ -131,7 +131,7 @@ class CDesktopHost
         BOOL            _fWarnedClipped;    // Has the user been warned that it's been clipped?
         BOOL            _fDismissOnlyPopup; // Are we only dismissing the popup?
 
-        int             field_D0;           // Vista - New
+        BOOL            _fRebuildPending;   // Vista - New
 
         HWND            _hwndLastMouse;     // HWND that received last mousemove message
         LPARAM          _lParamLastMouse;   // LPARAM of last mousemove message
@@ -193,7 +193,7 @@ class CDesktopHost
         STDMETHODIMP SetSite(IUnknown *punkSite);
 
     public:
-        HRESULT Initialize(HWND hwndParent);
+        HRESULT Initialize(HWND hwndOwner);
         HRESULT Build();
 
     private:
@@ -209,6 +209,7 @@ class CDesktopHost
         // Window Messages
         void OnCreate(HWND hwnd);
         void OnDestroy();
+        void OnThemeChanged(WPARAM wParam);
         void OnPaint(HDC hdc, BOOL bBackground);
         void OnSetFocus(HWND hwndLose);
         void OnContextMenu(LPARAM lParam);
@@ -230,6 +231,12 @@ class CDesktopHost
         BOOL AddWin32Controls();
 
         BOOL _TryShowBuffered();
+
+        IStartButton* _GetIStartButton();
+        void _OnGetIStartButton(NMHDR* pnm);
+        void _SetFocusToStartButton();
+        void _LockStartPane();
+        void _UnlockStartPane();
 
         void _DismissTrackShellMenu();
         void _CleanupTrackShellMenu(); // release + UI-related goo
@@ -266,20 +273,11 @@ class CDesktopHost
         void _MaybeShowClipBalloon();
         void _DestroyClipBalloon();
 
-		IStartButton* _GetIStartButton();
-        void _OnGetIStartButton(NMHDR* pnm);
-
-        void _LockStartPane();
-        void _UnlockStartPane();
-        void _SetFocusToStartButton();
-
         HTHEME _GetStartMenuTheme();
         void _RegisterForGlass(BOOL a2, HRGN hrgn);
         void _SetFocusToOpenBox();
         BOOL _DoesOpenBoxHaveFocus();
         HRESULT _HandleOpenBoxArrowKey(VARIANT* pvar);
-
-        void OnThemeChanged(UINT a2);
 
 		BOOL _FilterMouseWheel(MSG *pmsg, HWND hwndTarget);
 		BOOL _FilterMouseButtonDown(MSG *pmsg, HWND hwndTarget);

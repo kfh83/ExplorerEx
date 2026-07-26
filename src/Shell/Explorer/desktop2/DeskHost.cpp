@@ -153,9 +153,9 @@ const STARTPANELMETRICS g_spmDefault =
 };
 
 // EXEX-VISTA(allison): Validated.
-HRESULT CDesktopHost::Initialize(HWND hwndParent)
+HRESULT CDesktopHost::Initialize(HWND hwndOwner)
 {
-    _hwndParent = hwndParent;
+    _hwndOwner = hwndOwner;
     ASSERT(_hwnd == NULL);
 
     //
@@ -850,7 +850,7 @@ LRESULT CDesktopHost::OnNeedRepaint()
 LRESULT CDesktopHost::OnNeedRebuild()
 {
     if (IsWindowVisible(_hwnd))
-        field_D0 = 1;
+        _fRebuildPending = TRUE;
     else
         PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
     return 0;
@@ -859,96 +859,6 @@ LRESULT CDesktopHost::OnNeedRebuild()
 // EXEX-VISTA(allison): Validated.
 HRESULT CDesktopHost::_Popup(POINT *ppt, RECT *prcExclude, DWORD dwFlags)
 {
-#ifdef DEAD_CODE
-    if (_hwnd)
-    {
-        RECT rcWindow;
-        _ChoosePopupPosition(ppt, prcExclude, &rcWindow, dwFlags);
-        SIZE sizWindow = { RECTWIDTH(rcWindow), RECTHEIGHT(rcWindow) };
-
-        MoveWindow(_hwnd, rcWindow.left, rcWindow.top,
-            sizWindow.cx, sizWindow.cy, TRUE);
-
-        if (sizWindow.cx != _sizWindowPrev.cx ||
-            sizWindow.cy != _sizWindowPrev.cy)
-        {
-            _sizWindowPrev = sizWindow;
-            _ReapplyRegion();
-            // We need to repaint since our size has changed
-            OnNeedRepaint();
-        }
-
-        _RegisterForGlass(TRUE, NULL);
-
-        // If the user toggles the tray between topmost and nontopmost
-        // our own topmostness can get messed up, so re-assert it here.
-        // SetWindowZorder(_hwnd, HWND_TOPMOST);
-
-        if (GetSystemMetrics(SM_REMOTESESSION) || GetSystemMetrics(SM_REMOTECONTROL))
-        {
-            // If running remotely, then don't cache the Start Menu
-            // or double-buffer.  Show the keyboard cues accurately
-            // from the start (to avoid flicker).
-
-            SendMessage(_hwnd, WM_CHANGEUISTATE, UIS_INITIALIZE, 0);
-            if (dwFlags & MPPF_KEYBOARD)
-            {
-                _EnableKeyboardCues();
-            }
-            ShowWindow(_hwnd, SW_SHOW);
-        }
-        else
-        {
-            // If running locally, then force keyboard cues off so our
-            // cached bitmap won't have underlines.  Then draw the
-            // Start Menu, then turn on keyboard cues if necessary.
-
-            SendMessage(_hwnd, WM_CHANGEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS | UISF_HIDEACCEL), 0);
-
-            if (!_TryShowBuffered())
-            {
-                ShowWindow(_hwnd, SW_SHOW);
-            }
-
-            if (dwFlags & MPPF_KEYBOARD)
-            {
-                _EnableKeyboardCues();
-            }
-        }
-
-        NotifyWinEvent(EVENT_SYSTEM_MENUPOPUPSTART, _hwnd, OBJID_CLIENT, CHILDID_SELF);
-
-        // Tell tray that the start pane is active, so it knows to eat
-        // mouse clicks on the Start Button.
-        IStartButton *pstb = _GetIStartButton();
-        if (pstb)
-        {
-            pstb->SetStartPaneActive(TRUE);
-            pstb->Release();
-        }
-
-        _fOpen = TRUE;
-        _fMenuBlocked = FALSE;
-        _fMouseEntered = FALSE;
-        _fOfferedNewApps = FALSE;
-
-        _MaybeOfferNewApps();
-        _MaybeShowClipBalloon();
-
-        // Tell all our child windows it's time to maybe revalidate
-        NMHDR nm = { _hwnd, 0, SMN_POSTPOPUP };
-        SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm, SPM_SEND | SPM_ONELEVEL);
-
-        ExplorerPlaySound(TEXT("MenuPopup"));
-
-
-        return S_OK;
-    }
-    else
-    {
-        return E_FAIL;
-    }
-#else
     if (_hwnd)
     {
         //SHTracePerf(&ShellTraceId_Explorer_StartMenu_Scenario_Start);
@@ -990,14 +900,14 @@ HRESULT CDesktopHost::_Popup(POINT *ppt, RECT *prcExclude, DWORD dwFlags)
             }
         }
 
-        IStartButton *pstb = _GetIStartButton();
-        if (pstb)
+        IStartButton *psb = _GetIStartButton();
+        if (psb)
         {
-            pstb->SetStartPaneActive(TRUE);
-            pstb->Release();
+            psb->SetStartPaneActive(TRUE);
+            psb->Release();
         }
 
-        _hwndLastMouse = 0;
+        _hwndLastMouse = NULL;
         _lParamLastMouse = 0;
         _fOpen = TRUE;
 
@@ -1024,7 +934,6 @@ HRESULT CDesktopHost::_Popup(POINT *ppt, RECT *prcExclude, DWORD dwFlags)
     {
         return E_FAIL;
     }
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -1270,7 +1179,7 @@ HRESULT CDesktopHost::TranslatePopupMenuMessage(MSG* pmsg, LRESULT* plres)
 }
 
 // EXEX-VISTA(allison): Validated.
-void CDesktopHost::OnThemeChanged(UINT a2)
+void CDesktopHost::OnThemeChanged(WPARAM wParam)
 {
     if (_hTheme)
     {
@@ -1278,7 +1187,7 @@ void CDesktopHost::OnThemeChanged(UINT a2)
         _hTheme = NULL;
     }
 
-    if (a2 && SHGetCurColorRes() > 8)
+    if (wParam && SHGetCurColorRes() > 8)
     {
         _hTheme = _GetStartMenuTheme();
     }
@@ -1805,7 +1714,7 @@ LRESULT CALLBACK CDesktopHost::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         Ancestor = GetAncestor((HWND)pnm, 3u);
         if (pdh->field_1A8
             || hwnd == Ancestor
-            || Ancestor == pdh->_hwndParent && pdh->_ShouldIgnoreFocusChange((HWND)pnm)
+            || Ancestor == pdh->_hwndOwner && pdh->_ShouldIgnoreFocusChange((HWND)pnm)
             || pdh->_ppmTracking
             || !IsWindowEnabled(hwnd))
         {
@@ -2309,7 +2218,9 @@ BOOL CDesktopHost::_IsDialogMessage(MSG *pmsg)
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup
 LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT smndm)
 {
-#ifdef DEAD_CODE
+    HWND v9; // eax
+    HWND v10; // eax
+
     SMNDIALOGMESSAGE nmdm;
     if (!pnmdm)
     {
@@ -2320,39 +2231,14 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
     pnmdm->hdr.idFrom = 0;
     pnmdm->hdr.code = SMN_FINDITEM;
     pnmdm->flags = smndm;
-
-    LRESULT lres = ::SendMessage(hwnd, WM_NOTIFY, 0, (LPARAM)pnmdm);
-
-    if (lres && (smndm & SMNDM_SELECT))
-    {
-        SetFocus(::GetWindow(hwnd, GW_CHILD));
-    }
-
-    return lres;
-#else
-    UINT flags; // eax
-    HWND v9; // eax
-    HWND v10; // eax
-
-    SMNDIALOGMESSAGE nmdm; // [esp+Ch] [ebp-38h] BYREF
-    if (!pnmdm)
-    {
-        pnmdm = &nmdm;
-    }
-
-    pnmdm->hdr.idFrom = 0;
-    pnmdm->hdr.hwndFrom = _hwnd;
-    pnmdm->hdr.code = 215;
-    pnmdm->flags = smndm;
     pnmdm->hwnd2 =_hwndLastMouse;
     
     LRESULT lres = SendMessage(hwnd, WM_NOTIFY, 0, (LPARAM)pnmdm);
     if (lres)
     {
-        flags = pnmdm->flags;
-        if ((flags & 0x100) != 0)
+        if ((pnmdm->flags & 0x100) != 0)
         {
-            if ((flags & 0x80000) == 0)
+            if ((pnmdm->flags & 0x80000) == 0)
             {
                 pnmdm->hwnd2 = ::GetWindow(hwnd, GW_CHILD);
             }
@@ -2365,7 +2251,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
     {
         if (!lres)
         {
-            hwnd = _spm.panes[2].hwnd;
+            hwnd = _spm.panes[SMPANETYPE_OPENBOX].hwnd;
         }
 
         v9 = field_48;
@@ -2376,7 +2262,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
                 _RemoveSelection(field_48);
             }
 
-            v10 = _spm.panes[2].hwnd;
+            v10 = _spm.panes[SMPANETYPE_OPENBOX].hwnd;
             if (hwnd != v10 || field_48)
             {
                 field_48 = hwnd;
@@ -2392,8 +2278,8 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
             }
         }
     }
+
     return lres;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -2899,7 +2785,8 @@ HRESULT CDesktopHost::_HandleOpenBoxArrowKey(VARIANT* pvar)
 
 void CDesktopHost::_OnGetIStartButton(NMHDR* pnm)
 {
-    ((SMNMISTARTBUTTON*)pnm)->psb = _GetIStartButton();
+    PSMNMISTARTBUTTON pisb = (PSMNMISTARTBUTTON)pnm;
+    pisb->psb = _GetIStartButton();
 }
 
 // EXEX-VISTA(allison): Validated. Still needs slight cleanup.
@@ -3326,7 +3213,7 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
     PSMNTRACKSHELLMENU ptsm = CONTAINING_RECORD(pnm, SMNTRACKSHELLMENU, hdr);
 
     _hwndTracking = ptsm->hdr.hwndFrom;
-    _hwndAltTracking = 0;
+    _hwndAltTracking = NULL;
     _itemAltTracking = 0;
     _itemTracking = ptsm->itemID;
 
@@ -3340,7 +3227,7 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
     IUnknown_SafeReleaseAndNullPtr(_ppmTracking);
 
     int v11 = 0;
-    if (_hwndTracking == _spm.panes[2].hwnd)
+    if (_hwndTracking == _spm.panes[SMPANETYPE_OPENBOX].hwnd)
     {
         v11 = 1;
         if (_ppmPrograms && _ppmPrograms->IsSame(ptsm->psm))
@@ -3370,16 +3257,24 @@ LRESULT CDesktopHost::OnTrackShellMenu(NMHDR* pnm)
     }
 
     if (hr < 0)
+    {
         goto LABEL_17;
+    }
     hr = _ppmTracking->Popup(&ptsm->rcExclude, dwFlags | ptsm->dwFlags);
 
-    //if (v11)
-    //    SHTracePerf(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Stop);
-    //else
-    //    SHTracePerf(&ShellTraceId_Explorer_StartPane_Cascade_Show_Stop);
+    if (v11)
+    {
+        // SHTracePerf(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Stop);
+    }
+    else
+    {
+        // SHTracePerf(&ShellTraceId_Explorer_StartPane_Cascade_Show_Stop);
+    }
 
     if (hr < 0)
+    {
         goto LABEL_17;
+    }
     return 0;
 #endif
 }
@@ -3570,41 +3465,41 @@ void CDesktopHost::_DestroyClipBalloon()
 // EXEX-VISTA(allison): Validated.
 IStartButton* CDesktopHost::_GetIStartButton()
 {
-    IStartButton* pstb = NULL;
-	IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb));
-    return pstb;
+    IStartButton* psb = NULL;
+    IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&psb));
+    return psb;
 }
 
 // EXEX-VISTA(allison): Validated.
 void CDesktopHost::_LockStartPane()
 {
-    IStartButton *pstb = _GetIStartButton();
-    if (pstb)
+    IStartButton *psb = _GetIStartButton();
+    if (psb)
     {
-        pstb->LockStartPane();
-        pstb->Release();
+        psb->LockStartPane();
+        psb->Release();
     }
 }
 
 // EXEX-VISTA(allison): Validated.
 void CDesktopHost::_UnlockStartPane()
 {
-    IStartButton *pstb = _GetIStartButton();
-    if (pstb)
+    IStartButton *psb = _GetIStartButton();
+    if (psb)
     {
-        pstb->UnlockStartPane();
-        pstb->Release();
+        psb->UnlockStartPane();
+        psb->Release();
     }
 }
 
 // EXEX-VISTA(allison): Validated.
 void CDesktopHost::_SetFocusToStartButton()
 {
-    IStartButton *pstb = _GetIStartButton();
-    if (pstb)
+    IStartButton *psb = _GetIStartButton();
+    if (psb)
     {
-        pstb->SetFocusToStartButton();
-        pstb->Release();
+        psb->SetFocusToStartButton();
+        psb->Release();
 	}
 }
 
@@ -3613,12 +3508,12 @@ HTHEME CDesktopHost::_GetStartMenuTheme()
 {
     field_1AC = 0;
 
-    IStartButton *pstb = _GetIStartButton();
-    if (pstb)
+    IStartButton *psb = _GetIStartButton();
+    if (psb)
     {
         DWORD dwPopupPosition = 0;
-        pstb->GetPopupPosition(&dwPopupPosition);
-        pstb->Release();
+        psb->GetPopupPosition(&dwPopupPosition);
+        psb->Release();
         field_1AC |= dwPopupPosition;
     }
 
@@ -3664,7 +3559,7 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
         {
             _fOpen = FALSE;
 
-            // EXEX-VISTA(isabella): Figure out what is SMN_FIRST + 22.
+            // EXEX-VISTA(allison): Figure out what is SMN_FIRST + 22.
             NMHDR nm2 = { _hwnd, 0, SMN_FIRST + 22 };
             SHPropagateMessage(_hwnd, WM_NOTIFY, 0, (LPARAM)&nm2, SPM_SEND | SPM_ONELEVEL);
 
@@ -3681,12 +3576,12 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
             _DestroyClipBalloon();
             _RegisterForGlass(FALSE, NULL);
 
-            IStartButton *pstb = _GetIStartButton();
-            if (pstb)
+            IStartButton *psb = _GetIStartButton();
+            if (psb)
             {
-                pstb->SetStartPaneActive(FALSE);
-                pstb->OnStartMenuDismissed();
-                pstb->Release();
+                psb->SetStartPaneActive(FALSE);
+                psb->OnStartMenuDismissed();
+                psb->Release();
             }
 
             // Don't try to preserve child focus across popups
@@ -3694,9 +3589,9 @@ void CDesktopHost::_OnDismiss(BOOL bDestroy)
 
             NotifyWinEvent(EVENT_SYSTEM_MENUPOPUPEND, _hwnd, OBJID_CLIENT, CHILDID_SELF);
            
-            if (field_D0)
+            if (_fRebuildPending)
             {   
-                field_D0 = 0;
+                _fRebuildPending = FALSE;
                 PostMessage(v_hwndTray, SBM_REBUILDMENU, 0, 0);
             }
         }

@@ -316,14 +316,16 @@ HRESULT SHGetIDListFromUnk(IUnknown* punk, LPITEMIDLIST* ppidl)
     {
         IPersistFolder2* ppf;
         IPersistIDList* pperid;
-        if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARG(IPersistIDList, &pperid))))
+        if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&pperid))))
         {
             hr = pperid->GetIDList(ppidl);
             pperid->Release();
         }
-        else if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARG(IPersistFolder2, &ppf))))
+        else if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&ppf))))
         {
             hr = ppf->GetCurFolder(ppidl);
+            if (FAILED(hr))
+                hr = E_FAIL;
             ppf->Release();
         }
     }
