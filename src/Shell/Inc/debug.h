@@ -1,7 +1,6 @@
 //====== Assertion/Debug output APIs =================================
 
 //#include <platform.h> // for __endexcept
-#include "pch.h"
 
 #pragma warning (disable:4096)      // '__cdecl' must be used with '...'
 #pragma warning (disable:4201)      // nonstandard extension used : nameless struct/union
@@ -92,7 +91,7 @@ extern "C" {
 // These globals are modified by CcshellGetDebugFlags(), which
 // reads an .ini file and sets the appropriate flags.
 //
-//   g_dwDumpFlags  - bits are application specific.  Typically 
+//   g_dwDumpFlags  - bits are application specific.  Typically
 //                    used for dumping structures.
 //   g_dwBreakFlags - uses BF_* flags.  The remaining bits are
 //                    application specific.  Used to determine
@@ -107,13 +106,24 @@ extern "C" {
 //   g_dwProtoype   - bits are application specific.  Use it for
 //                    anything.
 //   g_dwProfileCAP - bits are application specific. Used to
-//                    control ICECAP profiling. 
+//                    control ICECAP profiling.
 //
 
 extern DWORD g_dwDumpFlags;
 extern DWORD g_dwBreakFlags;
 extern ULONGLONG g_qwTraceFlags;
+#ifdef DEBUG
+extern DWORD g_dwPrototype;
+#else
+#define g_dwPrototype   0
+#endif
 extern DWORD g_dwFuncTraceFlags;
+
+#if defined(DEBUG) || defined(PRODUCT_PROF)
+BOOL CcshellGetDebugFlags(void);
+#else
+#define CcshellGetDebugFlags()  0
+#endif
 
 // Break flags for g_dwBreakFlags
 #define BF_ASSERT           0x00000001      // Break on assertions
@@ -132,14 +142,14 @@ extern DWORD g_dwFuncTraceFlags;
 #define TF_GENERAL          0x00000004      // Standard messages
 #define TF_FUNC             0x00000008      // Trace function calls
 #define TF_ATL              0x00000008      // Since TF_FUNC is so-little used, I'm overloading this bit
-#define TF_MEMUSAGE                       0x0000000100000000      
-#define TF_KEEP_ALLOCATION_STACKS         0x0000000200000000      
+#define TF_MEMUSAGE                       0x0000000100000000
+#define TF_KEEP_ALLOCATION_STACKS         0x0000000200000000
 // (Upper 28 bits reserved for custom use per-module)
 
 #define TF_CUSTOM1          0x40000000      // Custom messages #1
 #define TF_CUSTOM2          0x80000000      // Custom messages #2
 
-// Old, archaic debug flags.  
+// Old, archaic debug flags.
 // APPCOMPAT (scotth): the following flags will be phased out over time.
 #ifdef DM_TRACE
 #undef DM_TRACE
@@ -236,14 +246,14 @@ void _AssertStrLenW(LPCWSTR pwzStr, int iLen);
 //   Generates a "Assert file.c, line x (eval)" message if f is NOT true.
 //
 //   Use ASSERT() to check for logic invariance.  These are typically considered
-//   fatal problems, and falls into the 'this should never ever happen' 
+//   fatal problems, and falls into the 'this should never ever happen'
 //   category.
 //
-//   Do *not* use ASSERT() to verify successful API calls if the APIs can 
-//   legitimately fail due to low resources.  For example, LocalAlloc can 
+//   Do *not* use ASSERT() to verify successful API calls if the APIs can
+//   legitimately fail due to low resources.  For example, LocalAlloc can
 //   legally fail, so you shouldn't assert that it will never fail.
 //
-//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function 
+//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function
 //   performs a DebugBreak().
 //
 //   Default Behavior-
@@ -294,7 +304,7 @@ BOOL CcshellAssertFailedW(LPCWSTR szFile, int line, LPCWSTR pwszEval, BOOL bBrea
 //   to unicode if necessary.  This is so you don't have to wrap your
 //   debug strings with TEXT().
 //
-//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function 
+//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function
 //   performs a DebugBreak().
 //
 //   Default Behavior-
@@ -324,18 +334,18 @@ void CDECL CcshellAssertMsgA(BOOL bAssert, LPCSTR pszMsg, ...);
 
 // EVAL(f)
 //
-//   Behaves like ASSERT().  Evaluates the expression (f).  The expression 
-//   is always evaluated, even in retail builds.  But the macro only asserts 
+//   Behaves like ASSERT().  Evaluates the expression (f).  The expression
+//   is always evaluated, even in retail builds.  But the macro only asserts
 //   in the debug build.  This macro may be used on logical expressions, eg:
 //
 //          if (EVAL(exp))
 //              // do something
 //
-//   Do *not* use EVAL() to verify successful API calls if the APIs can 
-//   legitimately fail due to low resources.  For example, LocalAlloc can 
+//   Do *not* use EVAL() to verify successful API calls if the APIs can
+//   legitimately fail due to low resources.  For example, LocalAlloc can
 //   legally fail, so you shouldn't assert that it will never fail.
 //
-//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function 
+//   The BF_ASSERT bit in g_dwBreakFlags governs whether the function
 //   performs a DebugBreak().
 //
 //   Default Behavior-
@@ -356,18 +366,151 @@ void CDECL CcshellAssertMsgA(BOOL bAssert, LPCSTR pszMsg, ...);
 
 
 
+// RIP(f)
+//
+//   Generates a "RIP at file.c, line x (eval)" message if f is NOT true.
+//
+//   Use RIP() to perform parameter validation, especially when you
+//   know the function or method may be called by a 3rd party app.
+//   Typically, RIPs are used to indicate the caller passed in an invalid
+//   parameter, so the problem is really not in the code itself.
+//
+//   Do *not* use RIP() to verify successful API calls if the APIs can
+//   legitimately fail due to low resources.  For example, LocalAlloc can
+//   legally fail, so you shouldn't assert that it will never fail.
+//
+//   RIP performs a debugbreak only in the following processes:
+//
+//      explore.exe
+//      iexplore.exe
+//      rundll32.exe
+//
+//   In any other process, this just spews the debug message, but doesn't stop.
+//
+//   Setting the BF_RIP bit in g_dwBreakFlags will cause the macro to perform
+//   a DebugBreak() even in non-shell processes.
+//
+//   Default Behavior-
+//      Retail builds:      nothing
+//      Debug builds:       spew (other processes), spew and break (shell processes)
+//      Full debug builds:  spew (other processes), spew and break (shell processes)
+//
+#ifdef DEBUG
+
+BOOL CcshellRipA(LPCSTR pszFile, int line, LPCSTR pszEval, BOOL bBreakInside);
+BOOL CcshellRipW(LPCWSTR pszFile, int line, LPCWSTR pwszEval, BOOL bBreakInside);
+BOOL CDECL CcshellRipMsgA(BOOL bRip, LPCSTR pszMsg, ...);
+BOOL CDECL CcshellRipMsgW(BOOL bRip, LPCSTR pszMsg, ...);
+
+
+#ifdef UNICODE
+#define CcshellRip      CcshellRipW
+#define CcshellRipMsg   CcshellRipMsgW
+#else
+#define CcshellRip      CcshellRipA
+#define CcshellRipMsg   CcshellRipMsgA
+#endif
+
+#define RIP(f)                                                                                              \
+    {                                                                                                       \
+        DEBUGTEXT(szFile, TEXT(__FILE__));                                                                  \
+        if (!(f) && CcshellRip(szFile, __LINE__, TEXT(#f), FALSE))                                          \
+        {                                                                                                   \
+            DEBUG_BREAK;                                                                                    \
+        }                                                                                                   \
+    }                                                                                                       \
+
+#define RIPMSG          CcshellRipMsg
+
+#else  // DEBUG
+
+#define RIP(f)
+#define RIPMSG          1 ? (void)0 : (void)
+
+#endif // DEBUG
+
+
+
+// TraceMsg(dwMask, sz, args...)
+//
+//   Generate wsprintf-formatted message using the specified trace dwMask.
+//   dwMask may be one of the predefined bits:
+//
+//      TF_ERROR    - display "err <MODULE>  <string>"
+//      TF_WARNING  - display "wn  <MODULE>  <string>"
+//      TF_GENERAL  - display "t   <MODULE>  <string>"
+//      TF_ALWAYS   - display "t   <MODULE>  <string>" regardless of g_qwTraceFlags.
+//
+//   or it may be a custom bit (any of the upper 28 bits).
+//
+//   The g_qwTraceFlags global governs whether the message is displayed (based
+//   upon the dwMask parameter).
+//
+//   The sz parameter is always ANSI; TraceMsg correctly converts it
+//   to unicode if necessary.  This is so you don't have to wrap your
+//   debug strings with TEXT().
+//
+//   In addition to squirting the trace message, you may optionally cause
+//   the trace message to stop if you need to trace down the source of
+//   an error.  The BF_ONERRORMSG and BF_ONWARNMSG bits may be set in
+//   g_dwBreakFlags to make TraceMsg stop when a TF_ERROR or TF_WARNING
+//   message is displayed.  But typically these bits are disabled.
+//
+//   Default Behavior-
+//      Retail builds:      nothing
+//      Debug builds:       only TF_ALWAYS and TF_ERROR messages spew
+//      Full debug builds:  spew
+//
+#ifdef DEBUG
+
+UINT GetStack(UINT nDepth, CHAR *szBuffer, UINT nBufferLength);
+void CDECL CcshellDebugMsgW(ULONGLONG mask, LPCSTR pszMsg, ...);
+void CDECL CcshellDebugMsgA(ULONGLONG mask, LPCSTR pszMsg, ...);
+void CDECL _DebugMsgA(ULONGLONG flag, LPCSTR psz, ...);
+void CDECL _DebugMsgW(ULONGLONG flag, LPCWSTR psz, ...);
+#ifdef UNICODE
+#define CcshellDebugMsg         CcshellDebugMsgW
+#define _DebugMsg               _DebugMsgW
+#else
+#define CcshellDebugMsg         CcshellDebugMsgA
+#define _DebugMsg               _DebugMsgA
+#endif
+
+#define TraceMsgW           CcshellDebugMsgW
+#define TraceMsgA           CcshellDebugMsgA
+#define TraceMsg            CcshellDebugMsg
+
+// Use TraceMsg instead of DebugMsg.  DebugMsg is obsolete.
+#ifdef DISALLOW_DebugMsg
+#define DebugMsg            Dont_use_DebugMsg___Use_TraceMsg
+#else
+#define DebugMsg            _DebugMsg
+
+#endif
+
+#else  // DEBUG
+
+#define TraceMsgA       1 ? (void)0 : (void)
+#define TraceMsgW       1 ? (void)0 : (void)
+#define TraceMsg        1 ? (void)0 : (void)
+#define DebugMsg        1 ? (void)0 : (void)
+
+#endif // DEBUG
+
+
+
 // THR(pfn)
 // TBOOL(pfn)
 // TINT(pfn)
 // TPTR(pfn)
 // TW32(pfn)
-// 
+//
 //   These macros are useful to trace failed calls to functions that return
 //   HRESULTs, BOOLs, ints, or pointers.  An example use of this is:
 //
 //   {
 //       ...
-//       hres = THR(CoCreateInstance(CLSID_Bar, NULL, CLSCTX_INPROC_SERVER, 
+//       hres = THR(CoCreateInstance(CLSID_Bar, NULL, CLSCTX_INPROC_SERVER,
 //                                   IID_IBar, (LPVOID*)&pbar));
 //       if (SUCCEEDED(hres))
 //       ...
@@ -434,13 +577,21 @@ EXTERN_C DWORD   TraceWin32(DWORD dwTest, LPCSTR pszExpr, LPCSTR pszFile, int iL
 
 // string and buffer whacking functions
 //
+#ifdef DEBUG
 
+EXTERN_C void DEBUGWhackPathBufferA(LPSTR psz, UINT cch);
+EXTERN_C void DEBUGWhackPathBufferW(LPWSTR psz, UINT cch);
+EXTERN_C void DEBUGWhackPathStringA(LPSTR psz, UINT cch);
+EXTERN_C void DEBUGWhackPathStringW(LPWSTR psz, UINT cch);
+
+#else // DEBUG
 
 #define DEBUGWhackPathBufferA(psz, cch)
 #define DEBUGWhackPathBufferW(psz, cch)
 #define DEBUGWhackPathStringA(psz, cch)
 #define DEBUGWhackPathStringW(psz, cch)
 
+#endif // DEBUG
 
 #ifdef UNICODE
 #define DEBUGWhackPathBuffer DEBUGWhackPathBufferW
@@ -489,7 +640,7 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 
 
 // ------ Stay away from these macros below ----------
-// APPCOMPAT (scotth):  remove these by 8/15/98.  They should not be used anymore. 
+// APPCOMPAT (scotth):  remove these by 8/15/98.  They should not be used anymore.
 #ifdef DEBUG
 
 #define AssertE(f)          ASSERT(f)
@@ -504,6 +655,19 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 #define FullDebugMsg        1 ? (void)0 : (void)
 #endif
 
+#define ASSERT_MSGW         CcshellAssertMsgW
+#define ASSERT_MSGA         CcshellAssertMsgA
+#define ASSERT_MSG          CcshellAssertMsg
+#else  // DEBUG
+
+#define AssertE(f)      (f)
+#define AssertMsg       1 ? (void)0 : (void)
+#define AssertStrLen(lpStr, iLen)
+#define FullDebugMsg    1 ? (void)0 : (void)
+#define ASSERT_MSGA     1 ? (void)0 : (void)
+#define ASSERT_MSGW     1 ? (void)0 : (void)
+#define ASSERT_MSG      1 ? (void)0 : (void)
+
 #endif // DEBUG
 // ------ Stay away from these macros above ----------
 
@@ -513,9 +677,13 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 // across threads so they can be fixed to be multithreaded.  These asserts will point
 // out such cases.
 #ifdef DEBUG
+#define ASSERT_SINGLE_THREADED              AssertMsg(_dwThreadIDForSingleThreadedAssert == GetCurrentThreadId(), TEXT("MULTI-THREADED BUG: This class is being used by more than one thread, but it's not thread safe."))
+#define INIT_SINGLE_THREADED_ASSERT         _dwThreadIDForSingleThreadedAssert = GetCurrentThreadId();
+#define SINGLE_THREADED_MEMBER_VARIABLE     DWORD _dwThreadIDForSingleThreadedAssert;
+#else // DEBUG
 #define ASSERT_SINGLE_THREADED              NULL;
 #define INIT_SINGLE_THREADED_ASSERT         NULL;
-#define SINGLE_THREADED_MEMBER_VARIABLE     
+#define SINGLE_THREADED_MEMBER_VARIABLE
 #endif // DEBUG
 
 
@@ -631,6 +799,23 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 
 #else   // DEBUG
 
+
+#define Dbg_SafeStr     1 ? (void)0 : (void)
+
+#define FUNC_MSG        1 ? (void)0 : (void)
+
+
+#define DBG_ENTER(flagFTF, fn)
+#define DBG_ENTER_TYPE(flagFTF, fn, dw, pfn)
+#define DBG_ENTER_SZ(flagFTF, fn, sz)
+#define DBG_EXIT(flagFTF, fn)
+#define DBG_EXIT_INT(flagFTF, fn, n)
+#define DBG_EXIT_BOOL(flagFTF, fn, b)
+#define DBG_EXIT_UL(flagFTF, fn, ul)
+#define DBG_EXIT_DWORD      DBG_EXIT_UL
+#define DBG_EXIT_TYPE(flagFTF, fn, dw, pfn)
+#define DBG_EXIT_HRES(flagFTF, fn, hres)
+
 #endif  // DEBUG
 
 
@@ -660,16 +845,25 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 #endif  // NOSHELLDEBUG
 
 
-// 
+//
 // Debug dump helper functions
 //
 
+#ifdef DEBUG
+
+LPCTSTR Dbg_GetCFName(UINT ucf);
+LPCTSTR Dbg_GetHRESULTName(HRESULT hr);
+LPCTSTR Dbg_GetREFIIDName(REFIID riid);
+LPCTSTR Dbg_GetVTName(VARTYPE vt);
+
+#else
 
 #define Dbg_GetCFName(ucf)          (void)0
 #define Dbg_GetHRESULTName(hr)      (void)0
 #define Dbg_GetREFIIDName(riid)     (void)0
 #define Dbg_GetVTName(vt)           (void)0
 
+#endif // DEBUG
 
 // I'm a lazy typist...
 #define Dbg_GetHRESULT              Dbg_GetHRESULTName
@@ -679,7 +873,7 @@ void _cdecl ShellAtlTraceW(LPCWSTR lpszFormat, ...);
 
 #endif // DECLARE_DEBUG
 
-#ifdef PRODUCT_PROF 
+#ifdef PRODUCT_PROF
 int __stdcall StartCAP(void);	// start profiling
 int __stdcall StopCAP(void);    // stop profiling until StartCAP
 int __stdcall SuspendCAP(void); // suspend profiling until ResumeCAP

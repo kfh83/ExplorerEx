@@ -17,12 +17,11 @@ inline HFONT SelectFont(HDC hdc, HFONT hf)
 }
 
 // EXEX-VISTA(allison): Validated.
-CMorePrograms::CMorePrograms(HWND hwnd) :
-    _lRef(1),
-    _hwnd(hwnd),
+CMorePrograms::CMorePrograms(HWND hwnd)
+    : _hwnd(hwnd),
     _clrText(CLR_INVALID),
     _clrBk(CLR_INVALID),
-    dwordB8(1)
+    _lRef(1)
 {
 }
 
@@ -86,11 +85,9 @@ LRESULT CMorePrograms::_OnNCCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 // EXEX-VISTA(allison): Validated. Still needs slight cleanup.
 LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
-    SMPANEDATA *psmpd = (SMPANEDATA *)lpcs->lpCreateParams;
+    SMPANEDATA* psmpd = PaneDataFromCreateStruct(lParam);
 
     IUnknown_Set(&psmpd->punk, SAFECAST(this, IServiceProvider *));
-
     _hTheme = psmpd->hTheme;
     if (_hTheme)
     {
@@ -118,10 +115,10 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
     if (!SHRestricted(REST_NOSMMOREPROGRAMS))
     {
-        if (!LoadString(g_hinstCabinet, 8226, _szMessage, ARRAYSIZE(_szMessage))
-            || !LoadString(g_hinstCabinet, 8241, _szMessageBack, ARRAYSIZE(_szMessageBack))
-            || !LoadString(g_hinstCabinet, 8227, _szTool, ARRAYSIZE(_szTool))
-            || !LoadString(g_hinstCabinet, 8245, _szToolBack, ARRAYSIZE(_szToolBack)))
+        if (!LoadString(_AtlBaseModule.GetResourceInstance(), 8226, _szMessage, ARRAYSIZE(_szMessage))
+            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8241, _szMessageBack, ARRAYSIZE(_szMessageBack))
+            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8227, _szTool, ARRAYSIZE(_szTool))
+            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8245, _szToolBack, ARRAYSIZE(_szToolBack)))
         {
             return -1;
         }
@@ -142,7 +139,7 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 _cxText = sizText.cx + SHGetSystemMetricsScaled(SM_CXEDGE);
 
                 GetTextExtentPoint32(hdc, _szMessageBack, lstrlen(_szMessageBack), &sizText);
-                _cxText2 = sizText.cx + SHGetSystemMetricsScaled(SM_CXEDGE);
+                _cxTextBack = sizText.cx + SHGetSystemMetricsScaled(SM_CXEDGE);
 
                 TEXTMETRIC tm;
                 if (GetTextMetrics(hdc, &tm))
@@ -179,10 +176,10 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
         RECT rc;
         GetClientRect(_hwnd, &rc);
-        rc.left += _margins.cxLeftWidth;
-        rc.right -= _margins.cxRightWidth;
-        rc.top += _margins.cyTopHeight;
-        rc.bottom -= _margins.cyBottomHeight;
+        rc.left     += _margins.cxLeftWidth;
+        rc.right    -= _margins.cxRightWidth;
+        rc.top      += _margins.cyTopHeight;
+        rc.bottom   -= _margins.cyBottomHeight;
 
         _cxTextIndent = 3 * GetSystemMetrics(SM_CXEDGE) +
             GetSystemMetrics(bLargeIcons ? SM_CXICON : SM_CXSMICON);
@@ -202,7 +199,7 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             RECTHEIGHT(rc),
             _hwnd,
             (HMENU)IDC_ALL,
-            g_hinstCabinet,
+            _AtlBaseModule.GetModuleInstance(),
             NULL);
 
         if (!_hwndButton)
@@ -214,13 +211,10 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             SetWindowFont(_hwndButton, _hf, FALSE);
 
         CoCreateInstanceHook(CLSID_DragDropHelper, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_pdth));
-
         RegisterDragDrop(_hwndButton, this);
 
         _hwndTT = _CreateTooltip();
-
         _TooltipAddTool();
-
         _InitMetrics();
     }
     return 0;
@@ -234,7 +228,7 @@ void CMorePrograms::_TooltipAddTool()
         TOOLINFO ti;
         ti.hwnd = _hwnd;
         ti.uId = (UINT_PTR)_hwndButton;
-        ti.hinst = g_hinstCabinet;
+        ti.hinst = _AtlBaseModule.GetResourceInstance();
         ti.cbSize = sizeof(ti);
         ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
 
@@ -250,35 +244,9 @@ void CMorePrograms::_TooltipAddTool()
 
 HWND CMorePrograms::_CreateTooltip()
 {
-    DWORD dwStyle = WS_BORDER | TTS_NOPREFIX;
-
-    HWND hwnd = CreateWindowEx(0, TOOLTIPS_CLASS, NULL, dwStyle,
-                               0, 0, 0, 0,
-                               _hwndButton, NULL,
-                               _AtlBaseModule.GetModuleInstance(), NULL);
-    if (hwnd)
-    {
-        TCHAR szBuf[MAX_PATH];
-        TOOLINFO ti;
-        ti.cbSize = sizeof(ti);
-        ti.hwnd = _hwnd;
-        ti.uId = reinterpret_cast<UINT_PTR>(_hwndButton);
-        ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
-        ti.hinst = _AtlBaseModule.GetResourceInstance();
-
-        // We can't use MAKEINTRESOURCE because that allows only up to 80
-        // characters for text, and our text can be longer than that.
-        UINT ids = IDS_STARTPANE_MOREPROGRAMS_TIP;
-
-        ti.lpszText = szBuf;
-        if (LoadString(_AtlBaseModule.GetResourceInstance(), ids, szBuf, ARRAYSIZE(szBuf)))
-        {
-            SendMessage(hwnd, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&ti));
-
-        }
-    }
-
-    return hwnd;
+    return SHFusionCreateWindowEx(
+        0, TOOLTIPS_CLASS, nullptr, TTS_ALWAYSTIP | TTS_NOPREFIX | WS_BORDER, 0, 0, 0, 0, _hwndButton, nullptr,
+        _AtlBaseModule.GetModuleInstance(), nullptr);
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -345,102 +313,6 @@ int CMorePrograms::_OnSetCurView(OPENHOSTVIEW view)
 // EXEX-VISTA(allison): Validated. Still needs major cleanup.
 LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#ifdef DEAD_CODE
-    LPDRAWITEMSTRUCT pdis = reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
-    ASSERT(pdis->CtlType == ODT_BUTTON);
-    ASSERT(pdis->CtlID == IDC_BUTTON);
-
-    if (pdis->itemAction & (ODA_DRAWENTIRE | ODA_FOCUS))
-    {
-        BOOL fRTLReading = GetLayout(pdis->hDC) & LAYOUT_RTL;
-        UINT fuOptions = 0;
-        if (fRTLReading)
-        {
-            fuOptions |= ETO_RTLREADING;
-        }
-
-        HFONT hfPrev = SelectFont(pdis->hDC, _hf);
-        if (hfPrev)
-        {
-            BOOL fHot = (pdis->itemState & ODS_FOCUS) || _tmHoverStart;
-            if (fHot)
-            {
-                // hot background
-                FillRect(pdis->hDC, &pdis->rcItem, GetSysColorBrush(_colorHighlight));
-                SetTextColor(pdis->hDC, GetSysColor(_colorHighlightText));
-            }
-            else if (_hTheme)
-            {
-                // Themed non-hot background = custom
-                RECT rc;
-                GetClientRect(hwnd, &rc);
-                MapWindowRect(hwnd, pdis->hwndItem, &rc);
-                DrawThemeBackground(_hTheme, pdis->hDC, SPP_MOREPROGRAMS, 0, &rc, 0);
-            }
-            else
-            {
-                // non-themed non-hot background
-                FillRect(pdis->hDC, &pdis->rcItem, _hbrBk);
-            }
-
-            int iOldMode = SetBkMode(pdis->hDC, TRANSPARENT);
-
-            // _cxTextIndent will move it in the current width of an icon (small or large), plus the space we add between an icon and the text
-            pdis->rcItem.left += _cxTextIndent;
-
-            UINT dtFlags = DT_VCENTER | DT_SINGLELINE | DT_EDITCONTROL;
-            if (fRTLReading)
-            {
-                dtFlags |= DT_RTLREADING;
-            }
-            if (pdis->itemState & ODS_NOACCEL)
-            {
-                dtFlags |= DT_HIDEPREFIX;
-            }
-
-            DrawText(pdis->hDC, _szMessage, -1, &pdis->rcItem, dtFlags);
-
-            RECT rc = pdis->rcItem;
-            rc.left += _cxText;
-
-            if (_hTheme)
-            {
-                if (_iTextCenterVal < 0) // text is taller than the bitmap
-                    rc.top += (-_iTextCenterVal);
-
-                rc.right = rc.left + _cxArrow;       // clip rectangle down to the minumum size...
-                DrawThemeBackground(_hTheme, pdis->hDC, SPP_MOREPROGRAMSARROW,
-                    fHot ? SPS_HOT : 0, &rc, 0);
-            }
-            else
-            {
-                if (SelectFont(pdis->hDC, _hfMarlett))
-                {
-                    rc.top = rc.top + _tmAscent - _tmAscentMarlett + (_iTextCenterVal > 0 ? _iTextCenterVal : 0);
-                    TCHAR chOut = fRTLReading ? TEXT('w') : TEXT('8');
-                    if (EVAL(!IsRectEmpty(&rc)))
-                    {
-                        ExtTextOut(pdis->hDC, rc.left, rc.top, fuOptions, &rc, &chOut, 1, NULL);
-                        rc.right = rc.left + _cxArrow;
-                    }
-                }
-            }
-
-            _rcExclude = rc;
-            _rcExclude.left -= _cxText;  // includes the text in the exclusion rectangle.
-
-            MapWindowRect(pdis->hwndItem, NULL, &_rcExclude);
-            SetBkMode(pdis->hDC, iOldMode);
-            SelectFont(pdis->hDC, hfPrev);
-        }
-    }
-
-    //
-    //  Since we are emulating a menu item, we don't need to draw a
-    //  focus rectangle.
-    //
-    return TRUE;
-#else
     HBITMAP Bitmap; // eax
     bool v8; // zf
     HTHEME hTheme; // eax
@@ -473,8 +345,8 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 	ASSERT(pdis->CtlType == ODT_BUTTON); // 323
 	ASSERT(pdis->CtlID == IDC_ALL);      // 324
 
-    if (this->_pdth)
-        this->_pdth->Show(0);
+    if (_pdth)
+        _pdth->Show(0);
 
     if ((pdis->itemAction & 0x45) != 0)
     {
@@ -500,7 +372,7 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             v26 = 0;
             if (v24)
                 v26 = 128;
-            h = SelectObject(hdc, this->_hf);
+            h = SelectObject(hdc, _hf);
             if (!h)
             {
             LABEL_69:
@@ -508,21 +380,21 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 DeleteObject(ho);
                 goto LABEL_70;
             }
-            if ((pdis->itemState & 0x50) != 0 || this->_tmHoverStart || (v8 = this->field_BC == 0, v33 = 0, !v8))
+            if ((pdis->itemState & 0x50) != 0 || _tmHoverStart || (v8 = field_BC == 0, v33 = 0, !v8))
                 v33 = 1;
 
             view = OHVIEW_0;
             _GetCurView(&view);
 
             iStateId = 1;
-            hTheme = this->_hTheme;
+            hTheme = _hTheme;
             if (hTheme)
             {
                 if (v33)
                 {
                     iStateId = 2;
                 }
-                else if (this->field_B4)
+                else if (field_B4)
                 {
                     iStateId = 3;
                 }
@@ -531,32 +403,32 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             }
             if (v33)
             {
-                SysColorBrush = GetSysColorBrush(this->_colorHighlight);
+                SysColorBrush = GetSysColorBrush(_colorHighlight);
                 FillRect(hdc, &pRect, SysColorBrush);
-                SysColor = GetSysColor(this->_colorHighlightText);
+                SysColor = GetSysColor(_colorHighlightText);
             }
             else
             {
-                if (!this->field_B4)
+                if (!field_B4)
                 {
-                    FillRect(hdc, &pRect, this->_hbrBk);
-                    SetTextColor(hdc, this->_clrText);
+                    FillRect(hdc, &pRect, _hbrBk);
+                    SetTextColor(hdc, _clrText);
                 LABEL_33:
                     mode = SetBkMode(hdc, 1);
                     ASSERT(pdis->CtlID == IDC_ALL); // 391
                     if (view)
-                        cxText2 = this->_cxText2;
+                        cxText2 = _cxTextBack;
                     else
-                        cxText2 = this->_cxText;
+                        cxText2 = _cxText;
                     dwTextFlags = cxText2;
-                    cxTextIndent = this->_cxTextIndent;
+                    cxTextIndent = _cxTextIndent;
                     if (cxTextIndent > (int)(pRect.right - cxText2 - pRect.left))
                     {
                         //CcshellDebugMsgW(
                         //    1,
                         //    "StartMenu: 'maximum of (%s, %s) ' is %dpx, only room for %d- notify localizers!",
-                        //    (const char *)this->_szMessage,
-                        //    (const char *)this->_szMessageBack,
+                        //    (const char *)_szMessage,
+                        //    (const char *)_szMessageBack,
                         //    cxText2,
                         //    pRect.right - cxText2 - pRect.left);
                         cxTextIndent = pRect.right - dwTextFlags - pRect.left;
@@ -566,21 +438,21 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     pRect.left += cxTextIndent;
                     dwTextFlags = 0x2024;
 					ASSERT(pdis->CtlID == IDC_ALL); // 403
-                    szMessage = this->_szMessage;
+                    szMessage = _szMessage;
                     if (view)
-                        szMessage = this->_szMessageBack;
+                        szMessage = _szMessageBack;
 
                     if (v24)
                         dwTextFlags |= 0x20000u;
                     if ((pdis->itemState & 0x100) != 0)
                         dwTextFlags |= 0x100000u;
 
-                    if (this->_hTheme)
+                    if (_hTheme)
                     {
                         pOptions.dwSize = 64;
                         memset(&pOptions.dwFlags, 0, 0x3Cu);
                         pOptions.dwFlags = IsCompositionActive() ? 0x2000 : 0;
-                        DrawThemeTextEx(this->_hTheme, hdc, 12, iStateId, szMessage, -1, dwTextFlags, &pRect, &pOptions);
+                        DrawThemeTextEx(_hTheme, hdc, 12, iStateId, szMessage, -1, dwTextFlags, &pRect, &pOptions);
                     }
                     else
                     {
@@ -588,21 +460,21 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     }
                     rc = pRect;
                     rc.left = GetSystemMetrics(45);
-                    v16 = this->_hTheme;
+                    v16 = _hTheme;
                     if (v16)
                     {
-                        iTextCenterVal = this->_iTextCenterVal;
+                        iTextCenterVal = _iTextCenterVal;
                         if (iTextCenterVal < 0)
                             rc.top -= iTextCenterVal;
-                        rc.right = rc.left + this->_cxArrow;
+                        rc.right = rc.left + _cxArrow;
                         DrawThemeBackground(v16, hdc, view != OHVIEW_0 ? 17 : 3, v33 != 0 ? 2 : 0, &rc, 0);
                     }
-                    else if (SelectObject(hdc, this->_hfMarlett))
+                    else if (SelectObject(hdc, _hfMarlett))
                     {
-                        v18 = this->_iTextCenterVal;
+                        v18 = _iTextCenterVal;
                         if (v18 <= 0)
                             v18 = 0;
-                        rc.top += v18 + this->_tmAscent - this->_tmAscentMarlett;
+                        rc.top += v18 + _tmAscent - _tmAscentMarlett;
                         v33 = (unsigned __int16)(view != OHVIEW_0 ? 'w' : '8');
                         if (v24)
                             v33 = (unsigned __int16)(view != OHVIEW_0 ? '8' : 'w');
@@ -610,7 +482,7 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                         if (EVAL(!IsRectEmpty(&rc))) // 450
                         {
                             SHExtTextOutW(hdc, rc.left, rc.top, v26, &rc, (const WCHAR *)&v33, 1u, 0);
-                            rc.right = rc.left + this->_cxArrow;
+                            rc.right = rc.left + _cxArrow;
                         }
                     }
 
@@ -628,10 +500,9 @@ LRESULT CMorePrograms::_OnDrawItem(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         }
     }
 LABEL_71:
-    if (this->_pdth)
-        this->_pdth->Show(1);
+    if (_pdth)
+        _pdth->Show(1);
     return 1;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
@@ -655,14 +526,14 @@ LRESULT CMorePrograms::_OnCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
                         else
                             SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Start, 15);
 #endif
-                        int v12 = view == OHVIEW_0 ? 1 : 0;
+                        BOOL v12 = view == OHVIEW_0 ? 1 : 0;
                         if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, v12, NULL, NULL)))
                         {
                             IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 326, 0, NULL, NULL);
                         }
 
 
-                        LPWSTR pszTitle = v12 == 0 ? _szMessageBack : _szMessage;
+                        LPWSTR pszTitle = v12 != 0 ? _szMessage : _szMessageBack;
                         SetWindowText(_hwndButton, pszTitle);
 
                         _TooltipAddTool();
@@ -704,8 +575,8 @@ LRESULT CMorePrograms::_OnEraseBkgnd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 LRESULT CMorePrograms::_OnMouseLeave()
 {
-    KillTimer(this->_hwnd, 1u);
-    this->field_A0 = 0;
+    KillTimer(_hwnd, 1);
+    field_A0 = 0;
     return 0;
 }
 
@@ -737,7 +608,7 @@ LRESULT CMorePrograms::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     return 0;
 }
 
-int CMorePrograms::_Mark(SMNDIALOGMESSAGE *pdm, UINT a3)
+int CMorePrograms::_Mark(SMNDIALOGMESSAGE* pdm, UINT a3)
 {
     int result; // eax
     UINT flags; // esi
@@ -749,178 +620,100 @@ int CMorePrograms::_Mark(SMNDIALOGMESSAGE *pdm, UINT a3)
         return 0;
     pdm->itemID = 1;
     pdm->flags = flags | 0x80000;
-    pdm->hwnd2 = this->_hwndButton;
+    pdm->hwnd2 = _hwndButton;
     return result;
 }
 
-// EXEX-VISTA(allison): Validated. Still needs cleanup.
+// EXEX-VISTA(allison): Validated.
 LRESULT CMorePrograms::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 {
-#ifdef DEAD_CODE
-    if (SHRestricted(REST_NOSMMOREPROGRAMS))
+    if (SHRestricted(REST_NOSMMOREPROGRAMS) != 0)
         return 0;
+
+    if (!field_BC && (pdm->flags & 0x800) != 0)
+    {
+        field_BC = 1;
+        InvalidateRect(_hwndButton, nullptr, true);
+    }
 
     switch (pdm->flags & SMNDM_FINDMASK)
     {
-
-        // Life is simple if you have only one item -- all searches succeed!
-        case SMNDM_FINDFIRST:
-        case SMNDM_FINDLAST:
-        case SMNDM_FINDNEAREST:
-        case SMNDM_HITTEST:
-            pdm->itemID = 0;
-            return TRUE;
-
         case SMNDM_FINDFIRSTMATCH:
         {
-            TCHAR tch = CharUpperCharW((TCHAR)pdm->pmsg->wParam);
-            if (tch == _chMnem)
+            if (pdm->pmsg != nullptr)
             {
-                pdm->itemID = 0;
-                return TRUE;
+                WCHAR tch = CharUpperCharW((WCHAR)pdm->pmsg->wParam);
+
+                OPENHOSTVIEW view = OHVIEW_0;
+                _GetCurView(&view);
+                WCHAR chMnem = view == OHVIEW_0 ? _chMnem : _chMnemBack;
+                if (tch == chMnem)
+                {
+                    return _Mark(pdm, 1u);
+                }
             }
+            break;
         }
-        break;      // not found
 
         case SMNDM_FINDNEXTMATCH:
-            break;      // there is only one item so there can't be a "next"
+            break;
 
+        case SMNDM_FINDNEAREST:
+        case SMNDM_FINDFIRST:
+        case SMNDM_FINDLAST:
+        case SMNDM_HITTEST:
+            pdm->itemID = 0;
+            return 1;
 
         case SMNDM_FINDNEXTARROW:
-            if (pdm->flags & SMNDM_TRYCASCADE)
+        {
+            OPENHOSTVIEW view = OHVIEW_0;
+            _GetCurView(&view);
+
+            if (pdm->pmsg != nullptr && pdm->pmsg->wParam == 39 && view == OHVIEW_0 || pdm->pmsg->wParam == 37 && view == OHVIEW_1)
             {
-                FORWARD_WM_COMMAND(_hwnd, IDC_KEYPRESS, NULL, 0, PostMessage);
-                return TRUE;
+                PostMessage(_hwnd, WM_COMMAND, 1, (LPARAM)_hwndButton);
+                return 1;
             }
-            break;      // not found
+            break;
+        }
 
         case SMNDM_INVOKECURRENTITEM:
-        case SMNDM_OPENCASCADE:
-#ifdef DEAD_CODE
-            if (pdm->flags & SMNDM_KEYBOARD)
+        case SMNDM_MOUSEDOWN:
+            if (pdm->pmsg != nullptr && pdm->pmsg->message == WM_LBUTTONUP && pdm->pmsg->hwnd == _hwndButton)
             {
-                FORWARD_WM_COMMAND(_hwnd, IDC_KEYPRESS, NULL, 0, PostMessage);
+                ReleaseCapture();
             }
-            else
+            PostMessage(_hwnd, WM_COMMAND, 1, (LPARAM)_hwndButton);
+            return 1;
+
+        case 8:
+        {
+            if (!field_A0)
             {
-                FORWARD_WM_COMMAND(_hwnd, IDC_ALL, NULL, 0, PostMessage);
-            }
-            return TRUE;
-#else
-            if (!this->field_A0)
-            {
-                UINT pvParam;
-                if (!SystemParametersInfo(SPI_GETMOUSEHOVERTIME, 0, &pvParam, 0))
-                    pvParam = 0;
-                SetTimer(this->_hwnd, 1u, 2 * pvParam, 0);
+                UINT uHoverTime;
+                if (!SystemParametersInfo(SPI_GETMOUSEHOVERTIME, 0, &uHoverTime, 0))
+                    uHoverTime = 0;
+                SetTimer(_hwnd, 1, uHoverTime * 2, nullptr);
             }
             return 1;
-#endif
+        }
 
         case SMNDM_FINDITEMID:
-            return TRUE;
+            return 1;
+
+        case 11:
+            return 0;
 
         default:
-            ASSERT(!"Unknown SMNDM command");
+            ASSERT(!"Unknown SMNDM command"); // 748
             break;
     }
 
-    //
-    //  If not found, then tell caller what our orientation is (vertical)
-    //  and where the currently-selected item is.
-    //
     pdm->flags |= SMNDM_VERTICAL;
     pdm->pt.x = 0;
     pdm->pt.y = 0;
     return FALSE;
-#else
-    MSG *pmsg; // eax
-    WCHAR v6; // ax
-    MSG *v7; // edi
-    MSG *v8; // eax
-    WCHAR v9; // [esp+10h] [ebp-1Ch]
-    OPENHOSTVIEW view; // [esp+34h] [ebp+8h] SPLIT BYREF
-    OPENHOSTVIEW view1; // [esp+34h] [ebp+8h] SPLIT BYREF
-    UINT v12; // [esp+34h] [ebp+8h] SPLIT BYREF
-
-    if (SHRestricted(REST_NOSMMOREPROGRAMS))
-        return 0;
-
-    if (!this->field_BC && (pdm->flags & 0x800) != 0)
-    {
-        this->field_BC = 1;
-        InvalidateRect(this->_hwndButton, 0, 1);
-    }
-
-    switch (pdm->flags & 0xF)
-    {
-        case 0u:
-            pmsg = pdm->pmsg;
-            if (!pmsg)
-                goto LABEL_32;
-            v9 = CharUpperCharW(LOWORD(pmsg->wParam));
-            view = OHVIEW_0;
-            _GetCurView(&view);
-            v6 = view ? this->_chMnemBack : this->_chMnem;
-            if (v9 != v6)
-            {
-                goto LABEL_32;
-            }
-            return _Mark(pdm, 1u);
-        case 1u:
-            goto LABEL_32;
-        case 2u:
-        case 3u:
-        case 4u:
-        case 7u:
-            pdm->itemID = 0;
-            return 1;
-        case 5u:
-        {
-            view1 = OHVIEW_0;
-            _GetCurView(&view1);
-            v8 = pdm->pmsg;
-            if (v8 && LODWORD(v8->wParam) == 39 && view1 == OHVIEW_0 || LODWORD(v8->wParam) == 37 && view1 == OHVIEW_1)
-            {
-                goto LABEL_18;
-            }
-            goto LABEL_32;
-        }
-        case 6u:
-        case 10u:
-        {
-            v7 = pdm->pmsg;
-            if (v7 && v7->message == 514 && v7->hwnd == this->_hwndButton)
-                ReleaseCapture();
-        LABEL_18:
-            PostMessageW(this->_hwnd, WM_COMMAND, 1u, (LPARAM)this->_hwndButton);
-            return 1;
-        }
-        case 8u:
-        {
-            if (!this->field_A0)
-            {
-                if (!SystemParametersInfoW(SPI_GETMOUSEHOVERTIME, 0, &v12, 0))
-                    v12 = 0;
-                SetTimer(this->_hwnd, 1u, 2 * v12, 0);
-            }
-            return 1;
-        }
-        case 9u:
-            return 1;
-        case 11u:
-            return 0;
-        default:
-        {
-            ASSERT(!"Unknown SMNDM command"); // 748
-        LABEL_32:
-            pdm->flags |= 0x4000u;
-            pdm->pt.x = 0;
-            pdm->pt.y = 0;
-            return 0;
-        }
-    }
-#endif
 }
 
 //
@@ -929,65 +722,12 @@ LRESULT CMorePrograms::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 //
 LRESULT CMorePrograms::_OnSMNShowNewAppsTip(PSMNMBOOL psmb)
 {
-    if(SHRestricted(REST_NOSMMOREPROGRAMS))
-        return 0;
-
-    if (psmb->f)
+    if (!SHRestricted(REST_NOSMMOREPROGRAMS))
     {
-        if (_hwndTT)
-        {
-            SendMessage(_hwndTT, TTM_ACTIVATE, FALSE, 0);
-        }
-
-        if (!_hwndBalloon)
-        {
-            RECT rc;
-            GetWindowRect(_hwndButton, &rc);
-
-            if (!_hfTTBold)
-            {
-                NONCLIENTMETRICS ncm;
-                ncm.cbSize = sizeof(ncm);
-                if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0))
-                {
-                    ncm.lfStatusFont.lfWeight = FW_BOLD;
-                    SHAdjustLOGFONT(&ncm.lfStatusFont);
-                    _hfTTBold = CreateFontIndirect(&ncm.lfStatusFont);
-                }
-            }
-
-            _hwndBalloon = CreateBalloonTip(_hwnd,
-                            rc.left + _cxTextIndent + _cxText,
-                            (rc.top + rc.bottom)/2,
-                            _hfTTBold, 0,
-                            IDS_STARTPANE_MOREPROGRAMS_BALLOONTITLE);
-            if (_hwndBalloon)
-            {
-                SetProp(_hwndBalloon, PROP_DV2_BALLOONTIP, DV2_BALLOONTIP_MOREPROG);
-            }
-
-        }
+        field_B4 = psmb->f;
+        InvalidateRect(_hwndButton, NULL, TRUE);
     }
-    else
-    {
-        _PopBalloon();
-    }
-
     return 0;
-}
-
-void CMorePrograms::_PopBalloon()
-{
-    if (_hwndBalloon)
-    {
-        DestroyWindow(_hwndBalloon);
-        _hwndBalloon = NULL;
-    }
-    if (_hwndTT)
-    {
-        SendMessage(_hwndTT, TTM_ACTIVATE, TRUE, 0);
-    }
-
 }
 
 void CMorePrograms::_BuildHoverRect(const LPPOINT ppt)
@@ -1053,20 +793,6 @@ LRESULT CMorePrograms::_OnSettingChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 // EXEX-VISTA(allison): Validated.
 LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#ifdef DEAD_CODE
-    if(SHRestricted(REST_NOSMMOREPROGRAMS))
-        return 0;
-
-    if (IS_WM_CONTEXTMENU_KEYBOARD(lParam))
-    {
-        RECT rc;
-        GetWindowRect(_hwnd, &rc);
-        lParam = MAKELPARAM(rc.left, rc.top);
-    }
-
-    c_tray._stb.OnContextMenu(_hwnd, (DWORD)lParam);
-    return 0;
-#else
     if (!SHRestricted(REST_NOSMMOREPROGRAMS))
     {
         if (IS_WM_CONTEXTMENU_KEYBOARD(lParam))
@@ -1086,7 +812,6 @@ LRESULT CMorePrograms::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         }
     }
     return 0;
-#endif
 }
 
 LRESULT CMorePrograms::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1104,10 +829,12 @@ LRESULT CMorePrograms::_OnSize(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 LRESULT CMorePrograms::_OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (wParam != 1 || field_A0)
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    SendMessage(_hwnd, 0x111u, 1u, (LPARAM)_hwndButton);
-    return 0;
+    if (wParam == 1 && !field_A0)
+    {
+        SendMessage(_hwnd, WM_COMMAND, 1u, (LPARAM)_hwndButton);
+        return 0;
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -1224,23 +951,6 @@ HRESULT CMorePrograms::DragEnter(IDataObject *pdto, DWORD grfKeyState, POINTL pt
 // EXEX-VISTA(allison): Validated.
 HRESULT CMorePrograms::DragOver(DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 {
-#ifdef DEAD_CODE
-    POINT pt = { ptl.x, ptl.y };
-    if (_pdth) {
-        _pdth->DragOver(&pt, *pdwEffect);
-    }
-
-    //  Hover time is 1 second, the same as the hard-coded value for the
-    //  Start Button.
-    if (_tmHoverStart && GetTickCount() - _tmHoverStart > 1000)
-    {
-        _tmHoverStart = 0;
-        FORWARD_WM_COMMAND(_hwnd, IDC_ALL, _hwndButton, BN_CLICKED, PostMessage);
-    }
-
-    *pdwEffect = DROPEFFECT_NONE;
-    return S_OK;
-#else
     POINT pt = { ptl.x, ptl.y };
     if (_pdth)
         _pdth->DragOver(&pt, *pdwEffect);
@@ -1252,7 +962,7 @@ HRESULT CMorePrograms::DragOver(DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
             if (GetTickCount() - _tmHoverStart > 1000)
             {
                 _tmHoverStart = 0;
-                PostMessage(_hwnd, WM_COMMAND, 1u, (LPARAM)_hwndButton);
+                PostMessage(_hwnd, WM_COMMAND, IDC_ALL, (LPARAM)_hwndButton);
             }
         }
         else
@@ -1263,7 +973,6 @@ HRESULT CMorePrograms::DragOver(DWORD grfKeyState, POINTL ptl, DWORD *pdwEffect)
 
     *pdwEffect = DROPEFFECT_NONE;
     return S_OK;
-#endif
 }
 
 // *** IDropTarget::DragLeave ***
@@ -1340,21 +1049,12 @@ HRESULT CMorePrograms::get_accKeyboardShortcut(VARIANT varChild, BSTR *pszKeyboa
 
 HRESULT CMorePrograms::get_accDefaultAction(VARIANT varChild, BSTR *pszDefAction)
 {
-    DWORD dwRole = _fMenuOpen ? ACCSTR_CLOSE : ACCSTR_OPEN;
-    return GetRoleString(dwRole, pszDefAction);
+    return GetRoleString(ACCSTR_OPEN, pszDefAction);
 }
 
 HRESULT CMorePrograms::accDoDefaultAction(VARIANT varChild)
 {
-    if (_fMenuOpen)
-    {
-        _SendNotify(_hwnd, SMN_CANCELSHELLMENU);
-        return S_OK;
-    }
-    else
-    {
-        return CAccessible::accDoDefaultAction(varChild);
-    }
+    return CAccessible::accDoDefaultAction(varChild);
 }
 
 // ****************************************************************************
@@ -1383,13 +1083,13 @@ HRESULT CMorePrograms::QueryStatus(const GUID *pguidCmdGroup, ULONG cCmds, OLECM
 	return E_NOTIMPL;
 }
 
-HRESULT CMorePrograms::Exec(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvarargIn, VARIANT *pvarargOut)
+HRESULT CMorePrograms::Exec(const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvarargIn, VARIANT* pvarargOut)
 {
     HRESULT hr = E_INVALIDARG;
     if (IsEqualGUID(CGID_DV2ControlHost, *pguidCmdGroup) && nCmdID == 302 && nCmdexecopt != -1)
     {
         _OnSetCurView((OPENHOSTVIEW)nCmdexecopt);
-        return S_OK;
+        hr = S_OK;
     }
     return hr;
 }

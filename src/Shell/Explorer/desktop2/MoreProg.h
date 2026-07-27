@@ -9,10 +9,6 @@ enum OPENHOSTVIEW
 {
     OHVIEW_0 = 0x0,
     OHVIEW_1 = 0x1,
-    OHVIEW_2 = 0x2,
-    OHVIEW_3 = 0x3,
-    OHVIEW_4 = 0x4,
-    OHVIEW_5 = 0x5,
 };
 
 class CMorePrograms
@@ -80,9 +76,7 @@ private:
     void    _InitMetrics();
     HWND    _CreateTooltip();
     void    _TooltipAddTool();
-    void    _PopBalloon();
     void    _BuildHoverRect(const LPPOINT ppt);
-    void    _TrackShellMenu(DWORD dwFlags);
     HRESULT _GetCurView(OPENHOSTVIEW *pView);
     int     _OnSetCurView(OPENHOSTVIEW view);
     int     _Mark(SMNDIALOGMESSAGE *pdm, UINT a3);
@@ -96,7 +90,6 @@ private:
     HWND _hwnd;
     HWND _hwndButton;
     HWND _hwndTT;
-    HWND _hwndBalloon;
 
     HTHEME _hTheme;
 
@@ -122,7 +115,7 @@ private:
     int     _tmAscent;              // Ascent of main font
     int     _tmAscentMarlett;       // Ascent of Marlett font
     int     _cxText;                // width of entire client text
-    int     _cxText2;               // Vista - New
+    int     _cxTextBack;            // Vista - New
     int     _cxTextIndent;          // distance to beginning of text
     int     _cxArrow;               // width of the arrow image or glyph
     MARGINS _margins;               // margins for the proglist listview
@@ -132,23 +125,19 @@ private:
 
     RECT    _rcExclude;             // Exclusion rectangle for when the menu comes up
 
+    int     field_B4;
+
     // More random stuff
     LONG    _lRef;                  // reference count
 
+    int     field_BC;
 
-    int field_B4;
-    DWORD dwordB8;
-    int field_BC;
-
-    TCHAR   _chMnem;                // Mnemonic
+    WCHAR   _chMnem;                // Mnemonic
 	WCHAR   _chMnemBack;            // Vista - New
-    BOOL    _fMenuOpen;             // Is the menu open?
-
-    IShellMenu *_psmPrograms;       // Cached ShellMenu for perf
 
     // Large things go at the end
     WCHAR  _szMessage[128];
-	WCHAR _szMessageBack[128];
+	WCHAR  _szMessageBack[128];
     WCHAR  _szTool[256];
 	WCHAR  _szToolBack[256];
 };
