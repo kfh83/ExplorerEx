@@ -2229,7 +2229,7 @@ LRESULT CDesktopHost::_FindChildItem(HWND hwnd, SMNDIALOGMESSAGE* pnmdm, UINT sm
 
     pnmdm->hdr.hwndFrom = _hwnd;
     pnmdm->hdr.idFrom = 0;
-    pnmdm->hdr.code = SMN_FINDITEM;
+    pnmdm->hdr.code = 215;
     pnmdm->flags = smndm;
     pnmdm->hwnd2 =_hwndLastMouse;
     

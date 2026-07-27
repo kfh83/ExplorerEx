@@ -69,7 +69,7 @@ typedef struct {
 //  Some of these notifications go from child to parent; others from parent
 //  to child.  They will be indicated (c2p) or (p2c) accordingly.
 
-#define SMN_FIRST           200         // 200 - 299
+#define SMN_FIRST           200           // 200 - 299
 #define SMN_INITIALUPDATE   (SMN_FIRST+0) // p2c - Start Menu is being built
 #define SMN_APPLYREGION     (SMN_FIRST+1) // p2c - make the window regional again
 #define SMN_HAVENEWITEMS    (SMN_FIRST+2) // c2p - new items are here
@@ -81,7 +81,13 @@ typedef struct {
 #define SMN_SEENNEWITEMS    (SMN_FIRST+7) // p2c - user has seen new items; don't need balloon tip
 #define SMN_POSTPOPUP       (SMN_FIRST+8) // p2c - Start Menu is has just popped up
 #define SMN_NEEDREPAINT     (SMN_FIRST+9) // c2p - There was a change in a list, we need to repaint 
-                                          //         This used to keep the cached bitmap up to date
+                                          //       This used to keep the cached bitmap up to date
+#define SMN_DISMISS         (SMN_FIRST+10)// p2c - Start Menu is being dismissed
+#define SMN_CANCELSHELLMENU (SMN_FIRST+11)// c2p - cancel the popup menu
+#define SMN_BLOCKMENUMODE   (SMN_FIRST+12)// c2p - lParam -> SMNMBOOL (fBlock)
+
+#define SMN_REFRESHLOGOFF   (SMN_FIRST+13)// p2c - indicates a WM_DEVICECHANGE or a session change
+#define SMN_SHELLMENUDISMISSED (SMN_FIRST+14)// p2c - notification that the menu has dismissed
 
 //
 //  SMN_FINDITEM - find/select an item (used in dialog navigation)
@@ -98,16 +104,10 @@ typedef struct {
 //      set one of the orientation flags SMNDM_VERTICAL/SMNDM_HORIZONTAL,
 //      and return FALSE.
 //
-#define SMN_FINDITEM        (SMN_FIRST+7) // p2c - find/select an item
-#define SMN_TRACKSHELLMENU  (SMN_FIRST+8) // c2p - display a popup menu
-#define SMN_SHOWNEWAPPSTIP  (SMN_FIRST+9) // p2c - show the "More Programs" tip
-                                          //       lParam -> SMNMBOOL (fShow)
-#define SMN_DISMISS         (SMN_FIRST+10)// p2c - Start Menu is being dismissed
-#define SMN_CANCELSHELLMENU (SMN_FIRST+11)// c2p - cancel the popup menu
-#define SMN_BLOCKMENUMODE   (SMN_FIRST+12)// c2p - lParam -> SMNMBOOL (fBlock)
-
-#define SMN_REFRESHLOGOFF   (SMN_FIRST+13)// p2c - indicates a WM_DEVICECHANGE or a session change
-#define SMN_SHELLMENUDISMISSED (SMN_FIRST+14)// p2c - notification that the menu has dismissed
+#define SMN_FINDITEM        (SMN_FIRST+15) // p2c - find/select an item
+#define SMN_TRACKSHELLMENU  (SMN_FIRST+16) // c2p - display a popup menu
+#define SMN_SHOWNEWAPPSTIP  (SMN_FIRST+17) // p2c - show the "More Programs" tip
+                                           //       lParam -> SMNMBOOL (fShow)
 
 // Formerly used by SMN_LINKCOMMAND to specify which command we want
 #define SMNLC_LOGOFF        0
@@ -185,8 +185,8 @@ typedef struct SMNDIALOGMESSAGE {
 #define SMNDM_HITTEST           0x0007  // Find item under point
 #define SMNDM_OPENCASCADE       0x0008  // Invoke current item if it cascade
 #define SMNDM_FINDITEMID        0x0009  // Find the specied item (itemID)
+#define SMNDM_MOUSEDOWN         0x000A
 #define SMNDM_FINDMASK          0x000F  // What type of search?
-#define SMNDM_MOUSEDOWN         0x0010
 
 #define SMNDM_SELECT            0x0100  // Select found item?
 #define SMNDM_TRYCASCADE        0x0200  // Attempt to open cascading menu before navigatin

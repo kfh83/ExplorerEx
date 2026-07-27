@@ -593,7 +593,7 @@ LRESULT CMorePrograms::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             return _OnSMNDismiss();
         case 215:
             return _OnSMNFindItem(CONTAINING_RECORD(pnm, SMNDIALOGMESSAGE, hdr));
-        case SMN_SHOWNEWAPPSTIP:
+        case 217:
             return _OnSMNShowNewAppsTip(CONTAINING_RECORD(pnm, SMNMBOOL, hdr));
         case 223:
             return SUCCEEDED(SetSite(((SMNSETSITE *)pnm)->punkSite));
@@ -603,6 +603,8 @@ LRESULT CMorePrograms::_OnNotify(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
         case NM_KILLFOCUS:
             field_BC = 0;
             InvalidateRect(_hwndButton, NULL, TRUE);
+            break;
+        default:
             break;
     }
     return 0;
