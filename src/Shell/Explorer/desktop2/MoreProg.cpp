@@ -115,10 +115,10 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
     if (!SHRestricted(REST_NOSMMOREPROGRAMS))
     {
-        if (!LoadString(_AtlBaseModule.GetResourceInstance(), 8226, _szMessage, ARRAYSIZE(_szMessage))
-            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8241, _szMessageBack, ARRAYSIZE(_szMessageBack))
-            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8227, _szTool, ARRAYSIZE(_szTool))
-            || !LoadString(_AtlBaseModule.GetResourceInstance(), 8245, _szToolBack, ARRAYSIZE(_szToolBack)))
+        if (!LoadString(_Module.GetResourceInstance(), 8226, _szMessage, ARRAYSIZE(_szMessage))
+            || !LoadString(_Module.GetResourceInstance(), 8241, _szMessageBack, ARRAYSIZE(_szMessageBack))
+            || !LoadString(_Module.GetResourceInstance(), 8227, _szTool, ARRAYSIZE(_szTool))
+            || !LoadString(_Module.GetResourceInstance(), 8245, _szToolBack, ARRAYSIZE(_szToolBack)))
         {
             return -1;
         }
@@ -199,7 +199,7 @@ LRESULT CMorePrograms::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             RECTHEIGHT(rc),
             _hwnd,
             (HMENU)IDC_ALL,
-            _AtlBaseModule.GetModuleInstance(),
+            _Module.GetModuleInstance(),
             NULL);
 
         if (!_hwndButton)
@@ -228,7 +228,7 @@ void CMorePrograms::_TooltipAddTool()
         TOOLINFO ti;
         ti.hwnd = _hwnd;
         ti.uId = (UINT_PTR)_hwndButton;
-        ti.hinst = _AtlBaseModule.GetResourceInstance();
+        ti.hinst = _Module.GetResourceInstance();
         ti.cbSize = sizeof(ti);
         ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
 
@@ -246,7 +246,7 @@ HWND CMorePrograms::_CreateTooltip()
 {
     return SHFusionCreateWindowEx(
         0, TOOLTIPS_CLASS, nullptr, TTS_ALWAYSTIP | TTS_NOPREFIX | WS_BORDER, 0, 0, 0, 0, _hwndButton, nullptr,
-        _AtlBaseModule.GetModuleInstance(), nullptr);
+        _Module.GetModuleInstance(), nullptr);
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -889,7 +889,7 @@ BOOL WINAPI MorePrograms_RegisterClass()
     wc.cbSize        = sizeof(wc);
     wc.style         = CS_GLOBALCLASS;
     wc.lpfnWndProc   = CMorePrograms::s_WndProc;
-    wc.hInstance     = _AtlBaseModule.GetModuleInstance();
+    wc.hInstance     = _Module.GetModuleInstance();
     wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = NULL;
     wc.lpszClassName = WC_MOREPROGRAMS;

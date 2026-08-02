@@ -127,7 +127,7 @@ BOOL SFTBarHost::Register()
     wc.lpfnWndProc = _WndProc;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = sizeof(void *);
-    wc.hInstance = _AtlBaseModule.GetModuleInstance();
+    wc.hInstance = _Module.GetModuleInstance();
     wc.hIcon = 0;
     // We specify a cursor so the OOBE window gets something
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -139,7 +139,7 @@ BOOL SFTBarHost::Register()
 
 BOOL SFTBarHost::Unregister()
 {
-    return ::UnregisterClass(WC_SFTBARHOST, _AtlBaseModule.GetModuleInstance());
+    return ::UnregisterClass(WC_SFTBARHOST, _Module.GetModuleInstance());
 }
 
 // EXEX-VISTA(allison): Partially validated. Recheck flow.
@@ -1606,7 +1606,7 @@ LRESULT SFTBarHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     _hwndList = SHFusionCreateWindowEx(dwExStyle, WC_LISTVIEW, NULL, dwStyle,
         _margins.cxLeftWidth, _margins.cyTopHeight, rc.right, rc.bottom, // no point in being too exact, we'll be resized later
         _hwnd, NULL,
-        _AtlBaseModule.GetModuleInstance(), NULL);
+        _Module.GetModuleInstance(), NULL);
     if (!_hwndList)
         return -1;
 
@@ -2032,7 +2032,7 @@ void SFTBarHost::_EnumerateContents(BOOL fUrgent)
         {
             _fEnumValid = 1;
 
-            _dpaEnumNew.EnumCallback(PaneItem::DPAEnumCallback, 0);
+            _dpaEnumNew.EnumCallback(PaneItem::DPAEnumCallback);
             if (_dpaEnumNew)
             {
                 _dpaEnumNew.DeleteAllPtrs();
@@ -2044,7 +2044,7 @@ void SFTBarHost::_EnumerateContents(BOOL fUrgent)
                 CBGEnum *penum = new CBGEnum(this, fUrgent);
                 if (penum)
                 {
-                    if (_psched->AddTask(penum, TOID_SFTBarHostBackgroundEnum, (DWORD_PTR)this, 0x10001000u) >= 0)
+                    if (SUCCEEDED(_psched->AddTask(penum, TOID_SFTBarHostBackgroundEnum, (DWORD_PTR)this, 0x10001000)))
                     {
                         _fBGTask = 1;
 
@@ -2086,14 +2086,9 @@ void SFTBarHost::_EnumerateContentsBackground()
 	// PostEnum(); // EXEX-VISTA(allison): TODO: Uncomment when implemented.
 }
 
-// EXEX-VISTA(allison): Validated. Still needs cleanup.
+// EXEX-VISTA(allison): Validated.
 int CALLBACK SFTBarHost::_SortItemsAfterEnum(PaneItem *p1, PaneItem *p2, SFTBarHost *self)
 {
-
-#ifdef DEAD_CODE
-    //
-    //  Put all pinned items (sorted by pin position) ahead of unpinned items.
-    //
     if (p1->IsPinned())
     {
         if (p2->IsPinned())
@@ -2104,34 +2099,9 @@ int CALLBACK SFTBarHost::_SortItemsAfterEnum(PaneItem *p1, PaneItem *p2, SFTBarH
     }
     else if (p2->IsPinned())
     {
-        return +1;
+        return 1;
     }
-
-    //
-    //  Both unpinned - let the client decide.
-    //
     return self->CompareItems(p1, p2);
-#else
-    int iPinPos; // eax
-    int v4; // ecx
-
-    iPinPos = p1->_iPinPos;
-    if (iPinPos < 0)
-    {
-        if (p2->_iPinPos < 0)
-            return self->CompareItems(p1, p2);
-        else
-            return 1;
-    }
-    else
-    {
-        v4 = p2->_iPinPos;
-        if (v4 < 0)
-            return -1;
-        else
-            return iPinPos - v4;
-    }
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -2471,7 +2441,7 @@ LRESULT SFTBarHost::_OnTimer(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 _hwndAni = SHFusionCreateWindow(ANIMATE_CLASS, NULL, dwStyle,
                                                 x, y, 0, 0,
                                                 _hwnd, NULL,
-                                                _AtlBaseModule.GetModuleInstance(), NULL);
+                                                _Module.GetModuleInstance(), NULL);
                 if (_hwndAni)
                 {
                     NotifyWinEvent(EVENT_OBJECT_SHOW, _hwndAni, 0, 0);
@@ -3508,7 +3478,7 @@ LRESULT SFTBarHost::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 UINT idsDelete = AdjustDeleteMenuItem(pitem, &uiFlags);
                 if (idsDelete)
                 {
-                    if (LoadString(_AtlBaseModule.GetResourceInstance(), idsDelete, szBuf, ARRAYSIZE(szBuf)))
+                    if (LoadString(_Module.GetResourceInstance(), idsDelete, szBuf, ARRAYSIZE(szBuf)))
                     {
                         if (uPosDelete != -1)
                         {
@@ -3791,7 +3761,7 @@ void OfferDelete::_ThreadProc()
             //  First try to repair it by invoking the shortcut tracking code.
             //  If that fails, then offer to delete.
             if (!_RepairBrokenItem() &&
-                ShellMessageBox(_AtlBaseModule.GetResourceInstance(), NULL,
+                ShellMessageBox(_Module.GetResourceInstance(), NULL,
                                 MAKEINTRESOURCE(IDS_SFTHOST_OFFERREMOVEITEM),
                                 _pszName, MB_YESNO) == IDYES)
             {
@@ -4384,55 +4354,11 @@ LRESULT SFTBarHost::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 {
-#ifdef DEAD_CODE
     LRESULT lres = _OnSMNFindItemWorker(pdm);
 
     if (lres)
     {
-        //
-        //  If caller requested that the item also be selected, then do so.
-        //
-        if (pdm->flags & SMNDM_SELECT)
-        {
-            ListView_SetItemState(_hwndList, pdm->itemID,
-                                  LVIS_SELECTED | LVIS_FOCUSED,
-                                  LVIS_SELECTED | LVIS_FOCUSED);
-            if ((pdm->flags & SMNDM_FINDMASK) != SMNDM_HITTEST)
-            {
-                ListView_KeyboardSelected(_hwndList, pdm->itemID);
-            }
-        }
-    }
-    else
-    {
-        //
-        //  If not found, then tell caller what our orientation is (vertical)
-        //  and where the currently-selected item is.
-        //
-
-        pdm->flags |= SMNDM_VERTICAL;
-        int iItem = _GetLVCurSel();
-        RECT rc;
-        if (iItem >= 0 &&
-            ListView_GetItemRect(_hwndList, iItem, &rc, LVIR_BOUNDS))
-        {
-            pdm->pt.x = (rc.left + rc.right)/2;
-            pdm->pt.y = (rc.top + rc.bottom)/2;
-        }
-        else
-        {
-            pdm->pt.x = 0;
-            pdm->pt.y = 0;
-        }
-
-    }
-    return lres;
-#else
-    LRESULT lres = _OnSMNFindItemWorker(pdm);
-
-    if (lres)
-    {
-        if ((pdm->flags & (0x100 | 0x800)) != 0)
+        if ((pdm->flags & (SMNDM_SELECT | 0x800)) != 0)
         {
             UINT state = LVIS_SELECTED;
             if ((pdm->flags & SMNDM_SELECT))
@@ -4453,7 +4379,8 @@ LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
     }
     else
     {
-        pdm->flags |= 0x4000u;
+        pdm->flags |= SMNDM_VERTICAL;
+
         int iItem = _GetLVCurSel();
         RECT rc;
         if (iItem >= 0 && ListView_GetItemRect(_hwndList, iItem, &rc, LVIR_BOUNDS))
@@ -4468,7 +4395,6 @@ LRESULT SFTBarHost::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
         }
     }
     return lres;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated.
@@ -4612,7 +4538,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 
     return FALSE;
 #else
-    UINT flags; // ecx
+    // ecx
     LRESULT v5; // eax
     int iItemStart; // ebx
     int wParam; // eax
@@ -4626,16 +4552,15 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
     LVFINDINFOW lvfi; // [esp+28h] [ebp-38h] BYREF
     int iItems; // [esp+40h] [ebp-20h]
     WCHAR tch; // [esp+44h] [ebp-1Ch]
-    //CPPEH_RECORD ms_exc; // [esp+48h] [ebp-18h]
     PaneItem *pitem; // [esp+68h] [ebp+8h] MAPDST
 
-    flags = pdm->flags;
+    UINT flags = pdm->flags;
     switch (flags & 0xF)
     {
         case 0u:                                    // SMNDM_FINDFIRSTMATCH
         case 1u:                                    // SMNDM_FINDNEXTMATCH
             if ((flags & 0xF) != 0)
-                iItemStart = SFTBarHost::_GetLVCurSel() + 1;
+                iItemStart = _GetLVCurSel() + 1;
             else
                 iItemStart = 0;
             tch = (unsigned __int16)CharUpperW((LPWSTR)LOWORD(pdm->pmsg->wParam));
@@ -4644,7 +4569,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
                 return 0;
             while (1)
             {
-                pitem = SFTBarHost::_GetItemFromLV(iItemStart);
+                pitem = _GetItemFromLV(iItemStart);
                 if (pitem)
                 {
                     if (this->GetItemAccelerator(pitem, iItemStart) == tch)
@@ -4671,7 +4596,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             wParam = pdm->pmsg->wParam;
             if (wParam == 38)
             {
-                LVCurSel = SFTBarHost::_GetLVCurSel();
+                LVCurSel = _GetLVCurSel();
                 v11 = SendMessageW(this->_hwndList, LVM_GETNEXTITEM, LVCurSel, 256);
             LABEL_18:
                 pdm->itemID = v11;
@@ -4679,7 +4604,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             }
             if (wParam == VK_DOWN)
             {
-                LVCurSel = SFTBarHost::_GetLVCurSel();
+                LVCurSel = _GetLVCurSel();
                 if (LVCurSel != -1)
                 {
                     v11 = SendMessageW(this->_hwndList, LVM_GETNEXTITEM, LVCurSel, 512);
@@ -4698,17 +4623,17 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             {
                 if ((flags & 0x200) == 0)
                     return 0;
-                v12 = SFTBarHost::_GetLVCurSel();
+                v12 = _GetLVCurSel();
                 v15 = 0x12;
             LABEL_29:
                 pdm->itemID = v12;
-                return SFTBarHost::_OnCascade(v12, v15);
+                return _OnCascade(v12, v15);
             }
         case 6u:                                    // SMNDM_INVOKECURRENTITEM
-            iItem = SFTBarHost::_GetLVCurSel();
+            iItem = _GetLVCurSel();
             if (iItem < 0)
                 return 0;
-            SFTBarHost::_ActivateItem(iItem, (pdm->flags & 0x400) != 0);
+            _ActivateItem(iItem, (pdm->flags & 0x400) != 0);
             return 1;
         case 7u:                                    // SMNDM_HITTEST
             lvhti.pt = pdm->pt;
@@ -4718,7 +4643,7 @@ LRESULT SFTBarHost::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             mppf = 0;
             if ((flags & 0x400) != 0)
                 mppf = 0x12;
-            v12 = SFTBarHost::_GetLVCurSel();
+            v12 = _GetLVCurSel();
             v15 = mppf;
             goto LABEL_29;
         case 9u: // SMNDM_FINDITEMID
@@ -4752,58 +4677,33 @@ LRESULT SFTBarHost::_OnCascade(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 BOOL SFTBarHost::_OnCascade(int iItem, DWORD dwFlags)
 {
-#ifdef DEAD_CODE
     BOOL fSuccess = FALSE;
+
     SMNTRACKSHELLMENU tsm;
     tsm.dwFlags = dwFlags;
     tsm.itemID = iItem;
-
     if (iItem >= 0 &&
         ListView_GetItemRect(_hwndList, iItem, &tsm.rcExclude, LVIR_BOUNDS))
     {
-        PaneItem *pitem = _GetItemFromLV(iItem);
+        PaneItem* pitem = _GetItemFromLV(iItem);
         if (pitem && pitem->IsCascade())
         {
             if (SUCCEEDED(GetCascadeMenu(pitem, &tsm.psm)))
             {
                 MapWindowRect(_hwndList, NULL, &tsm.rcExclude);
-                HWND hwnd = _hwnd;
                 _iCascading = iItem;
                 _SendNotify(_hwnd, SMN_TRACKSHELLMENU, &tsm.hdr);
                 tsm.psm->Release();
                 fSuccess = TRUE;
-            }
-        }
-    }
-    return fSuccess;
-#else
-    BOOL fSuccess = FALSE;
-    SMNTRACKSHELLMENU tsm;
-    tsm.dwFlags = dwFlags;
-    tsm.itemID = iItem;
-    if (iItem >= 0 &&
-        ListView_GetItemRect(_hwndList, iItem, &tsm.rcExclude, LVIR_BOUNDS))
-    {
-        PaneItem *pitem = _GetItemFromLV(iItem);
-        if (pitem && pitem->IsCascade())
-        {
-            if (SUCCEEDED(GetCascadeMenu(pitem, &tsm.psm)))
-            {
-                MapWindowRect(this->_hwndList, 0, &tsm.rcExclude);
-                HWND hwnd = _hwnd;
-                _iCascading = iItem;
-                _SendNotify(_hwnd, 216, &tsm.hdr);
-                tsm.psm->Release();
-                fSuccess = TRUE;
+
                 //SHTracePerf(&ShellTraceId_Explorer_StartPane_Cascade_Show_Start);
                 _NotifyCascade(pitem);
             }
             pitem->Release();
         }
-
     }
+
     return fSuccess;
-#endif
 }
 
 HRESULT SFTBarHost::QueryInterface(REFIID riid, void * *ppvOut)
@@ -5494,33 +5394,34 @@ void SFTBarHost::_DrawInsertionMark(LPNMLVCUSTOMDRAW plvcd)
 // EXEX-VISTA(allison): Validated. Still needs cleanup.
 int SFTBarHost::_CalcMaxTextWith()
 {
-    WCHAR chText[64]; // [esp+6Ch] [ebp-84h] BYREF
+    WCHAR chText[64];
 
-    HWND hwndList = this->_hwndList;
     int v20 = 0;
-    HDC WindowDC = GetWindowDC(hwndList);
+
+    HDC WindowDC = GetWindowDC(_hwndList);
     HDC hdc = WindowDC;
-    void* v3 = (void*)SendMessageW(this->_hwndList, WM_GETFONT, 0, 0);
+    HFONT v3 = GetWindowFont(_hwndList, WM_GETFONT, 0, 0);
     HGDIOBJ v4 = SelectObject(hdc, v3);
     HGDIOBJ h = v4;
-    LRESULT v5 = SendMessageW(this->_hwndList, LVM_GETITEMCOUNT, 0, 0);
+    LRESULT v5 = SendMessage(_hwndList, LVM_GETITEMCOUNT, 0, 0);
     while (--v5 >= 0)
     {
         if (hdc)
         {
             RECT rc;
-            if (ListView_GetItemRect(this->_hwndList, v5, &rc, LVIR_LABEL))
+            if (ListView_GetItemRect(_hwndList, v5, &rc, LVIR_LABEL))
             {
                 PaneItem* pitem = _GetItemFromLV(v5);
                 if (!pitem->CanItemWrap())
                 {
-                    LVITEMW lvi; // [esp+Ch] [ebp-E4h] BYREF
+                    LVITEM lvi;
                     lvi.iSubItem = 0;
-                    int v18 = this->_cxMarlett + rc.left + 4;
+                    int v18 = _cxMarlett + rc.left + 4;
                     lvi.pszText = chText;
                     lvi.cchTextMax = 64;
-                    SendMessageW(this->_hwndList, LVM_GETITEMTEXTW, v5, (LPARAM)&lvi);
-                    DrawTextW(hdc, chText, -1, &rc, 0x400u);
+                    SendMessage(_hwndList, LVM_GETITEMTEXTW, v5, (LPARAM)&lvi);
+                    DrawText(hdc, chText, -1, &rc, 0x400);
+
                     if (v20 <= v18 + rc.right)
                     {
                         v20 = v18 + rc.right;
@@ -5532,7 +5433,7 @@ int SFTBarHost::_CalcMaxTextWith()
     }
 
     SelectObject(hdc, h);
-    ReleaseDC(this->_hwndList, hdc);
+    ReleaseDC(_hwndList, hdc);
     return v20;
 }
 
@@ -5558,14 +5459,14 @@ HRESULT SFTBarHost::GetLVText(const PaneItem *pitem, LPWSTR pszText, DWORD cch)
 void SFTBarHost::_DrawSeparator(HDC hdc, int x, int y)
 {
     RECT rc;
-    rc.left = x;
-    rc.top = y;
-    rc.right = rc.left + _cxTile;
-    rc.bottom = rc.top + _cySep;
+    rc.left     = x;
+    rc.top      = y;
+    rc.right    = rc.left + _cxTile;
+    rc.bottom   = rc.top + _cySep;
 
     if (_hTheme)
     {
-        DrawThemeBackground(_hTheme, hdc, _iThemePartSep, 0, &rc, nullptr);
+        DrawThemeBackground(_hTheme, hdc, _iThemePartSep, 0, &rc, NULL);
     }
     else
     {

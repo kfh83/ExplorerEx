@@ -268,7 +268,6 @@ public:
         LPWSTR pszOut;
         DisplayNameOfAsString(psf, pidlItem, shgno, &pszOut);
         return pszOut;
-        //return _DisplayNameOf(psf, pidlItem, shgno);
     }
 
     /*
@@ -281,11 +280,6 @@ public:
      *  Optional hook into the SMN_INITIALUPDATE notification.
      */
     virtual void PrePopulate() { }
-
-    /*
-     *  Optional handler that says whether an item is still valid.
-     */
-    virtual BOOL IsItemStillValid(PaneItem *pitem) { return TRUE; }
 
     /*
      *  Required if HOSTF_CASCADEMENU.  Invoked when user wants to view

@@ -1431,10 +1431,6 @@ int SpecialFolderList::CompareItems(PaneItem *p1, PaneItem *p2)
 HRESULT SpecialFolderList::GetFolderAndPidl(PaneItem *p,
         IShellFolder **ppsfOut, PCITEMID_CHILD *ppidlOut)
 {
-#ifdef DEAD_CODE
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
-    return SHBindToIDListParent(pitem->_pidl, IID_PPV_ARGS(ppsfOut), ppidlOut);
-#else
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
     if (pitem->_pidl)
     {
@@ -1449,36 +1445,24 @@ HRESULT SpecialFolderList::GetFolderAndPidl(PaneItem *p,
     {
         return SHBindToParent(pitem->_pidlSimple, IID_PPV_ARGS(ppsfOut), ppidlOut);
     }
-#endif
 }
 
-void SpecialFolderList::GetItemInfoTip(PaneItem *p, LPTSTR pszText, DWORD cch)
+void SpecialFolderList::GetItemInfoTip(PaneItem* p, LPTSTR pszText, DWORD cch)
 {
-#ifdef DEAD_CODE
-    SpecialFolderListItem *pitem = (SpecialFolderListItem*)p;
-    if (pitem->_psfd->_iToolTip)
-        LoadString(_AtlBaseModule.GetResourceInstance(), pitem->_psfd->_iToolTip, pszText, cch);
-    else
-        SFTBarHost::GetItemInfoTip(p, pszText, cch);    // call the base class
-#else
     SpecialFolderListItem* pitem = (SpecialFolderListItem*)p;
 
-    int v6;
+    BOOL fHasCustomTooltip;
     if (pitem->_psfd->_CustomTooltipCallback)
-        //v6 = pitem->_psfd->_CustomTooltipCallback(this, pitem, pszText, cch);
-		v6 = (pitem->_psfd->*(pitem->_psfd->_CustomTooltipCallback))(this, pitem, pszText, cch);
+        fHasCustomTooltip = (pitem->_psfd->*(pitem->_psfd->_CustomTooltipCallback))(this, pitem, pszText, cch);
     else
-        v6 = 0;
-
-    if (!v6)
+        fHasCustomTooltip = FALSE;
+    if (!fHasCustomTooltip)
     {
-        UINT _iToolTip = pitem->_psfd->_iToolTip;
-        if (_iToolTip)
-            LoadString(g_hinstCabinet, _iToolTip, pszText, cch);
+        if (pitem->_psfd->_iToolTip)
+            LoadString(_Module.GetResourceInstance(), pitem->_psfd->_iToolTip, pszText, cch);
         else
             SFTBarHost::GetItemInfoTip(p, pszText, cch);
     }
-#endif
 }
 
 void SpecialFolderList::UpdateImage(int iImage)
@@ -1500,24 +1484,6 @@ void SpecialFolderList::_NotifyHoverImage(int iImage)
 
 HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewName)
 {
-#ifdef DEAD_CODE
-    SpecialFolderListItem *pitem = (SpecialFolderListItem*)p;
-    IShellFolder *psf;
-    LPCITEMIDLIST pidlItem;
-    HRESULT hr = GetFolderAndPidl(pitem, &psf, &pidlItem);
-    if (SUCCEEDED(hr))
-    {
-        LPITEMIDLIST pidlNew;
-        hr = psf->SetNameOf(_hwnd, pidlItem, ptszNewName, SHGDN_INFOLDER, &pidlNew);
-        if (SUCCEEDED(hr))
-        {
-            pitem->ReplaceLastPidlElement(pidlNew);
-        }
-        psf->Release();
-    }
-
-    return hr;
-#else
     SpecialFolderListItem *pitem = (SpecialFolderListItem *)p;
     IShellFolder *psf;
     LPCITEMIDLIST pidlItem;
@@ -1534,10 +1500,7 @@ HRESULT SpecialFolderList::ContextMenuRenameItem(PaneItem *p, LPCTSTR ptszNewNam
         psf->Release();
     }
     return hr;
-#endif
 }
-
-constexpr int SBM_REBUILDMENU_1 = (WM_USER + 13);
 
 void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
 {
@@ -1552,15 +1515,6 @@ void SpecialFolderList::OnChangeNotify(UINT id, LONG lEvent, LPCITEMIDLIST pidl1
     PostMessage(_hwnd, 0x40A, 1, 0);
 }
 
-
-#ifdef DEAD_CODE
-BOOL SpecialFolderList::IsItemStillValid(PaneItem *p)
-{
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
-    return pitem->IsStillValid();
-}
-#endif
-
 BOOL SpecialFolderList::IsBold(PaneItem *p)
 {
     SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
@@ -1569,70 +1523,6 @@ BOOL SpecialFolderList::IsBold(PaneItem *p)
 
 HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
 {
-#ifdef DEAD_CODE
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
-    IShellFolder *psf;
-    HRESULT hr = SHBindToObjectEx(NULL, pitem->_pidl, NULL, IID_PPV_ARGS(&psf));
-    if (SUCCEEDED(hr))
-    {
-        IShellMenu *psm;
-        hr = CoCreateInstanceHook(CLSID_MenuBand, NULL, CLSCTX_INPROC_SERVER,
-            IID_PPV_ARGS(&psm));
-        if (SUCCEEDED(hr))
-        {
-
-            //
-            //  Recent Documents requires special treatment.
-            //
-            IShellMenuCallback *psmc = NULL;
-            hr = pitem->_psfd->CreateShellMenuCallback(&psmc);
-
-            if (SUCCEEDED(hr))
-            {
-                DWORD dwFlags = SMINIT_TOPLEVEL | SMINIT_VERTICAL | pitem->_psfd->_dwShellFolderFlags;
-                if (IsRestrictedOrUserSetting(HKEY_CURRENT_USER, REST_NOCHANGESTARMENU,
-                    TEXT("Advanced"), TEXT("Start_EnableDragDrop"),
-                    ROUS_DEFAULTALLOW | ROUS_KEYALLOWS))
-                {
-                    dwFlags |= SMINIT_RESTRICT_DRAGDROP | SMINIT_RESTRICT_CONTEXTMENU;
-                }
-                psm->Initialize(psmc, 0, 0, dwFlags);
-
-                HKEY hkCustom = NULL;
-                if (pitem->_psfd->_pszCustomizeKey)
-                {
-                    RegCreateKeyEx(HKEY_CURRENT_USER, pitem->_psfd->_pszCustomizeKey,
-                        NULL, NULL, REG_OPTION_NON_VOLATILE,
-                        KEY_READ | KEY_WRITE, NULL, &hkCustom, NULL);
-                }
-
-                dwFlags = SMSET_USEBKICONEXTRACTION;
-                hr = psm->SetShellFolder(psf, pitem->_pidl, hkCustom, dwFlags);
-                if (SUCCEEDED(hr))
-                {
-                    // SetShellFolder takes ownership of hkCustom
-                    *ppsm = psm;
-                    psm->AddRef();
-                }
-                else
-                {
-                    // Clean up the registry key since SetShellFolder
-                    // did not take ownership
-                    if (hkCustom)
-                    {
-                        RegCloseKey(hkCustom);
-                    }
-                }
-
-                ATOMICRELEASE(psmc); // psmc can be NULL
-            }
-            psm->Release();
-        }
-        psf->Release();
-    }
-
-    return hr;
-#else
     SpecialFolderListItem* pitem = static_cast<SpecialFolderListItem*>(p);
     PIDLIST_RELATIVE pidl = pitem->_pidlCascade;
     if (!pidl)
@@ -1689,7 +1579,6 @@ HRESULT SpecialFolderList::GetCascadeMenu(PaneItem *p, IShellMenu **ppsm)
     }
 
     return hr;
-#endif
 }
 
 TCHAR SpecialFolderList::GetItemAccelerator(PaneItem *p, int iItemStart)
@@ -1729,8 +1618,6 @@ LRESULT SpecialFolderList::OnWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 BOOL _IsItemHiddenOnDesktop(LPCTSTR pszGuid)
 {
     return _SHRegGetBoolValueFromHKCUHKLM(REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL, pszGuid, FALSE);
-    //return SHRegGetBoolUSValue(REGSTR_PATH_HIDDEN_DESKTOP_ICONS_STARTPANEL,
-    //                           pszGuid, FALSE, FALSE);
 }
 
 UINT SpecialFolderList::AdjustDeleteMenuItem(PaneItem *p, UINT *puiFlags)
@@ -1785,21 +1672,6 @@ HRESULT SpecialFolderList::ContextMenuInvokeItem(PaneItem *p, IContextMenu *pcm,
 
     return hr;
 }
-
-#ifdef DEAD_CODE
-
-HRESULT SpecialFolderList::_GetUIObjectOfItem(PaneItem *p, REFIID riid, LPVOID *ppv)
-{
-    SpecialFolderListItem *pitem = static_cast<SpecialFolderListItem *>(p);
-    if (pitem->_psfd->IsCSIDL() && (CSIDL_RECENT == pitem->_psfd->GetCSIDL()))
-    {
-        *ppv = NULL;
-        return E_NOTIMPL;
-    }
-    return SFTBarHost::_GetUIObjectOfItem(p, riid, ppv);
-}
-
-#endif
 
 HRESULT SpecialFolderList::OnItemUpdate(PaneItem *p, WPARAM wParam, LPARAM lParam)
 {

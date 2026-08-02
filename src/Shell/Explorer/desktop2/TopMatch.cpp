@@ -308,11 +308,9 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		_clrBG = GetSysColor(COLOR_MENU);
 	}
 
-	const WCHAR* pszTheme = IsCompositionActive() ? L"StartMenuComposited" : L"StartMenu";
-	SetWindowTheme(_hwndList, pszTheme, nullptr);
+	SetWindowTheme(_hwndList, IsCompositionActive() ? L"StartMenuComposited" : L"StartMenu", nullptr);
 
 	_cyIcon = GetSystemMetrics(SM_CYSMICON);
-
 
 	IImageList2* piml;
 	if (SUCCEEDED(SHGetImageList(-1, IID_PPV_ARGS(&piml))))
@@ -335,8 +333,8 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	_cyIcon += 2 * SHGetSystemMetricsScaled(SM_CYEDGE) + 2;
 	ListView_SetImageList(_hwndList, _himl, LVSIL_NORMAL);
 
-	LoadStringW(g_hinstCabinet, 8243, _szSearchEverywhere, ARRAYSIZE(_szSearchEverywhere));
-	LoadStringW(g_hinstCabinet, 8244, _szSearchInternet, ARRAYSIZE(_szSearchInternet));
+	LoadString(_Module.GetResourceInstance(), 8243, _szSearchEverywhere, ARRAYSIZE(_szSearchEverywhere));
+	LoadString(_Module.GetResourceInstance(), 8244, _szSearchInternet, ARRAYSIZE(_szSearchInternet));
 	SetAccessibleSubclassWindow(_hwndList);
 	return 0;
 }
@@ -474,69 +472,80 @@ LRESULT CTopMatch::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
 
 LRESULT CTopMatch::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
 {
-	LRESULT iItem1;
-	WPARAM wParam;
-	LRESULT iCurSel1;
-	LRESULT iItem;
-	LRESULT iCurSel;
-	LVFINDINFOW lvfi;
+	LVHITTESTINFO lvhti;
+	LVFINDINFO lvfi;
 
-	switch (pdm->flags & 0xF)
+	switch (pdm->flags & SMNDM_FINDMASK)
 	{
-		case 0u:
-		case 1u:
-		case 8u:
-		case 0xBu:
+		case SMNDM_FINDFIRSTMATCH:
+		case SMNDM_FINDNEXTMATCH:
+		case SMNDM_OPENCASCADE:
+		case SMNDM_UNKNOWN:
 			return 0;
-		case 2u:
+
+		case SMNDM_FINDNEAREST:
 			lvfi.pt = pdm->pt;
 			lvfi.vkDirection = VK_UP;
-			goto LABEL_13;
-		case 3u:
-			goto LABEL_12;
-		case 4u:
-			lvfi.vkDirection = VK_END;
-			goto LABEL_13;
-		case 5u:
-			wParam = pdm->pmsg->wParam;
-			if (wParam == VK_UP)
-			{
-				iCurSel1 = _GetLVCurSel();
-				iItem = SendMessageW(_hwndList, LVM_GETNEXTITEM, iCurSel1, 0x100);
-			LABEL_7:
-				pdm->itemID = iItem;
-				return iItem != iCurSel1 && iItem >= 0;
-			}
-			if (wParam != VK_DOWN)
-			{
-				return 0;
-			}
-			iCurSel1 = _GetLVCurSel();
-			if (iCurSel1 != -1)
-			{
-				iItem = SendMessage(_hwndList, LVM_GETNEXTITEM, iCurSel1, 0x200);
-				goto LABEL_7;
-			}
-		LABEL_12:
+			lvfi.flags = LVFI_NEARESTXY;
+			pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+			return pdm->itemID >= 0;
+
+		case SMNDM_FINDFIRST:
 			lvfi.vkDirection = VK_HOME;
-		LABEL_13:
-			lvfi.flags = 0x40;
-			iItem1 = SendMessage(_hwndList, LVM_FINDITEMW, -1, (LPARAM)&lvfi);
-		LABEL_14:
-			pdm->itemID = iItem1;
-			return iItem1 >= 0;
-		case 6u:
-			iCurSel = _GetLVCurSel();
-			if (iCurSel < 0)
-				return 0;
-			_ActivateItem(iCurSel, pdm->flags & 0x400);
+			lvfi.flags = LVFI_NEARESTXY;
+			pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+			return pdm->itemID >= 0;
+
+		case SMNDM_FINDLAST:
+			lvfi.vkDirection = VK_END;
+			lvfi.flags = LVFI_NEARESTXY;
+			pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+			return pdm->itemID >= 0;
+
+		case SMNDM_FINDNEXTARROW:
+			if (pdm->pmsg->wParam == VK_UP)
+			{
+				int iItem = _GetLVCurSel();
+				pdm->itemID = ListView_GetNextItem(_hwndList, iItem, LVNI_ABOVE);
+				return pdm->itemID != iItem && pdm->itemID >= 0;
+			}
+
+			if (pdm->pmsg->wParam == VK_DOWN)
+			{
+				int iItem = _GetLVCurSel();
+				if (iItem != -1)
+				{
+					pdm->itemID = ListView_GetNextItem(_hwndList, iItem, LVNI_BELOW);
+					return pdm->itemID != iItem && pdm->itemID >= 0;
+				}
+
+				lvfi.vkDirection = VK_HOME;
+				lvfi.flags = LVFI_NEARESTXY;
+				pdm->itemID = ListView_FindItem(_hwndList, -1, &lvfi);
+				return pdm->itemID >= 0;
+			}
+			return 0;
+
+		case SMNDM_INVOKECURRENTITEM:
+		{
+			int iItem = _GetLVCurSel();
+			if (iItem >= 0)
+			{
+				_ActivateItem(iItem, pdm->flags & SMNDM_KEYBOARD);
+				return 1;
+			}
+			return 0;
+		}
+
+		case SMNDM_HITTEST:
+			lvhti.pt = pdm->pt;
+			pdm->itemID = ListView_HitTest(_hwndList, &lvhti);
+			return pdm->itemID >= 0;
+
+		case SMNDM_FINDITEMID:
+		case SMNDM_MOUSEDOWN:
 			return 1;
-		case 7u:
-			iItem1 = SendMessage(_hwndList, LVM_HITTEST, 0, (LPARAM)&pdm->pt);
-			goto LABEL_14;
-		case 9u:
-		case 0xAu:
-			return 1;
+
 		default:
 			ASSERT(!"Unknown SMNDM command"); // 513
 			return 0;
@@ -552,7 +561,7 @@ LRESULT CTopMatch::_OnSMNGetMinSize(PSMNGETMINSIZE pgms)
 
 void CTopMatch::_SetTileWidth(int cxTile)
 {
-	LVTILEVIEWINFO tvi = {};
+	LVTILEVIEWINFO tvi = {0};
 	tvi.cbSize = sizeof(tvi);
 	tvi.dwMask = LVTVIM_TILESIZE | LVTVIM_COLUMNS;
 	tvi.dwFlags = LVTVIF_FIXEDWIDTH | LVTVIF_FIXEDHEIGHT;
@@ -595,75 +604,65 @@ void CTopMatch::_AddSearchExtension()
 
 void CTopMatch::_AddSearchItem(LPARAM lParam, LPWSTR pszText)
 {
-	// [esp-10h] [ebp-70h]
-	// [esp-10h] [ebp-70h]
-	LVITEMW lvi; // [esp+Ch] [ebp-54h] BYREF
-	LVFINDINFOW lvfi; // [esp+48h] [ebp-18h] BYREF
-
-	if ((!SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu) || lParam)
+	if ((!SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu) || lParam != 0)
 		&& (!SHWindowsPolicy(POLID_NoSearchInternetLinkInStartMenu) || lParam != 1))
 	{
-		memset(&lvi.iItem, 0, 0x38u);
+		LVFINDINFO lvfi;
+		LVITEM lvi = {0};
+
 		lvi.pszText = pszText;
-		lvfi.flags = 1;
-		lvi.mask = 5;
+		lvfi.flags = LVFI_PARAM;
+		lvi.mask = LVIF_TEXT | LVIF_PARAM;
 		lvi.lParam = lParam;
 		lvfi.lParam = lParam;
-		if (SendMessageW(_hwndList, LVM_FINDITEMW, 0xFFFFFFFF, (LPARAM)&lvfi) < 0)
+		if (ListView_FindItem(_hwndList, -1, &lvfi) < 0 && pszText != nullptr)
 		{
-			if (pszText)
-			{
-				lvi.mask |= 2u;
-				lvi.iImage = 22;
-				lvi.iItem = lParam;
-				SendMessageW(_hwndList, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
-			}
+			lvi.mask |= LVIF_IMAGE;
+			lvi.iImage = 22;
+			lvi.iItem = lParam;
+			ListView_InsertItem(_hwndList, &lvi);
 		}
 	}
 }
 
-LRESULT CTopMatch::_ActivateItem(int iItem, int b)
+LRESULT CTopMatch::_ActivateItem(int iItem, BOOL fUnused)
 {
 	HRESULT hr = E_FAIL;
 	// Skipped telemetry StartMenu_Search_TopResult_Launch (585)
 
-	LVITEMW lvi = {};
+	LVITEM lvi = {0};
 	lvi.iItem = iItem;
 	lvi.mask = LVIF_PARAM;
-	if (SendMessageW(_hwndList, LVM_GETITEMW, 0, (LPARAM)&lvi))
+	if (ListView_GetItem(_hwndList, &lvi))
 	{
 		if (lvi.lParam == 0)
 		{
-			if (SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu))
+			if (!SHWindowsPolicy(POLID_NoSearchComputerLinkInStartMenu))
 			{
-				return SUCCEEDED(hr);
+				// Skipped telemetry StartMenu_Search_Computer_Count (1141)
+				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 322, 0, nullptr, nullptr);
 			}
-			// Skipped telemetry StartMenu_Search_Computer_Count (1141)
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 322, 0, nullptr, nullptr);
 		}
 		else if (lvi.lParam == 1)
 		{
-			if (SHWindowsPolicy(POLID_NoSearchInternetLinkInStartMenu))
+			if (!SHWindowsPolicy(POLID_NoSearchInternetLinkInStartMenu))
 			{
-				return SUCCEEDED(hr);
+				// Skipped telemetry StartMenu_Search_Internet_Count (1142);
+				hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 319, 0, nullptr, nullptr);
 			}
-			// Skipped telemetry StartMenu_Search_Internet_Count (1142);
-			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 319, 0, nullptr, nullptr);
 		}
-		else
+		else if (lvi.lParam == 2)
 		{
-			if (lvi.lParam != 2)
-			{
-				return SUCCEEDED(hr);
-			}
 			hr = IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenBox, &CGID_DV2ControlHost, 321, 0, nullptr, nullptr);
 		}
+
 		if (SUCCEEDED(hr))
 		{
 			SMNMCOMMANDINVOKED ci;
 			_SendNotify(GetParent(_hwnd), SMN_COMMANDINVOKED, &ci.hdr);
 		}
 	}
+
 	return SUCCEEDED(hr);
 }
 
@@ -678,7 +677,7 @@ BOOL TopMatch_RegisterClass()
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_GLOBALCLASS;
 	wc.lpfnWndProc = CTopMatch::s_WndProc;
-	wc.hInstance = g_hinstCabinet;
+	wc.hInstance = _Module.GetModuleInstance();
 	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wc.lpszClassName = WC_TOPMATCH;
 	return RegisterClassExW(&wc);

@@ -186,6 +186,7 @@ typedef struct SMNDIALOGMESSAGE {
 #define SMNDM_OPENCASCADE       0x0008  // Invoke current item if it cascade
 #define SMNDM_FINDITEMID        0x0009  // Find the specied item (itemID)
 #define SMNDM_MOUSEDOWN         0x000A
+#define SMNDM_UNKNOWN           0x000B
 #define SMNDM_FINDMASK          0x000F  // What type of search?
 
 #define SMNDM_SELECT            0x0100  // Select found item?

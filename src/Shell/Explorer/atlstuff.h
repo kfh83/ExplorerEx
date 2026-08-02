@@ -14,8 +14,7 @@
 
 #include <atlbase.h>
 
-//extern CComModule _Module;
-
+extern CComModule _Module;
 
 #include <atlcom.h>
 

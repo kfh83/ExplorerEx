@@ -46,7 +46,7 @@ HWND CreateBalloonTip(HWND hwndOwner, int x, int y, HFONT hf,
     HWND hwnd = CreateWindowEx(0, TOOLTIPS_CLASS, NULL, dwStyle,
                                0, 0, 0, 0,
                                hwndOwner, NULL,
-                               _AtlBaseModule.GetModuleInstance(), NULL);
+                               _Module.GetModuleInstance(), NULL);
     if (hwnd)
     {
         MakeMultilineTT(hwnd);
@@ -57,17 +57,17 @@ HWND CreateBalloonTip(HWND hwndOwner, int x, int y, HFONT hf,
         ti.hwnd = hwndOwner;
         ti.uId = reinterpret_cast<UINT_PTR>(hwndOwner);
         ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS | TTF_TRACK;
-        ti.hinst = _AtlBaseModule.GetResourceInstance();
+        ti.hinst = _Module.GetResourceInstance();
 
         // We can't use MAKEINTRESOURCE because that allows only up to 80
         // characters for text, and our text can be longer than that.
         ti.lpszText = szBuf;
-        if (LoadString(_AtlBaseModule.GetResourceInstance(), idsText, szBuf, ARRAYSIZE(szBuf)))
+        if (LoadString(_Module.GetResourceInstance(), idsText, szBuf, ARRAYSIZE(szBuf)))
         {
             SendMessage(hwnd, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&ti));
 
             if (idsTitle &&
-                LoadString(_AtlBaseModule.GetResourceInstance(), idsTitle, szBuf, ARRAYSIZE(szBuf)))
+                LoadString(_Module.GetResourceInstance(), idsTitle, szBuf, ARRAYSIZE(szBuf)))
             {
                 SendMessage(hwnd, TTM_SETTITLE, TTI_INFO, reinterpret_cast<LPARAM>(szBuf));
             }

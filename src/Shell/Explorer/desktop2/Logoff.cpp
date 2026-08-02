@@ -225,7 +225,7 @@ void AddBitmapToToolbar(HWND hwndTB, HBITMAP hBitmap, int cxTotal, int cy, UINT 
 BOOL CLogoffPane::_SetTBButtons(int id, UINT iMsg)
 {
     HBITMAP hBitmap = (HBITMAP)LoadImageW(
-        _AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCEW(id), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
+        _Module.GetModuleInstance(), MAKEINTRESOURCEW(id), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
     if (hBitmap)
     {
         BITMAP bm;
@@ -1684,7 +1684,7 @@ BOOL WINAPI LogoffPane_RegisterClass()
     wc.style         = CS_GLOBALCLASS;
     wc.cbWndExtra    = sizeof(LPVOID);
     wc.lpfnWndProc   = CLogoffPane::WndProc;
-    wc.hInstance     = _AtlBaseModule.GetModuleInstance();
+    wc.hInstance     = _Module.GetModuleInstance();
     wc.hCursor       = LoadCursor( NULL, IDC_ARROW );
     wc.hbrBackground = (HBRUSH)(NULL);
     wc.lpszClassName = TEXT("DesktopLogoffPane");

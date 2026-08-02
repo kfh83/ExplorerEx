@@ -61,8 +61,8 @@ private:
 	void _SetTileWidth(int cxTile);
 	void _UpdateTopMatchSizeInOpenView();
 	void _AddSearchExtension();
-	void _AddSearchItem(LPARAM lParam, LPWSTR a3);
-	LRESULT _ActivateItem(int iItem, BOOL b);
+	void _AddSearchItem(LPARAM lParam, LPWSTR pszText);
+	LRESULT _ActivateItem(int iItem, BOOL fUnused);
 	int _GetLVCurSel();
 
 private:
