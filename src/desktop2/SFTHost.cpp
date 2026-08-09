@@ -297,7 +297,7 @@ void SFTBarHost::_SetTileWidth(int cxTile)
     tvi.cLines = _CanHaveSubtitles() ? 1 : 0;
 
     // _cyTile has the padding into account, but we want each item to be the height without padding
-    tvi.sizeTile.cy = _cyTile - _cyMargin - _cyTilePadding;
+    tvi.sizeTile.cy = _cyTile - _cyTilePadding;
     tvi.sizeTile.cx = cxTile;
     ListView_SetTileViewInfo(_hwndList, &tvi);
     _cxTile = cxTile;
