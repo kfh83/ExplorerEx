@@ -240,6 +240,9 @@ void SFTBarHost::_ComputeTileMetrics()
 {
     int cyTile = _cyIcon;
 
+    // @MOD: RTM and SP2+ style, runtime check.
+    BOOL fRtmStyle = SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("ExplorerEx_RtmStyle"), FALSE, FALSE);
+
     HDC hdc = GetDC(_hwndList);
     if (hdc)
     {
@@ -249,7 +252,7 @@ void SFTBarHost::_ComputeTileMetrics()
         SIZE siz;
         if (GetTextExtentPoint(hdc, TEXT("0"), 1, &siz))
         {
-            if (_CanHaveSubtitles())
+            if (_CanHaveSubtitles() || (!fRtmStyle && _iconsize == ICONSIZE_MEDIUM))
             {
                 // Reserve space for the subtitle too
                 siz.cy *= 2;
@@ -265,7 +268,11 @@ void SFTBarHost::_ComputeTileMetrics()
 
     // Listview draws text at left margin + icon + edge
     _cxIndent = _cxMargin + _cxIcon + GetSystemMetrics(SM_CXEDGE);
-    _cyTile = cyTile + (4 * _cyMargin) + _cyTilePadding;
+
+    if (fRtmStyle)
+        _cyTile = cyTile + (4 * _cyMargin) + _cyTilePadding;
+    else
+        _cyTile = cyTile + _cyTilePadding + _cyMargin * (_iconsize == ICONSIZE_MEDIUM ? 2 : 4); // SP2+
 }
 
 void SFTBarHost::_SetTileWidth(int cxTile)
