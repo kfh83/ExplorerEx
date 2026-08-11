@@ -4,6 +4,7 @@
 
 // window class name of user pane control
 #define WC_USERPANE TEXT("Desktop User Pane")
+#define WC_USERPICTURE TEXT("Desktop User Picture")
 
 // hardcoded width and height of user picture
 #define USERPICWIDTH 48

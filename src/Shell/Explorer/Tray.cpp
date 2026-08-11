@@ -4482,7 +4482,7 @@ HRESULT CTray::_LoadInProc(PCOPYDATASTRUCT pcds)
     {
         return E_FAIL;
     }
-    HRESULT hr = _poctSysTray->Exec(&plipd->clsid, 2, plipd->dwFlags, nullptr, nullptr);
+    HRESULT hr = _poctSysTray->Exec(&plipd->clsid, SSOCMDID_OPEN, plipd->dwFlags, nullptr, nullptr);
     return hr;
 }
 
@@ -5759,25 +5759,25 @@ BOOL CTray::ShowClockFlyoutAsNeeded(LPARAM lParam)
             {
                 case STICK_TOP:
                 {
-                    rc.bottom = rcClockWnd.bottom - _cyClockMargin;
+                    rc.bottom = rcClockWnd.bottom - _iSizingBarHeight;
                     break;
                 }
 
                 case STICK_BOTTOM:
                 {
-                    rc.top = rcClockWnd.top + _cyClockMargin;
+                    rc.top = rcClockWnd.top + _iSizingBarHeight;
                     break;
                 }
 
                 case STICK_LEFT:
                 {
-                    rc.right = rcClockWnd.right - _cyClockMargin;
+                    rc.right = rcClockWnd.right - _iSizingBarHeight;
                     break;
                 }
 
                 case STICK_RIGHT:
                 {
-                    rc.left = rcClockWnd.left + _cyClockMargin;
+                    rc.left = rcClockWnd.left + _iSizingBarHeight;
                     break;
                 }
             }

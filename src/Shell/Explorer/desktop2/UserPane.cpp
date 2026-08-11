@@ -540,7 +540,7 @@ void CUserPane::_DoFade()
             LONGLONG v5 = 1000 * v10.QuadPart / Frequency.QuadPart;
             if ((unsigned int)v5 >= this->_dwFadeOut && (unsigned int)v5 >= this->_dwFadeIn)
             {
-                CUserPane::_UpdatePictureWindow(0xFF, 0);
+                _UpdatePictureWindow(0xFF, 0);
                 break;
             }
             
@@ -553,7 +553,7 @@ void CUserPane::_DoFade()
                 a2 = 0;
             else
                 a2 = (unsigned int)(255 * (this->_dwFadeOut - v5)) / this->_dwFadeOut;
-            CUserPane::_UpdatePictureWindow(v13, a2);
+            _UpdatePictureWindow(v13, a2);
             Sleep(10);
             if (v12 != *p_fadeA)
                 break;
@@ -793,7 +793,7 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
         {
             SHChangeNotifyEntry fsne;
             fsne.fRecursive = FALSE;
-            fsne.pidl = nullptr;
+            fsne.pidl = NULL;
             _uidChangeRegister = SHChangeNotifyRegister(
                 _hwnd, SHCNRF_NewDelivery | SHCNRF_ShellLevel, SHCNE_EXTENDED_EVENT, UPM_CHANGENOTIFY, 1, &fsne);
         }
@@ -804,7 +804,7 @@ HRESULT CUserPane::_UpdateUserInfo(int fInitial)
 
         if (!fInitial)
         {
-            IUnknown_QueryServiceExec(_punkSite, SID_SFolderView, &CGID_DV2ControlHost, 329, 0, nullptr, nullptr);
+            IUnknown_QueryServiceExec(_punkSite, SID_SFolderView, &CGID_DV2ControlHost, 329, 0, NULL, NULL);
         }
     }
     OnSize();
@@ -822,14 +822,15 @@ BOOL WINAPI UserPicture_RegisterClass()
     WNDCLASSEX wc;
     ZeroMemory(&wc, sizeof(wc));
 
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_GLOBALCLASS;
-    wc.lpfnWndProc = CUserPane::s_WndProcPicture;
-    wc.hInstance = g_hinstCabinet;
-    wc.hbrBackground = nullptr;
-    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.lpszClassName = L"Desktop User Picture";
-    return RegisterClassExW(&wc);
+    wc.cbSize        = sizeof(wc);
+    wc.style         = CS_GLOBALCLASS;
+    wc.lpfnWndProc   = CUserPane::s_WndProcPicture;
+    wc.hInstance     = _Module.GetModuleInstance();
+    wc.hbrBackground = NULL;
+    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.lpszClassName = WC_USERPICTURE;
+
+    return RegisterClassEx(&wc);
 }
 
 BOOL WINAPI UserPane_RegisterClass()
@@ -840,9 +841,9 @@ BOOL WINAPI UserPane_RegisterClass()
     wc.cbSize        = sizeof(wc);
     wc.style         = CS_GLOBALCLASS;
     wc.lpfnWndProc   = CUserPane::s_WndProcPane;
-    wc.hInstance     = GetModuleHandle(NULL);
-    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.hInstance     = _Module.GetModuleInstance();
     wc.hbrBackground = (HBRUSH)(NULL);
+    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
     wc.lpszClassName = WC_USERPANE;
 
     return RegisterClassEx(&wc);

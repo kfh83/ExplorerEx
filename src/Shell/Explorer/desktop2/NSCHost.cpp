@@ -10,6 +10,8 @@
 #include "ShUndoc.h"
 #include "util.h"
 
+struct IStartMenuMSIAds;
+
 HRESULT CNSCHost::QueryInterface(REFIID riid, void** ppvObj)
 {
 	static const QITAB qit[] =
@@ -948,9 +950,96 @@ HRESULT CNSCHost::_Invoke(IShellItem* psi, BOOL fDoDefault)
 	return hr;
 }
 
+MIDL_INTERFACE("f1763f2a-6e44-426d-ac5b-641c866dcd63")
+IStartMenuMSIAds : IUnknown
+{
+	virtual HRESULT STDMETHODCALLTYPE IsMSIAds(ITEMIDLIST_ABSOLUTE*) = 0;
+};
+
+STDAPI IUnknown_GetIDList(IUnknown* punk, ITEMIDLIST_ABSOLUTE** ppidl)
+{
+	*ppidl = nullptr;
+
+	HRESULT hr = E_NOINTERFACE;
+
+	if (punk)
+	{
+		IPersistIDList* v8;
+		if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&v8))))
+		{
+			hr = v8->GetIDList(ppidl);
+			v8->Release();
+			return hr;
+		}
+
+		IPersistFolder2* ppf2;
+		if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&ppf2))))
+		{
+			hr = ppf2->GetCurFolder(ppidl);
+			if (FAILED(hr))
+			{
+				hr = E_FAIL;
+			}
+			ppf2->Release();
+			return hr;
+		}
+	}
+
+	return hr;
+}
+
 HRESULT CNSCHost::_IsItemMSIAds(IShellItem* psi)
 {
-	return E_NOTIMPL; // EXEX-Vista(allison): TODO.
+	IParentAndItem* ppai;
+	HRESULT hr = psi->QueryInterface(IID_PPV_ARGS(&ppai));
+	if (SUCCEEDED(hr))
+	{
+		LPITEMIDLIST pidlParent = nullptr;
+		LPITEMIDLIST pidlChild = nullptr;
+		hr = ppai->GetParentAndItem(&pidlParent, nullptr, &pidlChild);
+		if (SUCCEEDED(hr))
+		{
+			if (_pidl == nullptr || pidlParent == nullptr || !ILIsEqual(pidlParent, _pidl))
+			{
+				IUnknown_SafeReleaseAndNullPtr(_psf);
+				if (SUCCEEDED(SHBindToObject(nullptr, pidlParent, nullptr, IID_PPV_ARGS(&_psf))))
+				{
+					ILFree(_pidl);
+					_pidl = pidlParent;
+					pidlParent = nullptr;
+				}
+			}
+
+			LPITEMIDLIST pidl = nullptr;
+
+			IIdentityName* pin;
+			if (SUCCEEDED(SHBindToObject(_psf, pidlChild, nullptr, IID_PPV_ARGS(&pin))))
+			{
+				pin->GetItemIDList(&pidl);
+				pin->Release();
+			}
+			else
+			{
+				IUnknown_GetIDList(psi, &pidl);
+			}
+
+			hr = S_FALSE;
+
+			IStartMenuMSIAds* pMSIAds;
+			if (_psif && SUCCEEDED(_psif->QueryInterface(IID_PPV_ARGS(&pMSIAds))))
+			{
+				hr = pMSIAds->IsMSIAds(pidl);
+				pMSIAds->Release();
+			}
+
+			ILFree(pidlParent);
+			ILFree(pidlChild);
+			ILFree(pidl);
+		}
+		ppai->Release();
+	}
+
+	return hr;
 }
 
 HRESULT CNSCHost::_IsNewItem(IShellItem* psi)

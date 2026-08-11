@@ -1693,7 +1693,6 @@ BOOL WINAPI LogoffPane_RegisterClass()
 
 }
 
-
 class CLogOffMenuCallback
     : public CUnknown
     , public IShellMenuCallback
