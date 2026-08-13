@@ -514,7 +514,7 @@ BOOL CLogoffPane::_IsButtonHiddenOrDisabled(int i, DWORD dwFlags)
     tbbi.dwMask = dwFlags | TBIF_STATE;
     tbbi.cbSize = sizeof(tbbi);
     SendMessage(_hwndTB, TB_GETBUTTONINFO, i, reinterpret_cast<LPARAM>(&tbbi));
-    return (tbbi.fsState & TBSTATE_HIDDEN | TBSTATE_INDETERMINATE) != 0;
+    return (tbbi.fsState & TBSTATE_HIDDEN) != 0 || (tbbi.fsState & TBSTATE_INDETERMINATE) != 0;
 }
 
 LRESULT CLogoffPane::_OnSize(int x, int y)
@@ -652,9 +652,6 @@ typedef struct tagNMTBWRAPACCELERATOR
 
 LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
 {
-    NMHDR* v10;
-    LRESULT v13;
-
     if (pnm->hwndFrom == _hwndTB)
     {
         switch (pnm->code)
@@ -662,7 +659,8 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
             case TBN_WRAPACCELERATOR:
                 reinterpret_cast<NMTBWRAPACCELERATOR*>(pnm)->iButton = -1;
                 break;
-            case TBN_GETINFOTIPW:
+
+            case TBN_GETINFOTIP:
                 if (_GetCurPressedButton() == -1)
                 {
                     NMTBGETINFOTIP* ptbgit = reinterpret_cast<NMTBGETINFOTIP*>(pnm);
@@ -684,18 +682,21 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
                     }
                 }
                 break;
+
             case NM_CUSTOMDRAW:
                 return _OnCustomDraw(reinterpret_cast<NMTBCUSTOMDRAW*>(pnm));
+
             default:
                 return 0;
         }
+
         return 1;
     }
 
     if (pnm->hwndFrom == _hwndSdListenMsg)
     {
         _ApplyOptions();
-        _SendNotify(_hwnd, 209, nullptr);
+        _SendNotify(_hwnd, SMN_NEEDREPAINT, NULL);
         return 0;
     }
 
@@ -704,15 +705,18 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
         case SMN_REFRESHLOGOFF:
             _ApplyOptions();
             break;
+
         case 214:
             if (GetFocus() == _hwndTB)
             {
-                v13 = SendMessage(_hwndTB, TB_GETHOTITEM, 0, 0);
-                NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, v13 + 1);
+                int iHotItem = SendMessage(_hwndTB, TB_GETHOTITEM, 0, 0);
+                NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, iHotItem + 1);
             }
             goto L_SET_FOCUS;
+
         case 215:
             return _OnSMNFindItem(reinterpret_cast<SMNDIALOGMESSAGE*>(pnm));
+
         case 221:
             if (_psdListen)
             {
@@ -721,39 +725,41 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
                 // Skipped telemetry ShellTraceId_Explorer_ShutdownUX_StartMenuCriticalPath_Stop
             }
             return 0;
+
         case 224:
             if (_GetCurPressedButton() == 99)
             {
-                TBBUTTONINFOW tbbi;
+                TBBUTTONINFO tbbi;
                 tbbi.cbSize = sizeof(tbbi);
                 tbbi.dwMask = TBIF_COMMAND;
                 tbbi.idCommand = 0;
+                int iButton = (int)SendMessage(_hwndTB, TB_GETBUTTONINFO, 0, (LPARAM)&tbbi);
 
-                v10 = (NMHDR*)SendMessageW(_hwndTB, TB_GETBUTTONINFO, 0, (LPARAM)&tbbi);
-                pnm = v10;
+                _fSettingHotItem = TRUE;
+                SendMessage(_hwndTB, TB_SETHOTITEM, (WPARAM)iButton, 0);
+                _fSettingHotItem = FALSE;
 
-                _fSettingHotItem = 1;
-                SendMessageW(_hwndTB, TB_SETHOTITEM, (WPARAM)v10, 0);
-                _fSettingHotItem = 0;
-
-                SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
+                SendMessage(_hwndSplit, BM_SETSTATE, FALSE, 0);
                 if (SetFocus(_hwndTB) != _hwndTB)
                 {
-                    NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, (LONG)&pnm->hwndFrom + 1);
+                    NotifyWinEvent(EVENT_OBJECT_FOCUS, _hwndTB, OBJID_CLIENT, iButton + 1);
                 }
             }
             return 0;
+
         case 225:
             break;
+
         case NM_KILLFOCUS:
         L_SET_FOCUS:
             if (_fSplitButtonHot || _GetCurPressedButton() == 99)
             {
                 _fSplitButtonHot = 0;
-                SendMessageW(_hwndSplit, BM_SETSTATE, 0, 0);
-                InvalidateRect(_hwndSplit, nullptr, 0);
+                SendMessageW(_hwndSplit, BM_SETSTATE, FALSE, 0);
+                InvalidateRect(_hwndSplit, NULL, 0);
             }
             return 0;
+
         default:
             return 0;
     }
@@ -867,13 +873,9 @@ void CLogoffPane::_DoSplitButtonContextMenu(int a2)
 
 LRESULT CLogoffPane::_OnCommand(int id, WPARAM wParam, LPARAM lParam)
 {
-    LPARAM v5; // edi
-    WPARAM IdmFromCommand; // ebx
-    int v7; // eax
-    // eax
-    // [esp-10h] [ebp-3Ch]
-    // [esp-4h] [ebp-30h]
-    // [esp+28h] [ebp-4h]
+    LPARAM v5;
+    WPARAM IdmFromCommand;
+    int v7;
 
     int v14 = 0;
     if (id == 4)
@@ -987,7 +989,7 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
         rc.right = RECTWIDTH(pdis->rcItem);
         rc.bottom = HIWORD(SendMessage(_hwndTB, TB_GETBUTTONSIZE, 0, 0));
 
-        if (_hTheme == nullptr)
+        if (!_hTheme)
         {
             int iImage = (pdis->itemState & ODS_SELECTED) != 0 ? 1 : 0;
 
@@ -1001,6 +1003,7 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
                 {
                     rc.right = imageInfo.rcImage.right;
                 }
+
                 if (_fSplitButtonHot)
                 {
                     SHFillRectClr(pdis->hDC, &rc, GetSysColor(COLOR_HIGHLIGHT));
@@ -1021,10 +1024,11 @@ LRESULT CLogoffPane::_OnCustomDrawSplitButton(DRAWITEMSTRUCT* pdis)
                 }
 
                 WCHAR chOut = fRTL ? 'w' : '8';
-                DrawText(pdis->hDC, &chOut, 1, &rc, dtFlags);
-
                 COLORREF crText = GetSysColor(_fSplitButtonHot ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT);
-                SetTextColor(pdis->hDC, SetTextColor(pdis->hDC, crText));
+                COLORREF clr = SetTextColor(pdis->hDC, crText);
+
+                DrawText(pdis->hDC, &chOut, 1, &rc, dtFlags);
+                SetTextColor(pdis->hDC, clr);
                 SelectObject(pdis->hDC, hfMarlett);
             }
             if (iOldMode)
