@@ -504,7 +504,7 @@ LRESULT COpenBoxHost::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             if (SUCCEEDED(hr))
             {
                 WCHAR szText[260];
-                LoadStringW(g_hinstCabinet, 8246, szText, ARRAYSIZE(szText));
+                LoadStringW(_Module.GetResourceInstance(), 8246, szText, ARRAYSIZE(szText));
                 hr = _pssc->SetCueAndTooltipText(szText, nullptr);
                 if (SUCCEEDED(hr))
                 {
@@ -708,7 +708,7 @@ BOOL OpenBoxHost_RegisterClass()
     wcex.cbSize = sizeof(wcex);
     wcex.style = CS_GLOBALCLASS;
     wcex.lpfnWndProc = COpenBoxHost::s_WndProc;
-    wcex.hInstance = g_hinstCabinet;
+    wcex.hInstance = _Module.GetModuleInstance();
     wcex.hbrBackground = nullptr;
     wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wcex.lpszClassName = L"Desktop OpenBox Host";

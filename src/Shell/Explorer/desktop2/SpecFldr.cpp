@@ -168,7 +168,7 @@ public:
 
     BOOL GetCustomName(WCHAR** ppsz) const
     {
-        return _idsCustomName && SUCCEEDED(ResourceStringCoAllocCopy(g_hinstCabinet, _idsCustomName, ppsz));
+        return _idsCustomName && SUCCEEDED(ResourceStringCoAllocCopy(_Module.GetResourceInstance(), _idsCustomName, ppsz));
     }
 
 	// Taken from ep_taskbar by @amrsatrio
@@ -359,7 +359,7 @@ public:
         if (SUCCEEDED(pList->GetLVText((PaneItem*)pitem, szText, ARRAYSIZE(szText))))
         {
             WCHAR szBuf[256];
-            LoadString(g_hinstCabinet, IDS_CUSTOMTIP_USER, szBuf, ARRAYSIZE(szBuf));
+            LoadString(_Module.GetResourceInstance(), IDS_CUSTOMTIP_USER, szBuf, ARRAYSIZE(szBuf));
             bRet = SUCCEEDED(SHFormatMessageArg(FORMAT_MESSAGE_FROM_STRING, szBuf, 0, 0, pszText, cch, szText));
         }
         return bRet;

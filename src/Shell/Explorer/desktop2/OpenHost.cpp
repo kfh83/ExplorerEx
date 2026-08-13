@@ -532,7 +532,7 @@ BOOL WINAPI OpenViewHost_RegisterClass()
 	wc.cbSize			= sizeof(wc);
 	wc.style			= CS_GLOBALCLASS;
 	wc.lpfnWndProc		= COpenViewHost::s_WndProc;
-	wc.hInstance		= g_hinstCabinet;
+	wc.hInstance		= _Module.GetModuleInstance();
 	wc.hbrBackground	= (HBRUSH)nullptr;
 	wc.hCursor =		LoadCursorW(nullptr, IDC_ARROW);
 	wc.lpszClassName =	L"Desktop Open Pane Host";

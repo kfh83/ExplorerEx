@@ -276,7 +276,7 @@ LRESULT CTopMatch::_OnCreate(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		RECTHEIGHT(rc),
 		_hwnd,
 		nullptr,
-		g_hinstCabinet,
+		_Module.GetModuleInstance(),
 		nullptr
 	);
 	if (!_hwndList)

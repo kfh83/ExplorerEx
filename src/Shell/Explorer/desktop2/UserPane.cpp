@@ -661,7 +661,7 @@ HRESULT CUserPane::_CreateUserPicture()
 {
     _hwndStatic = SHFusionCreateWindowEx(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED, L"Desktop User Picture", L"user picture", CW_USEDEFAULT,
-        0, 0, _iFramedPicWidth, _iFramedPicHeight, _hwnd, nullptr, g_hinstCabinet, this);
+        0, 0, _iFramedPicWidth, _iFramedPicHeight, _hwnd, nullptr, _Module.GetModuleInstance(), this);
     if (!_hwndStatic)
     {
         return E_FAIL;
@@ -671,7 +671,7 @@ HRESULT CUserPane::_CreateUserPicture()
         _hwndStatic, GetWindow(GetAncestor(_hwnd, GA_ROOT), GW_HWNDPREV), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
 
     IStream* pstm = nullptr;
-    HRESULT hr = SHCreateStreamOnModuleResourceW(g_hinstCabinet, MAKEINTRESOURCE(IDR_FRAME), L"PNGFILE", &pstm);
+    HRESULT hr = SHCreateStreamOnModuleResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCE(IDR_FRAME), L"PNGFILE", &pstm);
     if (SUCCEEDED(hr))
     {
         _pgdipImage = Gdiplus::Bitmap::FromStream(pstm);

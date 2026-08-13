@@ -669,7 +669,7 @@ LRESULT CLogoffPane::_OnNotify(NMHDR* pnm)
                         ASSERT(ptbgit->lParam >= IDS_LOGOFF_TIP_EJECT && ptbgit->lParam <= IDS_LOGOFF_TIP_LAST); // 879
                         if (ptbgit->lParam)
                         {
-                            LoadString(g_hinstCabinet, ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
+                            LoadString(_Module.GetModuleInstance(), ptbgit->lParam, ptbgit->pszText, ptbgit->cchTextMax);
                         }
                     }
                     else if (_psdc)
@@ -1108,7 +1108,7 @@ int CLogoffPane::_GetThemeBitmapSize(int iPartId, int iStateId, int id)
     }
     else
     {
-        HBITMAP hBitmap = LoadBitmap(g_hinstCabinet, MAKEINTRESOURCE(id));
+        HBITMAP hBitmap = LoadBitmap(_Module.GetModuleInstance(), MAKEINTRESOURCE(id));
         if (hBitmap)
         {
             BITMAP bm;
@@ -1780,7 +1780,7 @@ HRESULT CLogOffMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam,
             IShellMenu* psm;
             if (psmd->punk && SUCCEEDED(psmd->punk->QueryInterface(IID_PPV_ARGS(&psm))))
             {
-                HMENU hMenu = SHLoadMenuPopup(g_hinstCabinet, 6001);
+                HMENU hMenu = SHLoadMenuPopup(_Module.GetModuleInstance(), 6001);
                 _pLogOffPane->ApplyLogoffMenuOption(hMenu);
                 _pLogOffPane->AddShutdownOptions(hMenu);
 
@@ -1832,7 +1832,7 @@ HRESULT CLogOffMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam,
             UINT uResID = _pLogOffPane->GetTipIDFromIDM(psmd->uId);
             if (uResID != -1)
             {
-                LoadString(g_hinstCabinet, uResID, (LPWSTR)wParam, (int)lParam);
+                LoadString(_Module.GetModuleInstance(), uResID, (LPWSTR)wParam, (int)lParam);
                 return S_OK;
             }
             break;

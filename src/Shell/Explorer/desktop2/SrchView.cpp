@@ -2236,7 +2236,7 @@ HRESULT CSearchOpenView::_InitPathCompletePidlAutoList(const WCHAR* pszPath, PID
 							ali.pc = pc;
 							ali.pvl = pvl;
 							ali.iIconSize = 16;
-							ResourceStringCoAllocCopy(g_hinstCabinet, 8246, &ali.pszDisplayName);
+							ResourceStringCoAllocCopy(_Module.GetResourceInstance(), 8246, &ali.pszDisplayName);
 
 							IAutoListDescription* pald;
 							hr = psilf->CreateAutoList(&ali, IID_PPV_ARGS(&pald));
@@ -2382,7 +2382,7 @@ HRESULT CSearchOpenView::_InitRegularAutoListItem(IShellItem** ppsi)
 					ali.dwFolderFlags = _GetFolderFlags();
 					ali.pscope = pscope;
 					ali.pvl = pvl;
-					ResourceStringCoAllocCopy(g_hinstCabinet, 8246, &ali.pszDisplayName);
+					ResourceStringCoAllocCopy(_Module.GetResourceInstance(), 8246, &ali.pszDisplayName);
 					if (hr >= 0)
 					{
 						ISearchIDListFactory* psilf = nullptr;
@@ -3652,7 +3652,7 @@ void CSearchOpenView::_UpdateIndexState(int iState)
 	}
 
 	WCHAR szText[255];
-	ResourceStringCchCopyEx(g_hinstCabinet, iState == 0 ? 7027 : 7028, LANG_NEUTRAL, szText, ARRAYSIZE(szText));
+	ResourceStringCchCopyEx(_Module.GetResourceInstance(), iState == 0 ? 7027 : 7028, LANG_NEUTRAL, szText, ARRAYSIZE(szText));
 	_peb->SetEmptyText(szText);
 }
 
@@ -3671,13 +3671,12 @@ void CSearchOpenView::_UpdateOpenBoxText()
 
 void CSearchOpenView::_UpdateScrolling()
 {
-	// eax
-	int *v4; // eax
-	RECT v5; // [esp+8h] [ebp-38h] BYREF
-	RECT v6; // [esp+18h] [ebp-28h] BYREF
-	RECT rc; // [esp+28h] [ebp-18h] BYREF
-	IHitTestView *v8; // [esp+38h] [ebp-8h] BYREF
-	int iItem; // [esp+3Ch] [ebp-4h] BYREF
+	int *v4;
+	RECT v5;
+	RECT v6;
+	RECT rc;
+	IHitTestView *v8;
+	int iItem;
 
 	iItem = -1;
 
@@ -3865,7 +3864,7 @@ BOOL SearchView_RegisterClass()
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_GLOBALCLASS;
 	wc.lpfnWndProc = CSearchOpenView::s_WndProc;
-	wc.hInstance = g_hinstCabinet;
+	wc.hInstance = _Module.GetModuleInstance();
 	wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wc.lpszClassName = L"Desktop Search Open View";
 	return RegisterClassExW(&wc);
