@@ -78,7 +78,7 @@ private:
     IShutdownChoices* _psdc;
     IShutdownChoiceListener* _psdListen;
     HWND _hwndSdListenMsg;
-    IAccessible* _pAcc;
+    IAccessible* m_pAcc;
 
     // helper functions
     int _GetCurButton();
@@ -119,6 +119,16 @@ CLogoffPane::CLogoffPane()
 
 CLogoffPane::~CLogoffPane()
 {
+    if (_hfMarlett)
+        DeleteObject(_hfMarlett);
+
+    if (_himl)
+        ImageList_Destroy(_himl);
+    _himl = nullptr;
+
+    IUnknown_SafeReleaseAndNullPtr(_psdc);
+    IUnknown_SafeReleaseAndNullPtr(_psdListen);
+    IUnknown_SafeReleaseAndNullPtr(m_pAcc);
 }
 
 HRESULT CLogoffPane::QueryInterface(REFIID riid, void** ppvOut)
@@ -267,9 +277,12 @@ void CLogoffPane::_OnDestroy()
 class CSplitButtonAccessible : public CAccessible
 {
 public:
+    // @Note(Allison): Assumed for CLogoffPane access.
+    using CAccessible::SetAccessibleSubclassWindow;
+
     CSplitButtonAccessible(HWND hwnd)
         : _cRef(1)
-        , _hwnd(hwnd)
+        , _hwndSplit(hwnd)
     {
     }
 
@@ -311,29 +324,23 @@ public:
 
     STDMETHODIMP accDoDefaultAction(VARIANT varChild) override
     {
-        if (IsWindow(this->_hwnd) && IsWindowVisible(this->_hwnd))
+        if (IsWindow(_hwndSplit) && IsWindowVisible(_hwndSplit))
         {
-            PostMessage(GetParent(_hwnd), WM_COMMAND, 0x20063u, (LPARAM)_hwnd);
+            PostMessage(GetParent(_hwndSplit), WM_COMMAND, 0x20063u, (LPARAM)_hwndSplit);
         }
         return S_OK;
     }
 
 private:
     LONG _cRef;
-    HWND _hwnd;
+    HWND _hwndSplit;
 };
 
-// EXEX-VISTA: Partially reversed.
 LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
 {
     _InitShutdownObjects();
 
-    // Do not set WS_TABSTOP here; that's CLogoffPane's job
-
-    DWORD dwStyle = WS_CHILD|WS_CLIPSIBLINGS|WS_VISIBLE | CCS_NORESIZE|CCS_NODIVIDER | TBSTYLE_FLAT|TBSTYLE_LIST|TBSTYLE_TOOLTIPS;
-    RECT rc;
-
-    _hTheme = (PaneDataFromCreateStruct(lParam))->hTheme;
+    _hTheme = PaneDataFromCreateStruct(lParam)->hTheme;
 
     int nResId;
     if (_hTheme)
@@ -344,8 +351,7 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
     if (!_cxToolbar)
         return -1;
 
-    _cxSplitButton = _GetThemeBitmapSize(
-        SPP_LOGOFFSPLITBUTTONDROPDOWN, 0, IsHighDPI() ? IDB_LOGOFF_LARGE_EXPANDER : IDB_LOGOFF_EXPANDER);
+    _cxSplitButton = _GetThemeBitmapSize(SPP_LOGOFFSPLITBUTTONDROPDOWN, 0, IsHighDPI() ? IDB_LOGOFF_LARGE_EXPANDER : IDB_LOGOFF_EXPANDER);
     if (!_cxSplitButton)
         return -1;
 
@@ -365,17 +371,16 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
 
         _margins.cyTopHeight = _margins.cyBottomHeight = 2 * GetSystemMetrics(SM_CYEDGE);
         _cxSplitButton /= 2;
-        _margins.cxLeftWidth = GetSystemMetrics(SM_CXEDGE);
-        ASSERT(_margins.cxLeftWidth == 0);
-        ASSERT(_margins.cxRightWidth == 0);
+        _margins.cxLeftWidth = 2 * GetSystemMetrics(SM_CXEDGE);
 
-        HBITMAP hbm = (HBITMAP)LoadImage(g_hinstCabinet,
-            MAKEINTRESOURCE((IsHighDPI() ? IDB_LOGOFF_LARGE_EXPANDER : IDB_LOGOFF_EXPANDER)),
+        HBITMAP hbm = (HBITMAP)LoadImage(
+            _Module.GetModuleInstance(),
+            MAKEINTRESOURCE(IsHighDPI() ? IDB_LOGOFF_LARGE_EXPANDER : IDB_LOGOFF_EXPANDER),
             IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
         if (hbm)
         {
             BITMAP bm;
-            if (GetObject(hbm, sizeof(BITMAP), &bm))
+            if (GetObject(hbm, sizeof(bm), &bm))
             {
                 _himl = ImageList_Create(bm.bmWidth / 2, bm.bmHeight, (ILC_MASK | ILC_COLOR32 | ILC_HIGHQUALITYSCALE), 0, 2);
                 if (_himl)
@@ -387,38 +392,39 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
         }
     }
 
+    RECT rc;
     GetClientRect(_hwnd, &rc);
     rc.left += _margins.cxLeftWidth;
     rc.top += _margins.cyTopHeight;
     rc.right = rc.left + _cxToolbar;
     rc.bottom -= _margins.cyBottomHeight;
 
-    _hwndTB = SHFusionCreateWindowEx(0, TOOLBARCLASSNAME, NULL,
+    _hwndTB = CreateWindowEx(
+        0,
+        TOOLBARCLASSNAME,
+        NULL,
         0x4 | 0x40 | 0x100 | 0x800 | 0x4000000 | 0x10000000 | 0x40000000,
-        rc.left, rc.top, _cxToolbar, RECTHEIGHT(rc), _hwnd,
-        NULL, NULL, NULL);
+        rc.left,
+        rc.top,
+        _cxToolbar,
+        RECTHEIGHT(rc),
+        _hwnd,
+        NULL,
+        NULL,
+        NULL);
     if (_hwndTB)
     {
-        //
-        //  Don't freak out if this fails.  It just means that the accessibility
-        //  stuff won't be perfect.
-        //
         SetAccessibleSubclassWindow(_hwndTB);
 
-        // we do our own themed drawing...
         SetWindowTheme(_hwndTB, L"", L"");
-
-        // Scale up on HIDPI
-        // SendMessage(_hwndTB, CCM_DPISCALE, TRUE, 0);
-
         SendMessage(_hwndTB, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-		SendMessage(_hwndTB, TB_SETLISTGAP, 0, 0);
+        SendMessage(_hwndTB, TB_SETLISTGAP, 0, 0);
         SendMessage(_hwndTB, TB_SETPADDING, 0, 0);
 
         if (!_hTheme
-            || (!_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_NORMAL : IDB_LOGOFF_AERO_NORMAL, TB_SETIMAGELIST))
-            || (!_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_HOT : IDB_LOGOFF_AERO_HOT, TB_SETHOTIMAGELIST))
-            || (!_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_PRESSED : IDB_LOGOFF_AERO_PRESSED, TB_SETPRESSEDIMAGELIST)))
+            || !_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_NORMAL : IDB_LOGOFF_AERO_NORMAL, TB_SETIMAGELIST)
+            || !_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_HOT : IDB_LOGOFF_AERO_HOT, TB_SETHOTIMAGELIST)
+            || !_SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_AERO_PRESSED : IDB_LOGOFF_AERO_PRESSED, TB_SETPRESSEDIMAGELIST))
         {
             // if we don't have a theme, or failed at setting the images from the theme
             // set buttons images from the rc file
@@ -427,69 +433,76 @@ LRESULT CLogoffPane::_OnCreate(LPARAM lParam)
             _SetTBButtons(IsHighDPI() ? IDB_LOGOFF_LARGE_PRESSED : IDB_LOGOFF_PRESSED, TB_SETPRESSEDIMAGELIST);
         }
 
-        SendMessage(_hwndTB, TB_ADDBUTTONS, ARRAYSIZE(tbButtonsCreate), (LPARAM) tbButtonsCreate);
+        SendMessage(_hwndTB, TB_ADDBUTTONS, ARRAYSIZE(tbButtonsCreate), (LPARAM)tbButtonsCreate);
 
-
-		TBBUTTONINFO tbbi = { 0 };
-		tbbi.cbSize = sizeof(tbbi);
-		tbbi.dwMask = TBIF_STYLE;
-		tbbi.fsStyle = BTNS_BUTTON;
-		SendMessage(_hwndTB, TB_SETBUTTONINFO, 2, (LPARAM)&tbbi);
+        TBBUTTONINFO tbbi = {0};
+        tbbi.cbSize = sizeof(tbbi);
+        tbbi.dwMask = TBIF_STYLE;
+        tbbi.fsStyle = BTNS_BUTTON;
+        SendMessage(_hwndTB, TB_SETBUTTONINFO, 2, (LPARAM)&tbbi);
 
         _ApplyOptions();
 
-        _hwndTT = (HWND)SendMessage(_hwndTB, TB_GETTOOLTIPS, 0, 0); //Get the tooltip window.
+        _hwndTT = (HWND)SendMessage(_hwndTB, TB_GETTOOLTIPS, 0, 0);
 
         _InitMetrics();
 
-		HDC hdc = GetWindowDC(_hwnd);
+        HDC hdc = GetWindowDC(_hwnd);
         if (hdc)
         {
-			TEXTMETRIC tm;
+            TEXTMETRIC tm;
             if (GetTextMetrics(hdc, &tm))
             {
-                LOGFONT lf;
-				ZeroMemory(&lf, sizeof(lf));
+                LOGFONTW lf = {0};
                 lf.lfHeight = tm.tmAscent;
-				lf.lfWeight = FW_NORMAL;
+                lf.lfWeight = FW_NORMAL;
                 lf.lfCharSet = SYMBOL_CHARSET;
-				StringCchCopy(lf.lfFaceName, ARRAYSIZE(lf.lfFaceName), L"Marlett");
+                StringCchCopy(lf.lfFaceName, ARRAYSIZE(lf.lfFaceName), L"Marlett");
 
-				_hfMarlett = CreateFontIndirect(&lf);
+                _hfMarlett = CreateFontIndirect(&lf);
                 if (_hfMarlett)
                 {
-					HFONT hfMarlett = (HFONT)SelectObject(hdc, _hfMarlett);
+                    HFONT hfMarlett = (HFONT)SelectObject(hdc, _hfMarlett);
                     if (GetTextMetrics(hdc, &tm))
                     {
                         _tmAscentMarlett = tm.tmAscent;
                     }
-					SelectObject(hdc, hfMarlett);
-				}
+                    SelectObject(hdc, hfMarlett);
+                }
             }
-			ReleaseDC(_hwnd, hdc);
+            ReleaseDC(_hwnd, hdc);
         }
 
         rc.left = rc.right;
         rc.right += _cxSplitButton;
 
-		TCHAR szTitle[200] = {};
-        LoadString(g_hinstCabinet, IDS_STARTPANE_TITLE_SPLITTER, szTitle, ARRAYSIZE(szTitle));
+        WCHAR szTitle[200] = {0};
+        LoadString(_Module.GetModuleInstance(), IDS_STARTPANE_TITLE_SPLITTER, szTitle, ARRAYSIZE(szTitle));
 
         _hwndSplit = SHFusionCreateWindowEx(
-            0, WC_BUTTON, szTitle, 0x1 | 0x2 | 0x8 | 0x2000000 | 0x4000000 | 0x10000000 | 0x40000000, rc.left, rc.top,
-            RECTWIDTH(rc), RECTHEIGHT(rc), _hwnd, (HMENU)99, g_hinstCabinet, nullptr);
+            0,
+            WC_BUTTON,
+            szTitle,
+            0x1 | 0x2 | 0x8 | 0x2000000 | 0x4000000 | 0x10000000 | 0x40000000,
+            rc.left,
+            rc.top,
+            RECTWIDTH(rc),
+            RECTHEIGHT(rc),
+            _hwnd,
+            (HMENU)99,
+            _Module.GetModuleInstance(),
+            nullptr);
         if (_hwndSplit)
         {
-            CSplitButtonAccessible* pSplitAcc = new CSplitButtonAccessible(_hwndSplit);
-            if (pSplitAcc)
+            CSplitButtonAccessible* psba = new CSplitButtonAccessible(_hwndSplit);
+            if (psba)
             {
-                SetAccessibleSubclassWindow(_hwndSplit);
-                QueryInterface(IID_PPV_ARGS(&_pAcc));
-                pSplitAcc->Release();
+                psba->SetAccessibleSubclassWindow(_hwndSplit);
+                psba->QueryInterface(IID_PPV_ARGS(&m_pAcc));
+                psba->Release();
             }
+            return 0;
         }
-
-        return 0;
     }
 
     return -1;
@@ -508,19 +521,21 @@ LRESULT CLogoffPane::_OnSize(int x, int y)
 {
     if (_hwndSplit)
     {
-        SetWindowPos(
-            _hwndSplit, nullptr, _margins.cxLeftWidth + _cxToolbar, _margins.cyTopHeight, _cxSplitButton,
-            y - (_margins.cyBottomHeight - _margins.cyTopHeight),
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER
-        );
+        SetWindowPos(_hwndSplit, NULL,
+                     _margins.cxLeftWidth + _cxToolbar,
+                     _margins.cyTopHeight,
+                     _cxSplitButton,
+                     y - _margins.cyBottomHeight - _margins.cyTopHeight,
+                     SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
     if (_hwndTB)
     {
-        SetWindowPos(
-            _hwndTB, nullptr, _margins.cxLeftWidth, _margins.cyTopHeight, _cxToolbar,
-            y - (_margins.cyBottomHeight - _margins.cyTopHeight),
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER
-        );
+        SetWindowPos(_hwndTB, NULL,
+                     _margins.cxLeftWidth,
+                     _margins.cyTopHeight,
+                     _cxToolbar,
+                     y - _margins.cyBottomHeight - _margins.cyTopHeight,
+                     SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
     return 0;
 }
@@ -533,7 +548,7 @@ LRESULT CLogoffPane::_OnNCDestroy(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     SetWindowLongPtr(hwnd, 0, 0);
     if (this)
     {
-        this->Release();
+        Release();
     }
     return lres;
 }
@@ -1433,13 +1448,13 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
         if (v11 == 99)
         {
             if (_GetCurPressedButton() != 99)
-                PostMessageW(this->_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
+                PostMessageW(_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
             return 1;
         }
         if (v11 <= 2 && _IsTBButtonEnabled(v11))
         {
             if (pnmdma == (SMNDIALOGMESSAGE *)6)
-                PostMessage(this->_hwnd, WM_COMMAND, LOWORD(tbButtonsCreate[v11].idCommand), (LPARAM)this->_hwndTB);
+                PostMessage(_hwnd, WM_COMMAND, LOWORD(tbButtonsCreate[v11].idCommand), (LPARAM)_hwndTB);
             return 1;
         }
         return 0;
@@ -1453,7 +1468,7 @@ LRESULT CLogoffPane::_OnSMNFindItemWorker(PSMNDIALOGMESSAGE pdm)
             if (pmsg)
             {
                 if (pmsg->message == 0x201 && _GetCurPressedButton() != 99)
-                    PostMessageW(this->_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
+                    PostMessageW(_hwnd, WM_COMMAND, GET_WM_COMMAND_MPS(99, _hwndSplit, BN_HILITE));
             }
         }
         return pdm->itemID >= 0;

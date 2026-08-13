@@ -474,7 +474,7 @@ protected:
     void _SaveTrayAndDesktop();
     void _SlideStep(HWND hwnd, const RECT* prcMonitor, const RECT* prcOld, const RECT* prcNew);
     BOOL _DoExitExplorer();
-    void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD a4);
+    void _DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD dwChoice);
 
     void _ResizeStuckRects(RECT* arStuckRects);
 

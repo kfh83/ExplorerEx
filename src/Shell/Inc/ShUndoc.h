@@ -1106,7 +1106,7 @@ inline BOOL(WINAPI* WinStationUnRegisterConsoleNotification)(HANDLE hServer, HWN
 inline UINT(WINAPI* MsiDecomposeDescriptorW)(LPCWSTR	szDescriptor, LPWSTR szProductCode, LPWSTR szFeatureId, LPWSTR szComponentCode, DWORD* pcchArgsOffset);
 inline BOOL(STDMETHODCALLTYPE* SHFindComputer)(LPCITEMIDLIST pidlFolder, LPCITEMIDLIST pidlSaveFile);
 inline BOOL(STDMETHODCALLTYPE* SHTestTokenPrivilegeW)(HANDLE hToken, LPCWSTR pszPrivilegeName);
-inline HRESULT(STDMETHODCALLTYPE* ExitWindowsDialog)(HWND hwndParent);
+inline HRESULT(STDMETHODCALLTYPE* ExitWindowsDialog)(HWND hwndParent, DWORD dwChoice);
 inline INT(STDMETHODCALLTYPE* SHMessageBoxCheckExW)(HWND hwnd, HINSTANCE hinst, LPCWSTR pszTemplateName, DLGPROC pDlgProc, LPVOID pData, int iDefault, LPCWSTR pszRegVal);
 inline INT(STDMETHODCALLTYPE* RunFileDlg)(HWND hwndParent, HICON hIcon, LPCTSTR pszWorkingDir, LPCTSTR pszTitle, LPCTSTR pszPrompt, DWORD dwFlags);
 inline UINT(STDMETHODCALLTYPE* SHGetCurColorRes)(void);

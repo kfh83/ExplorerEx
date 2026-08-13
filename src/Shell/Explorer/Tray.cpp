@@ -4565,14 +4565,14 @@ void CTray::_DrawBackupStartButton(const HDC hdc)
         {
             RECT rc;
             GetWindowRect(_stb._hwndStart, &rc);
-            MapWindowPoints(0, _hwnd, (LPPOINT)&rc, 2u);
+            MapWindowRect(NULL, _hwnd, &rc);
             InflateRect(&rc, RECTWIDTH(rc) / -20, RECTHEIGHT(rc) / -20);
-            DrawThemeBackground(_stb._hTheme, hdc, 1, 1, &rc, 0);
+            DrawThemeBackground(_stb._hTheme, hdc, BP_PUSHBUTTON, PBS_NORMAL, &rc, NULL);
         }
     }
     else
     {
-        SendMessage(_stb._hwndStart, 0x318u, (WPARAM)hdc, 4);
+        SendMessage(_stb._hwndStart, WM_PRINTCLIENT, (WPARAM)hdc, PRF_CLIENT);
     }
 }
 
@@ -7901,7 +7901,7 @@ BOOL CTray::_DoExitExplorer()
 DEFINE_GUID(POLID_NoClose, 0x29B0CC43, 0x2F2B, 0x4D0C, 0xA0, 0x81, 0xA5, 0x28, 0xDD, 0x34, 0x96, 0x31);
 
 // EXEX-VISTA: CHANGED since XP. Some new arguments were added. Revalidate later.
-void CTray::_DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD a4)
+void CTray::_DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD dwChoice)
 {
     if (!g_fShellShutdown)
     {
@@ -7924,7 +7924,7 @@ void CTray::_DoExitWindows(HWND hwnd, BOOL fIsRestarting, DWORD a4)
         if (!fIsRestarting)
         {
             _uModalMode = MM_SHUTDOWN;
-            ExitWindowsDialog(hwnd);
+            ExitWindowsDialog(hwnd, dwChoice);
         }
 
         // NB User can have problems if the focus is forcebly changed to the desktop while
