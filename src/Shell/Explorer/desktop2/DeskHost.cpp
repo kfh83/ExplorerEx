@@ -2943,7 +2943,7 @@ void CDesktopHost::OnPaint(HDC hdc, BOOL bBackground)
 
         rc.left = _spm.panes[SMPANETYPE_OPENVIEWHOST].size.cx;
         SHFillRectClr(hdc, &rc, 0);
-        DrawThemeBackground(_hTheme, hdc, SPP_PROGLIST, 0, &rc, NULL);
+        DrawThemeBackground(_hTheme, hdc, SPP_PLACESLIST, 0, &rc, NULL);
     }
 }
 

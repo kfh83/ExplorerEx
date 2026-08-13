@@ -17,7 +17,8 @@ extern IStream *GetDesktopViewStream(DWORD grfMode, LPCTSTR pszName);
 HRESULT PersistStreamLoad(IStream *pstm, IUnknown *punk);
 HRESULT PersistStreamSave(IStream *pstm, BOOL fClearDirty, IUnknown *punk);
 
-const TCHAR c_szTaskbar[] = TEXT("TaskbarWinXP");
+const TCHAR c_szTaskbarWinXP[] = TEXT("TaskbarWinXP");
+const TCHAR c_szTaskbar[] = TEXT("Taskbar");
 
 // {69B3F106-0F04-11d3-AE2E-00C04F8EEA99}
 static const GUID CLSID_TrayBandSite = { 0x69b3f106, 0xf04, 0x11d3, { 0xae, 0x2e, 0x0, 0xc0, 0x4f, 0x8e, 0xea, 0x99 } };
@@ -708,7 +709,7 @@ HRESULT BandSite_SaveView(IUnknown *pbs)
 {
     HRESULT hr = E_FAIL;
 
-    IStream *pstm = GetDesktopViewStream(STGM_WRITE, c_szTaskbar);
+    IStream *pstm = GetDesktopViewStream(STGM_WRITE, c_szTaskbarWinXP);
     if (pstm) 
     {
         hr = PersistStreamSave(pstm, TRUE, pbs);
@@ -1031,92 +1032,61 @@ BOOL Reg_GetString(HKEY hkey, LPCTSTR pszSubKey, LPCTSTR pszValue, LPTSTR psz, D
     return fRet;
 }
 
+HRESULT BandSite_RemoveAllBands(IBandSite* pbs)
+{
+    if (pbs)
+    {
+        DWORD dwBandID;
+        while (SUCCEEDED(pbs->EnumBands(0, &dwBandID)))
+        {
+            pbs->RemoveBand(dwBandID);
+        }
+    }
+
+    return S_OK;
+}
 
 void BandSite_Load()
 {
     CTrayBandSite* ptbs = IUnknownToCTrayBandSite(c_tray._ptbs);
+    if (!ptbs)
+        return;
+
     HRESULT hr = E_FAIL;
-    
-    // 1st, try persisted state
-    IStream *pstm = GetDesktopViewStream(STGM_READ, c_szTaskbar);
+    IStream* pstm = GetDesktopViewStream(STGM_READ, c_szTaskbarWinXP);
     if (pstm)
     {
         hr = PersistStreamLoad(pstm, (IBandSite*)ptbs);
         pstm->Release();
     }
 
-    // 2nd, if there is none (or if version mismatch or other failure),
-    // try settings from setup
     if (FAILED(hr))
     {
-        LPTSTR pszValue;
-        if (IsOS(OS_HOME) || IsOS(OS_PROFESSIONAL) || SHRestricted(REST_CLASSICSHELL))
-        {
-            // use the no-quick-launch stream
-            pszValue = (LPWSTR)L"Default Taskbar (Personal)";
-        }
-        else
-        {
-            pszValue = (LPWSTR)L"Default Taskbar";
-        }
+        BandSite_RemoveAllBands(ptbs);
 
-        // n.b. HKLM not HKCU
-        // like GetDesktopViewStream but for HKLM
-        pstm = OpenRegStream(HKEY_LOCAL_MACHINE,
-            REGSTR_PATH_EXPLORER TEXT("\\Streams\\Desktop"),
-            pszValue, STGM_READ);
-
+        pstm = GetDesktopViewStream(STGM_READ, c_szTaskbar);
         if (pstm)
         {
-            hr = PersistStreamLoad(pstm, (IBandSite *)ptbs);
+            hr = PersistStreamLoad(pstm, (IBandSite*)ptbs);
             pstm->Release();
         }
     }
 
-    // o.w., throw up our hands and force some hard-coded defaults
-    // this is needed for a) unexpected failures; b) debug bootstrap;
     int iCount = 0;
     DWORD dwBandID;
     if (FAILED(hr) || FAILED(BandSite_FindBand(ptbs, CLSID_TaskBand, CLSID_NULL, NULL, &iCount, &dwBandID)))
     {
-        //
-        // note that for the CheckBands case, we're assuming that
-        // a) AddBands adds only the missing guys (for now there's
-        // only 1 [TaskBand] so we're ok); and b) AddBands doesn't
-        // create dups if only some are missing (again for now there's
-        // only 1 so no pblm)
+        BandSite_RemoveAllBands(ptbs);
         ptbs->_AddRequiredBands();
     }
 
-    hr = BandSite_FindBand(ptbs, CLSID_TaskBand, CLSID_NULL, NULL, &iCount, &dwBandID);
-    while ((iCount > 1) && SUCCEEDED(hr))
+    while (iCount > 1 && SUCCEEDED(BandSite_FindBand(ptbs, CLSID_TaskBand, CLSID_NULL, NULL, &iCount, &dwBandID)))
     {
         ptbs->RemoveBand(dwBandID);
-        hr = BandSite_FindBand(ptbs, CLSID_TaskBand, CLSID_NULL, NULL, &iCount, &dwBandID);
     }
 
-    //dont bother with CLSID_TipBand for now
-
-    // And one more: this is needed for the TipBand deskband for the TabletPC.
-    /*iCount = 0;
-    if (FAILED(hr) || FAILED(BandSite_FindBand(ptbs, CLSID_TipBand, CLSID_NULL, NULL, &iCount, &dwBandID)))
-    {
-        IDeskBand* pdb;
-        HRESULT hr = CoCreateInstanceHook(CLSID_TipBand, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pdb));
-        if (SUCCEEDED(hr))
-        {
-            hr = ptbs->AddBand(pdb);
-            pdb->Release();
-        }
-    } 
-    hr = BandSite_FindBand(ptbs, CLSID_TipBand, CLSID_NULL, NULL, &iCount, &dwBandID);
-    while ((iCount > 1) && SUCCEEDED(hr))
-    {
-        ptbs->RemoveBand(dwBandID);
-        hr = BandSite_FindBand(ptbs, CLSID_TipBand, CLSID_NULL, NULL, &iCount, &dwBandID);
-    }*/
-
     ptbs->SetLoaded(TRUE);
+    ptbs->Release();
 }
 
 HRESULT CTrayBandSiteService_CreateInstance(IUnknown* punkOuter, IUnknown** ppunk)
