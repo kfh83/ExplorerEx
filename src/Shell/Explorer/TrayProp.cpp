@@ -2388,16 +2388,6 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
         c_tray._AppBarNotifyAll(nullptr, ABN_STATECHANGE, nullptr, 0);
     }
 
-    if (!tvo.fNoTrayItemsDisplayPolicyEnabled && !tvo.fNoAutoTrayPolicyEnabled)
-    {
-        BOOL fNotifySetting = ::IsDlgButtonChecked(hDlg, IDC_NOTIFYMAN);
-        if (tvo.fAutoTrayEnabledByUser != fNotifySetting)
-        {
-            tvo.fAutoTrayEnabledByUser = fNotifySetting;
-            _UpdateNotifySetting(fNotifySetting);
-        }
-    }
-
     tvo.fShowQuickLaunch = ::IsDlgButtonChecked(hDlg, IDC_QUICKLAUNCH);
 
     if (::IsWindowEnabled(::GetDlgItem(hDlg, IDC_SHOW_THUMBNAILS)))
@@ -2408,7 +2398,6 @@ void CTaskBarPropertySheet::_ApplyTaskbarOptionsFromDialog(HWND hDlg)
     }
 
     c_tray.SetTrayViewOpts(&tvo, _pcbm);
-
     c_tray.SizeWindows();
 
     // Update registry for locked taskbar
@@ -2508,7 +2497,7 @@ void CTaskBarPropertySheet::_ApplyNotificationOptionsFromDialog(HWND hDlg)
     c_tray.GetTrayViewOpts(&tvo, _pcbm);
 
     tvo.fHideClock = ::IsDlgButtonChecked(hDlg, 1108) == 0;
-    for (UINT i = 0; i <= ARRAYSIZE(tvo.rgfHideSCA); i++)
+    for (UINT i = 0; i < ARRAYSIZE(tvo.rgfHideSCA); ++i)
     {
         tvo.rgfHideSCA[i] = UpdateSCAIcon(hDlg, i);
     }
