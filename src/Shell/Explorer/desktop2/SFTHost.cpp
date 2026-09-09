@@ -547,52 +547,43 @@ LRESULT SFTBarHost::_OnSysColorChange(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return _OnForwardMessage(hwnd, uMsg, wParam, lParam);
 }
 
-// EXEX-VISTA(allison): Validated. Still needs cleanup.
+// EXEX-VISTA(allison): Validated.
 LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#ifdef DEAD_CODE
-    // Use the same colors as the listview itself.
     HDC hdc = GET_WM_CTLCOLOR_HDC(wParam, lParam, uMsg);
     SetTextColor(hdc, ListView_GetTextColor(_hwndList));
     COLORREF clrBk = ListView_GetTextBkColor(_hwndList);
     if (clrBk == CLR_NONE)
     {
-        // The animate control really wants to get a text background color.
-        // It doesn't support transparency.
         if (GET_WM_CTLCOLOR_HWND(wParam, lParam, uMsg) == _hwndAni)
         {
             if (_hTheme)
             {
                 if (!_hBrushAni)
                 {
-                    // We need to paint the theme background in a bitmap and use that
-                    // to create a brush for the background of the flashlight animation
                     RECT rcClient;
                     GetClientRect(hwnd, &rcClient);
-                    int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH) / 2;     // IDA_SEARCH is ANIWND_WIDTH pix wide
-                    int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT) / 2;    // IDA_SEARCH is ANIWND_HEIGHT pix tall
-                    RECT rc;
-                    rc.top = y;
-                    rc.bottom = y + ANIWND_HEIGHT;
-                    rc.left = x;
-                    rc.right = x + ANIWND_WIDTH;
+                    int x = (RECTWIDTH(rcClient) - 80) / 2;
+                    int y = (RECTHEIGHT(rcClient) - 50) / 2;
+
                     HDC hdcBMP = CreateCompatibleDC(hdc);
-                    HBITMAP hbmp = CreateCompatibleBitmap(hdc, ANIWND_WIDTH, ANIWND_HEIGHT);
-                    POINT pt = { 0, 0 };
+                    if (hdcBMP)
+                    {
+                        HBITMAP hbmp = CreateCompatibleBitmap(hdc, 80, 50);
+                        if (hbmp)
+                        {
+                            POINT pt = { 0, 0 };
+                            OffsetViewportOrgEx(hdcBMP, -x, -y, &pt);
+                            HBITMAP v9 = (HBITMAP)SelectObject(hdcBMP, hbmp);
+                            DrawThemeBackground(_hTheme, hdcBMP, _iThemePart, 0, &rcClient, nullptr);
 
-                    // Offset the viewport so that DrawThemeBackground draws the part that we care about
-                    // at the right place
-                    OffsetViewportOrgEx(hdcBMP, -x, -y, &pt);
-                    SelectObject(hdcBMP, hbmp);
-                    DrawThemeBackground(_hTheme, hdcBMP, _iThemePart, 0, &rcClient, 0);
+                            _hBrushAni = CreatePatternBrush(hbmp);
 
-                    // Our bitmap is now ready!
-                    _hBrushAni = CreatePatternBrush(hbmp);
-
-                    // Cleanup
-                    SelectObject(hdcBMP, NULL);
-                    DeleteObject(hbmp);
-                    DeleteObject(hdcBMP);
+                            SelectObject(hdcBMP, v9);
+                            DeleteObject(hbmp);
+                        }
+                        DeleteDC(hdcBMP);
+                    }
                 }
                 return (LRESULT)_hBrushAni;
             }
@@ -603,65 +594,12 @@ LRESULT SFTBarHost::_OnCtlColorStatic(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
         }
 
         SetBkMode(hdc, TRANSPARENT);
-        return (LRESULT)GetStockBrush(HOLLOW_BRUSH);
+        return (LRESULT)GetStockBrush(5);
     }
     else
     {
         return (LRESULT)GetSysColorBrush(COLOR_MENU);
     }
-#else
-    HDC hdc = GET_WM_CTLCOLOR_HDC(wParam, lParam, uMsg);
-
-
-    SetTextColor(hdc, SendMessageW(_hwndList, LVM_GETTEXTCOLOR, 0, 0));
-
-	COLORREF clrBk = SendMessageW(_hwndList, LVM_GETTEXTBKCOLOR, 0, 0);
-    if (clrBk == -1)
-    {
-        if (GET_WM_CTLCOLOR_HWND(wParam, lParam, uMsg) != _hwndAni)
-        {
-            SetBkMode(hdc, 1);
-            return (LRESULT)GetStockBrush(5);
-        }
-
-        if (_hTheme)
-        {
-            if (!_hBrushAni)
-            {
-                RECT rcClient;
-                GetClientRect(hwnd, &rcClient);
-                int x = (RECTWIDTH(rcClient) - ANIWND_WIDTH) / 2;
-                int y = (RECTHEIGHT(rcClient) - ANIWND_HEIGHT) / 2;
-                HDC hdcBMP = CreateCompatibleDC(hdc);
-                if (hdcBMP)
-                {
-                    HBITMAP hbmp = CreateCompatibleBitmap(hdc, ANIWND_WIDTH, ANIWND_HEIGHT);
-                    if (hbmp)
-                    {
-                        POINT pt = { 0, 0 };
-                        OffsetViewportOrgEx(hdcBMP, -x, -y, &pt);
-                        HGDIOBJ v9 = SelectObject(hdcBMP, hbmp);
-                        DrawThemeBackground(_hTheme, hdcBMP, _iThemePart, 0, &rcClient, NULL);
-                        _hBrushAni = CreatePatternBrush(hbmp);
-
-                        SelectObject(hdcBMP, v9);
-                        DeleteObject(hbmp);
-                    }
-                    DeleteDC(hdcBMP);
-                }
-            }
-            return (LRESULT)_hBrushAni;
-        }
-        else
-        {
-            return (LRESULT)GetSysColorBrush(COLOR_MENU);
-        }
-    }
-    else
-    {
-        return (LRESULT)GetSysColorBrush(COLOR_MENU);
-    }
-#endif
 }
 
 //
@@ -997,27 +935,6 @@ int SFTBarHost::_ItemNoToPos(int iItem)
 // EXEX-VISTA(allison): Validated. Still needs cleanup.
 void SFTBarHost::_ComputeListViewItemPosition(int iItem, POINT* pptOut)
 {
-#ifdef DEAD_CODE
-    // WARNING!  _InternalRepopulateList uses an incremental version of this
-    // algorithm.  Keep the two in sync!
-
-    ASSERT(_cyTilePadding >= 0);
-
-    int y = iItem * _cyTile;
-
-    // Adjust for all the separators in the list
-    for (int i = 0; i < _cSep; i++)
-    {
-        if (_rgiSep[i] < iItem)
-        {
-            y = y - _cyTile + _cySepTile;
-        }
-    }
-
-    pptOut->x = _cxMargin;
-    pptOut->y = y;
-#else
-
     int y = iItem * _cyTile;
 
     if (_cSep > 0)
@@ -1037,87 +954,11 @@ void SFTBarHost::_ComputeListViewItemPosition(int iItem, POINT* pptOut)
 
     pptOut->x = _cxMargin;
     pptOut->y = y;
-#endif
 }
 
 // EXEX-VISTA(allison): Validated. Still needs minor cleanup.
 int SFTBarHost::_InsertListViewItem(int iPos, PaneItem *pitem)
 {
-#ifdef DEAD_CODE
-    ASSERT(pitem);
-
-    int iItem = -1;
-    IShellFolder *psf = NULL;
-    LPCITEMIDLIST pidl = NULL;
-    LVITEM lvi;
-    lvi.pszText = NULL;
-
-    lvi.mask = 0;
-
-    // If necessary, tell listview that we want to use column 1
-    // as the subtitle.
-    if (_iconsize == ICONSIZE_LARGE && pitem->HasSubtitle())
-    {
-        const static UINT One = 1;
-        lvi.mask = LVIF_COLUMNS;
-        lvi.cColumns = 1;
-        lvi.puColumns = const_cast<UINT*>(&One);
-    }
-
-    ASSERT(!pitem->IsSeparator());
-
-    lvi.mask |= LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM;
-    if (FAILED(GetFolderAndPidl(pitem, &psf, &pidl)))
-    {
-        goto exit;
-    }
-
-    if (lvi.mask & LVIF_IMAGE)
-    {
-        lvi.iImage = AddImageForItem(pitem, psf, pidl, iPos);
-    }
-
-    if (lvi.mask & LVIF_TEXT)
-    {
-        if (_iconsize == ICONSIZE_SMALL && pitem->HasSubtitle())
-        {
-            lvi.pszText = SubtitleOfItem(pitem, psf, pidl);
-        }
-        else
-        {
-            lvi.pszText = DisplayNameOfItem(pitem, psf, pidl, SHGDN_NORMAL);
-        }
-        if (!lvi.pszText)
-        {
-            goto exit;
-        }
-    }
-
-    lvi.iItem = iPos;
-    lvi.iSubItem = 0;
-    lvi.lParam = reinterpret_cast<LPARAM>(pitem);
-    iItem = ListView_InsertItem(_hwndList, &lvi);
-
-    // If the item has a subtitle, add it.
-    // If this fails, don't worry.  The subtitle is just a fluffy bonus thing.
-    if (iItem >= 0 && (lvi.mask & LVIF_COLUMNS))
-    {
-        lvi.iItem = iItem;
-        lvi.iSubItem = 1;
-        lvi.mask = LVIF_TEXT;
-        SHFree(lvi.pszText);
-        lvi.pszText = SubtitleOfItem(pitem, psf, pidl);
-        if (lvi.pszText)
-        {
-            ListView_SetItem(_hwndList, &lvi);
-        }
-    }
-
-exit:
-    ATOMICRELEASE(psf);
-    SHFree(lvi.pszText);
-    return iItem;
-#else
 	ASSERT(pitem); // 687
 
     int iItem = -1;
@@ -1144,17 +985,17 @@ exit:
         if ((lvi.mask & 2) != 0)
             lvi.iImage = AddImageForItem(pitem, psf, pidl, 0);
 
-		WCHAR* v4;
+        WCHAR* v4;
         if ((lvi.mask & 1) == 0
             || (this->_iconsize || (pitem->_dwFlags & 2) == 0
-                ? (v4 = this->DisplayNameOfItem(pitem, psf, pidl, 0))
-                : (v4 = this->SubtitleOfItem(pitem, psf, pidl)),
+                    ? (v4 = this->DisplayNameOfItem(pitem, psf, pidl, 0))
+                    : (v4 = this->SubtitleOfItem(pitem, psf, pidl)),
                 (lvi.pszText = v4) != NULL))
         {
             lvi.iItem = iPos;
             lvi.iSubItem = 0;
             lvi.lParam = reinterpret_cast<LPARAM>(pitem);;
-			iItem = ListView_InsertItem(_hwndList, &lvi);
+            iItem = ListView_InsertItem(_hwndList, &lvi);
 
             if (iItem >= 0 && (lvi.mask & 0x200) != 0)
             {
@@ -1174,7 +1015,6 @@ exit:
     IUnknown_SafeReleaseAndNullPtr(psf);
     CoTaskMemFree(lvi.pszText);
     return iItem;
-#endif
 }
 
 

@@ -3767,7 +3767,7 @@ void CTray::_ActAsSwitcher()
         }
         if (v6)
         {
-            SendMessageW(this->_stb._hwndStart, 0x128u, 0x10002u, 0);
+            SendMessageW(_stb._hwndStart, 0x128u, 0x10002u, 0);
             if (_stb.IsButtonPushed())
             {
 				_stb.CloseStartMenu();
@@ -3775,7 +3775,7 @@ void CTray::_ActAsSwitcher()
             }
             else
             {
-                SendMessageW(this->_stb._hwndStart, 0xF3u, 1u, 0);
+                SendMessageW(_stb._hwndStart, 0xF3u, 1u, 0);
             }
             s_iRecurse = 0;
         }
@@ -3783,7 +3783,7 @@ void CTray::_ActAsSwitcher()
         {
             HandleFullScreenApp(NULL);
             if (ForegroundWindow != v_hwndDesktop
-                || (_SetFocus(_stb._hwndStart), GetFocus() == this->_stb._hwndStart))
+                || (_SetFocus(_stb._hwndStart), GetFocus() == _stb._hwndStart))
             {
                 SwitchToThisWindow(hwnd, 1);
                 SetForegroundWindow(hwnd);
@@ -4715,7 +4715,7 @@ void CTray::_HandleWindowPosChanging(LPWINDOWPOS lpwp)
     HDC hdc; // [esp+24h] [ebp+8h]
 
     // _DebugMsgW(1024, L"TRAYDOCK.t_hwpc");
-    if (this->_uMoveStuckPlace != -1)
+    if (_uMoveStuckPlace != -1)
     {
         //_DebugMsgW(1024, L"TRAYDOCK.t_hwpc handling pending move");
         _DoneMoving(lpwp);
@@ -9142,20 +9142,13 @@ BOOL _AllowLockWorkStation()
 // EXEX-VISTA: Validated.
 HRESULT DisplayAltTab()
 {
-    HWND hWnd = FindWindow(TEXT("AltTab_KeyHookWnd"), NULL);
-
-    if (!hWnd)
+    HRESULT hr = E_FAIL;
+    HWND hwndAlttab = FindWindowW(L"AltTab_KeyHookWnd", nullptr);
+    if (hwndAlttab && PostMessageW(hwndAlttab, WM_USER, 0x50494C46, 0)) // 'FLIP'
     {
-        return E_FAIL;
+        hr = S_OK;
     }
-
-    // EXEX-VISTA TODO: Document.
-    if (!PostMessageW(hWnd, WM_USER, 0x50494C46, 0))
-    {
-        return E_FAIL;
-    }
-
-    return S_OK;
+    return hr;
 }
 
 // EXEX-VISTA: Validated.

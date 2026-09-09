@@ -520,24 +520,27 @@ LRESULT CMorePrograms::_OnCommand(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
                     OPENHOSTVIEW view;
                     if (SUCCEEDED(_GetCurView(&view)))
                     {
-#if 0
-                        if (wParam)
-                            SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_BackButton, 16);
-                        else
-                            SHTracePerfSQMCountImpl(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Start, 15);
-#endif
-                        BOOL v12 = view == OHVIEW_0 ? 1 : 0;
-                        if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, v12, NULL, NULL)))
+                        if (wParam == 0)
                         {
-                            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 326, 0, NULL, NULL);
+                            // Skipped telemetry ShellTraceId_Explorer_StartPane_AllPrograms_Show_Start(15)
+                        }
+                        else
+                        {
+                            // Skipped telemetry ShellTraceId_Explorer_StartPane_AllPrograms_BackButton(16)
+                        }
+
+                        BOOL v12 = view == OHVIEW_0;
+                        if (SUCCEEDED(IUnknown_QueryServiceExec(_punkSite, SID_SM_OpenHost, &CGID_DV2ControlHost, 302, v12, nullptr, nullptr)))
+                        {
+                            IUnknown_QueryServiceExec(_punkSite, SID_SMenuPopup, &CGID_DV2ControlHost, 326, 0, nullptr, nullptr);
                         }
 
 
-                        LPWSTR pszTitle = v12 != 0 ? _szMessage : _szMessageBack;
+                        LPWSTR pszTitle = v12 ? _szMessage : _szMessageBack;
                         SetWindowText(_hwndButton, pszTitle);
 
                         _TooltipAddTool();
-                        SendMessage(_hwndTT, TTM_ACTIVATE, ShowInfoTip(), 0);
+                        SendMessageW(_hwndTT, TTM_ACTIVATE, ShowInfoTip(), 0);
                         if (v12 == 1)
                         {
                             // SHTracePerf(&ShellTraceId_Explorer_StartPane_AllPrograms_Show_Stop
@@ -689,7 +692,7 @@ LRESULT CMorePrograms::_OnSMNFindItem(PSMNDIALOGMESSAGE pdm)
             PostMessage(_hwnd, WM_COMMAND, 1, (LPARAM)_hwndButton);
             return 1;
 
-        case 8:
+        case SMNDM_OPENCASCADE:
         {
             if (!field_A0)
             {
