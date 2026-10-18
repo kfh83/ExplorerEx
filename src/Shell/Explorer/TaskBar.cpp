@@ -115,7 +115,7 @@ HRESULT CTaskBar::QueryContextMenu(HMENU hmenu,
                                 UINT uFlags)
 {
     int i = 0;
-    HMENU hmenuSrc = c_tray.BuildContextMenu(FALSE);
+    HMENU hmenuSrc = c_tray.BuildContextMenu(TRUE);
 
     if (hmenuSrc)
     {
