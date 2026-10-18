@@ -87,8 +87,6 @@ Section "ExplorerEx Core" SecCore
     File "${BUILDDIR}\ExplorerEx.Shell32.dll"
     File "${BUILDDIR}\ExplorerEx.Loader.exe"
     File "${BUILDDIR}\THIRD-PARTY-NOTICES.txt"
-    File "${BUILDDIR}\Uninstall-ExplorerEx.ps1"
-    File "${BUILDDIR}\Install-ExplorerEx.ps1"
     File "${SRCDIR}\ExplorerEx.reg"
 
     ; English is always included
@@ -197,8 +195,6 @@ Section "Uninstall"
     Delete "$INSTDIR\ExplorerEx.reg"
     Delete "$INSTDIR\explorer-hook.bin"
     Delete "$INSTDIR\THIRD-PARTY-NOTICES.txt"
-    Delete "$INSTDIR\Install-ExplorerEx.ps1"
-    Delete "$INSTDIR\Uninstall-ExplorerEx.ps1"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
 
