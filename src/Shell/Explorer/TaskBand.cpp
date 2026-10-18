@@ -547,23 +547,19 @@ HRESULT CTaskBand::GetBandInfo(DWORD dwBandID, DWORD fViewMode,
     pdbi->ptMaxSize.y = -1;
     pdbi->ptActual.y =  g_cySize + 2*g_cyEdge;
 
-    LONG lButHeight = _GetCurButtonHeight();
+    const LONG lButHeight = g_cySize + 2*g_cyEdge;
 
     if (fViewMode & DBIF_VIEWMODE_VERTICAL)
     {
-        pdbi->ptMinSize.x = lButHeight;
-        // The 1.2 gives us enough space for the dropdown arrow
-        pdbi->ptMinSize.y = lButHeight * (_fGlom ? 1.2 : 1);
+        pdbi->ptMinSize.x = lButHeight + g_cyTabSpace + 1;
+        pdbi->ptMinSize.y = 1;
         pdbi->ptIntegral.y = 1;
     }
     else
     {
-        TBMETRICS tbm;
-        _GetToolbarMetrics(&tbm);
-
-        pdbi->ptMinSize.x = lButHeight * 3;
+        pdbi->ptMinSize.x = (lButHeight + g_cyTabSpace) * 3;
         pdbi->ptMinSize.y = lButHeight;
-        pdbi->ptIntegral.y = lButHeight + tbm.cyButtonSpacing;
+        pdbi->ptIntegral.y = lButHeight + g_cyTabSpace;
     }
 
     pdbi->dwModeFlags = DBIMF_VARIABLEHEIGHT | DBIMF_UNDELETEABLE | DBIMF_TOPALIGN;
@@ -818,7 +814,7 @@ void CTaskBand::_AsyncAnimateItems()
 
     _fGlom = fGlom;
 
-    _CheckSize();
+    _CheckSize(FALSE);
     SendMessage(_tb, WM_SETREDRAW, fRedraw, 0);
     UpdateWindow(_tb);
 
@@ -887,8 +883,7 @@ int CTaskBand::_CheckAnimationSize()
 {
     PANIMATIONITEMINFO paii;
     int iTotDistLeft = 0;
-    int iRemainder = 0;
-    int iNormalWidth = _GetIdealWidth(&iRemainder); 
+    int iNormalWidth = max(g_cySize + 2*g_cxEdge, _GetIdealWidth(FALSE));
     int cAnimatingItems = _dsaAII.GetItemCount();
 
     for (int i = cAnimatingItems - 1; i >= 0; i--)
@@ -1412,22 +1407,18 @@ int CTaskBand::_GetVisibleItemCount()
 //-----------------------------------------------------------------------------
 //  DESCRIPTION:  Retrives the ideal width of a non-animating button
 //
-//  PARAMETERS:   1. iRemainder[OUT] - width needed for the total item width
-//                   to equal the window width. (set to zero unless the ideal 
-//                   width is less than the maximum button width. 
+//  PARAMETERS:   fForceResize - bypass Win2k's small-growth hysteresis
 //   
-//  RETURN:       the total width of all buttons in the group
+//  RETURN:       the width of a non-animating button before minimum clamping
 //-----------------------------------------------------------------------------
-int CTaskBand::_GetIdealWidth(int *iRemainder)
-{  
-    int iIdeal = 0;
-    *iRemainder = 0;
+int CTaskBand::_GetIdealWidth(BOOL fForceResize)
+{
 
     RECT  rcWin;
     GetWindowRect(_hwnd, &rcWin);
     int iWinWidth = RECTWIDTH(rcWin);
     int iRows;
-    _GetNumberOfRowsCols(&iRows, NULL, TRUE);
+    _GetNumberOfRowsCols(&iRows, NULL, FALSE);
     int cItems = _GetVisibleItemCount();
 
     // button spacing
@@ -1450,38 +1441,25 @@ int CTaskBand::_GetIdealWidth(int *iRemainder)
     int iCols = (cItems + iRows - 1) / iRows;
     iCols = max(1, iCols);
 
-    // calculate the ideal width
-    iIdeal = (iWinWidth / iCols);
-    if (iCols > 1)
+    // Win2k reserves the tab spacing even for a single column and gives
+    // every button the same width rather than distributing spare pixels.
+    int iIdeal = (iWinWidth / iCols) - g_cxTabSpace;
+    int iOldWidth = LOWORD(_tb.GetButtonSize());
+    if (_IsHorizontal() && !fForceResize && iOldWidth < iIdeal &&
+        iOldWidth / (iIdeal - iOldWidth) >= 3)
     {
-        iIdeal -= tbm.cxButtonSpacing;
+        return iOldWidth;
     }
 
-    // adjust ideal width
     int iMax = _IsHorizontal() ? g_cxMinimized : iWinWidth;
-    int iMin = g_cySize + 2*g_cxEdge;
-    if (_IsHorizontal())
-    {
-        iMin *= 1.8;
-    }
-    iMin += _GetTextSpace();
-    iIdeal = min(iMax, iIdeal);
-   
-    // calculate the remainder
-    if (_IsHorizontal() && (iIdeal != iMax) && (iRows == 1) && (iIdeal >= iMin))
-    {
-        *iRemainder = iWinWidth - (iCols * (iIdeal + tbm.cxButtonSpacing));
-        *iRemainder = max(0, *iRemainder);
-    }
-    
-    return iIdeal;
+    return min(iMax, iIdeal);
 }
 
 
 void CTaskBand::_GetNumberOfRowsCols(int* piRows, int* piCols, BOOL fCurrentSize)
 {
     RECT  rcWin;
-    RECT  rcItem;
+    RECT  rcItem = {0, 0, g_cxMinimized, g_cySize + 2*g_cyEdge};
     RECT  rcTB;
     int   iIndexVisible = _GetLastVisibleItem();
 
@@ -1503,7 +1481,8 @@ void CTaskBand::_GetNumberOfRowsCols(int* piRows, int* piCols, BOOL fCurrentSize
         }
     }
 
-    _tb.GetItemRect(iIndexVisible, &rcItem);
+    if (iIndexVisible >= 0)
+        _tb.GetItemRect(iIndexVisible, &rcItem);
 
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
@@ -1570,11 +1549,21 @@ void CTaskBand::_GetToolbarMetrics(TBMETRICS *ptbm)
 //  DESCRIPTION:  Sizes the non-animating buttons to the taskbar. Shrinks 
 //                and/or gloms items so that all visible items fit on window.
 //-----------------------------------------------------------------------------
-void CTaskBand::_CheckSize()
+void CTaskBand::_CheckSize(BOOL fForceResize)
 {
     if (_dsaAII)
     {
         int cItems = _GetVisibleItemCount();
+        if (!cItems)
+        {
+            _SizeItems(g_cxMinimized);
+            _NukeScrollbar(SB_HORZ);
+            _NukeScrollbar(SB_VERT);
+            RECT rc;
+            GetClientRect(_hwnd, &rc);
+            _tb.SetWindowPos(0, 0, 0, RECTWIDTH(rc), RECTHEIGHT(rc), SWP_NOACTIVATE | SWP_NOZORDER);
+            return;
+        }
         // Check for non-animating buttons to size
         if (cItems > _dsaAII.GetItemCount())
         {
@@ -1588,20 +1577,14 @@ void CTaskBand::_CheckSize()
             GetWindowRect(_hwnd, &rc);
             if (!IsRectEmpty(&rc) && (_tb.GetWindowLong(GWL_STYLE) & WS_VISIBLE))
             {
-                int iRemainder = 0;
-                int iIdeal = _GetIdealWidth(&iRemainder);
+                int iIdeal = _GetIdealWidth(fForceResize);
                 BOOL fHoriz = _IsHorizontal();
 
                 int iMin = g_cySize + 2*g_cxEdge;
-                if (fHoriz)
-                {
-                    iMin *= 1.8;
-                }
                 iMin += _GetTextSpace();
                 iIdeal = max(iIdeal, iMin);
 
-                _SizeItems(iIdeal, iRemainder);
-                _tb.SetButtonWidth(iIdeal, iIdeal);
+                _SizeItems(iIdeal);
 
                 int iRows;
                 int iCols;
@@ -1613,18 +1596,17 @@ void CTaskBand::_CheckSize()
                 {
                     _AutoGlomGroup(TRUE, 0);
 
-                    iMin = (g_cySize + 2*g_cxEdge) * 1.8;
-                    iIdeal = _GetIdealWidth(&iRemainder);
+                    iMin = g_cySize + 2*g_cxEdge;
+                    iIdeal = _GetIdealWidth(fForceResize);
                     iIdeal = max(iIdeal, iMin);
 
-                    _SizeItems(iIdeal, iRemainder);
-                    _tb.SetButtonWidth(iIdeal, iIdeal);
+                    _SizeItems(iIdeal);
 
                     fAllowUnGlom = FALSE;
                 }
 
                 // if we're forced to the minimum size, then we may need some scrollbars
-                if ((fHoriz && (iIdeal == iMin)) || (!fHoriz && (cItems > (iRows * iCols))))
+                if (iIdeal == iMin)
                 {
                     if (!(_fGlom && _AutoGlomGroup(TRUE, 0)))
                     {
@@ -1646,7 +1628,7 @@ void CTaskBand::_CheckSize()
                         // iMin is reset above to handle the two-stage minimum. The first minimum size forces glomming, and the second minimum size
                         // enforces hard limit for minimum button size.
                         // In the case, of unglomming we need unglom base on the first minimum size
-                        iMin = (g_cySize + 2*g_cxEdge) * 1.8 + _GetTextSpace();
+                        iMin = g_cySize + 2*g_cxEdge + _GetTextSpace();
                     }
 
                     int cOpenSlots = fHoriz ? ((RECTWIDTH(rc) - _GetAnimationWidth()) - 
@@ -1665,7 +1647,6 @@ void CTaskBand::_CheckSize()
             else
             {
                 _SizeItems(g_cxMinimized);
-                _tb.SetButtonWidth(g_cxMinimized, g_cxMinimized);
             }
         }
     }
@@ -1675,10 +1656,9 @@ void CTaskBand::_CheckSize()
 //  DESCRIPTION:  Set the sizes of non-animating buttons
 //
 //  PARAMETERS:   1. iButtonWidth - width to assign each non-animating item
-//                2. IRemainder - extra width to keep total width constant. 
 //   
 //-----------------------------------------------------------------------------
-void CTaskBand::_SizeItems(int iButtonWidth, int iRemainder)
+void CTaskBand::_SizeItems(int iButtonWidth)
 {
    
     TBBUTTONINFO tbbi;
@@ -1709,16 +1689,14 @@ void CTaskBand::_SizeItems(int iButtonWidth, int iRemainder)
             {
                 tbbi.cx = (WORD) iButtonWidth;
 
-                if (iRemainder) 
-                {
-                    tbbi.cx++;
-                    iRemainder--;
-                }
-
                 _tb.SetButtonInfo(i, &tbbi);
             }
         }
     }
+
+    _tb.SetButtonWidth(iButtonWidth, iButtonWidth);
+    SIZE size = {iButtonWidth, g_cySize + 2*g_cyEdge};
+    _tb.SetButtonSize(size);
 }
 
 
@@ -2249,8 +2227,8 @@ void CTaskBand::_CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows
                                      int iItemWidth, LPRECT prcView)
 {
     int cxRow = iItemWidth;
-    int iVisibleColumns = RECTWIDTH(*prcView) / cxRow;
-    int iVisibleRows = RECTHEIGHT(*prcView) / cyRow;
+    int iVisibleColumns = (RECTWIDTH(*prcView) + g_cxTabSpace) / cxRow;
+    int iVisibleRows = (RECTHEIGHT(*prcView) + g_cyTabSpace) / cyRow;
 
     int x,y, cx,cy;
 
@@ -2279,7 +2257,7 @@ void CTaskBand::_CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows
         {
             // this effects the vis columns and therefore nMax and nPage
             rcTabs.right -= g_cxVScroll;
-            iVisibleColumns = RECTWIDTH(rcTabs) / cxRow;
+            iVisibleColumns = (RECTWIDTH(rcTabs) + g_cxTabSpace) / cxRow;
             if (!iVisibleColumns)
                 iVisibleColumns = 1;
             si.nMax = (cItems + iVisibleColumns - 1) / iVisibleColumns  -1 ;
@@ -2290,14 +2268,7 @@ void CTaskBand::_CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows
         GetScrollInfo(_hwnd, SB_VERT, &si);
         x = 0;
         y = -si.nPos * cyRow;
-        if (iRows == 1)
-        {
-            cx = RECTWIDTH(rcTabs);        
-        }
-        else
-        {
-            cx = cxRow * iVisibleColumns;
-        }
+        cx = cxRow * iVisibleColumns;
         // +1 because si.nMax is zero based
         cy = cyRow * (si.nMax +1);
 
@@ -2315,7 +2286,7 @@ void CTaskBand::_CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows
         {
             // this effects the vis columns and therefore nMax and nPage
             rcTabs.bottom -= g_cyHScroll;
-            iVisibleRows = RECTHEIGHT(rcTabs) / cyRow;
+            iVisibleRows = (RECTHEIGHT(rcTabs) + g_cyTabSpace) / cyRow;
             if (!iVisibleRows)
                 iVisibleRows = 1;
             si.nMax = (cItems + iVisibleRows - 1) / iVisibleRows  -1 ;
@@ -2844,7 +2815,7 @@ void CTaskBand::_MoveGroup(HWND hwnd, WCHAR* szNewExeName)
 
     _tb.SetRedraw(fRedraw);
 
-    _CheckSize();
+    _CheckSize(FALSE);
 }
 
 void CTaskBand::_SetWindowIcon(HWND hwnd, HICON hicon, int iPref)
@@ -2975,7 +2946,7 @@ void CTaskBand::_Glom(int iIndexGroup, BOOL fGlom)
         else
         {
             _HideGroup(iIndexGroup, fGlom);
-            _CheckSize();
+            _CheckSize(FALSE);
         }
     }
 
@@ -3337,7 +3308,7 @@ Failure:
     
     _UpdateProgramCount();
 
-    _CheckSize();
+    _CheckSize(FALSE);
 
     if (fRestoreThreadPriority)
     {
@@ -3378,7 +3349,7 @@ void CTaskBand::_DeleteItem(HWND hwnd, int iIndex)
             _DeleteTaskItem(iIndex, TRUE);
         }
         
-        _CheckSize();
+        _CheckSize(FALSE);
         // Update the flag that says, "There is an item flashing."
         _UpdateFlashingFlag();
 
@@ -4537,7 +4508,7 @@ BOOL WINAPI CTaskBand::BuildEnumProc(HWND hwnd, LPARAM lParam)
 // So filter out WM_CAPTURECHANGED messages that are effectively NOPs.
 //
 
-LRESULT CALLBACK s_FilterCaptureSubclassProc(
+LRESULT CALLBACK s_TaskBandToolbarSubclassProc(
     HWND hwnd,
     UINT uMsg,
     WPARAM wParam,
@@ -4547,6 +4518,21 @@ LRESULT CALLBACK s_FilterCaptureSubclassProc(
 {
     switch (uMsg)
     {
+    case WM_SETREDRAW:
+        {
+            LRESULT result = DefSubclassProc(hwnd, uMsg, wParam, lParam);
+            if (wParam)
+            {
+                // The toolbar commits deferred item changes here and autosizes
+                // its height from the font. Win2k's tab control kept the explicit
+                // caption-height item size across these updates.
+                DWORD size = (DWORD)SendMessage(hwnd, TB_GETBUTTONSIZE, 0, 0);
+                int cy = g_cySize + 2*g_cyEdge;
+                if (HIWORD(size) != cy)
+                    SendMessage(hwnd, TB_SETBUTTONSIZE, 0, MAKELPARAM(LOWORD(size), cy));
+            }
+            return result;
+        }
 
     case WM_CAPTURECHANGED:
         if (hwnd == (HWND)lParam)
@@ -4558,7 +4544,7 @@ LRESULT CALLBACK s_FilterCaptureSubclassProc(
         break;
 
     case WM_NCDESTROY:
-        RemoveWindowSubclass(hwnd, s_FilterCaptureSubclassProc, uIdSubclass);
+        RemoveWindowSubclass(hwnd, s_TaskBandToolbarSubclassProc, uIdSubclass);
         break;
     }
 
@@ -4584,12 +4570,12 @@ LRESULT CTaskBand::_HandleCreate()
         _OpenTheme();
         SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
         
-        SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
+        SetWindowSubclass(_tb, s_TaskBandToolbarSubclassProc, 0, 0);
 
         _tb.SetButtonStructSize();
 
         // initial size
-        SIZE size = {0, 0};
+        SIZE size = {g_cxMinimized, g_cySize + 2*g_cyEdge};
         _tb.SetButtonSize(size);
 
         _tb.SetExtendedStyle( TBSTYLE_EX_TRANSPARENTDEADAREA | 
@@ -5888,21 +5874,19 @@ LRESULT CTaskBand::_HandleWinIniChange(WPARAM wParam, LPARAM lParam, BOOL fOnCre
 
 void CTaskBand::_VerifyButtonHeight()
 {
-    // force toolbar to get new sizes
-    SIZE size = {0, 0};
+    // Match Win2k's caption-height buttons, not the toolbar's font autosizing.
+    SIZE size = {g_cxMinimized, g_cySize + 2*g_cyEdge};
     _tb.SetButtonSize(size);
+    _OpenTheme();
 
     _BandInfoChanged();
 }
 
 int CTaskBand::_GetCurButtonHeight()
 {
-    TBMETRICS tbm;
-    _GetToolbarMetrics(&tbm);
-
     int cyButtonHeight = HIWORD(_tb.GetButtonSize());
     if (!cyButtonHeight)
-        cyButtonHeight = tbm.cyPad + g_cySize;
+        cyButtonHeight = g_cySize + 2*g_cyEdge;
 
     return cyButtonHeight;
 }
@@ -6072,9 +6056,10 @@ void CTaskBand::_OpenTheme()
     TBMETRICS tbm;
     _GetToolbarMetrics(&tbm);
     tbm.cxPad = 8;
+    tbm.cyPad = 2*g_cyEdge;
     tbm.cyBarPad = 0;
-    tbm.cxButtonSpacing = 3;
-    tbm.cyButtonSpacing = 3;
+    tbm.cxButtonSpacing = g_cxTabSpace;
+    tbm.cyButtonSpacing = g_cyTabSpace;
     _tb.SendMessage(TB_SETMETRICS, 0, (LPARAM)&tbm);
 
     _CheckSize();

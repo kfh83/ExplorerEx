@@ -137,12 +137,12 @@ protected:
     int  _GetLastVisibleItem();
     int  _GetVisibleItemCount();
     int  _GetGroupWidth(int iIndexGroup);
-    int  _GetIdealWidth(int *iRemainder);
+    int  _GetIdealWidth(BOOL fForceResize);
     void _GetNumberOfRowsCols(int* piRows, int* piCols, BOOL fCurrentSize);
     int  _GetTextSpace();
     void _GetToolbarMetrics(LPTBMETRICS ptbm);
-    void _CheckSize(void);
-    void _SizeItems(int iButtonWidth, int iRemainder = 0);
+    void _CheckSize(BOOL fForceResize = TRUE);
+    void _SizeItems(int iButtonWidth);
     BOOL _AddWindow(HWND hwnd);
     BOOL _CheckButton(int iIndex, BOOL fCheck);
     BOOL _IsButtonChecked(int iIndex);
