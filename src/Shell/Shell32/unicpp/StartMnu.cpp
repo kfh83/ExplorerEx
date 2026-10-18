@@ -553,11 +553,12 @@ protected:
     BOOL            _fInitPrograms;
 };
 
-MIDL_INTERFACE("fe787bcb-0ee8-44fb-8c89-12f508913c40")
+// Modern shell MRU ABI: indexed insertion precedes FindData in the vtable.
+MIDL_INTERFACE("714629e5-da8f-49cd-ad14-605b09744c4a")
 IMruDataList : IUnknown
 {
 
-    typedef int (*MRUDATALISTCOMPARE)(const BYTE *, const BYTE *, int);
+    typedef int (CALLBACK *MRUDATALISTCOMPARE)(const BYTE*, const BYTE*, int);
 
     enum 
     {
@@ -568,34 +569,40 @@ IMruDataList : IUnknown
     };
     typedef DWORD MRULISTF;
 
-    virtual HRESULT InitData(
+    virtual HRESULT STDMETHODCALLTYPE InitData(
 		UINT uMax,
 		MRULISTF flags,
 		HKEY hKey,
          LPCWSTR pszSubKey,
         MRUDATALISTCOMPARE pfnCompare) PURE;
         
-    virtual HRESULT AddData(
+    virtual HRESULT STDMETHODCALLTYPE AddData(
         const BYTE *pData, 
         DWORD cbData, 
         DWORD *pdwSlot) PURE;
+
+    virtual HRESULT STDMETHODCALLTYPE AddDataAtIndex(
+        const BYTE* pData,
+        int iIndex,
+        DWORD cbData,
+        DWORD* pdwSlot) PURE;
         
-    virtual HRESULT FindData(
+    virtual HRESULT STDMETHODCALLTYPE FindData(
         const BYTE *pData, 
         DWORD cbData, 
         int *piIndex) PURE;
         
-    virtual HRESULT GetData(
+    virtual HRESULT STDMETHODCALLTYPE GetData(
         int iIndex, 
         BYTE *pData, 
         DWORD cbData) PURE;
         
-    virtual HRESULT QueryInfo(
+    virtual HRESULT STDMETHODCALLTYPE QueryInfo(
         int iIndex, 
 		DWORD* pdwSlot,
 		DWORD* pcbData) PURE;
         
-    virtual HRESULT Delete(int iIndex) PURE;
+    virtual HRESULT STDMETHODCALLTYPE Delete(int iIndex) PURE;
 };
 
 // IShellMenuCallback implementation
@@ -739,7 +746,7 @@ CStartMenuCallbackBase::CStartMenuCallbackBase(BOOL fIsStartPanel)
     SHReValidateDarwinCache();
 }
 #define IDS_FIND_MNEMONIC       0x7674 
-CStartMenuCallback::CStartMenuCallback() : _cRecentDocs(-1)
+CStartMenuCallback::CStartMenuCallback() : _pmruRecent(nullptr), _cRecentDocs(-1)
 {
     LoadString(LoadLibraryW(L"shell32.dll"), IDS_FIND_MNEMONIC, _szFindMnemonic, ARRAYSIZE(_szFindMnemonic));
 }
@@ -1191,49 +1198,54 @@ HKEY SHGetShellKey(SHELLKEY sk, LPCWSTR pszSubKey, BOOL fCreateSub)
 }
 #define REGSTR_KEY_RECENTDOCS TEXT("RecentDocs")
 #define MAXRECENT_DEFAULTDOC      10
-#define MAXRECENT_MAJORDOC        20
 #define MAXRECENTDOCS 15
 
-enum
+// RecentDocs records contain a UTF-16 target name followed by the Recent
+// shortcut's child PIDL. Match filesystem names, not PIDL bytes: persisted
+// metadata may differ from a freshly enumerated shortcut (nt5src/recdocs.cpp).
+static int CALLBACK RecentDocsComparePidl(const BYTE* query, const BYTE* record, int)
 {
-	MRULISTF_USE_MEMCMP = 0x0000,   // default, find uses memcmp()
-	MRULISTF_USE_STRCMPIW = 0x0001,   // find uses StrCmpIW()
-	MRULISTF_USE_STRCMPW = 0x0002,   // find uses StrCmpW()
-	MRULISTF_USE_ILISEQUAL = 0x0003,   // find uses ILIsEqual()
-};
-#define SRMLF_COMPPIDL  0x00000001   // use the pidl in the recent folder
+    const WCHAR* name = reinterpret_cast<const WCHAR*>(record);
+    PCUITEMID_CHILD stored = reinterpret_cast<PCUITEMID_CHILD>(
+        record + (lstrlenW(name) + 1) * sizeof(WCHAR));
 
-typedef struct
-{
-	WORD        cb;                     // pidl size
-	BYTE        bFlags;                 // SHID_FS_* bits
-	DWORD       dwSize;                 // -1 implies > 4GB, hit the disk to get the real size
-	WORD        dateModified;
-	WORD        timeModified;
-	WORD        wAttrs;                 // FILE_ATTRIBUTES_* cliped to 16bits
-	CHAR        cFileName[MAX_PATH];    // this is WCHAR for names that don't round trip
-	CHAR        cAltFileName[8 + 1 + 3 + 1];  // ANSI version of cFileName (some chars not converted)
-} IDFOLDER;
-typedef UNALIGNED IDFOLDER* LPIDFOLDER;
-typedef const UNALIGNED IDFOLDER* LPCIDFOLDER;
-#define SHID_GROUPMASK          0x70
-#define SHID_FS                   0x30  // base simple IDList, we don't generate these anymore
+    IShellFolder* desktop;
+    if (FAILED(SHGetDesktopFolder(&desktop)))
+        return 1;
 
-#define GETRECNAME(p) ((LPCTSTR)(p))
-#define GETRECPIDL(p) ((LPCITEMIDLIST) (((LPBYTE) (p)) + CbFromCchW(lstrlen(GETRECNAME(p)) +1)))
-LPCIDFOLDER CFSFolder_IsValidID(LPCITEMIDLIST pidl)
-{
-	if (pidl && pidl->mkid.cb && (((LPCIDFOLDER)pidl)->bFlags & SHID_GROUPMASK) == SHID_FS)
-		return (LPCIDFOLDER)pidl;
-
-    return NULL;
+    WIN32_FIND_DATAW queryData, storedData;
+    HRESULT hr = SHGetDataFromIDListW(desktop, reinterpret_cast<PCUITEMID_CHILD>(query),
+        SHGDFIL_FINDDATA, &queryData, sizeof(queryData));
+    if (SUCCEEDED(hr))
+        hr = SHGetDataFromIDListW(desktop, stored, SHGDFIL_FINDDATA, &storedData, sizeof(storedData));
+    desktop->Release();
+    return SUCCEEDED(hr) ? lstrcmpiW(queryData.cFileName, storedData.cFileName) : 1;
 }
-
 
 HRESULT CreateRecentMRUList(IMruDataList** ppmru)
 {
-	*ppmru = 0;
-	return *ppmru ? S_OK : E_OUTOFMEMORY;
+    *ppmru = nullptr;
+    if (SHRestricted(REST_NORECENTDOCSHISTORY))
+        return E_ACCESSDENIED;
+
+    HKEY key = SHGetShellKey(SHELLKEY_HKCU_EXPLORER, REGSTR_KEY_RECENTDOCS, TRUE);
+    if (!key)
+        return HRESULT_FROM_WIN32(GetLastError());
+
+    DWORD maxRecent = SHRestricted(REST_MaxRecentDocs);
+    if (!maxRecent)
+        maxRecent = MAXRECENTDOCS * MAXRECENT_DEFAULTDOC;
+
+    HRESULT hr = CoCreateInstance(CLSID_MruLongList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(ppmru));
+    if (SUCCEEDED(hr))
+    {
+        hr = (*ppmru)->InitData(maxRecent, IMruDataList::MRULISTF_USE_STRCMPIW,
+            key, nullptr, RecentDocsComparePidl);
+        if (FAILED(hr))
+            ATOMICRELEASE(*ppmru);
+    }
+    RegCloseKey(key);
+    return hr;
 }
 
 #define SMC_DESTROY             0x0000002B  // Called when a pane is being destroyed.
@@ -1300,10 +1312,8 @@ STDMETHODIMP CStartMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wPa
         {
             ASSERT(_cRecentDocs == -1);
             ASSERT(!_pmruRecent);
-            CreateRecentMRUList(&_pmruRecent);
-
             _cRecentDocs = 0;
-            hr = S_OK;
+            hr = CreateRecentMRUList(&_pmruRecent);
         }
         break;
 
