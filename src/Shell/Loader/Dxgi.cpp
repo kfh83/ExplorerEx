@@ -104,6 +104,53 @@ static bool IsExecutableRva(HMODULE module, DWORD rva, SIZE_T length)
     return false;
 }
 
+using MenuGetSizeFn = void (__cdecl*)(void* self, SIZE* size);
+static MenuGetSizeFn g_originalMenuGetSize;
+static MenuGetSizeFn g_menuBaseGetSize;
+
+// Windows' CMenuSFToolbar::GetSize expands multicolumn menus forever when the
+// theme background has margins; the base-class implementation is correct.
+static void __cdecl MenuSFToolbarGetSizeHook(void* self, SIZE* size)
+{
+    g_menuBaseGetSize(self, size);
+}
+
+static HRESULT InstallMenuFix(PCWSTR directory)
+{
+    Shell32HookCache cache{};
+    HRESULT hr = ReadShell32HookCache(directory, &cache);
+    if (FAILED(hr))
+        return hr;
+    // Explorer imports shell32, so it is already mapped here; never load it.
+    HMODULE shell32 = GetModuleHandleW(L"shell32.dll");
+    if (!shell32)
+        return HRESULT_FROM_WIN32(ERROR_MOD_NOT_FOUND);
+    WCHAR path[MAX_PATH];
+    DWORD length = GetModuleFileNameW(shell32, path, ARRAYSIZE(path));
+    if (!length || length >= ARRAYSIZE(path))
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    ExplorerImageIdentity identity{};
+    WCHAR pdbName[MAX_PATH];
+    hr = ReadExplorerImageIdentity(path, &identity, pdbName, true);
+    if (FAILED(hr))
+        return hr;
+    if (memcmp(&identity, &cache.image, sizeof(identity)) != 0)
+        return HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
+    if (!IsExecutableRva(shell32, cache.targetRva, sizeof(cache.prologue)) ||
+        !IsExecutableRva(shell32, cache.replacementRva, sizeof(cache.prologue)))
+        return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+    BYTE* target = reinterpret_cast<BYTE*>(shell32) + cache.targetRva;
+    if (memcmp(target, cache.prologue, sizeof(cache.prologue)) != 0)
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA); // Already patched or stale cache.
+    g_menuBaseGetSize = reinterpret_cast<MenuGetSizeFn>(reinterpret_cast<BYTE*>(shell32) + cache.replacementRva);
+    g_originalMenuGetSize = reinterpret_cast<MenuGetSizeFn>(target);
+    hr = SlimDetoursInlineHook(TRUE, reinterpret_cast<PVOID*>(&g_originalMenuGetSize),
+        reinterpret_cast<PVOID>(&MenuSFToolbarGetSizeHook));
+    if (SUCCEEDED(hr))
+        Report(L"shell32 multicolumn menu fix installed", hr);
+    return hr;
+}
+
 static HRESULT InstallExplorerHook()
 {
     if (GetSystemMetrics(SM_CLEANBOOT) || GetShellWindow() || FindWindowW(L"Shell_TrayWnd", nullptr))
@@ -171,7 +218,13 @@ static HRESULT InstallExplorerHook()
     hr = SlimDetoursInlineHook(TRUE, reinterpret_cast<PVOID*>(&g_originalCreate),
         reinterpret_cast<PVOID>(&CreateDesktopAndTrayHook));
     if (SUCCEEDED(hr))
+    {
         Report(L"CreateDesktopAndTray hook installed", hr);
+        // Optional and independent: a failure leaves ExplorerEx fully working.
+        HRESULT menuFix = InstallMenuFix(directory);
+        if (FAILED(menuFix))
+            Report(L"shell32 menu fix not installed", menuFix);
+    }
     return hr;
 }
 

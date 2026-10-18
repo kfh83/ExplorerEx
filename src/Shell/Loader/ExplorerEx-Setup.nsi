@@ -2,6 +2,9 @@
 ; Requires NSIS 3.x Unicode
 ; Assembles from build\bin\ReleaseDLL\x64 output
 
+; Must precede all code and data (including the Functions below).
+Unicode true
+
 !include "LogicLib.nsh"
 !include "x64.nsh"
 !include "FileFunc.nsh"
@@ -11,7 +14,6 @@
 ;--------------------------------
 ; General
 
-Unicode true
 Name "ExplorerEx"
 !ifdef OUTDIR
     OutFile "${OUTDIR}\ExplorerEx-Setup.exe"
@@ -25,6 +27,27 @@ BrandingText "ExplorerEx"
 LicenseData "${BUILDDIR}\THIRD-PARTY-NOTICES.txt"
 ShowInstDetails show
 ShowUnInstDetails show
+
+; Saved Winlogon AutoRestartShell (a dedicated variable: $0-$9 are scratch).
+Var AutoRestartShell
+
+; This installer is a 32-bit NSIS program on 64-bit Windows. Without these two
+; settings its HKLM writes land in WOW6432Node and `regedit`/`taskkill` resolve
+; to 32-bit SysWOW64 copies, so Winlogon, the .reg import and the uninstall
+; entry would all target the wrong registry view.
+Function .onInit
+    ${IfNot} ${RunningX64}
+        MessageBox MB_OK|MB_ICONSTOP "ExplorerEx requires 64-bit Windows."
+        Abort
+    ${EndIf}
+    SetRegView 64
+    ${DisableX64FSRedirection}
+FunctionEnd
+
+Function un.onInit
+    SetRegView 64
+    ${DisableX64FSRedirection}
+FunctionEnd
 
 
 ;--------------------------------
@@ -45,7 +68,11 @@ UninstPage instfiles
 !macro StopExplorer
     ; Prevent Winlogon from auto-restarting explorer while we work
     DetailPrint "Disabling AutoRestartShell..."
-    ReadRegDWORD $2 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" "AutoRestartShell"
+    ClearErrors
+    ReadRegDWORD $AutoRestartShell HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" "AutoRestartShell"
+    ${If} ${Errors}
+        StrCpy $AutoRestartShell 1 ; value absent: Windows default is enabled
+    ${EndIf}
     WriteRegDWORD HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" "AutoRestartShell" 0
     DetailPrint "Stopping Explorer..."
     FindWindow $0 "Shell_TrayWnd"
@@ -61,7 +88,7 @@ UninstPage instfiles
 !macro StartExplorer
     ; Restore AutoRestartShell before launching
     DetailPrint "Restoring AutoRestartShell..."
-    WriteRegDWORD HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" "AutoRestartShell" $2
+    WriteRegDWORD HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" "AutoRestartShell" $AutoRestartShell
     DetailPrint "Starting Explorer..."
     Exec '"$WINDIR\explorer.exe"'
 !macroend
@@ -97,13 +124,16 @@ Section "ExplorerEx Core" SecCore
     DetailPrint "Resolving native Explorer symbols..."
     nsExec::ExecToLog '"$INSTDIR\ExplorerEx.Loader.exe" prepare "$INSTDIR"'
     Pop $0
-    ${If} $0 != 0
+    ${If} $0 == 8
+        ; Exit 8: ExplorerEx is ready; only the optional shell32 menu fix is unavailable.
+        DetailPrint "Warning: shell32 multicolumn menu fix could not be prepared; continuing without it."
+    ${ElseIf} $0 != 0
         MessageBox MB_OK|MB_ICONSTOP "Symbol preparation failed (exit $0).$\n$\nThe installer cannot hook this Explorer build.$\nExplorerEx will NOT be active after installation."
     ${EndIf}
 
     ; Import registry entries
     DetailPrint "Importing registry settings..."
-    nsExec::ExecToLog 'regedit /s "$INSTDIR\ExplorerEx.reg"'
+    nsExec::ExecToLog '"$WINDIR\regedit.exe" /s "$INSTDIR\ExplorerEx.reg"'
 
     ; Install DXGI proxy beside explorer.exe with TrustedInstaller handling.
     ; The genuine System32\dxgi.dll is never replaced.
@@ -120,6 +150,10 @@ Section "ExplorerEx Core" SecCore
     ; Write uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
+    ; Earlier installer builds wrote this key to the 32-bit view; migrate it.
+    SetRegView 32
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx"
+    SetRegView 64
     ; Add/Remove Programs entry
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "DisplayName" "ExplorerEx"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "UninstallString" '"$INSTDIR\Uninstall.exe"'
@@ -127,7 +161,7 @@ Section "ExplorerEx Core" SecCore
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "Publisher" "ExplorerEx Contributors"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "NoRepair" 1
-    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $3
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ExplorerEx" "EstimatedSize" $0
 
@@ -194,6 +228,7 @@ Section "Uninstall"
     Delete "$INSTDIR\ExplorerEx.Loader.exe"
     Delete "$INSTDIR\ExplorerEx.reg"
     Delete "$INSTDIR\explorer-hook.bin"
+    Delete "$INSTDIR\shell32-hook.bin"
     Delete "$INSTDIR\THIRD-PARTY-NOTICES.txt"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
