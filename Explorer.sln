@@ -7,6 +7,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Explorer", "src\Shell\Explo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorerEx.Shell32", "src\Shell\Shell32\ExplorerEx.Shell32.vcxproj", "{1A881839-F61D-4777-AE38-2A5785234790}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorerEx.Dxgi", "src\Shell\Loader\ExplorerEx.Dxgi.vcxproj", "{9FC2E395-50A7-4541-96CD-45313CEBE621}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorerEx.Loader", "src\Shell\Loader\ExplorerEx.Loader.vcxproj", "{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +35,16 @@ Global
 		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDebug|x64.Build.0 = ReleaseDebug|x64
 		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.ActiveCfg = ReleaseDLL|x64
 		{1A881839-F61D-4777-AE38-2A5785234790}.ReleaseDLL|x64.Build.0 = ReleaseDLL|x64
+		{9FC2E395-50A7-4541-96CD-45313CEBE621}.Debug|x64.ActiveCfg = ReleaseDLL|x64
+		{9FC2E395-50A7-4541-96CD-45313CEBE621}.Release|x64.ActiveCfg = ReleaseDLL|x64
+		{9FC2E395-50A7-4541-96CD-45313CEBE621}.ReleaseDebug|x64.ActiveCfg = ReleaseDLL|x64
+		{9FC2E395-50A7-4541-96CD-45313CEBE621}.ReleaseDLL|x64.ActiveCfg = ReleaseDLL|x64
+		{9FC2E395-50A7-4541-96CD-45313CEBE621}.ReleaseDLL|x64.Build.0 = ReleaseDLL|x64
+		{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}.Debug|x64.ActiveCfg = ReleaseDLL|x64
+		{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}.Release|x64.ActiveCfg = ReleaseDLL|x64
+		{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}.ReleaseDebug|x64.ActiveCfg = ReleaseDLL|x64
+		{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}.ReleaseDLL|x64.ActiveCfg = ReleaseDLL|x64
+		{4726E0BB-3F57-4FA9-BE29-EA2423DBB537}.ReleaseDLL|x64.Build.0 = ReleaseDLL|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -33,7 +33,12 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: amd64
-    - name: Compile ExplorerEx (ExplorerEx.dll + ExplorerEx.Shell32.dll)
+    - uses: NuGet/setup-nuget@v2
+      with:
+        nuget-version: '6.12.1'
+    - name: Restore pinned native loader dependency
+      run: nuget restore src\Shell\Loader\packages.config -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive
+    - name: Compile ExplorerEx DLLs and standalone loader
       run: | 
         msbuild explorer.sln /p:Configuration=ReleaseDLL /p:Platform=x64
     - name: Set short git commit SHA
