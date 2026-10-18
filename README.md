@@ -56,7 +56,7 @@ If you have fetched a GitHub actions artifact, you *need* to fetch the release p
 In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You can either go into `Settings\Advanced Settings\More Advanced Settings` and add `winlogon.exe` into the Process inclusion list, or you can untick "Exclude critical system processes".
   
 **How-to**
-1. Copy over `ExplorerEx.dll` and your desired language folder `i.e, en-US` to a suitable location (i.e, `%SystemDrive%\ExplorerEx`).
+1. Copy over `ExplorerEx.dll`, `ExplorerEx.Shell32.dll`, and your desired language folder `i.e, en-US` to the same suitable location (i.e, `%SystemDrive%\ExplorerEx`). Keep both DLLs from the same build together.
 2. Copy the contents of the [loader mod](https://raw.githubusercontent.com/kfh83/ExplorerEx/refs/heads/main/explorerex-dll-loader.wh.cpp) from the repo.
 3. Open Windhawk, hit "Create a New Mod" button on the bottom right corner.
 4. Select all of the existing content and delete it, and paste in the mod code you copied earlier.
@@ -72,7 +72,7 @@ In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You c
   <summary>Release/.EXE build</summary>
 
 **How-to**
-1. Copy over `explorer.exe` and your desired language folder `i.e, en-US` to a suitable location (i.e, `%SystemDrive%\ExplorerEx`). This cannot be `%SystemRoot%`.
+1. Copy over `explorer.exe`, `ExplorerEx.Shell32.dll`, and your desired language folder `i.e, en-US` to the same suitable location (i.e, `%SystemDrive%\ExplorerEx`). This cannot be `%SystemRoot%`. Keep the executable and DLL from the same build together.
 2. Open the Registry Editor and go to `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\` and change the `Shell` key to the path of where you copied explorer.exe to (i.e `C:\ExplorerEx\explorer.exe`).
 3. **OPTIONAL:** If you wish to set the shell on a per-user basis instead of machine-wide you can do the same as above on `HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\`. You'll need to create the `Shell` key.
 4. Run Task Manager, restart Windows Explorer, it should automatically start ExplorerEx.
@@ -92,13 +92,27 @@ In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You c
 1. Clone the repository using git:
 ```git clone https://github.com/kfh83/ExplorerEx.git```
 
-2. Open `ExplorerEx.sln` in your preferred Visual Studio-compatible IDE. Note building has only been tested using Visual Studio 2022.
+2. Open `Explorer.sln` in Visual Studio 2022 with the Desktop development with C++ workload, MSVC v143, C++ ATL, and a Windows 10/11 SDK installed.
 
-3. Select your configuration and build away:
+3. Select the x64 platform and your configuration, then build the solution (both Explorer and ExplorerEx.Shell32):
 
 - `Release` builds `explorer.exe` with **no** UWP app support.
 - `ReleaseDLL` builds `ExplorerEx.dll` with UWP app support enabled for use with the loader Windhawk mod provided in the repository.
 - `ReleaseDebug` builds `explorer.exe` with **no** UWP app support, optimizations disabled and console output enabled.
+
+All configurations also build `ExplorerEx.Shell32.dll`, which is required beside the executable or loader DLL. Outputs and language folders are in `build\bin\<Configuration>\x64\`; project-specific intermediates are in `build\obj\<Project>\<Configuration>\x64\`.
+
+The classic menu, All Programs folders, and Darwin shortcut cache now live in the in-process Shell32 server. Explorer registers the server at startup; no `regsvr32` step is needed. The three folder classes retain ExplorerEx's private CLSIDs rather than Windows-owned namespace identities. As before the migration, folder registration uses HKCU normally and HKLM when elevated so shell namespace binding can locate the server. Windows-owned menu class overrides remain per-user.
+
+The XP All Programs menu retains its `IShellMenu` callbacks, scrolling settings, and separate fast-items group. Its namespace groups and sorting flags intentionally differ from Vista's NSCHost layout; copying that layout hides the fast-items section in the XP menu.
+
+This migration does not resolve every cache issue in [#48](https://github.com/kfh83/ExplorerEx/issues/48). In an isolated All Programs popup check, newly added shortcuts appeared while the menu was open, but a deleted shortcut remained visible after reopening the same menu object.
+
+From an x64 Native Tools Command Prompt for VS 2022 at the repository root:
+```bat
+msbuild Explorer.sln /m /p:Configuration=Release /p:Platform=x64
+msbuild Explorer.sln /m /p:Configuration=ReleaseDLL /p:Platform=x64
+```
 
 > [!NOTE]
 > `Debug` configuration is currently (as of Sep 5, 2025) broken. Please use the `ReleaseDebug` configuration instead.

@@ -16,7 +16,7 @@
 #include "uemapp.h"
 
 #define NO_NOTIFYSUBCLASSWNDPROC
-#include "cwndproc.h"
+#include "CWndProc.h"
 #include "desktop2.h"
 #include "mixer.h"
 #include "port32.h"
@@ -61,8 +61,7 @@ void DoTaskBarProperties(HWND hwnd, DWORD dwFlags);
 void ClassFactory_Start();
 void ClassFactory_Stop();
 
-void SetupMergedFolderKeys(LPCTSTR clsid);
-void ComServer_Stop(LPCTSTR clsid);
+HRESULT InitializeRegistryKeys();
 
 //
 // Settings UI entry point types.
@@ -1872,9 +1871,15 @@ DWORD CTray::_SyncThreadProc()
     OleInitialize(NULL);    // matched in MainThreadProc()
     ClassFactory_Start();
 
-	SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9c}");
-	SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9d}");
-	SetupMergedFolderKeys(L"{865e5e76-ad83-4dca-a109-50dc2113ce9e}");
+    HRESULT hrRegistration = InitializeRegistryKeys();
+    if (FAILED(hrRegistration))
+    {
+        WCHAR szError[160];
+        StringCchPrintfW(szError, ARRAYSIZE(szError),
+            L"Unable to register ExplorerEx.Shell32.dll (0x%08X). Start menu activation may fail.",
+            hrRegistration);
+        MessageBoxW(nullptr, szError, L"ExplorerEx", MB_OK | MB_ICONERROR);
+    }
 
     _InitNonzeroGlobals();
     _ssomgr.Init();

@@ -11,6 +11,7 @@
 #include "util.h"
 #include "cowsite.h"
 #include "uemapp.h"
+#include "Shell32Util.h"
 
 #define REGSTR_EXPLORER_WINUPDATE REGSTR_PATH_EXPLORER TEXT("\\WindowsUpdate")
 
@@ -151,8 +152,8 @@ LPITEMIDLIST FullPidlFromSMData(LPSMDATA psmd)
     LPITEMIDLIST pidlItem;
     LPITEMIDLIST pidlFolder = NULL;
     LPITEMIDLIST pidlFull = NULL;
-    IAugmentedShellFolder2* pasf2;
-    if (SUCCEEDED(psmd->psf->QueryInterface(IID_IAugmentedFolder, (LPVOID*)&pasf2)))
+    IAugmentedShellFolder* pasf2;
+    if (SUCCEEDED(psmd->psf->QueryInterface(IID_PPV_ARGS(&pasf2))))
     {
         if (SUCCEEDED(pasf2->UnWrapIDList(psmd->pidlItem, 1, NULL, &pidlFolder, &pidlItem, NULL)))
         {
@@ -177,9 +178,9 @@ LPITEMIDLIST FullPidlFromSMData(LPSMDATA psmd)
 //
 BOOL IsMergedFolderGUID(IShellFolder* psf, LPCITEMIDLIST pidl, REFGUID rguid)
 {
-    IAugmentedShellFolder2* pasf;
+    IAugmentedShellFolder* pasf;
     BOOL fMatch = FALSE;
-    if (SUCCEEDED(psf->QueryInterface(IID_IAugmentedFolder, (LPVOID*)&pasf)))
+    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&pasf))))
     {
         GUID guid;
         if (SUCCEEDED(pasf->GetNameSpaceID(pidl, &guid)))
@@ -327,193 +328,108 @@ BOOL ProcessDarwinAd(IShellLinkDataList* psldl, LPCITEMIDLIST pidlFull)
 // This routine creates the IShellFolder and pidl for one of the many
 // merged folders on the Start Menu / Start Panel.
 
-typedef struct {
-    UINT    csidl;
-    UINT    uANSFlags;          // Flags for AddNameSpace
-    LPCGUID pguidObj;           // optional object tag
-} MERGEDFOLDERINFO, * LPMERGEDFOLDERINFO;
-typedef const MERGEDFOLDERINFO* LPCMERGEDFOLDERINFO;
-
-#define MAKEINTIDLIST(csidl)    (LPCITEMIDLIST)MAKEINTRESOURCE(csidl)
+struct MERGEDFOLDERINFO
+{
+    UINT csidl;
+    UINT uANSFlags;
+    const GUID* pguidObj;
+    UINT uGroupID;
+};
 
 MIDL_INTERFACE("76347b91-9846-4ce7-9a57-69b910d16123")
 ISetFolderEnumRestriction : IUnknown
 {
-    virtual HRESULT SetEnumRestriction(DWORD dwRequired, DWORD dwForbidden) PURE;
+    virtual HRESULT STDMETHODCALLTYPE SetEnumRestriction(DWORD dwRequired, DWORD dwForbidden) PURE;
 };
 
-HRESULT GetMergedFolder(IShellFolder** ppsf, LPITEMIDLIST* ppidl,
-    LPCMERGEDFOLDERINFO rgmfi, UINT cmfi)
+DEFINE_GUID(CLSID_StartMenuCommon, 0x2981C306, 0x09EA, 0x405D, 0x9D, 0x0F, 0x83, 0x33, 0x78, 0x27, 0xBD, 0x35);
+
+HRESULT CreateMergedFolderHelper(REFCLSID clsid, const MERGEDFOLDERINFO* rgmfi,
+    UINT cmfi, REFIID riid, void** ppv)
 {
-    *ppidl = NULL;
-    *ppsf = NULL;
-
-    IShellFolder2* psf;
-    IAugmentedShellFolder2* pasf;
-    HRESULT hr = CoCreateInstance(CLSID_MergedFolder, 0LL, 1u, IID_IAugmentedFolder, (LPVOID*)&pasf);
-
-    for (UINT imfi = 0; SUCCEEDED(hr) && imfi < cmfi; imfi++)
+    *ppv = nullptr;
+    IAugmentedShellFolder* pasf;
+    HRESULT hr = CoCreateInstance(CLSID_MergedFolder, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pasf));
+    if (SUCCEEDED(hr))
     {
-        // If this is a common group and common groups are restricted, then
-        // skip this item
-        if ((rgmfi[imfi].uANSFlags & ASFF_COMMON) &&
-            SHRestricted(REST_NOCOMMONGROUPS))
-        {
-            continue;
-        }
-
-        psf = NULL;    // in/out param below
-        hr = SHCacheTrackingFolder(MAKEINTIDLIST(rgmfi[imfi].csidl), rgmfi[imfi].csidl, &psf);
-
+        // Obtain only the virtual root PIDL: binding this class here would recurse
+        // into its own factory. Each filesystem target keeps this namespace identity.
+        ITEMIDLIST* pidl;
+        hr = BindToGetFolderAndPidl(clsid, nullptr, &pidl);
         if (SUCCEEDED(hr))
         {
-            // If this is a Start Menu folder, then apply the
-            // "do not enumerate subfolders" restriction if the policy says so.
-            // In which case, we cannot use the tracking folder cache.
-            // (Perf note: We compare pointers directly.)
-            if (rgmfi[imfi].pguidObj == &CLSID_StartMenu)
+            for (UINT i = 0; SUCCEEDED(hr) && i < cmfi; ++i)
             {
-                if (SHRestricted(REST_NOSTARTMENUSUBFOLDERS))
+                const MERGEDFOLDERINFO& mfi = rgmfi[i];
+                if ((mfi.uANSFlags & ASFF_COMMON) && SHRestricted(REST_NOCOMMONGROUPS))
+                    continue;
+
+                PERSIST_FOLDER_TARGET_INFO target = {};
+                target.dwAttributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY;
+                target.csidl = mfi.csidl | CSIDL_FLAG_PFTI_TRACKTARGET;
+                IShellFolder2* psf;
+                hr = CFSFolder_CreateFolder(nullptr, nullptr, pidl, &target, IID_PPV_ARGS(&psf));
+                if (SUCCEEDED(hr))
                 {
-                    ISetFolderEnumRestriction* prest;
-                    if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&prest))))
+                    if ((mfi.pguidObj == &CLSID_StartMenu || mfi.pguidObj == &CLSID_StartMenuCommon) &&
+                        SHRestricted(REST_NOSTARTMENUSUBFOLDERS))
                     {
-                        prest->SetEnumRestriction(0, SHCONTF_FOLDERS); // disallow subfolders
-                        prest->Release();
+                        ISetFolderEnumRestriction* prest;
+                        if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARGS(&prest))))
+                        {
+                            prest->SetEnumRestriction(0, SHCONTF_FOLDERS);
+                            prest->Release();
+                        }
                     }
+                    hr = pasf->AddNameSpace(mfi.pguidObj, psf, nullptr, mfi.uANSFlags, mfi.uGroupID);
+                    psf->Release();
                 }
             }
-            else
-            {
-                // If this assert fires, then our perf optimization above failed.
-                ASSERT(rgmfi[imfi].pguidObj == NULL ||
-                    !IsEqualGUID(*rgmfi[imfi].pguidObj, CLSID_StartMenu));
-            }
-
-            hr = pasf->AddNameSpace(rgmfi[imfi].pguidObj, psf, NULL, rgmfi[imfi].uANSFlags, rgmfi[imfi].pguidObj == &CLSID_StartMenu ? 1 : 0);
+            ILFree(pidl);
             if (SUCCEEDED(hr))
-            {
-                if (rgmfi[imfi].uANSFlags & ASFF_DEFNAMESPACE_DISPLAYNAME)
-                {
-                    // If this assert fires, it means somebody marked two
-                    // folders as ASFF_DEFNAMESPACE_DISPLAYNAME, which is
-                    // illegal (you can have only one default)
-                    ASSERT(*ppidl == NULL);
-                    hr = SHGetIDListFromUnk(psf, ppidl);    // copy out the pidl for this guy
-                }
-            }
-
-            psf->Release();
+                hr = pasf->QueryInterface(riid, ppv);
         }
-    }
-
-    if (SUCCEEDED(hr))
-        *ppsf = pasf;   // copy out the ref
-    else
-        ATOMICRELEASE(pasf);
-
-    return hr;
-}
-
-HRESULT CreateMergedFolderHelper(LPCMERGEDFOLDERINFO rgmfi, UINT cmfi, REFIID riid, void** ppv)
-{
-    IShellFolder* psf;
-    LPITEMIDLIST pidl;
-    HRESULT hr = GetMergedFolder(&psf, &pidl, rgmfi, cmfi);
-    if (SUCCEEDED(hr))
-    {
-        hr = psf->QueryInterface(riid, ppv);
-
-        if (SUCCEEDED(hr))
-        {
-            IPersistPropertyBag* pppb;
-            if (SUCCEEDED(psf->QueryInterface(IID_PPV_ARG(IPersistPropertyBag, &pppb))))
-            {
-                IPropertyBag* ppb;
-                if (SUCCEEDED(SHCreatePropertyBagOnMemory(STGM_READWRITE, IID_PPV_ARG(IPropertyBag, &ppb))))
-                {
-                    // these merged folders have to be told to use new changenotification
-                    SHPropertyBag_WriteBOOL(ppb, L"MergedFolder\\ShellView", TRUE);
-                    pppb->Load(ppb, NULL);
-                    ppb->Release();
-                }
-                pppb->Release();
-            }
-        }
-
-        psf->Release();
-        ILFree(pidl);
+        pasf->Release();
     }
     return hr;
 }
 
 const MERGEDFOLDERINFO c_rgmfiStartMenu[] = {
-    {   CSIDL_STARTMENU | CSIDL_FLAG_CREATE,    ASFF_DEFNAMESPACE_ALL,  &CLSID_StartMenu },
-    {   CSIDL_COMMON_STARTMENU,                 ASFF_COMMON,            &CLSID_StartMenu },
+    { CSIDL_STARTMENU | CSIDL_FLAG_CREATE, 0xFF02, &CLSID_StartMenu, 1 },
+    { CSIDL_COMMON_STARTMENU, 0x0006, &CLSID_StartMenuCommon, 1 },
 };
 
 const MERGEDFOLDERINFO c_rgmfiProgramsFolder[] = {
-    {   CSIDL_PROGRAMS | CSIDL_FLAG_CREATE,     ASFF_DEFNAMESPACE_ALL,  NULL },
-    {   CSIDL_COMMON_PROGRAMS,                  ASFF_COMMON,            NULL },
+    { CSIDL_PROGRAMS | CSIDL_FLAG_CREATE, ASFF_DEFNAMESPACE_ALL, &CLSID_ProgramsFolder, 0 },
+    { CSIDL_COMMON_PROGRAMS, ASFF_COMMON, &CLSID_ProgramsFolder, 0 },
 };
 
-#ifdef FEATURE_STARTPAGE
-#include <initguid.h>
-DEFINE_GUID(CLSID_RecentDocs, 0xc97b1d8c, 0x66a6, 0x4abd, 0xbe, 0x58, 0x0b, 0xbf, 0x6b, 0xa9, 0x90, 0x18);//C97B1D8C-66A6-4ABD-BE58-0BBF6BA99018
-DEFINE_GUID(CLSID_MergedDesktop, 0xdceecc7e, 0x4840, 0x4f19, 0xb4, 0xf8, 0x42, 0x6c, 0x4c, 0x43, 0x14, 0x01);//DCEECC7E-4840-4f19-B4F8-426C4C431401
-
-const MERGEDFOLDERINFO c_rgmfiMoreDocumentsFolder[] = {
-    {   CSIDL_PERSONAL | CSIDL_FLAG_CREATE,     ASFF_DEFNAMESPACE_ALL,  &CLSID_MyDocuments },
-    {   CSIDL_DESKTOP,                          ASFF_DEFAULT,           &CLSID_MergedDesktop },
-    {   CSIDL_RECENT,                           ASFF_DEFAULT,           &CLSID_RecentDocs },
-};
-#endif
-
-//
-//  On the Start Panel, we want the fast items to sort above the Programs,
-//  so we mark the Programs folders as ASFF_SORTDOWN so they go to the bottom.
-//  We also list the Fast Items first so SMSET_SEPARATEMERGEFOLDER picks
-//  them off properly.  And we only want to let Start Menu merge with
-//  Common Start Menu (and Programs with Common Programs) so pass
-//  ASFF_MERGESAMEGUID.
-
+// XP's IShellMenu splits the fast-items group from the default Programs group.
+// Keep its ordering and sort flags rather than Vista's NSCHost group layout.
 const MERGEDFOLDERINFO c_rgmfiProgramsFolderAndFastItems[] = {
-    {   CSIDL_STARTMENU | CSIDL_FLAG_CREATE,    ASFF_DEFAULT | ASFF_MERGESAMEGUID,                 &CLSID_StartMenu},
-    {   CSIDL_COMMON_STARTMENU,                 ASFF_COMMON | ASFF_MERGESAMEGUID,                 &CLSID_StartMenu},
-    {   CSIDL_PROGRAMS | CSIDL_FLAG_CREATE,     ASFF_DEFNAMESPACE_ALL | ASFF_MERGESAMEGUID | ASFF_SORTDOWN, NULL },
-    {   CSIDL_COMMON_PROGRAMS,                  ASFF_COMMON | ASFF_MERGESAMEGUID | ASFF_SORTDOWN, NULL },
+    { CSIDL_STARTMENU | CSIDL_FLAG_CREATE, ASFF_DEFAULT | ASFF_MERGESAMEGUID, &CLSID_StartMenu, 1 },
+    { CSIDL_COMMON_STARTMENU, ASFF_COMMON | ASFF_MERGESAMEGUID, &CLSID_StartMenu, 1 },
+    { CSIDL_PROGRAMS | CSIDL_FLAG_CREATE, ASFF_DEFNAMESPACE_ALL | ASFF_MERGESAMEGUID | ASFF_SORTDOWN, &CLSID_ProgramsFolder, 0 },
+    { CSIDL_COMMON_PROGRAMS, ASFF_COMMON | ASFF_MERGESAMEGUID | ASFF_SORTDOWN, &CLSID_ProgramsFolder, 0 },
 };
 
-HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
+EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
 {
-    return CreateMergedFolderHelper(c_rgmfiProgramsFolderAndFastItems, ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems), riid, ppv);
+    return CreateMergedFolderHelper(CLSID_StartMenuFolder,
+        c_rgmfiStartMenu, ARRAYSIZE(c_rgmfiStartMenu), riid, ppv);
 }
 
-HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
+EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
 {
-    return CreateMergedFolderHelper(c_rgmfiProgramsFolder, ARRAYSIZE(c_rgmfiProgramsFolder), riid, ppv);
+    return CreateMergedFolderHelper(CLSID_ProgramsFolder,
+        c_rgmfiProgramsFolder, ARRAYSIZE(c_rgmfiProgramsFolder), riid, ppv);
 }
 
-HRESULT CStartMenuFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
+EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
 {
-    return CreateMergedFolderHelper(c_rgmfiStartMenu, ARRAYSIZE(c_rgmfiStartMenu), riid, ppv);
+    return CreateMergedFolderHelper(CLSID_ProgramsFolderAndFastItems,
+        c_rgmfiProgramsFolderAndFastItems, ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems), riid, ppv);
 }
-
-#ifdef FEATURE_STARTPAGE
-STDAPI CMoreDocumentsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv)
-{
-    UINT uSize = ARRAYSIZE(c_rgmfiMoreDocumentsFolder);
-
-    // Only show recent docs if the reg key says so.
-    if (!SHRegGetBoolUSValue(TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer"), TEXT("RecentDocs"),
-        FALSE, FALSE))
-    {
-        uSize--;
-    }
-
-    return CreateMergedFolderHelper(c_rgmfiMoreDocumentsFolder, uSize, riid, ppv);
-}
-#endif
 
 HRESULT GetFilesystemInfo(IShellFolder* psf, LPITEMIDLIST* ppidlRoot, int* pcsidl)
 {
@@ -527,18 +443,21 @@ HRESULT GetFilesystemInfo(IShellFolder* psf, LPITEMIDLIST* ppidlRoot, int* pcsid
     {
         PERSIST_FOLDER_TARGET_INFO pfti = { 0 };
 
-        if (SUCCEEDED(ppf->GetFolderTargetInfo(&pfti)))
+        hr = ppf->GetFolderTargetInfo(&pfti);
+        if (SUCCEEDED(hr))
         {
             *pcsidl = pfti.csidl;
-            if (-1 != pfti.csidl)
-                hr = S_OK;
-
+            if (pfti.csidl != -1 && pfti.pidlTargetFolder)
+            {
+                // GetCurFolder is now the virtual namespace root, not the
+                // filesystem target used by the relocation check.
+                *ppidlRoot = pfti.pidlTargetFolder;
+                pfti.pidlTargetFolder = nullptr;
+            }
+            else
+                hr = E_FAIL;
             ILFree(pfti.pidlTargetFolder);
         }
-
-        if (SUCCEEDED(hr))
-            hr = ppf->GetCurFolder(ppidlRoot);
-
         ppf->Release();
     }
     return hr;
@@ -1856,10 +1775,8 @@ HRESULT CStartMenuCallback::VerifyMergedGuy(BOOL fPrograms, IShellMenu* psm)
     DWORD dwFlags;
     LPITEMIDLIST pidl;
     HRESULT hr = S_OK;
-    IAugmentedShellFolder2* pasf;
-    //CoCreateInstance(CLSID_MergedFolder, 0LL, 1u, IID_IAugmentedFolder, (LPVOID*)&pasf)
-    //if (SUCCEEDED(psm->GetShellFolder(&dwFlags, &pidl, IID_PPV_ARG(IAugmentedShellFolder2, &pasf))))
-    if (SUCCEEDED(psm->GetShellFolder(&dwFlags, &pidl, IID_IAugmentedFolder, (LPVOID*)&pasf)))
+    IAugmentedShellFolder* pasf;
+    if (SUCCEEDED(psm->GetShellFolder(&dwFlags, &pidl, IID_PPV_ARGS(&pasf))))
     {
         IShellFolder* psf;
         // There are 2 things in the merged namespace: CSIDL_PROGRAMS and CSIDL_COMMON_PROGRAMS
@@ -2792,17 +2709,11 @@ HRESULT CStartMenuCallbackBase::InitializeProgramsShellMenu(IShellMenu* psm)
             STRREG_STARTMENU2 "XP" TEXT("\\Programs") :
             STRREG_STARTMENU "XP" TEXT("\\Programs");
 
-        auto hr = RegCreateKeyEx(HKEY_CURRENT_USER, pszOrderKey, NULL, NULL,
+        RegCreateKeyEx(HKEY_CURRENT_USER, pszOrderKey, NULL, NULL,
             REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE,
             NULL, &hkeyPrograms, NULL);
 
-        if (hr != S_OK)
-        {
-            printf("FAILED TO CREATE REG KEY\n");
-        }
-
         IShellFolder* psf = 0;
-        BOOL fOptimize = FALSE;
         DWORD dwSmset = SMSET_TOP;
 
         if (_fIsStartPanel)
@@ -2812,70 +2723,13 @@ HRESULT CStartMenuCallbackBase::InitializeProgramsShellMenu(IShellMenu* psm)
             
             dwSmset |= SMSET_SEPARATEMERGEFOLDER;
 
-			//hr = GetMergedFolder(&psf, &pidl, c_rgmfiProgramsFolderAndFastItems,
-			//	ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems));
-            //hr = CreateMergedFolderHelper(c_rgmfiProgramsFolderAndFastItems,ARRAYSIZE(c_rgmfiProgramsFolderAndFastItems),IID_PPV_ARGS(&psf));
-
-			pidl = ILCreateFromPathW(L"shell:::{865e5e76-ad83-4dca-a109-50dc2113ce9c}");
-			if (pidl)
-			{
-			    if (SUCCEEDED(SHBindToObject(0LL, pidl, 0, IID_IShellFolder, (void**)&psf)))
-			    {
-			        printf("success\n");
-			    }
-			    else
-			    {
-			        printf("FAILED TO BIND OBJECT\n");
-			    }
-			
-			}
-			else
-			    printf("FAILED TO BIND OBJECT\n");
+            hr = BindToGetFolderAndPidl(CLSID_ProgramsFolderAndFastItems, &psf, &pidl);
         }
         else
         {
             // Classic Start Menu:  The Programs section is just the per-user
             // and common Programs folders merged together
-			//hr = GetMergedFolder(&psf, &pidl, c_rgmfiProgramsFolder,
-			//    ARRAYSIZE(c_rgmfiProgramsFolder));
-
-			pidl = ILCreateFromPathW(L"shell:::{865e5e76-ad83-4dca-a109-50dc2113ce9d}");
-			if (pidl)
-			{
-				if (SUCCEEDED(SHBindToObject(0LL, pidl, 0, IID_IShellFolder, (void**)&psf)))
-				{
-					printf("success\n");
-				}
-				else
-				{
-					printf("FAILED TO BIND OBJECT\n");
-				}
-
-			}
-			else
-				printf("FAILED TO BIND OBJECT\n");
-
-            // We used to register for change notify at CSIDL_STARTMENU and assumed
-            // that CSIDL_PROGRAMS was a child of CSIDL_STARTMENU. Since this wasn't always the 
-            // case, I removed the optimization.
-
-            // Both panes are registered recursive. So, When CSIDL_PROGRAMS _IS_ a 
-            // child of CSIDL_STARTMENU we can enter a code path where when destroying 
-            // CSIDL_PROGRAMS, we unregister it. This will flush the change nofiy queue 
-            // of CSIDL_STARTMENU, and blow away all of the children, including CSIDL_PROGRAMS, 
-            // while we are in the middle of destroying it... See the problem? I have been adding 
-            // reentrance "Blockers" but this only delayed where we crashed. 
-            // What was needed was to determine if Programs was a child of the Start Menu directory.
-            // if it was we need to add the optmimization. If it's not we don't have a problem.
-
-            // WINDOWS BUG 135156(tybeam): If one of the two is redirected, then this will get optimized
-            // we can't do better than this because both are registed recursive, and this will fault...
-            fOptimize = IsCSIDLChild(CSIDL_STARTMENU, CSIDL_PROGRAMS)
-                || IsCSIDLChild(CSIDL_COMMON_STARTMENU, CSIDL_COMMON_PROGRAMS);
-            if (fOptimize)
-            {
-                dwSmset |= SMSET_DONTREGISTERCHANGENOTIFY;
-            }
+            hr = BindToGetFolderAndPidl(CLSID_ProgramsFolder, &psf, &pidl);
         }
 
         if (SUCCEEDED(hr))
@@ -3004,22 +2858,7 @@ HRESULT CStartMenuCallback::InitializeFastItemsShellMenu(IShellMenu* psm)
         // Add the fast item folder to the top of the menu
         IShellFolder* psfFast = 0;
         LPITEMIDLIST pidlFast = 0;
-        //hr = GetMergedFolder(&psfFast, &pidlFast, c_rgmfiStartMenu, ARRAYSIZE(c_rgmfiStartMenu));
-		pidlFast = ILCreateFromPathW(L"shell:::{865e5e76-ad83-4dca-a109-50dc2113ce9e}");
-		if (pidlFast)
-		{
-			if (SUCCEEDED(SHBindToObject(0LL, pidlFast, 0, IID_IShellFolder, (void**)&psfFast)))
-			{
-				printf("success\n");
-			}
-			else
-			{
-				printf("FAILED TO BIND OBJECT\n");
-			}
-
-		}
-		else
-			printf("FAILED TO BIND OBJECT\n");
+        hr = BindToGetFolderAndPidl(CLSID_StartMenuFolder, &psfFast, &pidlFast);
 
         if (SUCCEEDED(hr))
         {
@@ -3031,6 +2870,8 @@ HRESULT CStartMenuCallback::InitializeFastItemsShellMenu(IShellMenu* psm)
 
             //TraceMsg(TF_MENUBAND, "Root Start Menu Key Is %d", hMenuKey);
             hr = psm->SetShellFolder(psfFast, pidlFast, hMenuKey, SMSET_TOP | SMSET_NOEMPTY);
+            if (FAILED(hr) && hMenuKey)
+                RegCloseKey(hMenuKey);
 
             psfFast->Release();
             ILFree(pidlFast);
@@ -3350,7 +3191,7 @@ HRESULT CStartMenuCallback::_GetTip(LPWSTR pstrTitle, LPWSTR pstrTip)
     return S_OK;
 }
 
-HRESULT CStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut)
+EXTERN_C HRESULT CStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut)
 {
     HRESULT hr = E_FAIL;
     IMenuPopup* pmp = NULL;
@@ -3634,7 +3475,7 @@ STDMETHODIMP CPersonalProgramsMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg,
 }
 
 
-HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut)
+EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(LPUNKNOWN punkOuter, REFIID riid, void** ppvOut)
 {
     HRESULT hr;
 

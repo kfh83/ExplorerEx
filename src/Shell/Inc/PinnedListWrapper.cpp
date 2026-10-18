@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "shundoc.h"
+#include "PinnedListWrapper.h"
 
 CPinnedListWrapper::CPinnedListWrapper(IUnknown *punk, const GUID &riid)
 {
@@ -66,8 +67,13 @@ STDMETHODIMP_(ULONG __stdcall) CPinnedListWrapper::Release(void)
 		cref = m_flexList->Release();
 	if (m_pinnedList3)
 		cref = m_pinnedList3->Release();
-	if (cref == 0)
-		free((void*)this); // <- This is probably very stupid.
+    if (cref == 0)
+    {
+        m_pinnedList25 = nullptr;
+        m_flexList = nullptr;
+        m_pinnedList3 = nullptr;
+        delete this;
+    }
 	return cref;
 }
 

@@ -1399,7 +1399,7 @@ BOOL SHRunControlPanelCustom(LPCTSTR lpcszCmdLine, HWND hwndMsgParent);
 //
 // Function loader
 //
-bool SHUndocInit(void);
+EXTERN_C BOOL SHUndocInit(void);
 
 const CLSID CLSID_TrayNotify = { 0x25DEAD04, 0x1EAC, 0x4911,{ 0x9E, 0x3A, 0xAD, 0x0A, 0x4A, 0xB5, 0x60, 0xFD } };
 const CLSID CLSID_FadeTask = { 0x7EB5FBE4, 0x2100, 0x49E6, { 0x85, 0x93, 0x17, 0xE1, 0x30, 0x12, 0x2F, 0x91} };
@@ -1453,65 +1453,40 @@ HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* pp
 inline HRESULT(WINAPI* SHGetUserPicturePath_t)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathMax);
 HRESULT WINAPI SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath);
 
-inline HRESULT(*CFSFolder_CreateFolder)(IUnknown* punkOuter, LPBC pbc, LPCITEMIDLIST pidl, const PERSIST_FOLDER_TARGET_INFO* pf, REFIID riid, void** ppv);
+inline HRESULT(WINAPI* CFSFolder_CreateFolder)(IUnknown* punkOuter, LPBC pbc, LPCITEMIDLIST pidl, const PERSIST_FOLDER_TARGET_INFO* pf, REFIID riid, void** ppv);
 inline HRESULT(*SHCreatePropertyBagOnMemory)(DWORD grfMode, REFIID riid, void** ppv);
 inline HRESULT(*SHPropertyBag_WriteBOOL)(IPropertyBag* ppb, LPCWSTR pszPropName, BOOL fValue);
 
 DEFINE_GUID(CLSID_MruLongList, 0x53bd6b4e, 0x3780, 0x4693, 0xaf, 0xc3, 0x71, 0x61, 0xc2, 0xf3, 0xee, 0x9c);
-DEFINE_GUID(IID_IAugmentedFolder, 0x2f711b17, 0x773c, 0x41d4, 0x93, 0xfa, 0x7f, 0x23, 0xed, 0xce, 0xcb, 0x66);
 DEFINE_GUID(CLSID_UserEventTimer, 0x864A1288, 0x354C, 0x4D19, 0x9D, 0x68, 0x0C2, 0x74, 0x2B, 0x0B1, 0x49, 0x97);
 
+#ifdef EXPLOREREXSHELL32_EXPORTS
+#define EXEX_SHELL32_API __declspec(dllexport)
+#else
+#define EXEX_SHELL32_API __declspec(dllimport)
+#endif
+
 // Note: SHRegisterDarwinLink takes ownership of pidlFull. fUpdate means: update the Darwin state right away
-BOOL SHRegisterDarwinLink(LPITEMIDLIST pidlFull, LPWSTR pszDarwinID, BOOL fUpdate);
+EXEX_SHELL32_API BOOL SHRegisterDarwinLink(LPITEMIDLIST pidlFull, LPWSTR pszDarwinID, BOOL fUpdate);
 
 // Use this function to update the Darwin state for all registered Darwin shortcuts.
-void SHReValidateDarwinCache();
+EXEX_SHELL32_API void SHReValidateDarwinCache();
 
-HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut);
+EXEX_SHELL32_API HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut);
 
 inline void(*CheckWinIniForAssocs)();
 inline HRESULT(*CheckDiskSpace)();
 inline HRESULT(*CheckStagingArea)();
-DEFINE_GUID(CLSID_ProgramsFolderAndFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9C);
-DEFINE_GUID(CLSID_ProgramsFolder, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9D);
-DEFINE_GUID(CLSID_StartMenuFastItems, 0x865E5E76, 0x0AD83, 0x4DCA, 0x0A1, 0x9, 0x50, 0x0DC, 0x21, 0x13, 0x0CE, 0x9E);
-HRESULT CStartMenuFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-HRESULT CProgramsFolder_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
-HRESULT CStartMenuFastItems_CreateInstance(IUnknown* punkOuter, REFIID riid, void** ppv);
+// Keep ExplorerEx's private namespace identities. The Windows-owned folder
+// CLSIDs can bind through the system shell's factories instead of this server.
+DEFINE_GUID(CLSID_ProgramsFolderAndFastItems, 0x865e5e76, 0xad83, 0x4dca, 0xa1, 0x09, 0x50, 0xdc, 0x21, 0x13, 0xce, 0x9c);
+DEFINE_GUID(CLSID_ProgramsFolder, 0x865e5e76, 0xad83, 0x4dca, 0xa1, 0x09, 0x50, 0xdc, 0x21, 0x13, 0xce, 0x9d);
+DEFINE_GUID(CLSID_StartMenuFolder, 0x865e5e76, 0xad83, 0x4dca, 0xa1, 0x09, 0x50, 0xdc, 0x21, 0x13, 0xce, 0x9e);
 
 //DEFINE_GUID(CLSID_UserAssist, 0xDD313E04, 0xFEFF, 0x11D1, 0x8E, 0xCD, 0x00, 0x00, 0xF8, 0x7A, 0x47, 0x0C);
 
 #include "interfacesp.inc"
 
-class CPinnedListWrapper : public IStartMenuPin
-{
-public:
-    CPinnedListWrapper(IUnknown *punk, const GUID &riid);
-    ~CPinnedListWrapper();
-
-    //IUnknown
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject);
-    STDMETHODIMP_(ULONG) AddRef(void);
-    STDMETHODIMP_(ULONG) Release(void);
-
-    //IPinnedList2
-    STDMETHODIMP EnumObjects(IEnumFullIDList**);
-    STDMETHODIMP Modify(PCIDLIST_ABSOLUTE, PCIDLIST_ABSOLUTE);
-    STDMETHODIMP GetChangeCount(ULONG*);
-    STDMETHODIMP GetPinnableInfo(IDataObject*, int, IShellItem2**, IShellItem**, PWSTR*, INT*);
-    STDMETHODIMP IsPinnable(IDataObject*, int);
-    STDMETHODIMP Resolve(HWND, ULONG, PCIDLIST_ABSOLUTE, PIDLIST_ABSOLUTE*);
-    STDMETHODIMP IsPinned(PCIDLIST_ABSOLUTE);
-    STDMETHODIMP GetPinnedItem(PCIDLIST_ABSOLUTE, PIDLIST_ABSOLUTE*);
-    STDMETHODIMP GetAppIDForPinnedItem(PCIDLIST_ABSOLUTE, PWSTR*);
-    STDMETHODIMP ItemChangeNotify(PCIDLIST_ABSOLUTE, PCIDLIST_ABSOLUTE);
-    STDMETHODIMP UpdateForRemovedItemsAsNecessary(VOID);
-private:
-    IFlexibleTaskbarPinnedList* m_flexList = 0;
-    IPinnedList3* m_pinnedList3 = 0;
-    IPinnedList25* m_pinnedList25 = 0;
-    //int m_build = 0;
-};
 
 inline HWND WINAPI GetTaskmanWindow(void)
 {

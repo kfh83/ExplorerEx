@@ -2,7 +2,7 @@
 // @id              explorerex-dll-loader
 // @name            ExplorerEx DLL Loader
 // @description     Loads the DLL build of ExplorerEx
-// @version         1.0.0
+// @version         1.1
 // @author          aubymori
 // @github          https://github.com/aubymori
 // @include         explorer.exe
@@ -26,13 +26,14 @@ navigate to Windhawk's Settings, Advanced settings, More advanced settings, and 
 /*
 - path: "ExplorerEx.dll"
   $name: DLL path
-  $description: Path to the ExplorerEx DLL.
+  $description: Path to ExplorerEx.dll. Keep ExplorerEx.Shell32.dll in the same folder.
 - console: true
   $name: Enable console
 */
 // ==/WindhawkModSettings==
 
 #include <windhawk_utils.h>
+#include <string>
 
 void *CreateDesktopAndTray_orig = nullptr;
 
@@ -50,10 +51,20 @@ BOOL Wh_ModInit(void)
     Wh_ModSettingsChanged();
     WindhawkUtils::StringSetting path = WindhawkUtils::StringSetting::make(L"path");
 
-    HMODULE hEpTaskbar = LoadLibraryW(path.get());
+    DWORD pathLength = GetFullPathNameW(path.get(), 0, nullptr, nullptr);
+    if (!pathLength)
+        return FALSE;
+    std::wstring fullPath(pathLength, L'\0');
+    DWORD written = GetFullPathNameW(path.get(), pathLength, fullPath.data(), nullptr);
+    if (!written || written >= pathLength)
+        return FALSE;
+
+    HMODULE hEpTaskbar = LoadLibraryExW(
+        fullPath.c_str(), nullptr,
+        LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     if (!hEpTaskbar)
     {
-        Wh_Log(L"Failed to load ExplorerEx DLL");
+        Wh_Log(L"Failed to load ExplorerEx DLL (error %lu)", GetLastError());
         return FALSE;
     }
 

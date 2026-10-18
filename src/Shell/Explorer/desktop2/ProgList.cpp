@@ -2580,7 +2580,7 @@ LRESULT ByUsage::_ModifySMInfo(PSMNMMODIFYSMINFO pmsi)
 
         LPITEMIDLIST pidl = NULL;
 
-        IAugmentedShellFolder2* pasf2;
+        IAugmentedShellFolder* pasf2;
         if (SUCCEEDED(psmd->psf->QueryInterface(IID_PPV_ARGS(&pasf2))))
         {
             LPITEMIDLIST pidlFolder;
