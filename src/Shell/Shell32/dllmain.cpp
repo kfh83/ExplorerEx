@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ShUndoc.h"
+#include "Shell32Util.h"
 
 EXTERN_C BOOL WINAPI ExplorerExShell32_EnsureRuntimeInit(void)
 {

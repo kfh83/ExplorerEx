@@ -1,5 +1,6 @@
 #include <objbase.h>
 #include <unknwn.h>
+#include "Shell32Util.h"
 
 EXTERN_C const CLSID CLSID_StartMenu;
 EXTERN_C const CLSID CLSID_PersonalStartMenu;
@@ -12,7 +13,6 @@ EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown*, REFIID, void**);
-EXTERN_C BOOL WINAPI ExplorerExShell32_EnsureRuntimeInit(void);
 
 typedef struct
 {

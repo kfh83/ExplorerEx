@@ -205,6 +205,14 @@ STDMETHODIMP_(int) s_DarwinAdsDestroyCallback(LPVOID pData1, LPVOID pData2)
 // SHRegisterDarwinLink takes ownership of the pidl
 BOOL SHRegisterDarwinLink(LPITEMIDLIST pidlFull, LPWSTR pszDarwinID, BOOL fUpdate)
 {
+    // Registration can precede COM activation on the menu-cache worker.
+    // NULL-pidl shutdown cleanup needs no private imports.
+    if (pidlFull && !ExplorerExShell32_EnsureRuntimeInit())
+    {
+        ILFree(pidlFull);
+        return FALSE;
+    }
+
     BOOL fRetVal = FALSE;
 
     ENTERCRITICAL_DARWINADS;
@@ -2405,6 +2413,12 @@ BOOL CStartMenuCallbackBase::_IsDarwinAdvertisement(LPCITEMIDLIST pidlFull)
 
 HRESULT SHParseDarwinIDFromCacheW(LPWSTR pszDarwinDescriptor, LPWSTR* ppwszOut)
 {
+    if (!ExplorerExShell32_EnsureRuntimeInit())
+    {
+        *ppwszOut = NULL;
+        return CO_E_ERRORINDLL;
+    }
+
     HRESULT hr = HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 
     if (g_hdpaDarwinAds)
@@ -2623,6 +2637,9 @@ void SHReValidateDarwinCache()
 {
     if (g_hdpaDarwinAds)
     {
+        if (!ExplorerExShell32_EnsureRuntimeInit())
+            return;
+
         ENTERCRITICAL_DARWINADS;
         int chdpa = DPA_GetPtrCount(g_hdpaDarwinAds);
         for (int ihdpa = 0; ihdpa < chdpa; ihdpa++)
