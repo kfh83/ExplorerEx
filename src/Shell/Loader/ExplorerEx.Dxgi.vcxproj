@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="ReleaseDLL|x64">
+      <Configuration>ReleaseDLL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{9FC2E395-50A7-4541-96CD-45313CEBE621}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <OutDir>$(MSBuildThisFileDirectory)..\..\..\build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\..\..\build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
+    <TargetName>dxgi</TargetName>
+    <SlimDetoursPackage>$(MSBuildThisFileDirectory)..\..\..\packages\KNSoft.SlimDetours.1.2.3-beta\</SlimDetoursPackage>
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;_WIN32_WINNT=0x0A00;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ConformanceMode>true</ConformanceMode>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>$(ProjectDir)Dxgi.def</ModuleDefinitionFile>
+      <AdditionalDependencies>KNSoft.SlimDetours.lib;ntdll.lib;shell32.lib;shlwapi.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Dxgi.cpp" />
+    <ClCompile Include="LoaderCommon.cpp" />
+    <ClInclude Include="LoaderCommon.h" />
+    <MASM Include="DxgiExports.asm" />
+    <ResourceCompile Include="Loader.rc" />
+    <None Include="Dxgi.def" />
+    <None Include="packages.config" />
+    <None Include="THIRD-PARTY-NOTICES.txt" />
+    <None Include="Install-ExplorerEx.ps1" />
+    <None Include="Uninstall-ExplorerEx.ps1" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
+  <Import Project="$(SlimDetoursPackage)build\KNSoft.SlimDetours.targets" Condition="Exists('$(SlimDetoursPackage)build\KNSoft.SlimDetours.targets')" />
+  <Target Name="EnsureSlimDetoursRestored" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(SlimDetoursPackage)build\KNSoft.SlimDetours.targets')" Text="Restore pinned native dependencies first: nuget restore src\Shell\Loader\packages.config -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive" />
+  </Target>
+  <Target Name="PackageLoaderSupport" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.txt;$(MSBuildThisFileDirectory)Install-ExplorerEx.ps1;$(MSBuildThisFileDirectory)Uninstall-ExplorerEx.ps1" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

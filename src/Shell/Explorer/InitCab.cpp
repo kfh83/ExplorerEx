@@ -1104,40 +1104,46 @@ LPTSTR _SkipCmdLineCrap(LPTSTR pszCmdLine)
 
 #ifdef EXEX_DLL
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
-STDAPI_(int) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+static HINSTANCE g_hExplorerExInstance;
+static INIT_ONCE g_ExplorerExInitOnce = INIT_ONCE_STATIC_INIT;
+static HRESULT g_ExplorerExInitResult = E_UNEXPECTED;
+
+static BOOL CALLBACK InitializeExplorerEx(PINIT_ONCE, PVOID, PVOID*)
 {
+    // Cache failure as well as success: partially initialized shell state cannot
+    // safely be initialized a second time. This runs outside the loader lock.
+    g_ExplorerExInitResult = E_FAIL;
+    if (!SHUndocInit())
+        return TRUE;
+
+    InitDesktopFuncs();
+    SetErrorMode(SEM_FAILCRITICALERRORS);
+
+    LPTSTR pszCmdLine = _SkipCmdLineCrap(GetCommandLine());
+    STARTUPINFO si = { 0 };
+    si.cb = sizeof(si);
+    GetStartupInfo(&si);
+    int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
+    if (ExplorerWinMain(g_hExplorerExInstance, NULL, pszCmdLine, nCmdShow))
+        g_ExplorerExInitResult = S_OK;
+    return TRUE;
+}
+
+// Call on the shell-creation thread before CreateDesktopAndTray, never in DllMain.
+extern "C" __declspec(dllexport) HRESULT WINAPI ExplorerExInitialize(void)
+{
+    if (!InitOnceExecuteOnce(&g_ExplorerExInitOnce, InitializeExplorerEx, NULL, NULL))
+        return HRESULT_FROM_WIN32(GetLastError());
+    return g_ExplorerExInitResult;
+}
+
+STDAPI_(BOOL) ModuleEntry(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+{
+    if (!_CRT_INIT(hinstDLL, fdwReason, lpReserved))
+        return FALSE;
     if (fdwReason == DLL_PROCESS_ATTACH)
-    {
-        _CRT_INIT(hinstDLL, DLL_PROCESS_ATTACH, NULL);
-
-        if (!SHUndocInit())
-            return -1;
-
-        InitDesktopFuncs();
-
-        // We don't want the "No disk in drive X:" requesters, so we set
-        // the critical error mask such that calls will just silently fail
-
-        SetErrorMode(SEM_FAILCRITICALERRORS);
-
-        LPTSTR pszCmdLine = GetCommandLine();
-        pszCmdLine = _SkipCmdLineCrap(pszCmdLine);
-
-        STARTUPINFO si = { 0 };
-        si.cb = sizeof(si);
-        GetStartupInfo(&si);
-
-        int nCmdShow = si.dwFlags & STARTF_USESHOWWINDOW ? si.wShowWindow : SW_SHOWDEFAULT;
-        int iRet = ExplorerWinMain(hinstDLL, NULL, pszCmdLine, nCmdShow);
-
-        return iRet;
-    }
-    else
-    {
-        return _CRT_INIT(hinstDLL, fdwReason, lpReserved);
-    }
-
-    return 0;
+        g_hExplorerExInstance = hinstDLL;
+    return TRUE;
 }
 #else
 EXTERN_C BOOL WINAPI _CRT_INIT(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
@@ -2118,6 +2124,12 @@ int ExplorerWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR pszCmdLine, int
         _Module.Term();
 #endif
     }
+#ifdef EXEX_DLL
+    else
+    {
+        return FALSE;
+    }
+#endif
 
 #ifndef EXEX_DLL
     SHFusionUninitialize();
