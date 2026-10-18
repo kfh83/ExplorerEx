@@ -44,23 +44,6 @@ END
 // Bitmap
 //
 
-IDB_TAAUTOHIDE         BITMAP DISCARDABLE PURE ".\\taautohide.bmp"
-IDB_TALOCKGROUP        BITMAP DISCARDABLE PURE ".\\talockgroup.bmp"
-IDB_TANOLOCKGROUP      BITMAP DISCARDABLE PURE ".\\tanolockgroup.bmp"
-IDB_TALOCKNOGROUP      BITMAP DISCARDABLE PURE ".\\talocknogroup.bmp"
-IDB_TANOLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\tanolocknogroup.bmp"
-IDB_TAQLLOCKGROUP      BITMAP DISCARDABLE PURE ".\\taqllockgroup.bmp"
-IDB_TAQLNOLOCKGROUP    BITMAP DISCARDABLE PURE ".\\taqlnolockgroup.bmp"
-IDB_TAQLLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\taqllocknogroup.bmp"
-IDB_TAQLNOLOCKNOGROUP  BITMAP DISCARDABLE PURE ".\\taqlnolocknogroup.bmp"
-
-IDB_NACLOCKCLEAN       BITMAP DISCARDABLE PURE ".\\naclockclean.bmp"
-IDB_NANOCLOCKCLEAN     BITMAP DISCARDABLE PURE ".\\nanoclockclean.bmp"
-IDB_NACLOCKNOCLEAN     BITMAP DISCARDABLE PURE ".\\naclocknoclean.bmp"
-IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE ".\\nanoclocknoclean.bmp"
-
-IDB_STARTPREVIEWNEW     BITMAP DISCARDABLE PURE ".\\NewSM.bmp"
-IDB_STARTPREVIEWCLASSIC BITMAP DISCARDABLE PURE ".\\ClassicSM.bmp"
 
 #ifndef APSTUDIO_INVOKED
 
@@ -95,11 +78,7 @@ MENU_TRAYCONTEXT MENU PRELOAD DISCARDABLE
 BEGIN
         POPUP ""
         BEGIN
-// WARNING -- CTray::BuildContextMenu assumes position of these menu items
                 MENUITEM "&Настройка даты/времени",           IDM_SETTIME
-                MENUITEM "Н&астройка уведомлений...", IDM_NOTIFYCUST
-                MENUITEM SEPARATOR
-// END WARNING
                 MENUITEM "Окна &каскадом",            IDM_CASCADE
                 MENUITEM "Окна свер&ху вниз",  IDM_HORIZTILE
                 MENUITEM "Окна с&лева направо",    IDM_VERTTILE
@@ -253,7 +232,7 @@ BEGIN
     IDS_STARTCLASSIC        "Пуск"
 #endif
 
-    IDS_STARTMENUANDTASKBAR "Свойства панели задач и меню ""Пуск"""
+    IDS_STARTMENUANDTASKBAR "Taskbar and Start Menu"
 
     IDS_STARTMENUBALLOON_TIP "Доступ к документам, программам и параметрам настройки производится при помощи меню ""Пуск"". Для начала работы нажмите кнопку ""Пуск"""
     IDS_STARTMENUBALLOON_TITLE "Нажмите кнопку ""Пуск"""

@@ -692,6 +692,7 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="atlstuff.h" />
     <ClInclude Include="BandSite.h" />
     <ClInclude Include="cabinet.h" />
+    <ClInclude Include="CfgStart.h" />
     <ClInclude Include="dlg.h" />
     <ClInclude Include="Help.h" />
     <ClInclude Include="MFUList.h" />
@@ -714,6 +715,7 @@ del "$(IntermediateOutputPath)temp.res"
   </ItemGroup>
   <ItemGroup>
     <None Include="Explorer.rcv" />
+    <None Include="TrayProp.rc" />
     <None Include="..\Inc\InterfacesP.inc" />
   </ItemGroup>
   <ItemGroup>
@@ -731,7 +733,6 @@ del "$(IntermediateOutputPath)temp.res"
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\clasicsm.ico" />
-    <Image Include="resources\classicsm.bmp" />
     <Image Include="resources\desktop.ico" />
     <Image Include="resources\docs.ico" />
     <Image Include="resources\folderop.ico" />
@@ -741,11 +742,11 @@ del "$(IntermediateOutputPath)temp.res"
     <Image Include="resources\logoffbuttonshot.bmp" />
     <Image Include="resources\mycomold.ico" />
     <Image Include="resources\mycomp.ico" />
-    <Image Include="resources\naclockclean.bmp" />
-    <Image Include="resources\naclocknoclean.bmp" />
-    <Image Include="resources\nanoclockclean.bmp" />
-    <Image Include="resources\nanoclocknoclean.bmp" />
-    <Image Include="resources\newsm.bmp" />
+    <Image Include="resources\vobase.bmp" />
+    <Image Include="resources\ntvomenu.bmp" />
+    <Image Include="resources\votray.bmp" />
+    <Image Include="resources\vowindow.bmp" />
+    <Image Include="resources\vonoclok.bmp" />
     <Image Include="resources\old_error.ico" />
     <Image Include="resources\old_info.ico" />
     <Image Include="resources\old_printer.ico" />
@@ -760,15 +761,6 @@ del "$(IntermediateOutputPath)temp.res"
     <Image Include="resources\start16mask.bmp" />
     <Image Include="resources\startclassic.bmp" />
     <Image Include="resources\stmupro.bmp" />
-    <Image Include="resources\taautohide.bmp" />
-    <Image Include="resources\talockgroup.bmp" />
-    <Image Include="resources\talocknogroup.bmp" />
-    <Image Include="resources\tanolockgroup.bmp" />
-    <Image Include="resources\tanolocknogroup.bmp" />
-    <Image Include="resources\taqllockgroup.bmp" />
-    <Image Include="resources\taqllocknogroup.bmp" />
-    <Image Include="resources\taqlnolockgroup.bmp" />
-    <Image Include="resources\taqlnolocknogroup.bmp" />
     <Image Include="resources\traych.bmp" />
     <Image Include="resources\traycho.bmp" />
     <Image Include="resources\traycv.bmp" />
@@ -779,6 +771,7 @@ del "$(IntermediateOutputPath)temp.res"
   <ItemGroup>
     <ClCompile Include="BandSite.cpp" />
     <ClCompile Include="ClassFac.cpp" />
+    <ClCompile Include="CfgStart.cpp" />
     <ClCompile Include="..\Inc\*.cpp" Exclude="..\Inc\SHFusion.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />

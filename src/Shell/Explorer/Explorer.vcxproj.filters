@@ -96,6 +96,9 @@
     <ClInclude Include="cabinet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CfgStart.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="dlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -161,6 +164,9 @@
     <None Include="..\Inc\InterfacesP.inc">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="TrayProp.rc">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="dlg.rc">
@@ -172,9 +178,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\clasicsm.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\classicsm.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\desktop.ico">
@@ -204,19 +207,19 @@
     <Image Include="resources\mycomp.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\naclockclean.bmp">
+    <Image Include="resources\vobase.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\naclocknoclean.bmp">
+    <Image Include="resources\ntvomenu.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\nanoclockclean.bmp">
+    <Image Include="resources\votray.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\nanoclocknoclean.bmp">
+    <Image Include="resources\vowindow.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\newsm.bmp">
+    <Image Include="resources\vonoclok.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\old_error.ico">
@@ -261,33 +264,6 @@
     <Image Include="resources\stmupro.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\taautohide.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\talockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\talocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\tanolockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\tanolocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqllockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqllocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqlnolockgroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\taqlnolocknogroup.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\traych.bmp">
       <Filter>Resource Files</Filter>
     </Image>
@@ -312,6 +288,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ClassFac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CfgStart.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Inc\*.cpp">

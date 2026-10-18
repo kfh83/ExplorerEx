@@ -141,21 +141,17 @@
 
 #define IDB_START                   143
 
-#define IDB_TAAUTOHIDE              145
-#define IDB_TAQLLOCKGROUP           146
-#define IDB_TAQLNOLOCKGROUP         147
-#define IDB_TAQLLOCKNOGROUP         148
-#define IDB_TAQLNOLOCKNOGROUP       149
-#define IDB_TALOCKGROUP             150
-#define IDB_TANOLOCKGROUP           151
-#define IDB_TALOCKNOGROUP           152
-#define IDB_TANOLOCKNOGROUP         153
+#define IDB_VIEWOPTIONSFIRST        149
+#define IDB_VOBASE                  149
+#define IDB_VOLARGEMENU             150
+#define IDB_VOTRAY                  151
+#define IDB_VOWINDOW                152
+#define IDB_VONOCLOCK               153
+#define IDB_VIEWOPTIONSLAST         153
 
 #define IDB_SERVERSTARTBKG          158
 #define IDB_PROFESSIONALSTARTBKG    167
 
-#define IDB_STARTPREVIEWNEW         170
-#define IDB_STARTPREVIEWCLASSIC     171
 
 #define IDB_TRAYCHEVRONHORIZ        172
 #define IDB_TRAYCHEVRONHORIZOPEN    173
@@ -166,10 +162,6 @@
 #define IDB_START16                 178
 #define IDB_START16MASK             179
 
-#define IDB_NACLOCKCLEAN            180
-#define IDB_NANOCLOCKCLEAN          181
-#define IDB_NACLOCKNOCLEAN          182
-#define IDB_NANOCLOCKNOCLEAN        183
 
 //---------------------------------------------------------------------------
 // Menu IDs
@@ -188,7 +180,6 @@
 //---------------------------------------------------------------------------
 // Dialog template IDs
 #define DLG_TRAY_VIEW_OPTIONS   6
-#define DLG_NOTIFY              7
 #define DLG_STARTMENU_CONFIG    9
 
 #define DLG_PROGRAMFILECONFLICT         20
@@ -235,8 +226,12 @@
 #define IDC_TRAYOPTAUTOHIDE             1102
 #define IDC_TRAYOPTSHOWCLOCK            1103
 
-#define IDC_TASKBARAPPEARANCE           1111
-#define IDC_NOTIFYAPPEARANCE            1112
+#define IDC_VIEWOPTIONSICONSFIRST   1111
+#define IDC_VOBASE                  1111
+#define IDC_VOLARGEMENU             1112
+#define IDC_VOTRAY                  1113
+#define IDC_VOWINDOW                1114
+#define IDC_VOTRAYNOCLOCK           1115
 
 #define IDC_STARTMENUSETTINGS           1123
 #define IDC_RESORT                      1124
@@ -245,6 +240,7 @@
 #define IDC_ADDSHORTCUT                 1126
 #define IDC_DELSHORTCUT                 1127
 #define IDC_EXPLOREMENUS                1128
+#define IDC_SMSMALLICONS            1130
 
 // and the startmenu view prop sheet
 #define IDC_PICTSMICONS                 1131
@@ -355,6 +351,15 @@
 #define IDS_STARTMENUBALLOON_TIP    801
 
 #define IDS_STARTMENUANDTASKBAR     810
+#define IDS_STARTMENU_ERROR         28000
+#define IDS_STARTMENU_ADMINTOOLS           28001
+#define IDS_STARTMENU_FAVORITES            28002
+#define IDS_STARTMENU_LOGOFF               28003
+#define IDS_STARTMENU_CASCADECPANEL        28004
+#define IDS_STARTMENU_CASCADEMYDOCS        28005
+#define IDS_STARTMENU_CASCADENETCONNECT    28006
+#define IDS_STARTMENU_CASCADEPRINTERS      28007
+#define IDS_STARTMENU_SCROLLPROGRAMS       28008
 #define IDS_FIXSCREENRES_TITLE      811
 #define IDS_FIXSCREENRES_TEXT       812
 
@@ -471,7 +476,6 @@
 
 // END WARNING! END WARNING! END WARNING! END WARNING! END WARNING!
 
-#define IDM_NOTIFYCUST              421
 #define IDM_UNGROUP                 422
 
 

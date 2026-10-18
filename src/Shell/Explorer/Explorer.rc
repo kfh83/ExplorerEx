@@ -76,20 +76,6 @@ IDB_STARTCLASSIC       BITMAP DISCARDABLE PURE "resources\\startclassic.bmp"
 IDB_START16            BITMAP DISCARDABLE PURE "resources\\start16.bmp"
 IDB_START16MASK        BITMAP DISCARDABLE PURE "resources\\start16mask.bmp"
 
-IDB_TAAUTOHIDE         BITMAP DISCARDABLE PURE "resources\\taautohide.bmp"
-IDB_TALOCKGROUP        BITMAP DISCARDABLE PURE "resources\\talockgroup.bmp"
-IDB_TANOLOCKGROUP      BITMAP DISCARDABLE PURE "resources\\tanolockgroup.bmp"
-IDB_TALOCKNOGROUP      BITMAP DISCARDABLE PURE "resources\\talocknogroup.bmp"
-IDB_TANOLOCKNOGROUP    BITMAP DISCARDABLE PURE "resources\\tanolocknogroup.bmp"
-IDB_TAQLLOCKGROUP      BITMAP DISCARDABLE PURE "resources\\taqllockgroup.bmp"
-IDB_TAQLNOLOCKGROUP    BITMAP DISCARDABLE PURE "resources\\taqlnolockgroup.bmp"
-IDB_TAQLLOCKNOGROUP    BITMAP DISCARDABLE PURE "resources\\taqllocknogroup.bmp"
-IDB_TAQLNOLOCKNOGROUP  BITMAP DISCARDABLE PURE "resources\\taqlnolocknogroup.bmp"
-
-IDB_NACLOCKCLEAN       BITMAP DISCARDABLE PURE "resources\\naclockclean.bmp"
-IDB_NANOCLOCKCLEAN     BITMAP DISCARDABLE PURE "resources\\nanoclockclean.bmp"
-IDB_NACLOCKNOCLEAN     BITMAP DISCARDABLE PURE "resources\\naclocknoclean.bmp"
-IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE "resources\\nanoclocknoclean.bmp"
 
 //
 //  These are the Start Menu bitmaps that are used on Win32 machines.
@@ -97,8 +83,6 @@ IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE "resources\\nanoclocknoclean.bmp"
 IDB_SERVERSTARTBKG     BITMAP DISCARDABLE PURE "resources\\srvbkg.bmp"
 IDB_PROFESSIONALSTARTBKG BITMAP DISCARDABLE PURE "resources\\stmupro.bmp"
 
-IDB_STARTPREVIEWNEW     BITMAP DISCARDABLE PURE "resources\\NewSM.bmp"
-IDB_STARTPREVIEWCLASSIC BITMAP DISCARDABLE PURE "resources\\ClassicSM.bmp"
 
 IDB_TRAYCHEVRONHORIZ     BITMAP DISCARDABLE PURE "resources\\traych.bmp"
 IDB_TRAYCHEVRONHORIZOPEN BITMAP DISCARDABLE PURE "resources\\traycho.bmp"
@@ -139,11 +123,7 @@ MENU_TRAYCONTEXT MENU PRELOAD DISCARDABLE
 BEGIN
         POPUP ""
         BEGIN
-// WARNING -- CTray::BuildContextMenu assumes position of these menu items
                 MENUITEM "&Adjust Date/Time",           IDM_SETTIME
-                MENUITEM "&Customize Notifications...", IDM_NOTIFYCUST
-                MENUITEM SEPARATOR
-// END WARNING
                 MENUITEM "Ca&scade Windows",            IDM_CASCADE
                 MENUITEM "Tile Windows &Horizontally",  IDM_HORIZTILE
                 MENUITEM "Tile Windows V&ertically",    IDM_VERTTILE
@@ -298,7 +278,7 @@ BEGIN
     IDS_STARTCLASSIC        "Start"
 #endif
 
-    IDS_STARTMENUANDTASKBAR "Taskbar and Start Menu Properties"
+    IDS_STARTMENUANDTASKBAR "Taskbar and Start Menu"
 
     IDS_STARTMENUBALLOON_TIP "You can access all your programs, documents, and settings from the Start Menu. Click on the Start button to begin."
     IDS_STARTMENUBALLOON_TITLE "Click on the Start button"

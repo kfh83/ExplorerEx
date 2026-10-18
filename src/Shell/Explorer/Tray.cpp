@@ -6,6 +6,7 @@
 #include "trayclok.h"
 #include "util.h"
 #include "tray.h"
+#include "CfgStart.h"
 
 #if defined(FE_IME)
 #include <immp.h>
@@ -54,7 +55,6 @@ BOOL g_fInSizeMove = FALSE;
 
 UINT _uMsgEnableUserTrackedBalloonTips = 0;
 
-void ClearRecentDocumentsAndMRUStuff(BOOL fBroadcastChange);
 void DoTaskBarProperties(HWND hwnd, DWORD dwFlags);
 
 void ClassFactory_Start();
@@ -7007,19 +7007,13 @@ HMENU CTray::BuildContextMenu(BOOL fIncludeTime)
 
     if (fIncludeTime)
     {
-
-        UINT uEnable = MF_BYCOMMAND | MFS_ENABLED;
-        
-        EnableMenuItem(hmContext, IDM_NOTIFYCUST, uEnable);
-        
+        INSTRUMENT_STATECHANGE(SHCNFI_STATE_TRAY_CONTEXT_CLOCK);
+        SetMenuDefaultItem(hmContext, IDM_SETTIME, MF_BYCOMMAND);
     }
     else
     {
         INSTRUMENT_STATECHANGE(SHCNFI_STATE_TRAY_CONTEXT);
-        for (int i = 2; i >= 0; i--)    // separator, IDM_SETTIME, IDM_NOTIFYCUST,
-        {
-            DeleteMenu(hmContext, i, MF_BYPOSITION);
-        }
+        DeleteMenu(hmContext, IDM_SETTIME, MF_BYCOMMAND);
     }
 
     if (!_fUndoEnabled || !_pPositions)
@@ -8133,9 +8127,6 @@ void CTray::_Command(UINT idCmd)
         SHRunControlPanelCustom(TEXT("timedate.cpl"), _hwnd);
         break;
 
-    case IDM_NOTIFYCUST:
-        DoProperties(TPF_TASKBARPAGE | TPF_INVOKECUSTOMIZE);
-        break;
 
     case IDM_SHOWTASKMAN:
         RunSystemMonitor();

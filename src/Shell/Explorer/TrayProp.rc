@@ -1,0 +1,72 @@
+// Windows 2000 explorer.rc property pages. The including resource file owns LANGUAGE.
+#include "dlg.h"
+#include "rcids.h"
+#include <winres.h>
+#include <commctrl.h>
+
+ICO_STARTMENU ICON "resources\\start.ico"
+ICO_DOCMENU ICON "resources\\docs.ico"
+
+IDB_VOBASE BITMAP "resources\\vobase.bmp"
+IDB_VOLARGEMENU BITMAP "resources\\ntvomenu.bmp"
+IDB_VOTRAY BITMAP "resources\\votray.bmp"
+IDB_VOWINDOW BITMAP "resources\\vowindow.bmp"
+IDB_VONOCLOCK BITMAP "resources\\vonoclok.bmp"
+
+DLG_TRAY_VIEW_OPTIONS DIALOGEX 0, 0, 212, 188
+STYLE DS_MODALFRAME | DS_SETFONT | DS_FIXEDSYS | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "General"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    CONTROL "", IDC_VOBASE, "Static", SS_BITMAP | SS_SUNKEN | WS_CLIPSIBLINGS, 14,14,183,82
+    CONTROL "", IDC_VOLARGEMENU, "Static", SS_BITMAP | WS_CLIPSIBLINGS, 16,15,50,60
+    CONTROL "", IDC_VOTRAY, "Static", SS_BITMAP | WS_CLIPSIBLINGS, 16,76,183,20
+    CONTROL "", IDC_VOTRAYNOCLOCK, "Static", SS_BITMAP | WS_CLIPSIBLINGS, 16,76,183,20
+    CONTROL "", IDC_VOWINDOW, "Static", SS_BITMAP | WS_CLIPSIBLINGS, 156,76,41,3
+    CONTROL "Always on &top", IDC_TRAYOPTONTOP, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14,107,122,10
+    CONTROL "A&uto hide", IDC_TRAYOPTAUTOHIDE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14,123,122,10
+    CONTROL "Show &small icons in Start menu", IDC_SMSMALLICONS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14,138,122,10
+    CONTROL "Show &clock", IDC_TRAYOPTSHOWCLOCK, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14,153,122,10
+    CONTROL "Use &Personalized Menus", IDC_PERSONALIZEDMENUS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14,168,180,10
+END
+
+DLG_STARTMENU_CONFIG DIALOGEX 0, 0, 212, 188
+STYLE DS_MODALFRAME | DS_SETFONT | DS_FIXEDSYS | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Advanced"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    GROUPBOX "Customize Start menu", IDC_GROUPBOX, 8,7,197,115
+    ICON ICO_STARTMENU, IDC_NO_HELP_1, 19,17,21,20
+    LTEXT "You can customize your Start menu by adding or removing items from it.", IDC_NO_HELP_2, 48,17,79,48
+    PUSHBUTTON "A&dd...", IDC_ADDSHORTCUT, 144,18,53,14
+    PUSHBUTTON "&Remove...", IDC_DELSHORTCUT, 144,33,53,14
+    PUSHBUTTON "Ad&vanced...", IDC_EXPLOREMENUS, 144,49,53,14
+    PUSHBUTTON "Re-&sort", IDC_RESORT, 144,65,53,14
+    ICON ICO_DOCMENU, IDC_NO_HELP_3, 20,83,21,20
+    LTEXT "To remove records of recently accessed documents, programs, and Web sites,  click Clear.", IDC_NO_HELP_4, 49,83,90,33
+    PUSHBUTTON "&Clear", IDC_KILLDOCUMENTS, 144,102,53,14
+    LTEXT "Start Menu Se&ttings", IDC_STARTMENUSETTINGSTEXT, 7,126,81,8
+    CONTROL "StartMenuSe&ttings", IDC_STARTMENUSETTINGS, "SysTreeView32", TVS_HASBUTTONS | WS_BORDER | WS_TABSTOP, 7,136,198,45,WS_EX_CLIENTEDGE
+END
+
+// Keep ExplorerEx's existing extension without changing the original page size.
+DLG_EXTRA_OPTIONS DIALOGEX 0, 0, 212, 188
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Extra"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    CONTROL "&Windows 98 style", IDC_EXTRAOPTWIN98, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 9,9,194,10
+END
+
+STRINGTABLE
+BEGIN
+    IDS_STARTMENU_ERROR "The Start menu operation could not be completed.\n\nError: 0x%08lX\n%ls"
+    IDS_STARTMENU_ADMINTOOLS "Display Administrative Tools"
+    IDS_STARTMENU_FAVORITES "Display Favorites"
+    IDS_STARTMENU_LOGOFF "Display Logoff"
+    IDS_STARTMENU_CASCADECPANEL "Expand Control Panel"
+    IDS_STARTMENU_CASCADEMYDOCS "Expand My Documents"
+    IDS_STARTMENU_CASCADENETCONNECT "Expand Network and Dial-Up Connections"
+    IDS_STARTMENU_CASCADEPRINTERS "Expand Printers"
+    IDS_STARTMENU_SCROLLPROGRAMS "Scroll the Programs menu"
+END

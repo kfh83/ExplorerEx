@@ -44,23 +44,6 @@ END
 // Bitmap
 //
 
-IDB_TAAUTOHIDE         BITMAP DISCARDABLE PURE ".\\taautohide.bmp"
-IDB_TALOCKGROUP        BITMAP DISCARDABLE PURE ".\\talockgroup.bmp"
-IDB_TANOLOCKGROUP      BITMAP DISCARDABLE PURE ".\\tanolockgroup.bmp"
-IDB_TALOCKNOGROUP      BITMAP DISCARDABLE PURE ".\\talocknogroup.bmp"
-IDB_TANOLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\tanolocknogroup.bmp"
-IDB_TAQLLOCKGROUP      BITMAP DISCARDABLE PURE ".\\taqllockgroup.bmp"
-IDB_TAQLNOLOCKGROUP    BITMAP DISCARDABLE PURE ".\\taqlnolockgroup.bmp"
-IDB_TAQLLOCKNOGROUP    BITMAP DISCARDABLE PURE ".\\taqllocknogroup.bmp"
-IDB_TAQLNOLOCKNOGROUP  BITMAP DISCARDABLE PURE ".\\taqlnolocknogroup.bmp"
-
-IDB_NACLOCKCLEAN       BITMAP DISCARDABLE PURE ".\\naclockclean.bmp"
-IDB_NANOCLOCKCLEAN     BITMAP DISCARDABLE PURE ".\\nanoclockclean.bmp"
-IDB_NACLOCKNOCLEAN     BITMAP DISCARDABLE PURE ".\\naclocknoclean.bmp"
-IDB_NANOCLOCKNOCLEAN   BITMAP DISCARDABLE PURE ".\\nanoclocknoclean.bmp"
-
-IDB_STARTPREVIEWNEW     BITMAP DISCARDABLE PURE ".\\NewSM.bmp"
-IDB_STARTPREVIEWCLASSIC BITMAP DISCARDABLE PURE ".\\ClassicSM.bmp"
 
 #ifndef APSTUDIO_INVOKED
 
@@ -95,11 +78,7 @@ MENU_TRAYCONTEXT MENU PRELOAD DISCARDABLE
 BEGIN
         POPUP ""
         BEGIN
-// WARNING -- CTray::BuildContextMenu assumes position of these menu items
                 MENUITEM "日付と時刻の調整(&A)",           IDM_SETTIME
-                MENUITEM "通知のカスタマイズ(&C)...", IDM_NOTIFYCUST
-                MENUITEM SEPARATOR
-// END WARNING
                 MENUITEM "重ねて表示(&S)",            IDM_CASCADE
                 MENUITEM "上下に並べて表示(&H)",  IDM_HORIZTILE
                 MENUITEM "左右に並べて表示(&E)",    IDM_VERTTILE
@@ -253,7 +232,7 @@ BEGIN
     IDS_STARTCLASSIC        "スタート"
 #endif
 
-    IDS_STARTMENUANDTASKBAR "タスク バーと [スタート] メニューのプロパティ"
+    IDS_STARTMENUANDTASKBAR "Taskbar and Start Menu"
 
     IDS_STARTMENUBALLOON_TIP "[スタート] メニューから、すべてのプログラムやドキュメントおよび設定にアクセスできます。[スタート] ボタンをクリックして始めます。"
     IDS_STARTMENUBALLOON_TITLE "[スタート] ボタンをクリックしてください"
