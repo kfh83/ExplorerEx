@@ -127,51 +127,51 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|Win32'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>ExplorerEx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|Win32'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>ExplorerEx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">
-    <IncludePath>desktop2\;wtl\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
-    <OutDir>$(ProjectDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <IncludePath>..\Inc\;..\Inc\WTL\;$(VC_IncludePath);$(WindowsSDK_IncludePath);.\;</IncludePath>
+    <OutDir>$(SolutionDir)build\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\obj\$(MSBuildProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <TargetName>explorer</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
@@ -183,7 +183,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -241,7 +241,7 @@ del "$(IntermediateOutputPath)temp.res"
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -301,7 +301,7 @@ del "$(IntermediateOutputPath)temp.res"
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -361,7 +361,7 @@ del "$(IntermediateOutputPath)temp.res"
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -420,7 +420,7 @@ del "$(IntermediateOutputPath)temp.res"
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -481,7 +481,7 @@ del "$(IntermediateOutputPath)temp.res"
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -544,7 +544,7 @@ del "$(IntermediateOutputPath)temp.res"
       <PreprocessorDefinitions>EXEX_DLL;NDEBUG;_CONSOLE;RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -610,7 +610,7 @@ del "$(IntermediateOutputPath)temp.res"
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <AdditionalIncludeDirectories>desktop2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Inc;..\Inc\WTL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -666,57 +666,38 @@ del "$(IntermediateOutputPath)temp.res"
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CoCreateInstanceHook.h" />
-    <ClInclude Include="COWSite.h" />
-    <ClInclude Include="desktopp.h" />
+    <ClInclude Include="..\Inc\*.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
     <ClInclude Include="PatternHelper.h" />
-    <ClInclude Include="NtPerf.h" />
-    <ClInclude Include="NtWmi.h" />
-    <ClInclude Include="Path.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="QSort.h" />
-    <ClInclude Include="RunTask.h" />
-    <ClInclude Include="SHFusion.h" />
-    <ClInclude Include="UEMApp.h" />
-    <ClInclude Include="Winter.h" />
-    <ClInclude Include="wmiumkm.h" />
-    <ClInclude Include="wtl\atlapp.h" />
-    <ClInclude Include="wtl\atlcrack.h" />
-    <ClInclude Include="wtl\atlctrls.h" />
-    <ClInclude Include="wtl\atlctrlw.h" />
-    <ClInclude Include="wtl\atlctrlx.h" />
-    <ClInclude Include="wtl\atlddx.h" />
-    <ClInclude Include="wtl\atldlgs.h" />
-    <ClInclude Include="wtl\atlfind.h" />
-    <ClInclude Include="wtl\atlframe.h" />
-    <ClInclude Include="wtl\atlgdi.h" />
-    <ClInclude Include="wtl\atlmisc.h" />
-    <ClInclude Include="wtl\atlprint.h" />
-    <ClInclude Include="wtl\atlres.h" />
-    <ClInclude Include="wtl\atlresce.h" />
-    <ClInclude Include="wtl\atlscrl.h" />
-    <ClInclude Include="wtl\atlsplit.h" />
+    <ClInclude Include="..\Inc\QSort.h" />
+    <ClInclude Include="..\Inc\RunTask.h" />
+    <ClInclude Include="..\Inc\SHFusion.h" />
+    <ClInclude Include="..\Inc\WTL\atlapp.h" />
+    <ClInclude Include="..\Inc\WTL\atlcrack.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrls.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrlw.h" />
+    <ClInclude Include="..\Inc\WTL\atlctrlx.h" />
+    <ClInclude Include="..\Inc\WTL\atlddx.h" />
+    <ClInclude Include="..\Inc\WTL\atldlgs.h" />
+    <ClInclude Include="..\Inc\WTL\atlfind.h" />
+    <ClInclude Include="..\Inc\WTL\atlframe.h" />
+    <ClInclude Include="..\Inc\WTL\atlgdi.h" />
+    <ClInclude Include="..\Inc\WTL\atlmisc.h" />
+    <ClInclude Include="..\Inc\WTL\atlprint.h" />
+    <ClInclude Include="..\Inc\WTL\atlres.h" />
+    <ClInclude Include="..\Inc\WTL\atlscrl.h" />
+    <ClInclude Include="..\Inc\WTL\atlsplit.h" />
     <ClInclude Include="atlstuff.h" />
     <ClInclude Include="BandSite.h" />
     <ClInclude Include="cabinet.h" />
-    <ClInclude Include="CriticalSection.h" />
-    <ClInclude Include="CWndProc.h" />
-    <ClInclude Include="debug.h" />
     <ClInclude Include="dlg.h" />
-    <ClInclude Include="DPA.h" />
     <ClInclude Include="Help.h" />
-    <ClInclude Include="IEGuidP.h" />
     <ClInclude Include="MFUList.h" />
     <ClInclude Include="Mixer.h" />
-    <ClInclude Include="Port32.h" />
     <ClInclude Include="rcids.h" />
-    <ClInclude Include="ShDGuid.h" />
-    <ClInclude Include="ShGuidP.h" />
-    <ClInclude Include="ShUndoc.h" />
     <ClInclude Include="SSOMgr.h" />
-    <ClInclude Include="StartIds.h" />
     <ClInclude Include="StartMnu.h" />
     <ClInclude Include="TaskBand.h" />
     <ClInclude Include="TaskBar.h" />
@@ -725,21 +706,15 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="TrayCmn.h" />
     <ClInclude Include="TrayItem.h" />
     <ClInclude Include="TrayNot.h" />
-    <ClInclude Include="TrayP.h" />
     <ClInclude Include="TrayReg.h" />
-    <ClInclude Include="UserPane.h" />
     <ClInclude Include="Util.h" />
-    <ClInclude Include="w4warn.h" />
-    <ClInclude Include="WinUserP.h" />
-    <ClInclude Include="wtl\atltheme.h" />
-    <ClInclude Include="wtl\atluser.h" />
-    <ClInclude Include="wtl\atlwince.h" />
-    <ClInclude Include="wtl\atlwinx.h" />
+    <ClInclude Include="..\Inc\WTL\atltheme.h" />
+    <ClInclude Include="..\Inc\WTL\atluser.h" />
+    <ClInclude Include="..\Inc\WTL\atlwinx.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Explorer.rcv" />
-    <None Include="immersive\README.md" />
-    <None Include="InterfacesP.inc" />
+    <None Include="..\Inc\InterfacesP.inc" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="dlg.rc">
@@ -769,7 +744,7 @@ del "$(IntermediateOutputPath)temp.res"
     <Image Include="resources\naclockclean.bmp" />
     <Image Include="resources\naclocknoclean.bmp" />
     <Image Include="resources\nanoclockclean.bmp" />
-    <Image Include="nanoclocknoclean.bmp" />
+    <Image Include="resources\nanoclocknoclean.bmp" />
     <Image Include="resources\newsm.bmp" />
     <Image Include="resources\old_error.ico" />
     <Image Include="resources\old_info.ico" />
@@ -778,9 +753,9 @@ del "$(IntermediateOutputPath)temp.res"
     <Image Include="resources\old_warning.ico" />
     <Image Include="resources\overflow.ico" />
     <Image Include="resources\smwmail.ico" />
-    <Image Include="resources\srvapp.bmp" />
     <Image Include="resources\start.bmp" />
     <Image Include="resources\start.ico" />
+    <Image Include="resources\start2k.ico" />
     <Image Include="resources\start16.bmp" />
     <Image Include="resources\start16mask.bmp" />
     <Image Include="resources\startclassic.bmp" />
@@ -799,40 +774,29 @@ del "$(IntermediateOutputPath)temp.res"
     <Image Include="resources\traycv.bmp" />
     <Image Include="resources\traycvo.bmp" />
     <Image Include="resources\treeup.ico" />
-    <Image Include="resources\tsbanner.bmp" />
     <Image Include="resources\underflow.ico" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BandSite.cpp" />
     <ClCompile Include="ClassFac.cpp" />
-    <ClCompile Include="CoCreateInstanceHook.cpp" />
-    <ClCompile Include="COWSite.cpp" />
-    <ClCompile Include="CWndProc.cpp" />
-    <ClCompile Include="debug.cpp" />
-    <ClCompile Include="DesktopP.cpp" />
-    <ClCompile Include="DllLoad.cpp" />
-    <ClCompile Include="IEGuidP.cpp" />
+    <ClCompile Include="..\Inc\*.cpp" Exclude="..\Inc\SHFusion.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
     <ClCompile Include="Mixer.cpp" />
-    <ClCompile Include="Path.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="PinnedList.cpp" />
-    <ClCompile Include="RunTask.cpp" />
-    <ClCompile Include="Shell32StartMnu.cpp" />
-    <ClCompile Include="SHFusion.cpp">
+    <ClCompile Include="..\Inc\SHFusion.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDLL|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="ShUndoc.cpp" />
+
     <ClCompile Include="SSOMgr.cpp" />
     <ClCompile Include="StartMnu.cpp" />
     <ClCompile Include="TaskBand.cpp" />
@@ -844,7 +808,6 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="TrayNot.cpp" />
     <ClCompile Include="TrayProp.cpp" />
     <ClCompile Include="TrayReg.cpp" />
-    <ClCompile Include="UEMApp.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -852,6 +815,11 @@ del "$(IntermediateOutputPath)temp.res"
   </ItemGroup>
   <ItemGroup>
     <Xml Include="muiconfig.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shell32\ExplorerEx.Shell32.vcxproj">
+      <Project>{1a881839-f61d-4777-ae38-2a5785234790}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

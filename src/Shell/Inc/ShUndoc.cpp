@@ -2785,7 +2785,7 @@ BOOL SHRunControlPanelCustom(LPCTSTR lpcszCmdLine, HWND hwndMsgParent)
 	return ((INT_PTR)ShellExecuteW(hwndMsgParent, L"open", L"rundll32.exe", parameters, NULL, SW_SHOWNORMAL) > 32);
 }
 
-bool SHUndocInit(void)
+EXTERN_C BOOL SHUndocInit(void)
 {
 
 	LOAD_MODULE(shlwapi);

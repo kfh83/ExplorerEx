@@ -1,0 +1,4 @@
+LIBRARY ExplorerEx.Shell32.dll
+EXPORTS
+    DllGetClassObject PRIVATE
+    ExplorerExShell32_EnsureRuntimeInit PRIVATE

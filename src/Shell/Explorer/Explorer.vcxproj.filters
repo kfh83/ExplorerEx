@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -18,205 +18,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cabinet.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mfulist.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mixer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcids.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ssomgr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="startmnu.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="taskband.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="taskbar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tray.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayclok.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="traycmn.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayitem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="traynot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayreg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="userpane.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="w4warn.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="bandsite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shguidp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shdguid.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ieguidp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shundoc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="trayp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dpa.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="help.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="startids.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cwndproc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="winuserp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="port32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="criticalsection.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="runtask.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cowsite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ntwmi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ntperf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wmiumkm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="desktopp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="path.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qsort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="winter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cocreateinstancehook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shfusion.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="patternhelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlapp.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlcrack.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrls.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrlw.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlctrlx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atldlgs.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlddx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlfind.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlframe.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlgdi.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlmisc.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlprint.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlres.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlresce.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlscrl.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlsplit.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="atlstuff.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atltheme.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atluser.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlwince.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="wtl\atlwinx.h">
-      <Filter>Header Files\ATL</Filter>
-    </ClInclude>
-    <ClInclude Include="UEMApp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
+    <ClInclude Include="..\Inc\*.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="immersive\ImmersiveDefs.h">
@@ -225,28 +27,150 @@
     <ClInclude Include="immersive\ImmersiveInit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="explorer.rcv">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="interfacesp.inc">
+    <ClInclude Include="PatternHelper.h">
       <Filter>Header Files</Filter>
-    </None>
-    <None Include="immersive\README.md" />
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\QSort.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\RunTask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\SHFusion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlapp.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlcrack.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlctrls.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlctrlw.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlctrlx.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlddx.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atldlgs.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlfind.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlframe.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlgdi.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlmisc.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlprint.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlres.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlscrl.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlsplit.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="atlstuff.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BandSite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cabinet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Help.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MFUList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mixer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rcids.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SSOMgr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StartMnu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TaskBand.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TaskBar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tray.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayClok.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayCmn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayItem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayNot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrayReg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atltheme.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atluser.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Inc\WTL\atlwinx.h">
+      <Filter>Header Files\ATL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="explorer.rc">
+    <None Include="Explorer.rcv">
       <Filter>Resource Files</Filter>
-    </ResourceCompile>
+    </None>
+    <None Include="..\Inc\InterfacesP.inc">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
     <ResourceCompile Include="dlg.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+    <ResourceCompile Include="Explorer.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="nanoclocknoclean.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\clasicsm.ico">
       <Filter>Resource Files</Filter>
     </Image>
@@ -289,6 +213,9 @@
     <Image Include="resources\nanoclockclean.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="resources\nanoclocknoclean.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
     <Image Include="resources\newsm.bmp">
       <Filter>Resource Files</Filter>
     </Image>
@@ -313,13 +240,13 @@
     <Image Include="resources\smwmail.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\srvapp.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\start.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\start.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="resources\start2k.ico">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="resources\start16.bmp">
@@ -376,120 +303,83 @@
     <Image Include="resources\treeup.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="resources\tsbanner.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="resources\underflow.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="initcab.cpp">
+    <ClCompile Include="BandSite.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libx.cpp">
+    <ClCompile Include="ClassFac.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mixer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ssomgr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="startmnu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="taskband.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="taskbar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayclok.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="traycmn.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayitem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="traynot.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayprop.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="trayreg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="bandsite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="classfac.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shundoc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cwndproc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="path.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllload.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ieguidp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="uemapp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cowsite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="desktopp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="runtask.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cocreateinstancehook.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shfusion.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shell32startmnu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pinnedlist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pch.cpp">
+    <ClCompile Include="..\Inc\*.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="immersive\ImmersiveInit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="InitCab.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mixer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Inc\SHFusion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SSOMgr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StartMnu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskBand.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskBar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tray.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayClok.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayCmn.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayItem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayNot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayProp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayReg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="WindowsShell.manifest">
-      <Filter>Header Files</Filter>
+      <Filter>Resource Files</Filter>
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="muiconfig.xml" />
+    <Xml Include="muiconfig.xml">
+      <Filter>Resource Files</Filter>
+    </Xml>
   </ItemGroup>
 </Project>

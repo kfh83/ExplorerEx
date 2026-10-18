@@ -2,6 +2,7 @@
 #include "cocreateinstancehook.h"
 #include "dbg.h"
 #include "shundoc.h"
+#include "PinnedListWrapper.h"
 
 DWORD WINAPI BeepThread(LPVOID)
 {
