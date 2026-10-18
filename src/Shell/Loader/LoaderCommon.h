@@ -26,7 +26,26 @@ constexpr DWORD ExplorerHookCacheVersion = 1;
 constexpr WCHAR ExplorerHookCacheName[] = L"explorer-hook.bin";
 static_assert(sizeof(ExplorerHookCache) == 88, "Unexpected cache layout");
 
+// Fix for multicolumn shell menus expanding forever with margined theme
+// backgrounds: Windows' shell32 CMenuSFToolbar::GetSize is redirected to
+// CMenuToolbarBase::GetSize. Same exact-image rules as the Explorer cache.
+struct Shell32HookCache
+{
+    DWORD magic;
+    DWORD version;
+    ExplorerImageIdentity image;
+    DWORD targetRva;      // CMenuSFToolbar::GetSize (hooked; prologue verified)
+    DWORD replacementRva; // CMenuToolbarBase::GetSize (called instead)
+    BYTE prologue[16];    // original bytes at targetRva
+};
+
+constexpr DWORD Shell32HookCacheVersion = 1;
+constexpr WCHAR Shell32HookCacheName[] = L"shell32-hook.bin";
+static_assert(sizeof(Shell32HookCache) == 92, "Unexpected cache layout");
+
 HRESULT GetExplorerExDirectory(WCHAR (&path)[MAX_PATH]);
+// dll=false requires an executable image, dll=true a DLL.
 HRESULT ReadExplorerImageIdentity(PCWSTR path, ExplorerImageIdentity* identity,
-                                  WCHAR (&pdbName)[MAX_PATH]);
+                                  WCHAR (&pdbName)[MAX_PATH], bool dll = false);
 HRESULT ReadExplorerHookCache(PCWSTR directory, ExplorerHookCache* cache);
+HRESULT ReadShell32HookCache(PCWSTR directory, Shell32HookCache* cache);

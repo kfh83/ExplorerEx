@@ -21,7 +21,8 @@ namespace
         DirectoryError = 4,
         DownloadError = 5,
         SymbolError = 6,
-        CacheError = 7
+        CacheError = 7,
+        MenuFixError = 8
     };
 
     struct Handle
@@ -199,8 +200,16 @@ namespace
         return S_OK;
     }
 
+    struct SymbolRequest
+    {
+        PCWSTR mask; // SymEnumSymbols filter
+        PCWSTR name; // exact name; a leading '?' means the exact decorated name
+        DWORD rva = 0;
+    };
+
     struct SymbolMatch
     {
+        PCWSTR name = nullptr;
         DWORD64 address = 0;
         ULONG size = 0;
         unsigned count = 0;
@@ -208,23 +217,25 @@ namespace
 
     BOOL CALLBACK FindSymbol(PSYMBOL_INFOW symbol, ULONG, PVOID context)
     {
+        auto& match = *static_cast<SymbolMatch*>(context);
         WCHAR name[MAX_SYM_NAME]{};
         PCWSTR candidate = symbol->Name;
-        if (candidate[0] == L'?' && UnDecorateSymbolNameW(candidate, name, ARRAYSIZE(name), UNDNAME_NAME_ONLY))
+        if (match.name[0] != L'?' && candidate[0] == L'?' &&
+            UnDecorateSymbolNameW(candidate, name, ARRAYSIZE(name), UNDNAME_NAME_ONLY))
             candidate = name;
-        if (wcscmp(candidate, L"CreateDesktopAndTray") != 0) return TRUE;
-        auto& match = *static_cast<SymbolMatch*>(context);
+        if (wcscmp(candidate, match.name) != 0) return TRUE;
         ++match.count;
         match.address = symbol->Address;
         match.size = symbol->Size;
         return TRUE;
     }
 
-    HRESULT ResolveSymbol(PCWSTR imagePath, PCWSTR symbolsDirectory,
-                          const ExplorerImageIdentity& identity, DWORD* rva)
+    HRESULT ResolveSymbols(PCWSTR imagePath, PCWSTR symbolsDirectory,
+                           const ExplorerImageIdentity& identity, SymbolRequest* requests, unsigned count)
     {
         SymbolSession session;
-        SymSetOptions(SYMOPT_UNDNAME | SYMOPT_EXACT_SYMBOLS | SYMOPT_FAIL_CRITICAL_ERRORS |
+        // Raw names: exact decorated matching must not see DbgHelp's undecoration.
+        SymSetOptions(SYMOPT_EXACT_SYMBOLS | SYMOPT_FAIL_CRITICAL_ERRORS |
                       SYMOPT_NO_PROMPTS | SYMOPT_IGNORE_NT_SYMPATH);
         if (!SymInitializeW(session.process, symbolsDirectory, FALSE)) return LastErrorResult();
         session.initialized = true;
@@ -237,18 +248,22 @@ namespace
             !IsEqualGUID(module.PdbSig70, identity.pdbGuid) || module.PdbAge != identity.pdbAge ||
             module.ImageSize != identity.sizeOfImage || module.TimeDateStamp != identity.timeDateStamp)
             return HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
-        SymbolMatch match;
-        if (!SymEnumSymbolsW(session.process, base, L"*CreateDesktopAndTray*", FindSymbol, &match))
-            return LastErrorResult();
-        if (match.count != 1)
+        for (unsigned i = 0; i < count; ++i)
         {
-            fwprintf(stderr, L"Expected one exact CreateDesktopAndTray symbol; found %u.\n", match.count);
-            return HRESULT_FROM_WIN32(match.count ? ERROR_DUP_NAME : ERROR_NOT_FOUND);
+            SymbolMatch match;
+            match.name = requests[i].name;
+            if (!SymEnumSymbolsW(session.process, base, requests[i].mask, FindSymbol, &match))
+                return LastErrorResult();
+            if (match.count != 1)
+            {
+                fwprintf(stderr, L"Expected one exact %s symbol; found %u.\n", requests[i].name, match.count);
+                return HRESULT_FROM_WIN32(match.count ? ERROR_DUP_NAME : ERROR_NOT_FOUND);
+            }
+            if (match.address < base || match.address - base >= identity.sizeOfImage ||
+                identity.sizeOfImage - (match.address - base) < 16 || (match.size && match.size < 16))
+                return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+            requests[i].rva = static_cast<DWORD>(match.address - base);
         }
-        if (match.address < base || match.address - base >= identity.sizeOfImage ||
-            identity.sizeOfImage - (match.address - base) < 16 || (match.size && match.size < 16))
-            return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
-        *rva = static_cast<DWORD>(match.address - base);
         return S_OK;
     }
 
@@ -307,10 +322,10 @@ namespace
         return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
     }
 
-    HRESULT SaveCache(PCWSTR directory, const ExplorerHookCache& cache)
+    HRESULT SaveCache(PCWSTR directory, PCWSTR name, const void* data, DWORD length)
     {
         WCHAR path[MAX_PATH]{};
-        HRESULT hr = StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\%s", directory, ExplorerHookCacheName);
+        HRESULT hr = StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\%s", directory, name);
         if (FAILED(hr)) return hr;
         TemporaryFile temporary;
         if (!GetTempFileNameW(directory, L"exc", 0, temporary.path)) return LastErrorResult();
@@ -318,7 +333,7 @@ namespace
         file.value = CreateFileW(temporary.path, GENERIC_WRITE, 0, nullptr, TRUNCATE_EXISTING,
                                  FILE_ATTRIBUTE_NORMAL, nullptr);
         if (file.value == INVALID_HANDLE_VALUE) return LastErrorResult();
-        hr = WriteAll(file.value, reinterpret_cast<const BYTE*>(&cache), sizeof(cache));
+        hr = WriteAll(file.value, static_cast<const BYTE*>(data), length);
         if (FAILED(hr)) return hr;
         if (!FlushFileBuffers(file.value)) return LastErrorResult();
         file.Close();
@@ -326,6 +341,57 @@ namespace
             return LastErrorResult();
         temporary.path[0] = L'\0';
         return S_OK;
+    }
+
+    // Identity, exact PDB, symbol resolution and original bytes for one native
+    // image. requests[0]'s original bytes are returned in prologue.
+    int PrepareImage(PCWSTR label, PCWSTR imagePath, bool dll, PCWSTR directory,
+                     ExplorerImageIdentity* image, SymbolRequest* requests, unsigned count,
+                     BYTE (&prologue)[16])
+    {
+        WCHAR pdbName[MAX_PATH]{};
+        HRESULT hr = ReadExplorerImageIdentity(imagePath, image, pdbName, dll);
+        if (FAILED(hr)) return Fail(ImageError, L"Validating native x64 image", hr);
+        wprintf(L"%s image: %s\nPDB: %s, age %lu\n", label, imagePath, pdbName, image->pdbAge);
+        hr = EnsureDirectory(directory);
+        if (FAILED(hr)) return Fail(DirectoryError, L"Creating payload directory", hr);
+        WCHAR key[48]{};
+        const GUID& guid = image->pdbGuid;
+        hr = StringCchPrintfW(key, ARRAYSIZE(key), L"%08lX%04X%04X%02X%02X%02X%02X%02X%02X%02X%02X%X",
+            guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+            guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], image->pdbAge);
+        if (FAILED(hr)) return Fail(ImageError, L"Formatting PDB identity", hr);
+        WCHAR symbolsDirectory[MAX_PATH]{};
+        hr = StringCchPrintfW(symbolsDirectory, ARRAYSIZE(symbolsDirectory), L"%s\\symbols\\%s", directory, key);
+        if (FAILED(hr)) return Fail(DirectoryError, L"Resolving symbol directory", hr);
+        hr = EnsureDirectory(symbolsDirectory);
+        if (FAILED(hr)) return Fail(DirectoryError, L"Creating symbol directory", hr);
+        WCHAR pdbPath[MAX_PATH]{};
+        hr = StringCchPrintfW(pdbPath, ARRAYSIZE(pdbPath), L"%s\\%s", symbolsDirectory, pdbName);
+        if (FAILED(hr)) return Fail(DirectoryError, L"Resolving PDB path", hr);
+        if (SUCCEEDED(VerifyPdb(pdbPath, *image)))
+            wprintf(L"Reusing verified PDB: %s\n", pdbPath);
+        else
+        {
+            WCHAR requestPath[MAX_PATH * 3]{};
+            hr = StringCchPrintfW(requestPath, ARRAYSIZE(requestPath), L"/download/symbols/%s/%s/%s", pdbName, key, pdbName);
+            if (FAILED(hr)) return Fail(DownloadError, L"Formatting symbol URL", hr);
+            wprintf(L"Downloading https://msdl.microsoft.com%s\n", requestPath);
+            hr = DownloadPdb(symbolsDirectory, pdbPath, requestPath, *image);
+            if (FAILED(hr)) return Fail(DownloadError, L"Downloading exact PDB", hr);
+        }
+        hr = ResolveSymbols(imagePath, symbolsDirectory, *image, requests, count);
+        if (FAILED(hr)) return Fail(SymbolError, L"Resolving symbols from exact PDB", hr);
+        hr = ReadPrologue(imagePath, requests[0].rva, prologue);
+        if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
+        ExplorerImageIdentity currentIdentity{};
+        WCHAR currentPdbName[MAX_PATH]{};
+        hr = ReadExplorerImageIdentity(imagePath, &currentIdentity, currentPdbName, dll);
+        if (FAILED(hr)) return Fail(ImageError, L"Rechecking native image", hr);
+        if (!SameIdentity(*image, currentIdentity))
+            return Fail(ImageError, L"Native image changed during preparation; run prepare again",
+                        HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH));
+        return Success;
     }
 }
 
@@ -336,7 +402,8 @@ int wmain(int argc, wchar_t** argv)
         fwprintf(stderr, L"Usage: ExplorerEx.Loader.exe prepare [payload-directory]\n"
                          L"Default: native Program Files\\ExplorerEx. Run elevated when preparing that directory.\n"
                          L"Exit codes: 0 success, 2 usage, 3 native image, 4 directory, 5 PDB download/identity, "
-                         L"6 symbol resolution, 7 cache publication.\n");
+                         L"6 symbol resolution, 7 cache publication, 8 optional shell32 menu fix unavailable "
+                         L"(ExplorerEx itself is still prepared).\n");
         return UsageError;
     }
     WCHAR directory[MAX_PATH]{};
@@ -358,55 +425,57 @@ int wmain(int argc, wchar_t** argv)
     WCHAR imagePath[MAX_PATH]{};
     hr = StringCchPrintfW(imagePath, ARRAYSIZE(imagePath), L"%s\\explorer.exe", windows);
     if (FAILED(hr)) return Fail(ImageError, L"Resolving native Explorer path", hr);
+
     ExplorerHookCache cache{};
     cache.magic = ExplorerHookCacheMagic;
     cache.version = ExplorerHookCacheVersion;
-    WCHAR pdbName[MAX_PATH]{};
-    hr = ReadExplorerImageIdentity(imagePath, &cache.image, pdbName);
-    if (FAILED(hr)) return Fail(ImageError, L"Validating native x64 Explorer", hr);
-    wprintf(L"Native image: %s\nPDB: %s, age %lu\n", imagePath, pdbName, cache.image.pdbAge);
-    hr = EnsureDirectory(directory);
-    if (FAILED(hr)) return Fail(DirectoryError, L"Creating payload directory", hr);
-    WCHAR key[48]{};
-    const GUID& guid = cache.image.pdbGuid;
-    hr = StringCchPrintfW(key, ARRAYSIZE(key), L"%08lX%04X%04X%02X%02X%02X%02X%02X%02X%02X%02X%X",
-        guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-        guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7], cache.image.pdbAge);
-    if (FAILED(hr)) return Fail(ImageError, L"Formatting PDB identity", hr);
-    WCHAR symbolsDirectory[MAX_PATH]{};
-    hr = StringCchPrintfW(symbolsDirectory, ARRAYSIZE(symbolsDirectory), L"%s\\symbols\\%s", directory, key);
-    if (FAILED(hr)) return Fail(DirectoryError, L"Resolving symbol directory", hr);
-    hr = EnsureDirectory(symbolsDirectory);
-    if (FAILED(hr)) return Fail(DirectoryError, L"Creating symbol directory", hr);
-    WCHAR pdbPath[MAX_PATH]{};
-    hr = StringCchPrintfW(pdbPath, ARRAYSIZE(pdbPath), L"%s\\%s", symbolsDirectory, pdbName);
-    if (FAILED(hr)) return Fail(DirectoryError, L"Resolving PDB path", hr);
-    if (SUCCEEDED(VerifyPdb(pdbPath, cache.image)))
-        wprintf(L"Reusing verified PDB: %s\n", pdbPath);
-    else
-    {
-        WCHAR requestPath[MAX_PATH * 3]{};
-        hr = StringCchPrintfW(requestPath, ARRAYSIZE(requestPath), L"/download/symbols/%s/%s/%s", pdbName, key, pdbName);
-        if (FAILED(hr)) return Fail(DownloadError, L"Formatting symbol URL", hr);
-        wprintf(L"Downloading https://msdl.microsoft.com%s\n", requestPath);
-        hr = DownloadPdb(symbolsDirectory, pdbPath, requestPath, cache.image);
-        if (FAILED(hr)) return Fail(DownloadError, L"Downloading exact Explorer PDB", hr);
-    }
-    hr = ResolveSymbol(imagePath, symbolsDirectory, cache.image, &cache.functionRva);
-    if (FAILED(hr)) return Fail(SymbolError, L"Resolving CreateDesktopAndTray from exact PDB", hr);
-    hr = ReadPrologue(imagePath, cache.functionRva, cache.prologue);
-    if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
-    ExplorerImageIdentity currentIdentity{};
-    WCHAR currentPdbName[MAX_PATH]{};
-    hr = ReadExplorerImageIdentity(imagePath, &currentIdentity, currentPdbName);
-    if (FAILED(hr)) return Fail(ImageError, L"Rechecking native Explorer", hr);
-    if (!SameIdentity(cache.image, currentIdentity))
-        return Fail(ImageError, L"Native Explorer changed during preparation; run prepare again",
-                    HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH));
-    hr = SaveCache(directory, cache);
+    SymbolRequest explorerRequests[] = { { L"*CreateDesktopAndTray*", L"CreateDesktopAndTray" } };
+    int result = PrepareImage(L"Native", imagePath, false, directory, &cache.image,
+                              explorerRequests, ARRAYSIZE(explorerRequests), cache.prologue);
+    if (result != Success) return result;
+    cache.functionRva = explorerRequests[0].rva;
+    hr = SaveCache(directory, ExplorerHookCacheName, &cache, sizeof(cache));
     if (FAILED(hr)) return Fail(CacheError, L"Atomically publishing hook cache", hr);
     wprintf(L"Prepared CreateDesktopAndTray RVA 0x%08lX for image timestamp 0x%08lX, size 0x%08lX.\n"
              L"Cache: %s\\%s\n", cache.functionRva, cache.image.timeDateStamp,
              cache.image.sizeOfImage, directory, ExplorerHookCacheName);
+
+    // Optional: shell32 menu fix. Never leave a cache for a different shell32.
+    WCHAR shell32CachePath[MAX_PATH]{};
+    StringCchPrintfW(shell32CachePath, ARRAYSIZE(shell32CachePath), L"%s\\%s", directory, Shell32HookCacheName);
+    DeleteFileW(shell32CachePath);
+    WCHAR system[MAX_PATH]{};
+    WCHAR shell32Path[MAX_PATH]{};
+    const UINT systemLength = GetSystemDirectoryW(system, ARRAYSIZE(system));
+    if (!systemLength || systemLength >= ARRAYSIZE(system) ||
+        FAILED(StringCchPrintfW(shell32Path, ARRAYSIZE(shell32Path), L"%s\\shell32.dll", system)))
+    {
+        fwprintf(stderr, L"Cannot locate shell32.dll; menu fix not prepared.\n");
+        return MenuFixError;
+    }
+    Shell32HookCache menuCache{};
+    menuCache.magic = ExplorerHookCacheMagic;
+    menuCache.version = Shell32HookCacheVersion;
+    SymbolRequest menuRequests[] = {
+        { L"*GetSize*", L"?GetSize@CMenuSFToolbar@@UEAAXPEAUtagSIZE@@@Z" },
+        { L"*GetSize*", L"?GetSize@CMenuToolbarBase@@UEAAXPEAUtagSIZE@@@Z" },
+    };
+    result = PrepareImage(L"shell32", shell32Path, true, directory, &menuCache.image,
+                          menuRequests, ARRAYSIZE(menuRequests), menuCache.prologue);
+    if (result != Success)
+    {
+        fwprintf(stderr, L"Warning: shell32 menu fix not prepared (exit %d); ExplorerEx is otherwise ready.\n", result);
+        return MenuFixError;
+    }
+    menuCache.targetRva = menuRequests[0].rva;
+    menuCache.replacementRva = menuRequests[1].rva;
+    hr = SaveCache(directory, Shell32HookCacheName, &menuCache, sizeof(menuCache));
+    if (FAILED(hr))
+    {
+        Fail(CacheError, L"Publishing shell32 menu fix cache", hr);
+        return MenuFixError;
+    }
+    wprintf(L"Prepared shell32 menu fix: CMenuSFToolbar::GetSize 0x%08lX -> CMenuToolbarBase::GetSize 0x%08lX.\n",
+            menuCache.targetRva, menuCache.replacementRva);
     return Success;
 }

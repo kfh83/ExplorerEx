@@ -88,7 +88,7 @@ HRESULT GetExplorerExDirectory(WCHAR (&path)[MAX_PATH])
 }
 
 HRESULT ReadExplorerImageIdentity(PCWSTR path, ExplorerImageIdentity* identity,
-                                  WCHAR (&pdbName)[MAX_PATH])
+                                  WCHAR (&pdbName)[MAX_PATH], bool dll)
 {
     if (!identity || !path) return E_INVALIDARG;
     *identity = {};
@@ -116,8 +116,9 @@ HRESULT ReadExplorerImageIdentity(PCWSTR path, ExplorerImageIdentity* identity,
         return badImage;
     const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(view.data + dos->e_lfanew);
     if (nt->Signature != IMAGE_NT_SIGNATURE || nt->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
-        !(nt->FileHeader.Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE) ||
-        (nt->FileHeader.Characteristics & IMAGE_FILE_DLL) ||
+        (dll ? !(nt->FileHeader.Characteristics & IMAGE_FILE_DLL) :
+               (!(nt->FileHeader.Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE) ||
+                (nt->FileHeader.Characteristics & IMAGE_FILE_DLL))) ||
         nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC ||
         nt->FileHeader.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER64) ||
         nt->OptionalHeader.NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_DEBUG ||
@@ -203,12 +204,11 @@ HRESULT ReadExplorerImageIdentity(PCWSTR path, ExplorerImageIdentity* identity,
     return S_OK;
 }
 
-HRESULT ReadExplorerHookCache(PCWSTR directory, ExplorerHookCache* cache)
+// Reads a fixed-size cache file; the caller validates the contents.
+static HRESULT ReadCacheFile(PCWSTR directory, PCWSTR name, void* buffer, DWORD length)
 {
-    if (!directory || !cache) return E_INVALIDARG;
-    *cache = {};
     WCHAR path[MAX_PATH]{};
-    HRESULT hr = StringCchPrintfW(path, MAX_PATH, L"%s\\%s", directory, ExplorerHookCacheName);
+    HRESULT hr = StringCchPrintfW(path, MAX_PATH, L"%s\\%s", directory, name);
     if (FAILED(hr)) return hr;
     Handle file;
     file.value = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
@@ -216,13 +216,37 @@ HRESULT ReadExplorerHookCache(PCWSTR directory, ExplorerHookCache* cache)
     if (file.value == INVALID_HANDLE_VALUE) return LastErrorResult();
     LARGE_INTEGER size{};
     if (!GetFileSizeEx(file.value, &size)) return LastErrorResult();
-    if (size.QuadPart != sizeof(ExplorerHookCache)) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
-    ExplorerHookCache result{};
+    if (size.QuadPart != length) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     DWORD bytes = 0;
-    if (!ReadFile(file.value, &result, sizeof(result), &bytes, nullptr)) return LastErrorResult();
-    if (bytes != sizeof(result) || result.magic != ExplorerHookCacheMagic ||
-        result.version != ExplorerHookCacheVersion || !result.functionRva ||
-        !Fits(result.functionRva, sizeof(result.prologue), result.image.sizeOfImage))
+    if (!ReadFile(file.value, buffer, length, &bytes, nullptr)) return LastErrorResult();
+    return bytes == length ? S_OK : HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+}
+
+HRESULT ReadExplorerHookCache(PCWSTR directory, ExplorerHookCache* cache)
+{
+    if (!directory || !cache) return E_INVALIDARG;
+    *cache = {};
+    ExplorerHookCache result{};
+    HRESULT hr = ReadCacheFile(directory, ExplorerHookCacheName, &result, sizeof(result));
+    if (FAILED(hr)) return hr;
+    if (result.magic != ExplorerHookCacheMagic || result.version != ExplorerHookCacheVersion ||
+        !result.functionRva || !Fits(result.functionRva, sizeof(result.prologue), result.image.sizeOfImage))
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    *cache = result;
+    return S_OK;
+}
+
+HRESULT ReadShell32HookCache(PCWSTR directory, Shell32HookCache* cache)
+{
+    if (!directory || !cache) return E_INVALIDARG;
+    *cache = {};
+    Shell32HookCache result{};
+    HRESULT hr = ReadCacheFile(directory, Shell32HookCacheName, &result, sizeof(result));
+    if (FAILED(hr)) return hr;
+    if (result.magic != ExplorerHookCacheMagic || result.version != Shell32HookCacheVersion ||
+        !result.targetRva || !result.replacementRva || result.targetRva == result.replacementRva ||
+        !Fits(result.targetRva, sizeof(result.prologue), result.image.sizeOfImage) ||
+        !Fits(result.replacementRva, sizeof(result.prologue), result.image.sizeOfImage))
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     *cache = result;
     return S_OK;
