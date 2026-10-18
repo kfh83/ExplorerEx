@@ -57,8 +57,6 @@
     <None Include="Dxgi.def" />
     <None Include="packages.config" />
     <None Include="THIRD-PARTY-NOTICES.txt" />
-    <None Include="Install-ExplorerEx.ps1" />
-    <None Include="Uninstall-ExplorerEx.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -69,6 +67,6 @@
     <Error Condition="!Exists('$(SlimDetoursPackage)build\KNSoft.SlimDetours.targets')" Text="Restore pinned native dependencies first: nuget restore src\Shell\Loader\packages.config -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive" />
   </Target>
   <Target Name="PackageLoaderSupport" AfterTargets="Build">
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.txt;$(MSBuildThisFileDirectory)Install-ExplorerEx.ps1;$(MSBuildThisFileDirectory)Uninstall-ExplorerEx.ps1" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.txt" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>
