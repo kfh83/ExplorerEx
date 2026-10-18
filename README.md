@@ -100,14 +100,6 @@ In addition, you **MUST** make sure Windhawk can inject into winlogon.exe. You c
 - `ReleaseDLL` builds `ExplorerEx.dll` with UWP app support enabled for use with the loader Windhawk mod provided in the repository.
 - `ReleaseDebug` builds `explorer.exe` with **no** UWP app support, optimizations disabled and console output enabled.
 
-All configurations also build `ExplorerEx.Shell32.dll`, which is required beside the executable or loader DLL. Outputs and language folders are in `build\bin\<Configuration>\x64\`; project-specific intermediates are in `build\obj\<Project>\<Configuration>\x64\`.
-
-The classic menu, All Programs folders, and Darwin shortcut cache now live in the in-process Shell32 server. Explorer registers the server at startup; no `regsvr32` step is needed. The three folder classes retain ExplorerEx's private CLSIDs rather than Windows-owned namespace identities. As before the migration, folder registration uses HKCU normally and HKLM when elevated so shell namespace binding can locate the server. Windows-owned menu class overrides remain per-user.
-
-The XP All Programs menu retains its `IShellMenu` callbacks, scrolling settings, and separate fast-items group. Its namespace groups and sorting flags intentionally differ from Vista's NSCHost layout; copying that layout hides the fast-items section in the XP menu.
-
-This migration does not resolve every cache issue in [#48](https://github.com/kfh83/ExplorerEx/issues/48). In an isolated All Programs popup check, newly added shortcuts appeared while the menu was open, but a deleted shortcut remained visible after reopening the same menu object.
-
 From an x64 Native Tools Command Prompt for VS 2022 at the repository root:
 ```bat
 msbuild Explorer.sln /m /p:Configuration=Release /p:Platform=x64
