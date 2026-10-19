@@ -115,7 +115,31 @@ static void __cdecl MenuSFToolbarGetSizeHook(void* self, SIZE* size)
     g_menuBaseGetSize(self, size);
 }
 
-static HRESULT InstallMenuFix(PCWSTR directory)
+// wil's FeatureImpl<Feature_W32PTP>::__private_IsEnabled. Windows 10 19045.7184+
+// makes CPinnedList refuse to add a pin (E_FAIL) while it reports true, so the
+// classic pin-to-Start path is kept by reporting false. Nothing else consults it.
+using PinGateFn = bool (__fastcall*)(void* self);
+static PinGateFn g_originalPinGate;
+
+static bool __fastcall PinGateHook(void*)
+{
+    return false;
+}
+
+// Installs one inline hook after confirming the original bytes are untouched.
+static HRESULT HookVerified(HMODULE module, DWORD rva, const BYTE (&prologue)[16],
+                            PVOID* original, PVOID hook)
+{
+    if (!IsExecutableRva(module, rva, sizeof(prologue)))
+        return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+    BYTE* target = reinterpret_cast<BYTE*>(module) + rva;
+    if (memcmp(target, prologue, sizeof(prologue)) != 0)
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA); // Already patched or stale cache.
+    *original = target;
+    return SlimDetoursInlineHook(TRUE, original, hook);
+}
+
+static HRESULT InstallShell32Fixes(PCWSTR directory)
 {
     Shell32HookCache cache{};
     HRESULT hr = ReadShell32HookCache(directory, &cache);
@@ -136,19 +160,39 @@ static HRESULT InstallMenuFix(PCWSTR directory)
         return hr;
     if (memcmp(&identity, &cache.image, sizeof(identity)) != 0)
         return HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
-    if (!IsExecutableRva(shell32, cache.targetRva, sizeof(cache.prologue)) ||
-        !IsExecutableRva(shell32, cache.replacementRva, sizeof(cache.prologue)))
-        return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
-    BYTE* target = reinterpret_cast<BYTE*>(shell32) + cache.targetRva;
-    if (memcmp(target, cache.prologue, sizeof(cache.prologue)) != 0)
-        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA); // Already patched or stale cache.
-    g_menuBaseGetSize = reinterpret_cast<MenuGetSizeFn>(reinterpret_cast<BYTE*>(shell32) + cache.replacementRva);
-    g_originalMenuGetSize = reinterpret_cast<MenuGetSizeFn>(target);
-    hr = SlimDetoursInlineHook(TRUE, reinterpret_cast<PVOID*>(&g_originalMenuGetSize),
-        reinterpret_cast<PVOID>(&MenuSFToolbarGetSizeHook));
+
+    // The fixes are independent: report each, and keep going after a failure.
+    HRESULT result = S_OK;
+    if (!IsExecutableRva(shell32, cache.replacementRva, sizeof(cache.prologue)))
+        hr = HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+    else
+    {
+        g_menuBaseGetSize = reinterpret_cast<MenuGetSizeFn>(reinterpret_cast<BYTE*>(shell32) + cache.replacementRva);
+        hr = HookVerified(shell32, cache.targetRva, cache.prologue,
+            reinterpret_cast<PVOID*>(&g_originalMenuGetSize), reinterpret_cast<PVOID>(&MenuSFToolbarGetSizeHook));
+    }
     if (SUCCEEDED(hr))
         Report(L"shell32 multicolumn menu fix installed", hr);
-    return hr;
+    else
+    {
+        Report(L"shell32 multicolumn menu fix not installed", hr);
+        result = hr;
+    }
+
+    if (cache.pinGateRva)
+    {
+        hr = HookVerified(shell32, cache.pinGateRva, cache.pinGatePrologue,
+            reinterpret_cast<PVOID*>(&g_originalPinGate), reinterpret_cast<PVOID>(&PinGateHook));
+        if (SUCCEEDED(hr))
+            Report(L"shell32 pin gate disabled (classic pin-to-Start path kept)", hr);
+        else
+        {
+            Report(L"shell32 pin gate not disabled", hr);
+            if (SUCCEEDED(result))
+                result = hr;
+        }
+    }
+    return result;
 }
 
 static HRESULT InstallExplorerHook()
@@ -221,9 +265,9 @@ static HRESULT InstallExplorerHook()
     {
         Report(L"CreateDesktopAndTray hook installed", hr);
         // Optional and independent: a failure leaves ExplorerEx fully working.
-        HRESULT menuFix = InstallMenuFix(directory);
-        if (FAILED(menuFix))
-            Report(L"shell32 menu fix not installed", menuFix);
+        HRESULT shell32Fixes = InstallShell32Fixes(directory);
+        if (FAILED(shell32Fixes))
+            Report(L"shell32 fixes not (fully) installed", shell32Fixes);
     }
     return hr;
 }
