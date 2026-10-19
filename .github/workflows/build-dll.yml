@@ -41,18 +41,6 @@ jobs:
     - name: Compile ExplorerEx DLLs and standalone loader
       run: | 
         msbuild explorer.sln /p:Configuration=ReleaseDLL /p:Platform=x64
-    - name: Install NSIS
-      run: |
-        choco install nsis -y --no-progress
-        echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      shell: pwsh
-    - name: Assemble NSIS installer
-      run: >
-        makensis
-        /DBUILDDIR=${{ github.workspace }}\build\bin\ReleaseDLL\x64
-        /DSRCDIR=${{ github.workspace }}\src\Shell\Loader
-        /DOUTDIR=${{ github.workspace }}\build\bin\ReleaseDLL\x64
-        ${{ github.workspace }}\src\Shell\Loader\ExplorerEx-Setup.nsi
     - name: Set short git commit SHA
       id: vars
       shell: bash
