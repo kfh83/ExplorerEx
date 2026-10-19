@@ -337,10 +337,11 @@ INT_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT msg, WPARAM wParam, 
     {
     case WM_INITDIALOG:
         ::CheckDlgButton(hDlg, IDC_EXTRAOPTWIN98, c_tray._fWin98 ? BST_CHECKED : BST_UNCHECKED);
+        ::CheckDlgButton(hDlg, IDC_EXTRAOPT16COLOR, c_tray._fTray16Color ? BST_CHECKED : BST_UNCHECKED);
         return TRUE;
 
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDC_EXTRAOPTWIN98 && HIWORD(wParam) == BN_CLICKED)
+        if ((LOWORD(wParam) == IDC_EXTRAOPTWIN98 || LOWORD(wParam) == IDC_EXTRAOPT16COLOR) && HIWORD(wParam) == BN_CLICKED)
         {
             ::SendMessage(::GetParent(hDlg), PSM_CHANGED, reinterpret_cast<WPARAM>(hDlg), 0);
             return TRUE;
@@ -353,14 +354,23 @@ INT_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT msg, WPARAM wParam, 
         case PSN_APPLY:
         {
             BOOL win98 = ::IsDlgButtonChecked(hDlg, IDC_EXTRAOPTWIN98) == BST_CHECKED;
+            BOOL color16 = ::IsDlgButtonChecked(hDlg, IDC_EXTRAOPT16COLOR) == BST_CHECKED;
+            BOOL fSave = FALSE;
             if (c_tray._fWin98 != win98)
             {
                 c_tray._fWin98 = win98;
                 c_tray.SizeWindows();
                 ::InvalidateRect(v_hwndTray, NULL, TRUE);
-                if (!SHRestricted(REST_NOSAVESET) && GetSystemMetrics(SM_CLEANBOOT) == 0)
-                    c_tray._SaveTrayStuff();
+                fSave = TRUE;
             }
+            if (c_tray._fTray16Color != color16)
+            {
+                c_tray._fTray16Color = color16;
+                ::SendMessage(c_tray.GetTrayNotifyHWND(), TNM_REFRESHICONDEPTH, 0, 0);
+                fSave = TRUE;
+            }
+            if (fSave && !SHRestricted(REST_NOSAVESET) && GetSystemMetrics(SM_CLEANBOOT) == 0)
+                c_tray._SaveTrayStuff();
             ::SetWindowLongPtr(hDlg, DWLP_MSGRESULT, PSNRET_NOERROR);
             return TRUE;
         }

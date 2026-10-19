@@ -18,6 +18,7 @@
 #define TNM_NOTIFY                  (WM_USER + 9)
 #define TNM_STARTUPAPPSLAUNCHED     (WM_USER + 10)
 #define TNM_ENABLEUSERTRACKINGINFOTIPS      (WM_USER + 11)
+#define TNM_REFRESHICONDEPTH                (WM_USER + 12)
 
 #define TNM_BANGICONMESSAGE         (WM_USER + 50)
 #define TNM_ICONDEMOTETIMER         (WM_USER + 61)
@@ -85,6 +86,7 @@ typedef struct _TNPRIVICON
     UINT uVersion;
     HICON hIcon;
     HICON hBalloonIcon;
+    HICON hIconOrig;   // private copy of the icon the application supplied (for 16 color toggling)
 } TNPRIVICON, *PTNPRIVICON;
 
 #if XXX_RENIM
@@ -142,6 +144,8 @@ protected:
     INT_PTR _GetVisibleCount();
     int _FindImageIndex(HICON hIcon, BOOL fSetAsSharedSource);
     void _RemoveImage(UINT uIMLIndex);
+    HICON _IconForDepth(HICON hIcon, HWND hwndOwner, BOOL* pfOwned);
+    void _RefreshIconDepth();
     INT_PTR _FindNotify(PNOTIFYICONDATA32 pnid);
     BOOL _CheckAndResizeImages();
     void _ActivateTips(BOOL bActivate);
