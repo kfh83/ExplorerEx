@@ -1,0 +1,52 @@
+name: Installer
+
+# Runs after the MSBuildDLL workflow succeeds, reuses its ReleaseDLL artifact
+# (nothing is rebuilt) and publishes only ExplorerEx-Setup.exe.
+on:
+  workflow_run:
+    workflows: [ "MSBuildDLL" ]
+    types: [ completed ]
+
+permissions:
+  contents: read
+  actions: read   # download the DLL artifact of the triggering run
+
+jobs:
+  build-installer:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-2022
+    env:
+      BUILD_DIR: ${{ github.workspace }}\build\bin\ReleaseDLL\x64
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.workflow_run.head_sha }}
+    - name: Set short git commit SHA
+      shell: bash
+      run: echo "COMMIT_SHORT_SHA=$(git rev-parse --short "$HEAD_SHA")" >> $GITHUB_ENV
+    - name: Download DLL build
+      uses: actions/download-artifact@v4
+      with:
+        name: ExplorerEx-${{ env.COMMIT_SHORT_SHA }}
+        path: ${{ env.BUILD_DIR }}
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ github.token }}
+    - name: Install NSIS
+      run: |
+        choco install nsis -y --no-progress
+        echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
+    - name: Assemble NSIS installer
+      run: >
+        makensis
+        /DBUILDDIR=${{ env.BUILD_DIR }}
+        /DSRCDIR=${{ github.workspace }}\src\Shell\Loader
+        /DOUTDIR=${{ env.BUILD_DIR }}
+        ${{ github.workspace }}\src\Shell\Loader\ExplorerEx-Setup.nsi
+    - name: Upload installer
+      uses: actions/upload-artifact@v4.4.0
+      with:
+        name: ExplorerEx-Setup-${{ env.COMMIT_SHORT_SHA }}
+        path: ${{ env.BUILD_DIR }}\ExplorerEx-Setup.exe
+        if-no-files-found: error
