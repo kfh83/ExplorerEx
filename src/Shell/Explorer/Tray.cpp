@@ -843,8 +843,87 @@ HWND CTray::_CreateStartButton()
 	return hwnd;
 }
 
+// Windows 98's layout of the rebar and the notify area inside the taskbar. Unlike
+// the 2000/Me layout it picks the orientation from the space left beside/below
+// the start button instead of the docking edge, and a narrow vertical taskbar
+// centres the notify area, raises it by cyTabSpace and puts it on top of the
+// start button's row when everything fits side by side.
+void CTray::_GetWindowSizes98(PRECT prcClient, PRECT prcView, PRECT prcNotify)
+{
+    const int cxClient = prcClient->right;
+    const int cyClient = prcClient->bottom;
+    const int cxStart = _sizeStart.cx;
+    const int cyStart = _sizeStart.cy;
+    int xNotify, yNotify, cxNotify, cyNotify;
+    int xView = 0, yView = 0, cxView = cxClient, cyView = cyClient;
+
+    if (cxClient - cxStart <= cyClient - cyStart)
+    {
+        // vertical taskbar
+        DWORD_PTR dwSize = SendMessage(_hwndNotify, WM_CALCMINSIZE, 0x7FFF, cyStart);
+        cxNotify = LOWORD(dwSize);
+        cyNotify = HIWORD(dwSize);
+
+        if (cxStart + cxNotify + 4 * g_cyTabSpace >= cxClient)
+        {
+            // not enough room beside the start button: notify area goes at the bottom
+            dwSize = SendMessage(_hwndNotify, WM_CALCMINSIZE, cxClient, 0x7FFF);
+            cxNotify = LOWORD(dwSize);
+            cyNotify = HIWORD(dwSize);
+            if (cxNotify >= cxClient)
+                cxNotify = cxClient;
+
+            xNotify = (cxClient - cxNotify) / 2;
+            yNotify = cyClient - cyNotify - g_cyTabSpace;
+            if (cyNotify == 0)
+                yNotify -= g_cyEdge;
+
+            yView = g_cyTabSpace + cyStart;
+            cyView = yNotify - g_cyTabSpace - yView;
+        }
+        else
+        {
+            // start button and notify area share the top row
+            xNotify = cxClient - 2 * g_cxEdge - cxNotify;
+            yNotify = 0;
+
+            yView = g_cyTabSpace + max(cyStart, cyNotify);
+            cyView = cyClient - yView;
+        }
+    }
+    else
+    {
+        // horizontal taskbar
+        DWORD_PTR dwSize = SendMessage(_hwndNotify, WM_CALCMINSIZE, 0x7FFF, cyClient);
+        cxNotify = LOWORD(dwSize);
+        cyNotify = HIWORD(dwSize);
+
+        xNotify = cxClient - cxNotify;
+        yNotify = 0;
+
+        xView = g_cxFrame + cxStart;
+        cxView = xNotify - g_cxFrame - xView;
+    }
+
+    prcView->left = xView;
+    prcView->top = yView;
+    prcView->right = xView + cxView;
+    prcView->bottom = yView + cyView;
+
+    prcNotify->left = xNotify;
+    prcNotify->top = yNotify;
+    prcNotify->right = xNotify + cxNotify;
+    prcNotify->bottom = yNotify + cyNotify;
+}
+
 void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify)
 {
+    if (_fWin98)
+    {
+        _GetWindowSizes98(prcClient, prcView, prcNotify);
+        return;
+    }
+
     prcView->top = 0;
     prcView->left = 0;
     prcView->bottom = prcClient->bottom;
@@ -860,8 +939,6 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
 
         prcView->left = _sizeStart.cx + g_cxFrame + 1;
         prcView->right = prcNotify->left - 2;
-        if (_fWin98)
-            prcView->right -= 2;
     }
     else
     {
@@ -873,8 +950,6 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PR
 
         prcView->top = _sizeStart.cy + g_cyTabSpace;
         prcView->bottom = prcNotify->top - 2;
-        if (_fWin98)
-            prcView->bottom -= 2;
     }
 }
 

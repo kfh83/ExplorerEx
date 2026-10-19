@@ -165,6 +165,11 @@ protected:
     LRESULT _Paint();
     int _MatchIconsHorz(int nMatchHorz, INT_PTR nIcons, POINT *ppt);
     int _MatchIconsVert(int nMatchVert, INT_PTR nIcons, POINT *ppt);
+    // Windows 98 layout (used when the taskbar "Windows 98 style" option is set)
+    int _MatchIconsHorz98(int nMatchHorz, INT_PTR nIcons, POINT *ppt);
+    int _MatchIconsVert98(int nMatchVert, INT_PTR nIcons, POINT *ppt);
+    UINT _CalcRects98(int nMaxHorz, int nMaxVert, LPRECT prClock, LPRECT prNotifies);
+    void _UpdateToolbarPadding();
     UINT _CalcRects(int nMaxHorz, int nMaxVert, LPRECT prClock, LPRECT prNotifies);
     LRESULT _CalcMinSize(int nMaxHorz, int nMaxVert);
     LRESULT _Size();
@@ -192,6 +197,7 @@ private:
     HWND _hwndClock;
     HIMAGELIST _himlIcons;
     int _nCols;
+    int _iToolbarPadMode;  // 0 unset (zero-initialised), 1 default padding, 2 Win98 padding
     INT_PTR _iVisCount;
     BOOL _fKey : 1;
     BOOL _fReturn : 1;

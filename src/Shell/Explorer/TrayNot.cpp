@@ -1196,8 +1196,191 @@ int CTrayNotify::_MatchIconsVert(int nMatchVert, INT_PTR nIcons, POINT* ppt)
     return (nCols);
 }
 
+// Windows 98 layout. The notify area there is not a toolbar: icons are drawn on
+// a (SM_CXSMICON + cxBorder) x (SM_CYSMICON + cyBorder) grid, so the toolbar is
+// given the same pitch (see _UpdateToolbarPadding) and the rects below are the
+// ones Windows 98's explorer computes.
+int CTrayNotify::_MatchIconsHorz98(int nMatchHorz, INT_PTR nIcons, POINT* ppt)
+{
+    if (!nIcons)
+    {
+        ppt->x = ppt->y = 0;
+        return 0;
+    }
+
+    int xIcon = g_cxBorder + GetSystemMetrics(SM_CXSMICON);
+    int yIcon = g_cyBorder + GetSystemMetrics(SM_CYSMICON);
+
+    int nCols = (nMatchHorz - 2 * g_cxBorder) / xIcon;
+    if (nCols < 1)
+    {
+        nCols = 1;
+    }
+    int nRows = ROWSCOLS((int)nIcons, nCols);
+
+    ppt->x = 2 * g_cxBorder + nCols * xIcon;
+    ppt->y = nRows * yIcon + 2 * g_cyBorder;
+    return nCols;
+}
+
+int CTrayNotify::_MatchIconsVert98(int nMatchVert, INT_PTR nIcons, POINT* ppt)
+{
+    if (!nIcons)
+    {
+        ppt->x = ppt->y = 0;
+        return 0;
+    }
+
+    int xIcon = g_cxBorder + GetSystemMetrics(SM_CXSMICON);
+    int yIcon = g_cyBorder + GetSystemMetrics(SM_CYSMICON);
+
+    int nRows = (nMatchVert - 2 * g_cyBorder) / yIcon;
+    if (nRows < 1)
+    {
+        nRows = 1;
+    }
+    int nCols = ROWSCOLS((int)nIcons, nRows);
+
+    ppt->x = nCols * xIcon + 2 * g_cxBorder;
+    ppt->y = nRows * yIcon + 2 * g_cyBorder;
+    return nCols;
+}
+
+UINT CTrayNotify::_CalcRects98(int nMaxHorz, int nMaxVert, LPRECT prClock, LPRECT prNotifies)
+{
+    UINT nCols = 0;
+    POINT ptBelow = {}, ptLeft = {};
+    int nColsBelow, nColsLeft;
+    const BOOL fMatchVert = nMaxHorz > nMaxVert;
+
+    LRESULT lRes = SendMessage(_hwndClock, WM_CALCMINSIZE, 0, 0);
+    prClock->left = prClock->top = 0;
+    prClock->right = LOWORD(lRes);
+    prClock->bottom = HIWORD(lRes);
+
+    INT_PTR nIcons = _GetVisibleCount();
+    if (nIcons == 0)
+    {
+        SetRectEmpty(prNotifies);
+    }
+    else
+    {
+        if (fMatchVert)
+        {
+            nColsBelow = _MatchIconsVert98(nMaxVert - prClock->bottom, nIcons, &ptBelow);
+            nColsLeft = _MatchIconsVert98(nMaxVert, nIcons, &ptLeft);
+        }
+        else
+        {
+            nColsBelow = _MatchIconsHorz98(nMaxHorz, nIcons, &ptBelow);
+            nColsLeft = _MatchIconsHorz98(g_cxBorder + nMaxHorz - prClock->right, nIcons, &ptLeft);
+        }
+        ptLeft.x -= g_cxBorder;
+
+        const int nHorzLeft = prClock->right + ptLeft.x;
+        const int nVertBelow = prClock->bottom + ptBelow.y;
+
+        BOOL fBelow;
+        if (fMatchVert)
+        {
+            fBelow = (nMaxVert > nVertBelow) && (ptBelow.x < nHorzLeft);
+        }
+        else if (nMaxHorz >= nHorzLeft)
+        {
+            fBelow = nVertBelow < ptLeft.y;
+        }
+        else
+        {
+            fBelow = TRUE;
+        }
+
+        prNotifies->left = g_cxBorder;
+        if (fBelow)
+        {
+            if (ptBelow.x < prClock->right && fMatchVert)
+            {
+                nColsBelow = _MatchIconsHorz98(prClock->right, nIcons, &ptBelow);
+            }
+            prNotifies->right = ptBelow.x;
+            prNotifies->top = g_cyBorder + prClock->bottom;
+            prNotifies->bottom = prNotifies->top + ptBelow.y;
+            if (prClock->right && prClock->right < prNotifies->right)
+            {
+                prClock->right = prNotifies->right;
+            }
+            nCols = nColsBelow;
+        }
+        else
+        {
+            prNotifies->right = ptLeft.x;
+            prNotifies->top = g_cyBorder;
+            prNotifies->bottom = ptLeft.y;
+            OffsetRect(prClock, ptLeft.x, 0);
+            nCols = nColsLeft;
+        }
+    }
+
+    if (prClock->bottom < g_cyEdge + g_cySize)
+    {
+        prClock->bottom = g_cyEdge + g_cySize;
+    }
+
+    OffsetRect(prClock, g_cxBorder, g_cyBorder);
+    OffsetRect(prNotifies, g_cxBorder, g_cyBorder);
+    return nCols;
+}
+
+// Windows 98 spaces icons by SM_CXSMICON + one border, the 2000/Me layout by
+// SM_CXSMICON + 2 borders (see _MatchIcons*). The toolbar's button pitch has to
+// match or the icons drift out of the rects _CalcRects computes. A button is
+// (TB_SETBUTTONSIZE + TB_SETPADDING) wide, and without an explicit size the
+// toolbar never goes below 16 px, which is wider than the 98 cell on small icons.
+void CTrayNotify::_UpdateToolbarPadding()
+{
+    const int nMode = c_tray._fWin98 ? 2 : 1;
+    if (!_hwndToolbar || _iToolbarPadMode == nMode)
+        return;
+
+    const int nPrevMode = _iToolbarPadMode;
+    _iToolbarPadMode = nMode;
+    const int cxIcon = GetSystemMetrics(SM_CXSMICON);
+    const int cyIcon = GetSystemMetrics(SM_CYSMICON);
+    const int nPad = (nMode == 2) ? 0 : 2;
+    const int cxCell = cxIcon + ((nMode == 2) ? g_cxBorder : 2 * g_cxBorder);
+    const int cyCell = cyIcon + ((nMode == 2) ? g_cyBorder : 2 * g_cyBorder);
+    SendMessage(_hwndToolbar, TB_SETPADDING, 0, MAKELONG(nPad, nPad));
+    if (nMode == 2 || nPrevMode != 0)
+    {
+        // The resulting button size depends on the toolbar's earlier explicit
+        // size and padding, so converge on the target by reading it back.
+        int cx = cxCell - nPad, cy = cyCell - nPad;
+        for (int i = 0; i < 8; i++)
+        {
+            SendMessage(_hwndToolbar, TB_SETBUTTONSIZE, 0, MAKELONG(cx, cy));
+            LRESULT lSize = SendMessage(_hwndToolbar, TB_GETBUTTONSIZE, 0, 0);
+            const int dx = cxCell - (int)LOWORD(lSize), dy = cyCell - (int)HIWORD(lSize);
+            if (!dx && !dy)
+                break;
+            cx += dx;
+            cy += dy;
+        }
+    }
+    if (nPrevMode != 0)
+    {
+        // We are called from inside the tray's SizeWindows (via WM_CALCMINSIZE),
+        // before the notify window gets its new size. Laying out now would use the
+        // old size, and nothing re-runs it if the size ends up unchanged, so
+        // re-layout once the tray is done.
+        PostMessage(_hwndNotify, WM_SIZE, SIZE_RESTORED, 0);
+        InvalidateRect(_hwndNotify, NULL, TRUE);
+    }
+}
+
 UINT CTrayNotify::_CalcRects(int nMaxHorz, int nMaxVert, LPRECT prClock, LPRECT prNotifies)
 {
+    if (c_tray._fWin98)
+        return _CalcRects98(nMaxHorz, nMaxVert, prClock, prNotifies);
+
     UINT nCols;
     POINT ptBelow, ptLeft;
     int nHorzLeft, nVertLeft;
@@ -1316,6 +1499,8 @@ LRESULT CTrayNotify::_CalcMinSize(int nMaxHorz, int nMaxVert)
 {
     RECT rTotal, rClock, rNotifies;
 
+    _UpdateToolbarPadding();
+
     if (!(GetWindowLong(_hwndClock, GWL_STYLE) & WS_VISIBLE) &&
         !_GetCount())
     {
@@ -1348,6 +1533,8 @@ LRESULT CTrayNotify::_Size()
 {
     RECT rTotal, rClock;
     RECT rNotifies;
+
+    _UpdateToolbarPadding();
     HWND hWnd = _hwndNotify;
 
     // use GetWindowRect because _TNCalcRects includes the borders
@@ -1360,13 +1547,22 @@ LRESULT CTrayNotify::_Size()
     _nCols = _CalcRects(rTotal.right,
                         rTotal.bottom, &rClock, &rNotifies);
 
-    rNotifies.top++;
-    
     SetWindowPos(_hwndClock, NULL, rClock.left, rClock.top,
                  rClock.right - rClock.left, rClock.bottom - rClock.top, SWP_NOZORDER);
 
-    SetWindowPos(_hwndToolbar, NULL, rNotifies.left + g_cxEdge, rNotifies.top,
-                 rNotifies.right - rNotifies.left - g_cxEdge, rNotifies.bottom - rNotifies.top, SWP_NOZORDER);
+    if (c_tray._fWin98)
+    {
+        // Windows 98 draws the icons straight from the notify rect
+        SetWindowPos(_hwndToolbar, NULL, rNotifies.left, rNotifies.top,
+                     rNotifies.right - rNotifies.left, rNotifies.bottom - rNotifies.top, SWP_NOZORDER);
+    }
+    else
+    {
+        rNotifies.top++;
+
+        SetWindowPos(_hwndToolbar, NULL, rNotifies.left + g_cxEdge, rNotifies.top,
+                     rNotifies.right - rNotifies.left - g_cxEdge, rNotifies.bottom - rNotifies.top, SWP_NOZORDER);
+    }
     return (0);
 }
 

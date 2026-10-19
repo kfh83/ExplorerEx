@@ -327,6 +327,7 @@ protected:
     void _AlignStartButton();
     void _AlignStartButton_2K();
     void _GetWindowSizes(UINT uStuckPlace, PRECT prcClient, PRECT prcView, PRECT prcNotify);
+    void _GetWindowSizes98(PRECT prcClient, PRECT prcView, PRECT prcNotify);
     void _GetStuckDisplayRect(UINT uStuckPlace, LPRECT prcDisplay);
     void _Hide();
     HWND _GetClockWindow(void);
