@@ -205,6 +205,7 @@ namespace
         PCWSTR mask; // SymEnumSymbols filter
         PCWSTR name; // exact name; a leading '?' means the exact decorated name
         DWORD rva = 0;
+        bool optional = false; // absent => rva 0 instead of failing
     };
 
     struct SymbolMatch
@@ -254,6 +255,12 @@ namespace
             match.name = requests[i].name;
             if (!SymEnumSymbolsW(session.process, base, requests[i].mask, FindSymbol, &match))
                 return LastErrorResult();
+            if (match.count == 0 && requests[i].optional)
+            {
+                wprintf(L"Optional symbol not present in this build: %s\n", requests[i].name);
+                requests[i].rva = 0;
+                continue;
+            }
             if (match.count != 1)
             {
                 fwprintf(stderr, L"Expected one exact %s symbol; found %u.\n", requests[i].name, match.count);
@@ -344,10 +351,11 @@ namespace
     }
 
     // Identity, exact PDB, symbol resolution and original bytes for one native
-    // image. requests[0]'s original bytes are returned in prologue.
+    // image. prologues[i] receives the original bytes of requests[i] (skipped
+    // for an optional request that is absent).
     int PrepareImage(PCWSTR label, PCWSTR imagePath, bool dll, PCWSTR directory,
                      ExplorerImageIdentity* image, SymbolRequest* requests, unsigned count,
-                     BYTE (&prologue)[16])
+                     BYTE (*prologues)[16])
     {
         WCHAR pdbName[MAX_PATH]{};
         HRESULT hr = ReadExplorerImageIdentity(imagePath, image, pdbName, dll);
@@ -382,8 +390,12 @@ namespace
         }
         hr = ResolveSymbols(imagePath, symbolsDirectory, *image, requests, count);
         if (FAILED(hr)) return Fail(SymbolError, L"Resolving symbols from exact PDB", hr);
-        hr = ReadPrologue(imagePath, requests[0].rva, prologue);
-        if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
+        for (unsigned i = 0; i < count; ++i)
+        {
+            if (!requests[i].rva) continue; // optional and absent
+            hr = ReadPrologue(imagePath, requests[i].rva, prologues[i]);
+            if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
+        }
         ExplorerImageIdentity currentIdentity{};
         WCHAR currentPdbName[MAX_PATH]{};
         hr = ReadExplorerImageIdentity(imagePath, &currentIdentity, currentPdbName, dll);
@@ -402,7 +414,7 @@ int wmain(int argc, wchar_t** argv)
         fwprintf(stderr, L"Usage: ExplorerEx.Loader.exe prepare [payload-directory]\n"
                          L"Default: native Program Files\\ExplorerEx. Run elevated when preparing that directory.\n"
                          L"Exit codes: 0 success, 2 usage, 3 native image, 4 directory, 5 PDB download/identity, "
-                         L"6 symbol resolution, 7 cache publication, 8 optional shell32 menu fix unavailable "
+                         L"6 symbol resolution, 7 cache publication, 8 optional shell32 fixes unavailable "
                          L"(ExplorerEx itself is still prepared).\n");
         return UsageError;
     }
@@ -430,9 +442,11 @@ int wmain(int argc, wchar_t** argv)
     cache.magic = ExplorerHookCacheMagic;
     cache.version = ExplorerHookCacheVersion;
     SymbolRequest explorerRequests[] = { { L"*CreateDesktopAndTray*", L"CreateDesktopAndTray" } };
+    BYTE explorerPrologues[1][16]{};
     int result = PrepareImage(L"Native", imagePath, false, directory, &cache.image,
-                              explorerRequests, ARRAYSIZE(explorerRequests), cache.prologue);
+                              explorerRequests, ARRAYSIZE(explorerRequests), explorerPrologues);
     if (result != Success) return result;
+    memcpy(cache.prologue, explorerPrologues[0], sizeof(cache.prologue));
     cache.functionRva = explorerRequests[0].rva;
     hr = SaveCache(directory, ExplorerHookCacheName, &cache, sizeof(cache));
     if (FAILED(hr)) return Fail(CacheError, L"Atomically publishing hook cache", hr);
@@ -459,16 +473,23 @@ int wmain(int argc, wchar_t** argv)
     SymbolRequest menuRequests[] = {
         { L"*GetSize*", L"?GetSize@CMenuSFToolbar@@UEAAXPEAUtagSIZE@@@Z" },
         { L"*GetSize*", L"?GetSize@CMenuToolbarBase@@UEAAXPEAUtagSIZE@@@Z" },
+        // Windows 10 19045.7184+ only. Exact decorated name: wil's
+        // FeatureImpl<Feature_W32PTP>::__private_IsEnabled.
+        { L"*W32PTP*", L"?__private_IsEnabled@?$FeatureImpl@U__WilFeatureTraits_Feature_W32PTP@@@details@wil@@QEAA_NXZ", 0, true },
     };
+    BYTE menuPrologues[ARRAYSIZE(menuRequests)][16]{};
     result = PrepareImage(L"shell32", shell32Path, true, directory, &menuCache.image,
-                          menuRequests, ARRAYSIZE(menuRequests), menuCache.prologue);
+                          menuRequests, ARRAYSIZE(menuRequests), menuPrologues);
     if (result != Success)
     {
         fwprintf(stderr, L"Warning: shell32 menu fix not prepared (exit %d); ExplorerEx is otherwise ready.\n", result);
         return MenuFixError;
     }
+    memcpy(menuCache.prologue, menuPrologues[0], sizeof(menuCache.prologue));
     menuCache.targetRva = menuRequests[0].rva;
     menuCache.replacementRva = menuRequests[1].rva;
+    menuCache.pinGateRva = menuRequests[2].rva;
+    memcpy(menuCache.pinGatePrologue, menuPrologues[2], sizeof(menuCache.pinGatePrologue));
     hr = SaveCache(directory, Shell32HookCacheName, &menuCache, sizeof(menuCache));
     if (FAILED(hr))
     {
@@ -477,5 +498,9 @@ int wmain(int argc, wchar_t** argv)
     }
     wprintf(L"Prepared shell32 menu fix: CMenuSFToolbar::GetSize 0x%08lX -> CMenuToolbarBase::GetSize 0x%08lX.\n",
             menuCache.targetRva, menuCache.replacementRva);
+    if (menuCache.pinGateRva)
+        wprintf(L"Prepared shell32 pin gate (Feature_W32PTP) at RVA 0x%08lX.\n", menuCache.pinGateRva);
+    else
+        wprintf(L"This shell32 has no Feature_W32PTP pin gate; nothing to disable.\n");
     return Success;
 }

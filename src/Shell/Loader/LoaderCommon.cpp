@@ -246,7 +246,9 @@ HRESULT ReadShell32HookCache(PCWSTR directory, Shell32HookCache* cache)
     if (result.magic != ExplorerHookCacheMagic || result.version != Shell32HookCacheVersion ||
         !result.targetRva || !result.replacementRva || result.targetRva == result.replacementRva ||
         !Fits(result.targetRva, sizeof(result.prologue), result.image.sizeOfImage) ||
-        !Fits(result.replacementRva, sizeof(result.prologue), result.image.sizeOfImage))
+        !Fits(result.replacementRva, sizeof(result.prologue), result.image.sizeOfImage) ||
+        (result.pinGateRva &&
+         !Fits(result.pinGateRva, sizeof(result.pinGatePrologue), result.image.sizeOfImage)))
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     *cache = result;
     return S_OK;

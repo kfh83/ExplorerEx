@@ -26,9 +26,13 @@ constexpr DWORD ExplorerHookCacheVersion = 1;
 constexpr WCHAR ExplorerHookCacheName[] = L"explorer-hook.bin";
 static_assert(sizeof(ExplorerHookCache) == 88, "Unexpected cache layout");
 
-// Fix for multicolumn shell menus expanding forever with margined theme
-// backgrounds: Windows' shell32 CMenuSFToolbar::GetSize is redirected to
-// CMenuToolbarBase::GetSize. Same exact-image rules as the Explorer cache.
+// In-process fixes for Windows' shell32.dll, one cache per exact shell32 image:
+//  - multicolumn menu fix: CMenuSFToolbar::GetSize is redirected to
+//    CMenuToolbarBase::GetSize (symbols exist in every supported build);
+//  - pin gate: wil FeatureImpl<Feature_W32PTP>::__private_IsEnabled is forced
+//    to false so CPinnedList keeps its classic add-pin path. Windows 10 builds
+//    from 19045.7184 gate adding a pin behind that feature; earlier builds do
+//    not have the symbol, so pinGateRva == 0 means "not present, nothing to do".
 struct Shell32HookCache
 {
     DWORD magic;
@@ -37,11 +41,13 @@ struct Shell32HookCache
     DWORD targetRva;      // CMenuSFToolbar::GetSize (hooked; prologue verified)
     DWORD replacementRva; // CMenuToolbarBase::GetSize (called instead)
     BYTE prologue[16];    // original bytes at targetRva
+    DWORD pinGateRva;     // __private_IsEnabled for Feature_W32PTP, or 0
+    BYTE pinGatePrologue[16];
 };
 
-constexpr DWORD Shell32HookCacheVersion = 1;
+constexpr DWORD Shell32HookCacheVersion = 2;
 constexpr WCHAR Shell32HookCacheName[] = L"shell32-hook.bin";
-static_assert(sizeof(Shell32HookCache) == 92, "Unexpected cache layout");
+static_assert(sizeof(Shell32HookCache) == 112, "Unexpected cache layout");
 
 HRESULT GetExplorerExDirectory(WCHAR (&path)[MAX_PATH]);
 // dll=false requires an executable image, dll=true a DLL.

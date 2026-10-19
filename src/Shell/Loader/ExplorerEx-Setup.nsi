@@ -125,15 +125,27 @@ Section "ExplorerEx Core" SecCore
     nsExec::ExecToLog '"$INSTDIR\ExplorerEx.Loader.exe" prepare "$INSTDIR"'
     Pop $0
     ${If} $0 == 8
-        ; Exit 8: ExplorerEx is ready; only the optional shell32 menu fix is unavailable.
-        DetailPrint "Warning: shell32 multicolumn menu fix could not be prepared; continuing without it."
+        ; Exit 8: ExplorerEx is ready; only the optional shell32 fixes (menu fix, pin gate) are unavailable.
+        DetailPrint "Warning: shell32 fixes (multicolumn menu, pin-to-Start) could not be prepared; continuing without them."
     ${ElseIf} $0 != 0
         MessageBox MB_OK|MB_ICONSTOP "Symbol preparation failed (exit $0).$\n$\nThe installer cannot hook this Explorer build.$\nExplorerEx will NOT be active after installation."
     ${EndIf}
 
-    ; Import registry entries
     DetailPrint "Importing registry settings..."
     nsExec::ExecToLog '"$WINDIR\regedit.exe" /s "$INSTDIR\ExplorerEx.reg"'
+    Pop $0
+    DetailPrint "regedit exit code: $0"
+    ClearErrors
+    ReadRegStr $1 HKLM "SOFTWARE\Classes\CLSID\{2559a1f4-21d7-11d4-bdaf-00c04f60b9f0}\InProcServer32" ""
+    ${If} ${Errors}
+        nsExec::ExecToLog '"$WINDIR\System32\reg.exe" import "$INSTDIR\ExplorerEx.reg" /reg:64'
+        Pop $0
+        DetailPrint "reg import exit code: $0"
+        ClearErrors
+        ReadRegStr $1 HKLM "SOFTWARE\Classes\CLSID\{2559a1f4-21d7-11d4-bdaf-00c04f60b9f0}\InProcServer32" ""
+        ${If} ${Errors}
+        ${EndIf}
+    ${EndIf}
 
     ; Install DXGI proxy beside explorer.exe with TrustedInstaller handling.
     ; The genuine System32\dxgi.dll is never replaced.
