@@ -3007,6 +3007,29 @@ HRESULT CStartMenuCallback::InitializeSubShellMenu(int idCmd, IShellMenu* psm)
     return hr;
 }
 
+static HRESULT GetStartPinItemContextMenu(LPSMDATA psmd, void** ppv)
+{
+    *ppv = NULL;
+    IContextMenu* menu = NULL;
+    LPCITEMIDLIST item = psmd->pidlItem;
+    HRESULT hr = psmd->psf->GetUIObjectOf(psmd->hwnd, 1, &item,
+        IID_IContextMenu, NULL, reinterpret_cast<void**>(&menu));
+    if (SUCCEEDED(hr))
+    {
+        IDataObject* data = NULL;
+        psmd->psf->GetUIObjectOf(psmd->hwnd, 1, &item,
+            IID_IDataObject, NULL, reinterpret_cast<void**>(&data));
+        hr = WrapStartMenuPinContextMenu(&menu, data);
+        if (data)
+            data->Release();
+        if (SUCCEEDED(hr))
+            *ppv = menu;
+        else
+            menu->Release();
+    }
+    return hr;
+}
+
 HRESULT CStartMenuCallback::_GetObject(LPSMDATA psmd, REFIID riid, void** ppvOut)
 {
     HRESULT hr = E_FAIL;
@@ -3016,6 +3039,10 @@ HRESULT CStartMenuCallback::_GetObject(LPSMDATA psmd, REFIID riid, void** ppvOut
     ASSERT(IS_VALID_READ_PTR(psmd, SMDATA));
 
     *ppvOut = NULL;
+
+    if (riid == IID_IContextMenu && (psmd->dwMask & SMDM_SHELLFOLDER) &&
+        psmd->psf && psmd->pidlItem)
+        return GetStartPinItemContextMenu(psmd, ppvOut);
 
     if (IsEqualGUID(riid, IID_IShellMenu))
     {
@@ -3457,6 +3484,12 @@ STDMETHODIMP CPersonalProgramsMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg,
 
     switch (uMsg)
     {
+
+    case SMC_GETOBJECT:
+        if (*reinterpret_cast<const IID*>(wParam) == IID_IContextMenu &&
+            (psmd->dwMask & SMDM_SHELLFOLDER) && psmd->psf && psmd->pidlItem)
+            hr = GetStartPinItemContextMenu(psmd, reinterpret_cast<void**>(lParam));
+        break;
 
     case SMC_INITMENU:
         _UpdateTrayPriv();

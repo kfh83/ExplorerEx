@@ -1,5 +1,5 @@
 #pragma once
 
 // Shared shell sources use the same SDK/private declarations as Explorer.
-// Resource ownership remains with Explorer; this module defines no UI resources.
+// Most UI resources remain with Explorer; the pin handler owns its menu strings.
 #include "../Explorer/pch.h"

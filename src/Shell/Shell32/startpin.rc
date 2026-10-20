@@ -1,0 +1,11 @@
+#include <windows.h>
+#include "startpinres.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+STRINGTABLE
+BEGIN
+    IDS_STARTPIN_PINME          "P&in to Start menu"
+    IDS_STARTPIN_UNPINME        "Unp&in from Start menu"
+    IDS_STARTPIN_PINME_HELP     "Adds this item to the Start menu"
+    IDS_STARTPIN_UNPINME_HELP   "Removes this item from the Start menu"
+END

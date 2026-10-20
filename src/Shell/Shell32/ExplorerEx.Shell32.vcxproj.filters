@@ -21,6 +21,12 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="startpinres.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicpp\startpinhelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="clsobj.c">
@@ -35,6 +41,9 @@
     <ClCompile Include="unicpp\StartMnu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="unicpp\startpin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\Inc\COWSite.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -47,15 +56,17 @@
     <ClCompile Include="..\Inc\CoCreateInstanceHook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Inc\PinnedListWrapper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\Inc\ShUndoc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Inc\Path.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="startpin.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ExplorerEx.Shell32.def">

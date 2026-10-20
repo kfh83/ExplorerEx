@@ -125,8 +125,8 @@ Section "ExplorerEx Core" SecCore
     nsExec::ExecToLog '"$INSTDIR\ExplorerEx.Loader.exe" prepare "$INSTDIR"'
     Pop $0
     ${If} $0 == 8
-        ; Exit 8: ExplorerEx is ready; only the optional shell32 fixes (menu fix, pin gate) are unavailable.
-        DetailPrint "Warning: shell32 fixes (multicolumn menu, pin-to-Start) could not be prepared; continuing without them."
+        ; Exit 8: ExplorerEx is ready; only the optional shell32 menu fix is unavailable.
+        DetailPrint "Warning: shell32 multicolumn menu fix could not be prepared; continuing without it."
     ${ElseIf} $0 != 0
         MessageBox MB_OK|MB_ICONSTOP "Symbol preparation failed (exit $0).$\n$\nThe installer cannot hook this Explorer build.$\nExplorerEx will NOT be active after installation."
     ${EndIf}

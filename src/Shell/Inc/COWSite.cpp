@@ -9,10 +9,12 @@ HRESULT CObjectWithSite::SetSite(IUnknown* punkSite)
 
 HRESULT CObjectWithSite::GetSite(REFIID riid, void** ppvSite)
 {
+    if (!ppvSite)
+        return E_POINTER;
+    *ppvSite = NULL;
 	if (_punkSite)
 		return _punkSite->QueryInterface(riid, ppvSite);
 
-	*ppvSite = NULL;
 	return E_FAIL;
 }
 

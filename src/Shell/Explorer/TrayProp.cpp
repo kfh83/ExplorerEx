@@ -22,6 +22,7 @@ static const DWORD s_TaskOptionsHelpIDs[] = {
     0, 0
 };
 
+
 class CTaskBarPropertySheet : public CPropertySheetImpl<CTaskBarPropertySheet>
 {
 public:

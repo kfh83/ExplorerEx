@@ -205,7 +205,6 @@ namespace
         PCWSTR mask; // SymEnumSymbols filter
         PCWSTR name; // exact name; a leading '?' means the exact decorated name
         DWORD rva = 0;
-        bool optional = false; // absent => rva 0 instead of failing
     };
 
     struct SymbolMatch
@@ -255,12 +254,6 @@ namespace
             match.name = requests[i].name;
             if (!SymEnumSymbolsW(session.process, base, requests[i].mask, FindSymbol, &match))
                 return LastErrorResult();
-            if (match.count == 0 && requests[i].optional)
-            {
-                wprintf(L"Optional symbol not present in this build: %s\n", requests[i].name);
-                requests[i].rva = 0;
-                continue;
-            }
             if (match.count != 1)
             {
                 fwprintf(stderr, L"Expected one exact %s symbol; found %u.\n", requests[i].name, match.count);
@@ -351,8 +344,7 @@ namespace
     }
 
     // Identity, exact PDB, symbol resolution and original bytes for one native
-    // image. prologues[i] receives the original bytes of requests[i] (skipped
-    // for an optional request that is absent).
+    // image. prologues[i] receives the original bytes of requests[i].
     int PrepareImage(PCWSTR label, PCWSTR imagePath, bool dll, PCWSTR directory,
                      ExplorerImageIdentity* image, SymbolRequest* requests, unsigned count,
                      BYTE (*prologues)[16])
@@ -392,7 +384,6 @@ namespace
         if (FAILED(hr)) return Fail(SymbolError, L"Resolving symbols from exact PDB", hr);
         for (unsigned i = 0; i < count; ++i)
         {
-            if (!requests[i].rva) continue; // optional and absent
             hr = ReadPrologue(imagePath, requests[i].rva, prologues[i]);
             if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
         }
@@ -473,9 +464,6 @@ int wmain(int argc, wchar_t** argv)
     SymbolRequest menuRequests[] = {
         { L"*GetSize*", L"?GetSize@CMenuSFToolbar@@UEAAXPEAUtagSIZE@@@Z" },
         { L"*GetSize*", L"?GetSize@CMenuToolbarBase@@UEAAXPEAUtagSIZE@@@Z" },
-        // Windows 10 19045.7184+ only. Exact decorated name: wil's
-        // FeatureImpl<Feature_W32PTP>::__private_IsEnabled.
-        { L"*W32PTP*", L"?__private_IsEnabled@?$FeatureImpl@U__WilFeatureTraits_Feature_W32PTP@@@details@wil@@QEAA_NXZ", 0, true },
     };
     BYTE menuPrologues[ARRAYSIZE(menuRequests)][16]{};
     result = PrepareImage(L"shell32", shell32Path, true, directory, &menuCache.image,
@@ -488,8 +476,6 @@ int wmain(int argc, wchar_t** argv)
     memcpy(menuCache.prologue, menuPrologues[0], sizeof(menuCache.prologue));
     menuCache.targetRva = menuRequests[0].rva;
     menuCache.replacementRva = menuRequests[1].rva;
-    menuCache.pinGateRva = menuRequests[2].rva;
-    memcpy(menuCache.pinGatePrologue, menuPrologues[2], sizeof(menuCache.pinGatePrologue));
     hr = SaveCache(directory, Shell32HookCacheName, &menuCache, sizeof(menuCache));
     if (FAILED(hr))
     {
@@ -498,9 +484,5 @@ int wmain(int argc, wchar_t** argv)
     }
     wprintf(L"Prepared shell32 menu fix: CMenuSFToolbar::GetSize 0x%08lX -> CMenuToolbarBase::GetSize 0x%08lX.\n",
             menuCache.targetRva, menuCache.replacementRva);
-    if (menuCache.pinGateRva)
-        wprintf(L"Prepared shell32 pin gate (Feature_W32PTP) at RVA 0x%08lX.\n", menuCache.pinGateRva);
-    else
-        wprintf(L"This shell32 has no Feature_W32PTP pin gate; nothing to disable.\n");
     return Success;
 }
