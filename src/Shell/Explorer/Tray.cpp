@@ -257,10 +257,10 @@ void CTray::_DestroyStartButtonBalloon()
     KillTimer(_hwnd, IDT_STARTBUTTONBALLOON);
 }
 
-void CTray::TellTaskBandWeWantToOpenThisShit()
+void CTray::TellTaskBandWeWantToOpenThisShit(WPARAM shellEvent, LPARAM target)
 {
     static UINT WM_ShellHook = RegisterWindowMessage(TEXT("SHELLHOOK"));
-    SendMessage(_hwndTasks, WM_ShellHook,7,0);
+    SendMessage(_hwndTasks, WM_ShellHook, shellEvent, target);
 }
 
 void CTray::CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage)
