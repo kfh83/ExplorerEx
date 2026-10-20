@@ -669,6 +669,7 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="..\Inc\*.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
+    <ClInclude Include="immersive\Touchpad.h" />
     <ClInclude Include="PatternHelper.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="..\Inc\QSort.h" />
@@ -774,6 +775,9 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="CfgStart.cpp" />
     <ClCompile Include="..\Inc\*.cpp" Exclude="..\Inc\SHFusion.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
+    <ClCompile Include="immersive\Touchpad.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="InitCab.cpp" />
     <ClCompile Include="libx.cpp" />
     <ClCompile Include="Mixer.cpp" />

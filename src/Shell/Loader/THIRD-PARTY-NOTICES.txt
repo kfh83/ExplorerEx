@@ -50,12 +50,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Windows 11 Start-key compatibility reference
-https://github.com/Open-Shell/Open-Shell-Menu/blob/9dfa7fa5c3614de15d0ff4f3eba7edd9e2dcbd24/Src/StartMenu/StartMenuDLL/StartMenuDLL.cpp
-
-ExplorerEx's independently implemented TwinUI import filter uses the same
-narrow strategy: prevent bare Windows-key and Ctrl+Esc shell-hotkey
-registrations before immersive startup, preserving other shortcuts and using
-the classic Taskman Start route. Windows 10 without this import is unchanged.
-This is an implementation reference, not a linked or bundled Open-Shell binary.
