@@ -120,13 +120,13 @@ Section "ExplorerEx Core" SecCore
     SetOutPath "$INSTDIR\en-US"
     File "${BUILDDIR}\en-US\ExplorerEx.dll.mui"
 
-    ; Prepare symbol cache for exact native Explorer
-    DetailPrint "Resolving native Explorer symbols..."
+    ; Prepare exact-image caches for native Explorer and optional menu hooks.
+    DetailPrint "Resolving native shell and menu symbols..."
     nsExec::ExecToLog '"$INSTDIR\ExplorerEx.Loader.exe" prepare "$INSTDIR"'
     Pop $0
     ${If} $0 == 8
-        ; Exit 8: ExplorerEx is ready; only the optional shell32 menu fix is unavailable.
-        DetailPrint "Warning: shell32 multicolumn menu fix could not be prepared; continuing without it."
+        ; Exit 8: ExplorerEx is ready; one or more optional menu hooks are unavailable.
+        DetailPrint "Warning: some multicolumn/immersive menu hooks could not be prepared; continuing with available hooks."
     ${ElseIf} $0 != 0
         MessageBox MB_OK|MB_ICONSTOP "Symbol preparation failed (exit $0).$\n$\nThe installer cannot hook this Explorer build.$\nExplorerEx will NOT be active after installation."
     ${EndIf}
@@ -241,6 +241,7 @@ Section "Uninstall"
     Delete "$INSTDIR\ExplorerEx.reg"
     Delete "$INSTDIR\explorer-hook.bin"
     Delete "$INSTDIR\shell32-hook.bin"
+    Delete "$INSTDIR\immersive-menu-hook.bin"
     Delete "$INSTDIR\THIRD-PARTY-NOTICES.txt"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"

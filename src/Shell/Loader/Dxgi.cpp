@@ -168,6 +168,111 @@ static HRESULT InstallShell32Fixes(PCWSTR directory)
     return hr;
 }
 
+using CanApplyOwnerDrawToMenuFn = bool (__cdecl*)(HMENU, HWND);
+static CanApplyOwnerDrawToMenuFn g_originalCanApplyOwnerDraw[ARRAYSIZE(ImmersiveMenuModuleNames)];
+// Keep our successful LoadLibraryEx references until process exit, including
+// DLLs that Explorer will only start using after bootstrap has completed.
+static HMODULE g_immersiveMenuModules[ARRAYSIZE(ImmersiveMenuModuleNames)];
+
+static bool __cdecl CanApplyOwnerDrawToMenuHook(HMENU, HWND)
+{
+    // The native caller returns S_FALSE without converting normal menu items.
+    // Existing owner-drawn items are not altered.
+    return false;
+}
+
+static void ReportImmersiveMenu(PCWSTR module, PCWSTR operation, HRESULT hr)
+{
+    WCHAR message[192];
+    if (SUCCEEDED(StringCchPrintfW(message, ARRAYSIZE(message),
+        L"immersive menu %s: %s", module, operation)))
+        Report(message, hr);
+}
+
+static HRESULT InstallImmersiveMenuHooks(PCWSTR directory)
+{
+    ImmersiveMenuHookCache cache{};
+    HRESULT hr = ReadImmersiveMenuHookCache(directory, &cache);
+    if (FAILED(hr))
+    {
+        Report(L"immersive menu cache unavailable or invalid", hr);
+        return hr;
+    }
+
+    HRESULT firstFailure = S_OK;
+    for (unsigned i = 0; i < ARRAYSIZE(ImmersiveMenuModuleNames); ++i)
+    {
+        const auto& entry = cache.modules[i];
+        PCWSTR name = ImmersiveMenuModuleNames[i];
+        if (!entry.functionRva)
+        {
+            hr = HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+            ReportImmersiveMenu(name, L"cache entry not prepared", hr);
+            if (SUCCEEDED(firstFailure))
+                firstFailure = hr;
+            continue;
+        }
+
+        // This bootstrap runs outside DllMain. Acquire our own reference even
+        // when a DLL is already mapped, so a later FreeLibrary cannot unhook it.
+        HMODULE module = i == 0 ? GetModuleHandleW(nullptr) :
+            LoadLibraryExW(name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        PCWSTR operation = L"module load failed";
+        hr = module ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+        if (module)
+        {
+            WCHAR path[MAX_PATH];
+            DWORD length = GetModuleFileNameW(module, path, ARRAYSIZE(path));
+            operation = L"mapped module path unavailable";
+            if (!length)
+                hr = HRESULT_FROM_WIN32(GetLastError());
+            else if (length >= ARRAYSIZE(path))
+                hr = HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+            else
+            {
+                ExplorerImageIdentity identity{};
+                WCHAR pdbName[MAX_PATH];
+                operation = L"mapped image identity unavailable";
+                const BYTE* base = reinterpret_cast<const BYTE*>(module);
+                const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+                const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+                hr = nt->FileHeader.TimeDateStamp == entry.image.timeDateStamp &&
+                    nt->OptionalHeader.SizeOfImage == entry.image.sizeOfImage ?
+                    ReadExplorerImageIdentity(path, &identity, pdbName, i != 0) :
+                    HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
+                if (SUCCEEDED(hr))
+                {
+                    operation = L"mapped image identity differs from cache";
+                    if (memcmp(&identity, &entry.image, sizeof(identity)) != 0)
+                        hr = HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
+                    else
+                    {
+                        operation = L"executable RVA, prologue verification or detour failed";
+                        hr = HookVerified(module, entry.functionRva, entry.prologue,
+                            reinterpret_cast<PVOID*>(&g_originalCanApplyOwnerDraw[i]),
+                            reinterpret_cast<PVOID>(&CanApplyOwnerDrawToMenuHook));
+                    }
+                }
+            }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            g_immersiveMenuModules[i] = module;
+            ReportImmersiveMenu(name, L"owner-draw suppression installed", hr);
+        }
+        else
+        {
+            ReportImmersiveMenu(name, operation, hr);
+            if (i != 0 && module)
+                FreeLibrary(module); // Only release our unsuccessful DLL load.
+            if (SUCCEEDED(firstFailure))
+                firstFailure = hr;
+        }
+    }
+    return firstFailure;
+}
+
 static HRESULT InstallExplorerHook()
 {
     if (GetSystemMetrics(SM_CLEANBOOT) || GetShellWindow() || FindWindowW(L"Shell_TrayWnd", nullptr))
@@ -241,6 +346,9 @@ static HRESULT InstallExplorerHook()
         HRESULT shell32Fixes = InstallShell32Fixes(directory);
         if (FAILED(shell32Fixes))
             Report(L"shell32 fixes not (fully) installed", shell32Fixes);
+        HRESULT immersiveMenus = InstallImmersiveMenuHooks(directory);
+        if (FAILED(immersiveMenus))
+            Report(L"immersive menu hooks not (fully) installed", immersiveMenus);
     }
     return hr;
 }

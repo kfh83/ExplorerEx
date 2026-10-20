@@ -200,11 +200,16 @@ namespace
         return S_OK;
     }
 
+    constexpr WCHAR ImmersiveMenuSymbol[] =
+        L"?CanApplyOwnerDrawToMenu@ImmersiveContextMenuHelper@@YA_NPEAUHMENU__@@PEAUHWND__@@@Z";
+
     struct SymbolRequest
     {
         PCWSTR mask; // SymEnumSymbols filter
         PCWSTR name; // exact name; a leading '?' means the exact decorated name
+        bool optional = false;
         DWORD rva = 0;
+        HRESULT error = S_OK;
     };
 
     struct SymbolMatch
@@ -252,16 +257,23 @@ namespace
         {
             SymbolMatch match;
             match.name = requests[i].name;
+            HRESULT hr = S_OK;
             if (!SymEnumSymbolsW(session.process, base, requests[i].mask, FindSymbol, &match))
-                return LastErrorResult();
-            if (match.count != 1)
+                hr = LastErrorResult();
+            else if (match.count != 1)
             {
                 fwprintf(stderr, L"Expected one exact %s symbol; found %u.\n", requests[i].name, match.count);
-                return HRESULT_FROM_WIN32(match.count ? ERROR_DUP_NAME : ERROR_NOT_FOUND);
+                hr = HRESULT_FROM_WIN32(match.count ? ERROR_DUP_NAME : ERROR_NOT_FOUND);
             }
-            if (match.address < base || match.address - base >= identity.sizeOfImage ||
+            else if (match.address < base || match.address - base >= identity.sizeOfImage ||
                 identity.sizeOfImage - (match.address - base) < 16 || (match.size && match.size < 16))
-                return HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+                hr = HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
+            if (FAILED(hr))
+            {
+                if (!requests[i].optional) return hr;
+                requests[i].error = hr;
+                continue;
+            }
             requests[i].rva = static_cast<DWORD>(match.address - base);
         }
         return S_OK;
@@ -384,8 +396,16 @@ namespace
         if (FAILED(hr)) return Fail(SymbolError, L"Resolving symbols from exact PDB", hr);
         for (unsigned i = 0; i < count; ++i)
         {
+            if (requests[i].optional && !requests[i].rva) continue;
             hr = ReadPrologue(imagePath, requests[i].rva, prologues[i]);
-            if (FAILED(hr)) return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
+            if (FAILED(hr))
+            {
+                if (!requests[i].optional)
+                    return Fail(SymbolError, L"Validating executable symbol and original bytes", hr);
+                requests[i].error = hr;
+                requests[i].rva = 0;
+                ZeroMemory(prologues[i], sizeof(prologues[i]));
+            }
         }
         ExplorerImageIdentity currentIdentity{};
         WCHAR currentPdbName[MAX_PATH]{};
@@ -394,6 +414,32 @@ namespace
         if (!SameIdentity(*image, currentIdentity))
             return Fail(ImageError, L"Native image changed during preparation; run prepare again",
                         HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH));
+        return Success;
+    }
+
+    int PrepareShell32SizingCache(PCWSTR system, PCWSTR directory)
+    {
+        WCHAR shell32Path[MAX_PATH]{};
+        HRESULT hr = StringCchPrintfW(shell32Path, ARRAYSIZE(shell32Path), L"%s\\shell32.dll", system);
+        if (FAILED(hr)) return Fail(ImageError, L"Resolving shell32 menu sizing image", hr);
+        Shell32HookCache cache{};
+        cache.magic = ExplorerHookCacheMagic;
+        cache.version = Shell32HookCacheVersion;
+        SymbolRequest requests[] = {
+            { L"*GetSize*", L"?GetSize@CMenuSFToolbar@@UEAAXPEAUtagSIZE@@@Z" },
+            { L"*GetSize*", L"?GetSize@CMenuToolbarBase@@UEAAXPEAUtagSIZE@@@Z" },
+        };
+        BYTE prologues[ARRAYSIZE(requests)][16]{};
+        const int result = PrepareImage(L"shell32 menu sizing", shell32Path, true, directory, &cache.image,
+                                        requests, ARRAYSIZE(requests), prologues);
+        if (result != Success) return result;
+        memcpy(cache.prologue, prologues[0], sizeof(cache.prologue));
+        cache.targetRva = requests[0].rva;
+        cache.replacementRva = requests[1].rva;
+        hr = SaveCache(directory, Shell32HookCacheName, &cache, sizeof(cache));
+        if (FAILED(hr)) return Fail(CacheError, L"Publishing shell32 menu sizing cache", hr);
+        wprintf(L"Prepared shell32 menu sizing: CMenuSFToolbar::GetSize 0x%08lX -> CMenuToolbarBase::GetSize 0x%08lX.\n"
+                 L"Cache: %s\\%s\n", cache.targetRva, cache.replacementRva, directory, Shell32HookCacheName);
         return Success;
     }
 }
@@ -405,8 +451,10 @@ int wmain(int argc, wchar_t** argv)
         fwprintf(stderr, L"Usage: ExplorerEx.Loader.exe prepare [payload-directory]\n"
                          L"Default: native Program Files\\ExplorerEx. Run elevated when preparing that directory.\n"
                          L"Exit codes: 0 success, 2 usage, 3 native image, 4 directory, 5 PDB download/identity, "
-                         L"6 symbol resolution, 7 cache publication, 8 optional shell32 fixes unavailable "
-                         L"(ExplorerEx itself is still prepared).\n");
+                         L"6 symbol resolution, 7 cache publication, 8 optional shell32 menu sizing or immersive-menu hooks unavailable "
+                         L"(ExplorerEx itself is still prepared).\n"
+                         L"Menu styling suppression is local to the DXGI shell host; immersive services and accessibility settings are unchanged.\n"
+                         L"Run prepare again after Windows updates. Symbol downloads occur here, never during shell startup.\n");
         return UsageError;
     }
     WCHAR directory[MAX_PATH]{};
@@ -429,11 +477,32 @@ int wmain(int argc, wchar_t** argv)
     hr = StringCchPrintfW(imagePath, ARRAYSIZE(imagePath), L"%s\\explorer.exe", windows);
     if (FAILED(hr)) return Fail(ImageError, L"Resolving native Explorer path", hr);
 
+    bool optionalFailure = false;
+    // Clear the independent cache before any preparation, including core work.
+    // A failed run must not retain immersive hooks for an obsolete image set.
+    WCHAR immersiveCachePath[MAX_PATH]{};
+    hr = StringCchPrintfW(immersiveCachePath, ARRAYSIZE(immersiveCachePath),
+                          L"%s\\%s", directory, ImmersiveMenuHookCacheName);
+    if (SUCCEEDED(hr) && !DeleteFileW(immersiveCachePath))
+    {
+        const DWORD error = GetLastError();
+        if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
+            hr = HRESULT_FROM_WIN32(error);
+    }
+    if (FAILED(hr))
+    {
+        Fail(MenuFixError, L"Removing obsolete immersive-menu hook cache", hr);
+        optionalFailure = true;
+    }
+
     ExplorerHookCache cache{};
     cache.magic = ExplorerHookCacheMagic;
     cache.version = ExplorerHookCacheVersion;
-    SymbolRequest explorerRequests[] = { { L"*CreateDesktopAndTray*", L"CreateDesktopAndTray" } };
-    BYTE explorerPrologues[1][16]{};
+    SymbolRequest explorerRequests[] = {
+        { L"*CreateDesktopAndTray*", L"CreateDesktopAndTray" },
+        { L"*CanApplyOwnerDrawToMenu*", ImmersiveMenuSymbol, true },
+    };
+    BYTE explorerPrologues[ARRAYSIZE(explorerRequests)][16]{};
     int result = PrepareImage(L"Native", imagePath, false, directory, &cache.image,
                               explorerRequests, ARRAYSIZE(explorerRequests), explorerPrologues);
     if (result != Success) return result;
@@ -445,44 +514,82 @@ int wmain(int argc, wchar_t** argv)
              L"Cache: %s\\%s\n", cache.functionRva, cache.image.timeDateStamp,
              cache.image.sizeOfImage, directory, ExplorerHookCacheName);
 
-    // Optional: shell32 menu fix. Never leave a cache for a different shell32.
+    ImmersiveMenuHookCache immersiveCache{};
+    immersiveCache.magic = ExplorerHookCacheMagic;
+    immersiveCache.version = ImmersiveMenuHookCacheVersion;
+    immersiveCache.modules[0].image = cache.image;
+    immersiveCache.modules[0].functionRva = explorerRequests[1].rva;
+    memcpy(immersiveCache.modules[0].prologue, explorerPrologues[1],
+           sizeof(immersiveCache.modules[0].prologue));
+    if (explorerRequests[1].rva)
+        wprintf(L"Prepared immersive-menu hook for explorer.exe: RVA 0x%08lX.\n", explorerRequests[1].rva);
+    else
+    {
+        Fail(MenuFixError, L"Preparing optional explorer.exe immersive-menu hook",
+             FAILED(explorerRequests[1].error) ? explorerRequests[1].error : HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
+        optionalFailure = true;
+    }
+
+    // Sizing and immersive hooks are independent optional features.
     WCHAR shell32CachePath[MAX_PATH]{};
     StringCchPrintfW(shell32CachePath, ARRAYSIZE(shell32CachePath), L"%s\\%s", directory, Shell32HookCacheName);
     DeleteFileW(shell32CachePath);
     WCHAR system[MAX_PATH]{};
-    WCHAR shell32Path[MAX_PATH]{};
     const UINT systemLength = GetSystemDirectoryW(system, ARRAYSIZE(system));
-    if (!systemLength || systemLength >= ARRAYSIZE(system) ||
-        FAILED(StringCchPrintfW(shell32Path, ARRAYSIZE(shell32Path), L"%s\\shell32.dll", system)))
+    const bool haveSystemDirectory = systemLength && systemLength < ARRAYSIZE(system);
+    if (!haveSystemDirectory)
     {
-        fwprintf(stderr, L"Cannot locate shell32.dll; menu fix not prepared.\n");
-        return MenuFixError;
+        fwprintf(stderr, L"Warning: cannot locate the native system directory; shell32 menu sizing and system DLL immersive-menu hooks are unavailable.\n");
+        optionalFailure = true;
     }
-    Shell32HookCache menuCache{};
-    menuCache.magic = ExplorerHookCacheMagic;
-    menuCache.version = Shell32HookCacheVersion;
-    SymbolRequest menuRequests[] = {
-        { L"*GetSize*", L"?GetSize@CMenuSFToolbar@@UEAAXPEAUtagSIZE@@@Z" },
-        { L"*GetSize*", L"?GetSize@CMenuToolbarBase@@UEAAXPEAUtagSIZE@@@Z" },
-    };
-    BYTE menuPrologues[ARRAYSIZE(menuRequests)][16]{};
-    result = PrepareImage(L"shell32", shell32Path, true, directory, &menuCache.image,
-                          menuRequests, ARRAYSIZE(menuRequests), menuPrologues);
-    if (result != Success)
+    else
     {
-        fwprintf(stderr, L"Warning: shell32 menu fix not prepared (exit %d); ExplorerEx is otherwise ready.\n", result);
-        return MenuFixError;
+        result = PrepareShell32SizingCache(system, directory);
+        if (result != Success)
+        {
+            fwprintf(stderr, L"Warning: shell32 menu sizing not prepared (exit %d); continuing immersive-menu preparation.\n", result);
+            optionalFailure = true;
+        }
+        for (unsigned i = 1; i < ARRAYSIZE(ImmersiveMenuModuleNames); ++i)
+        {
+            PCWSTR name = ImmersiveMenuModuleNames[i];
+            wprintf(L"Preparing immersive-menu hook for %s.\n", name);
+            WCHAR modulePath[MAX_PATH]{};
+            hr = StringCchPrintfW(modulePath, ARRAYSIZE(modulePath), L"%s\\%s", system, name);
+            if (FAILED(hr))
+            {
+                Fail(MenuFixError, L"Resolving immersive-menu image path", hr);
+                optionalFailure = true;
+                continue;
+            }
+            ImmersiveMenuHook hook{};
+            SymbolRequest requests[] = { { L"*CanApplyOwnerDrawToMenu*", ImmersiveMenuSymbol } };
+            BYTE prologues[ARRAYSIZE(requests)][16]{};
+            result = PrepareImage(name, modulePath, true, directory, &hook.image,
+                                  requests, ARRAYSIZE(requests), prologues);
+            if (result != Success)
+            {
+                fwprintf(stderr, L"Warning: %s immersive-menu hook unavailable (exit %d); continuing with other images.\n",
+                         name, result);
+                optionalFailure = true;
+                continue;
+            }
+            hook.functionRva = requests[0].rva;
+            memcpy(hook.prologue, prologues[0], sizeof(hook.prologue));
+            immersiveCache.modules[i] = hook;
+            wprintf(L"Prepared immersive-menu hook for %s: RVA 0x%08lX.\n", name, hook.functionRva);
+        }
     }
-    memcpy(menuCache.prologue, menuPrologues[0], sizeof(menuCache.prologue));
-    menuCache.targetRva = menuRequests[0].rva;
-    menuCache.replacementRva = menuRequests[1].rva;
-    hr = SaveCache(directory, Shell32HookCacheName, &menuCache, sizeof(menuCache));
+    hr = SaveCache(directory, ImmersiveMenuHookCacheName, &immersiveCache, sizeof(immersiveCache));
     if (FAILED(hr))
     {
-        Fail(CacheError, L"Publishing shell32 menu fix cache", hr);
-        return MenuFixError;
+        Fail(MenuFixError, L"Atomically publishing immersive-menu hook cache", hr);
+        optionalFailure = true;
     }
-    wprintf(L"Prepared shell32 menu fix: CMenuSFToolbar::GetSize 0x%08lX -> CMenuToolbarBase::GetSize 0x%08lX.\n",
-            menuCache.targetRva, menuCache.replacementRva);
-    return Success;
+    else
+        wprintf(L"Published immersive-menu hooks (unavailable images have RVA zero).\nCache: %s\\%s\n",
+                directory, ImmersiveMenuHookCacheName);
+    if (optionalFailure)
+        fwprintf(stderr, L"Warning: some optional shell menu hooks are unavailable; ExplorerEx core is prepared and successful optional caches are retained.\n");
+    return optionalFailure ? MenuFixError : Success;
 }
