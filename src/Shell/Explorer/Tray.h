@@ -228,7 +228,7 @@ public:
         return _hwndNotify;
     }
 
-    void TellTaskBandWeWantToOpenThisShit();
+    void TellTaskBandWeWantToOpenThisShit(WPARAM shellEvent, LPARAM target);
 
     void CreateStartButtonBalloon(UINT idsTitle, UINT idsMessage);
 
