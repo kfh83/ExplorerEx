@@ -41,9 +41,40 @@ constexpr DWORD Shell32HookCacheVersion = 3;
 constexpr WCHAR Shell32HookCacheName[] = L"shell32-hook.bin";
 static_assert(sizeof(Shell32HookCache) == 92, "Unexpected cache layout");
 
+// Optional, process-local styling suppression in the native DXGI shell host.
+// Each native helper has its own exact-image/prologue entry. Run `prepare`
+// again after Windows updates; never reuse this cache for different binaries.
+// This does not disable the immersive shell, spoof accessibility settings, or
+// strip unrelated owner-drawn menu items. Hooked DLLs stay loaded until exit.
+// Sound and network tray component modules are intentionally not targeted.
+constexpr PCWSTR ImmersiveMenuModuleNames[] = {
+    L"explorer.exe", L"shell32.dll", L"ExplorerFrame.dll", L"twinui.dll",
+    L"twinui.pcshell.dll"
+};
+
+struct ImmersiveMenuHook
+{
+    ExplorerImageIdentity image;
+    DWORD functionRva; // Zero when this image's helper could not be prepared.
+    BYTE prologue[16];
+};
+
+struct ImmersiveMenuHookCache
+{
+    DWORD magic;
+    DWORD version;
+    ImmersiveMenuHook modules[ARRAYSIZE(ImmersiveMenuModuleNames)];
+};
+
+constexpr DWORD ImmersiveMenuHookCacheVersion = 2;
+constexpr WCHAR ImmersiveMenuHookCacheName[] = L"immersive-menu-hook.bin";
+static_assert(sizeof(ImmersiveMenuHook) == 80, "Unexpected menu hook layout");
+static_assert(sizeof(ImmersiveMenuHookCache) == 408, "Unexpected menu cache layout");
+
 HRESULT GetExplorerExDirectory(WCHAR (&path)[MAX_PATH]);
 // dll=false requires an executable image, dll=true a DLL.
 HRESULT ReadExplorerImageIdentity(PCWSTR path, ExplorerImageIdentity* identity,
                                   WCHAR (&pdbName)[MAX_PATH], bool dll = false);
 HRESULT ReadExplorerHookCache(PCWSTR directory, ExplorerHookCache* cache);
 HRESULT ReadShell32HookCache(PCWSTR directory, Shell32HookCache* cache);
+HRESULT ReadImmersiveMenuHookCache(PCWSTR directory, ImmersiveMenuHookCache* cache);

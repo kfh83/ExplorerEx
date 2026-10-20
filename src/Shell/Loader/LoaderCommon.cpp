@@ -251,3 +251,19 @@ HRESULT ReadShell32HookCache(PCWSTR directory, Shell32HookCache* cache)
     *cache = result;
     return S_OK;
 }
+
+HRESULT ReadImmersiveMenuHookCache(PCWSTR directory, ImmersiveMenuHookCache* cache)
+{
+    if (!directory || !cache) return E_INVALIDARG;
+    *cache = {};
+    ImmersiveMenuHookCache result{};
+    HRESULT hr = ReadCacheFile(directory, ImmersiveMenuHookCacheName, &result, sizeof(result));
+    if (FAILED(hr)) return hr;
+    if (result.magic != ExplorerHookCacheMagic || result.version != ImmersiveMenuHookCacheVersion)
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    for (const auto& module : result.modules)
+        if (module.functionRva && !Fits(module.functionRva, sizeof(module.prologue), module.image.sizeOfImage))
+            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    *cache = result;
+    return S_OK;
+}
