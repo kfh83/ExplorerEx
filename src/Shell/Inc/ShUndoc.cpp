@@ -2992,64 +2992,6 @@ BOOL _IsLocalHardDisk(LPCTSTR pszPath)
 	return TRUE;
 }
 
-BOOL _IsAcceptableTarget(LPCTSTR pszPath, DWORD dwAttrib, DWORD dwFlags)
-{
-	//  Regitems ("Internet" or "Email" for example) are acceptable
-	//  provided we aren't restricted to EXEs only.
-	if (!(dwAttrib & SFGAO_FILESYSTEM))
-	{
-		return !(dwFlags & SMPINNABLE_EXEONLY);
-	}
-
-	//  Otherwise, it's a file.
-
-	//  If requested, reject non-EXEs.
-	//  (Like the Start Menu, we treat MSC files as if they were EXEs)
-	if (dwFlags & SMPINNABLE_EXEONLY)
-	{
-		LPCTSTR pszExt = PathFindExtension(pszPath);
-		if (StrCmpIC(pszExt, TEXT(".EXE")) != 0 &&
-			StrCmpIC(pszExt, TEXT(".MSC")) != 0)
-		{
-			return FALSE;
-		}
-	}
-
-	//  If requested, reject slow media
-	if (dwFlags & SMPINNABLE_REJECTSLOWMEDIA)
-	{
-		if (!_IsLocalHardDisk(pszPath))
-		{
-			return FALSE;
-		}
-
-		// If it's a shortcut, then apply the same rule to the shortcut.
-		if (PathIsLnk(pszPath))
-		{
-			BOOL fLocal = TRUE;
-			IShellLink* psl;
-			if (SUCCEEDED(LoadFromFileW(CLSID_ShellLink, pszPath, IID_PPV_ARG(IShellLink, &psl))))
-			{
-				// IShellLink::GetPath returns S_FALSE if target is not a path
-				TCHAR szPath[MAX_PATH];
-				if (S_OK == psl->GetPath(szPath, ARRAYSIZE(szPath), NULL, 0))
-				{
-					fLocal = _IsLocalHardDisk(szPath);
-				}
-				psl->Release();
-			}
-			if (!fLocal)
-			{
-				return FALSE;
-			}
-		}
-	}
-
-	//  All tests pass!
-
-	return TRUE;
-
-}
 
 void ReleaseStgMediumHGLOBAL(void* pv, STGMEDIUM* pmedium)
 {
@@ -3078,55 +3020,6 @@ void HIDA_ReleaseStgMedium(LPIDA pida, STGMEDIUM* pmedium)
 	ReleaseStgMediumHGLOBAL((void*)pida, pmedium);
 }
 
-HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* ppidl)
-{
-	HRESULT hr = S_FALSE;
-
-	LPITEMIDLIST pidlRet = NULL;
-
-	if (pdtobj &&                                   // must have a data object
-		!SHRestricted(REST_NOSMPINNEDLIST) &&       // cannot be restricted
-		IsStartPanelOn())                           // start panel must be on
-	{
-		STGMEDIUM medium = { 0 };
-		LPIDA pida = DataObj_GetHIDA(pdtobj, &medium);
-		if (pida)
-		{
-			if (pida->cidl == 1)
-			{
-				pidlRet = IDA_FullIDList(pida, 0);
-				if (pidlRet)
-				{
-					DWORD dwAttr = SFGAO_FILESYSTEM;            // only SFGAO_FILESYSTEM is valid
-					TCHAR szPath[MAX_PATH];
-
-					if (SUCCEEDED(SHGetNameAndFlags(pidlRet, SHGDN_FORPARSING,
-						szPath, ARRAYSIZE(szPath), &dwAttr)) &&
-						_IsAcceptableTarget(szPath, dwAttr, dwFlags))
-					{
-						hr = S_OK;
-					}
-				}
-			}
-			HIDA_ReleaseStgMedium(pida, &medium);
-		}
-	}
-
-	// Return pidlRet only if the call succeeded and the caller requested it
-	if (hr != S_OK || !ppidl)
-	{
-		ILFree(pidlRet);
-		pidlRet = NULL;
-	}
-
-	if (ppidl)
-	{
-		*ppidl = pidlRet;
-	}
-
-	return hr;
-
-}
 
 HRESULT SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath)
 {

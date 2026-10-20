@@ -276,6 +276,8 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="startpinres.h" />
+    <ClInclude Include="unicpp\startpinhelpers.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="clsobj.c">
@@ -302,6 +304,9 @@
     <ClCompile Include="unicpp\StartMnu.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="unicpp\startpin.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Inc\COWSite.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -314,15 +319,15 @@
     <ClCompile Include="..\Inc\CoCreateInstanceHook.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Inc\PinnedListWrapper.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Inc\ShUndoc.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Inc\Path.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="startpin.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ExplorerEx.Shell32.def" />

@@ -1,0 +1,6 @@
+#pragma once
+
+#define IDS_STARTPIN_PINME          0x1505
+#define IDS_STARTPIN_UNPINME        0x1506
+#define IDS_STARTPIN_PINME_HELP     0x1507
+#define IDS_STARTPIN_UNPINME_HELP   0x1508

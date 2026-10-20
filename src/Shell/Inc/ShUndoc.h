@@ -1442,13 +1442,11 @@ LPITEMIDLIST IDA_FullIDList(LPIDA pida, UINT i);
 
 BOOL _IsLocalHardDisk(LPCTSTR pszPath);
 
-BOOL _IsAcceptableTarget(LPCTSTR pszPath, DWORD dwAttrib, DWORD dwFlags);
 
 void ReleaseStgMediumHGLOBAL(void* pv, STGMEDIUM* pmedium);
 
 void HIDA_ReleaseStgMedium(LPIDA pida, STGMEDIUM* pmedium);
 
-HRESULT IsPinnable(IDataObject* pdtobj, DWORD dwFlags, OPTIONAL LPITEMIDLIST* ppidl);
 
 inline HRESULT(WINAPI* SHGetUserPicturePath_t)(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath, DWORD cchPathMax);
 HRESULT WINAPI SHGetUserPicturePath(LPCWSTR pszUsername, DWORD dwFlags, LPWSTR pszPath);

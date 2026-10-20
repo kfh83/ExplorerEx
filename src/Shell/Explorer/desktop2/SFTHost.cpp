@@ -2375,6 +2375,17 @@ LRESULT SFTBarHost::_OnContextMenu(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 pcm = s_EmptyContextMenu.GetContextMenu();
             }
 
+            IDataObject* data = NULL;
+            _GetUIObjectOfItem(pitem, IID_PPV_ARGS(&data));
+            HRESULT hrMenu = WrapStartMenuPinContextMenu(&pcm, data);
+            if (data)
+                data->Release();
+            if (FAILED(hrMenu))
+            {
+                pcm->Release();
+                return 0;
+            }
+
             HMENU hmenu = ::CreatePopupMenu();
 
             if (hmenu)

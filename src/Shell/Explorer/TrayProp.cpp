@@ -158,7 +158,7 @@ void CPinHelper::GetPinInfo(BOOL *pbPinBrowser, BOOL *pbPinEmail)
     *pbPinEmail = FALSE;
     if (_psmp)
     {
-        IEnumFullIDList *peidl;
+        IEnumIDList *peidl;
         if (SUCCEEDED(_psmp->EnumObjects(&peidl)))
         {
             LPITEMIDLIST pidl;

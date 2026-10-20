@@ -115,17 +115,6 @@ static void __cdecl MenuSFToolbarGetSizeHook(void* self, SIZE* size)
     g_menuBaseGetSize(self, size);
 }
 
-// wil's FeatureImpl<Feature_W32PTP>::__private_IsEnabled. Windows 10 19045.7184+
-// makes CPinnedList refuse to add a pin (E_FAIL) while it reports true, so the
-// classic pin-to-Start path is kept by reporting false. Nothing else consults it.
-using PinGateFn = bool (__fastcall*)(void* self);
-static PinGateFn g_originalPinGate;
-
-static bool __fastcall PinGateHook(void*)
-{
-    return false;
-}
-
 // Installs one inline hook after confirming the original bytes are untouched.
 static HRESULT HookVerified(HMODULE module, DWORD rva, const BYTE (&prologue)[16],
                             PVOID* original, PVOID hook)
@@ -161,8 +150,6 @@ static HRESULT InstallShell32Fixes(PCWSTR directory)
     if (memcmp(&identity, &cache.image, sizeof(identity)) != 0)
         return HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH);
 
-    // The fixes are independent: report each, and keep going after a failure.
-    HRESULT result = S_OK;
     if (!IsExecutableRva(shell32, cache.replacementRva, sizeof(cache.prologue)))
         hr = HRESULT_FROM_WIN32(ERROR_INVALID_ADDRESS);
     else
@@ -176,23 +163,9 @@ static HRESULT InstallShell32Fixes(PCWSTR directory)
     else
     {
         Report(L"shell32 multicolumn menu fix not installed", hr);
-        result = hr;
     }
 
-    if (cache.pinGateRva)
-    {
-        hr = HookVerified(shell32, cache.pinGateRva, cache.pinGatePrologue,
-            reinterpret_cast<PVOID*>(&g_originalPinGate), reinterpret_cast<PVOID>(&PinGateHook));
-        if (SUCCEEDED(hr))
-            Report(L"shell32 pin gate disabled (classic pin-to-Start path kept)", hr);
-        else
-        {
-            Report(L"shell32 pin gate not disabled", hr);
-            if (SUCCEEDED(result))
-                result = hr;
-        }
-    }
-    return result;
+    return hr;
 }
 
 static HRESULT InstallExplorerHook()

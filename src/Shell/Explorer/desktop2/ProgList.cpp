@@ -2630,7 +2630,7 @@ void ByUsage::_FillPinnedItemsCache()
     _rtPinned.Reset();
     if (_rtPinned._sl.Create(4))
     {
-        IEnumFullIDList *penum;
+        IEnumIDList *penum;
 
         if (SUCCEEDED(_psmpin->EnumObjects(&penum)))
         {
@@ -3913,7 +3913,7 @@ HRESULT ByUsage::MovePinnedItem(PaneItem *p, int iInsert)
 //
 BOOL ByUsage::IsInsertable(IDataObject *pdto)
 {
-    return _psmpin->IsPinnable(pdto, SMPINNABLE_REJECTSLOWMEDIA) == S_OK;
+    return _psmpin->IsPinnable(pdto, SMPINNABLE_REJECTSLOWMEDIA, NULL) == S_OK;
 }
 
 
@@ -3922,7 +3922,7 @@ HRESULT ByUsage::InsertPinnedItem(IDataObject *pdto, int iInsert)
     HRESULT hr = E_FAIL;
 
     LPITEMIDLIST pidlItem;
-    if (IsPinnable(pdto, SMPINNABLE_REJECTSLOWMEDIA, &pidlItem) == S_OK)
+    if (_psmpin->IsPinnable(pdto, SMPINNABLE_REJECTSLOWMEDIA, &pidlItem) == S_OK)
     {
         if (SUCCEEDED(hr = _psmpin->Modify(NULL, pidlItem)) &&
             SUCCEEDED(hr = _psmpin->Modify(pidlItem, SMPIN_POS(iInsert))))

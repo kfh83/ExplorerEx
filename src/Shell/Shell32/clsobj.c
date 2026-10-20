@@ -7,12 +7,14 @@ EXTERN_C const CLSID CLSID_PersonalStartMenu;
 EXTERN_C const CLSID CLSID_StartMenuFolder;
 EXTERN_C const CLSID CLSID_ProgramsFolder;
 EXTERN_C const CLSID CLSID_ProgramsFolderAndFastItems;
+EXTERN_C const CLSID CLSID_StartMenuPin;
 
 EXTERN_C HRESULT CStartMenu_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CPersonalStartMenu_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CStartMenuFolder_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CProgramsFolder_CreateInstance(IUnknown*, REFIID, void**);
 EXTERN_C HRESULT CProgramsFolderAndFastItems_CreateInstance(IUnknown*, REFIID, void**);
+EXTERN_C HRESULT CStartMenuPin_CreateInstance(IUnknown*, REFIID, void**);
 
 typedef struct
 {
@@ -66,6 +68,7 @@ static const IClassFactoryVtbl factoryVtbl = {
 };
 
 static const CLASS_ENTRY classes[] = {
+    { &factoryVtbl, &CLSID_StartMenuPin, CStartMenuPin_CreateInstance },
     { &factoryVtbl, &CLSID_StartMenu, CStartMenu_CreateInstance },
     { &factoryVtbl, &CLSID_PersonalStartMenu, CPersonalStartMenu_CreateInstance },
     { &factoryVtbl, &CLSID_StartMenuFolder, CStartMenuFolder_CreateInstance },

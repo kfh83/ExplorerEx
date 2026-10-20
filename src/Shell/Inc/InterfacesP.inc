@@ -108,10 +108,10 @@ IShellMenu2 : IShellMenu
     STDMETHOD(SetTheme)(THIS_ LPCWSTR pszTheme) PURE;
 };
 
-MIDL_INTERFACE("BBD20037-BC0E-42F1-913F-E2936BB0EA0C")
+MIDL_INTERFACE("ec35e37a-6579-4f3c-93cd-6e62c4ef7636")
 IStartMenuPin : IUnknown
 {
-    /*STDMETHOD(EnumObjects)(THIS_ IEnumIDList * *ppenumIDList) PURE;
+    STDMETHOD(EnumObjects)(THIS_ IEnumIDList **ppenumIDList) PURE;
     //
     //  Pin:        pidlFrom = NULL, pidlTo = pidl
     //  Unpin:      pidlFrom = pidl, pidlTo = NULL
@@ -135,19 +135,7 @@ IStartMenuPin : IUnknown
     //  Returns S_FALSE if the pidl did not change.
     //  Returns an error if the Resolve failed.
     //
-    STDMETHOD(Resolve)(THIS_ HWND hwnd, DWORD dwFlags, LPCITEMIDLIST pidl, LPITEMIDLIST* ppidlResolved) PURE;*/
-
-	STDMETHOD(EnumObjects)(IEnumFullIDList**) PURE;
-	STDMETHOD(Modify)(PCIDLIST_ABSOLUTE, PCIDLIST_ABSOLUTE) PURE;
-	STDMETHOD(GetChangeCount)(ULONG*) PURE;
-	STDMETHOD(GetPinnableInfo)(IDataObject*, int, IShellItem2**, IShellItem**, PWSTR*, INT*) PURE;
-	STDMETHOD(IsPinnable)(IDataObject*, int) PURE;
-	STDMETHOD(Resolve)(HWND, ULONG, PCIDLIST_ABSOLUTE, PIDLIST_ABSOLUTE*) PURE;
-	STDMETHOD(IsPinned)(PCIDLIST_ABSOLUTE) PURE;
-	STDMETHOD(GetPinnedItem)(PCIDLIST_ABSOLUTE, PIDLIST_ABSOLUTE*) PURE;
-	STDMETHOD(GetAppIDForPinnedItem)(PCIDLIST_ABSOLUTE, PWSTR*) PURE;
-	STDMETHOD(ItemChangeNotify)(PCIDLIST_ABSOLUTE, PCIDLIST_ABSOLUTE) PURE;
-	STDMETHOD(UpdateForRemovedItemsAsNecessary)(VOID) PURE;
+    STDMETHOD(Resolve)(THIS_ HWND hwnd, DWORD dwFlags, LPCITEMIDLIST pidl, LPITEMIDLIST* ppidlResolved) PURE;
 };
 
 
