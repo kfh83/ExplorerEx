@@ -25,6 +25,7 @@
 #include "startids.h"
 #include "debug.h"
 #include <immersive/ImmersiveInit.h>
+#include <immersive/Touchpad.h>
 
 #define DM_FOCUS        0           // focus
 #define DM_SHUTDOWN     TF_TRAY     // shutdown
@@ -139,6 +140,8 @@ enum
     GHID_SYSPROPERTIES,
     GHID_DESKTOP,
     GHID_TRAYNOTIFY,
+    GHID_THREEFINGERTAP,
+    GHID_FOURFINGERTAP,
     GHID_MAX
 };
 
@@ -156,6 +159,8 @@ const DWORD GlobalKeylist[] =
     MAKELONG(VK_PAUSE,MOD_WIN),
     MAKELONG(TEXT('D'),MOD_WIN),
     MAKELONG(TEXT('B'),MOD_WIN),
+    MAKELONG(VK_F22, MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT),
+    MAKELONG(VK_F24, MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT),
 };
 
 CTray::CTray() : _fCanSizeMove(TRUE), _fIsLogoff(FALSE), _fIsDesktopConnected(TRUE)
@@ -8674,6 +8679,15 @@ void CTray::_HandleGlobalHotkey(WPARAM wParam)
             SetForegroundWindow(_hwnd);
         SendMessage(_hwndTasks, TBC_TASKTAB, wParam == GHID_TASKTAB ? 1 : -1, 0L);
         break;
+
+    case GHID_THREEFINGERTAP:
+    case GHID_FOURFINGERTAP:
+    {
+        HRESULT hr = HandleTouchpadTap(wParam == GHID_FOURFINGERTAP);
+        if (FAILED(hr))
+            wprintf(L"Precision Touchpad tap action failed (0x%08lX).\n", hr);
+        break;
+    }
 
     case GHID_SYSPROPERTIES:
 #define IDS_SYSDMCPL            0x2334  // from shelldll
