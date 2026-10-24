@@ -43,6 +43,7 @@ WINDOWPOSITIONS, * LPWINDOWPOSITIONS;
 typedef struct tagTRAYVIEWOPTS
 {
     BOOL fWin98;
+    BOOL fTray16Color;
     BOOL fAlwaysOnTop;
     BOOL fSMSmallIcons;
     BOOL fHideClock;
@@ -61,6 +62,9 @@ TRAYVIEWOPTS;
 #define TVSD_SMSMALLICONS       0x0004
 #define TVSD_HIDECLOCK          0x0008
 #define TVSD_WIN98              0x0010
+// Bit 0x0020 is retired; old saved values are ignored and cleared on save.
+// Use a fresh bit so the retired implementation cannot enable this preference.
+#define TVSD_16COLORTRAY         0x0040
 
 // old Win95 TVSD struct
 typedef struct _TVSD95
@@ -237,6 +241,7 @@ public:
     void GetTrayViewOpts(TRAYVIEWOPTS* ptvo)
     {
         ptvo->fWin98 = _fWin98;
+        ptvo->fTray16Color = _fTray16Color;
         ptvo->fAlwaysOnTop = _fAlwaysOnTop;
         ptvo->fSMSmallIcons = _fSMSmallIcons;
         ptvo->fHideClock = _fHideClock;
@@ -251,6 +256,7 @@ public:
         _UpdateAlwaysOnTop(ptvo->fAlwaysOnTop);
         SendMessage(_hwnd, WMTRAY_TOGGLEQL, 0, (LPARAM)ptvo->fShowQuickLaunch);
         _fWin98 = ptvo->fWin98;
+        _fTray16Color = ptvo->fTray16Color;
         _fSMSmallIcons = ptvo->fSMSmallIcons;
         _fHideClock = ptvo->fHideClock;
         _uAutoHide = ptvo->uAutoHide;     // AH_HIDING , AH_ON
@@ -278,6 +284,7 @@ public:
 
     // from TRAYSTUFF
     BOOL _fWin98;
+    BOOL _fTray16Color;
     BOOL _bMainMenuInit;
     BOOL _fFlashing;    // currently flashing (HSHELL_FLASH)
     BOOL _fStuckRudeApp;

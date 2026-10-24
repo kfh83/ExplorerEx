@@ -546,6 +546,7 @@ void CTray::_GetSaveStateAndInitRects()
     // set the tray flags
     //
     _fWin98 = BOOLIFY(dwTrayFlags & TVSD_WIN98);
+    _fTray16Color = BOOLIFY(dwTrayFlags & TVSD_16COLORTRAY);
     _fAlwaysOnTop = BOOLIFY(dwTrayFlags & TVSD_TOPMOST);
     _fSMSmallIcons = BOOLIFY(dwTrayFlags & TVSD_SMSMALLICONS);
     _fHideClock = SHRestricted(REST_HIDECLOCK) || BOOLIFY(dwTrayFlags & TVSD_HIDECLOCK);
@@ -585,6 +586,7 @@ void CTray::_SaveTrayStuff(void)
     if (_fHideClock && !SHRestricted(REST_HIDECLOCK))        tvsd.dwFlags |= TVSD_HIDECLOCK;
     if (_uAutoHide & AH_ON) tvsd.dwFlags |= TVSD_AUTOHIDE;
     if (_fWin98)            tvsd.dwFlags |= TVSD_WIN98;
+    if (_fTray16Color)     tvsd.dwFlags |= TVSD_16COLORTRAY;
 
     // Save in Stuck rects.
     Reg_SetStruct(g_hkeyExplorer, TEXT("StuckRectsXP2"), TEXT("Settings"), &tvsd, sizeof(tvsd));

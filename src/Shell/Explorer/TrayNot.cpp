@@ -356,7 +356,14 @@ INT_PTR CTrayNotify::_FindNotify(PNOTIFYICONDATA32 pnid)
     return (i);
 }
 
-BOOL CTrayNotify::_CheckAndResizeImages()
+static UINT TrayIconImageListFlags(HWND toolbar)
+{
+    UINT flags = SHGetImageListFlags(toolbar);
+    // Preserve mask/mirroring flags, replacing only the color-depth field.
+    return c_tray._fTray16Color ? (flags & ~0xFEu) | ILC_COLOR4 : flags;
+}
+
+BOOL CTrayNotify::_CheckAndResizeImages(BOOL force)
 {
     int cxSmIconOld, cySmIconOld;
     BOOL fOK = TRUE;
@@ -367,9 +374,9 @@ BOOL CTrayNotify::_CheckAndResizeImages()
     int cxSmIconNew = GetSystemMetrics(SM_CXSMICON);
     int cySmIconNew = GetSystemMetrics(SM_CYSMICON);
     ImageList_GetIconSize(himlOld, &cxSmIconOld, &cySmIconOld);
-    if (cxSmIconNew != cxSmIconOld || cySmIconNew != cySmIconOld)
+    if (force || cxSmIconNew != cxSmIconOld || cySmIconNew != cySmIconOld)
     {
-        HIMAGELIST himlNew = ImageList_Create(cxSmIconNew, cySmIconNew, SHGetImageListFlags(_hwndToolbar), 0, 1);
+        HIMAGELIST himlNew = ImageList_Create(cxSmIconNew, cySmIconNew, TrayIconImageListFlags(_hwndToolbar), 0, 1);
         if (himlNew)
         {
             // Copy the images over to the new image list.
@@ -406,6 +413,7 @@ BOOL CTrayNotify::_CheckAndResizeImages()
                 // Destroy the old icon cache.
                 ImageList_Destroy(himlOld);
                 SendMessage(_hwndToolbar, TB_SETIMAGELIST, 0, (LPARAM)_himlIcons);
+                _RefreshIconDepth();
                 SendMessage(_hwndToolbar, TB_AUTOSIZE, 0, 0);
             }
             else
@@ -414,6 +422,8 @@ BOOL CTrayNotify::_CheckAndResizeImages()
                 ImageList_Destroy(himlNew);
             }
         }
+        else
+            fOK = FALSE;
     }
 
     return fOK;
@@ -657,6 +667,26 @@ void CTrayNotify::_SetInfoTip(INT_PTR nIcon, PNOTIFYICONDATA32 pnid, BOOL bAsync
     }
 }
 
+// Rebuild existing image slots from retained originals; shared users of a slot
+// update together. The destination image list handles color reduction; retained
+// originals restore full color when the preference is disabled.
+void CTrayNotify::_RefreshIconDepth()
+{
+    int cx, cy;
+    if (!ImageList_GetIconSize(_himlIcons, &cx, &cy))
+        return;
+    for (INT_PTR i = 0; i < _GetCount(); ++i)
+    {
+        PTNPRIVICON icon = _GetDataByIndex(i);
+        const int image = _GetImage(i);
+        if (!icon || !icon->hIconOriginal || (icon->dwState & NIS_SHAREDICON) || image < 0)
+            continue;
+        HICON variant = c_tray._fTray16Color ? FindTrayIcon16(icon->iconResource, cx, cy) : NULL;
+        ImageList_ReplaceIcon(_himlIcons, image, variant ? variant : icon->hIconOriginal);
+    }
+    InvalidateRect(_hwndToolbar, NULL, TRUE);
+}
+
 BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbRefresh)
 {
     BOOL fResize = FALSE;
@@ -725,9 +755,23 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbR
             int iImageOld = _GetImage(nIcon);
             if (GetHIcon(pnid))
             {
-                // Copy the supplied pixels directly; the application retains
-                // ownership of its HICON. Index -1 appends a new image.
-                iImageNew = ImageList_ReplaceIcon(_himlIcons, iImageOld, GetHIcon(pnid));
+                TrayIconResource resource = {};
+                HICON original = CopyTrayIconSource(GetHIcon(pnid), &resource);
+                if (!original)
+                    return FALSE;
+                int cx, cy;
+                ImageList_GetIconSize(_himlIcons, &cx, &cy);
+                HICON variant = c_tray._fTray16Color ? FindTrayIcon16(resource, cx, cy) : NULL;
+                iImageNew = ImageList_ReplaceIcon(_himlIcons, iImageOld, variant ? variant : original);
+                if (iImageNew < 0)
+                    DestroyIcon(original);
+                else
+                {
+                    if (ptnpi->hIconOriginal)
+                        DestroyIcon(ptnpi->hIconOriginal);
+                    ptnpi->hIconOriginal = original;
+                    ptnpi->iconResource = resource;
+                }
                 if (iImageNew < 0)
                 {
                     return (FALSE);
@@ -757,6 +801,13 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbR
             }
             if (iImageOld == -1 || iImageNew == -1)
                 fResize = TRUE;
+        }
+        if (!GetHIcon(pnid) || (ptnpi->dwState & NIS_SHAREDICON))
+        {
+            if (ptnpi->hIconOriginal)
+                DestroyIcon(ptnpi->hIconOriginal);
+            ptnpi->hIconOriginal = NULL;
+            ptnpi->iconResource = {};
         }
         ptnpi->hIcon = GetHIcon(pnid);
         _SetImage(nIcon, iImageNew);
@@ -841,6 +892,8 @@ void CTrayNotify::_FreeNotify(PTNPRIVICON ptnpi, int iImage)
     {
         _RemoveImage(iImage);
     }
+    if (ptnpi->hIconOriginal)
+        DestroyIcon(ptnpi->hIconOriginal);
     LocalFree(ptnpi);
 }
 
@@ -1069,7 +1122,7 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     SendMessage(_hwndToolbar, TB_SETEXTENDEDSTYLE,
                 TBSTYLE_EX_INVERTIBLEIMAGELIST, TBSTYLE_EX_INVERTIBLEIMAGELIST);
     _himlIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-        SHGetImageListFlags(_hwndToolbar), 0, 1);
+        TrayIconImageListFlags(_hwndToolbar), 0, 1);
     if (!_himlIcons)
     {
         return (-1);
@@ -1102,6 +1155,7 @@ LRESULT CTrayNotify::_Destroy()
     {
         // Continue while there are icondata's to delete
     }
+    ClearTrayIcon16Cache();
 
     if (_himlIcons)
     {
@@ -1799,6 +1853,10 @@ LRESULT CTrayNotify::v_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
                 case TNM_HIDECLOCK:
                     ShowWindow(_hwndClock, lParam ? SW_HIDE : SW_SHOW);
+                    break;
+
+                case TNM_REFRESHICONDEPTH:
+                    _CheckAndResizeImages(TRUE);
                     break;
 
                 case TNM_TRAYPOSCHANGED:

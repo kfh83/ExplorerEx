@@ -6,6 +6,7 @@
 #include "traycmn.h"
 #include "trayitem.h"
 #include "trayreg.h"
+#include "TrayIcon16.h"
 
 #define TNM_GETCLOCK (WM_USER + 1)
 #define TNM_HIDECLOCK (WM_USER + 2)
@@ -18,6 +19,7 @@
 #define TNM_NOTIFY                  (WM_USER + 9)
 #define TNM_STARTUPAPPSLAUNCHED     (WM_USER + 10)
 #define TNM_ENABLEUSERTRACKINGINFOTIPS      (WM_USER + 11)
+#define TNM_REFRESHICONDEPTH        (WM_USER + 12)
 
 #define TNM_BANGICONMESSAGE         (WM_USER + 50)
 #define TNM_ICONDEMOTETIMER         (WM_USER + 61)
@@ -85,6 +87,8 @@ typedef struct _TNPRIVICON
     UINT uVersion;
     HICON hIcon;
     HICON hBalloonIcon;
+    HICON hIconOriginal; // owned snapshot: app handles may be destroyed or recycled
+    TrayIconResource iconResource;
 } TNPRIVICON, *PTNPRIVICON;
 
 #if XXX_RENIM
@@ -142,8 +146,9 @@ protected:
     INT_PTR _GetVisibleCount();
     int _FindImageIndex(HICON hIcon, BOOL fSetAsSharedSource);
     void _RemoveImage(UINT uIMLIndex);
+    void _RefreshIconDepth();
     INT_PTR _FindNotify(PNOTIFYICONDATA32 pnid);
-    BOOL _CheckAndResizeImages();
+    BOOL _CheckAndResizeImages(BOOL force = FALSE);
     void _ActivateTips(BOOL bActivate);
     void _InfoTipMouseClick(int x, int y);
     void _PositionInfoTip();

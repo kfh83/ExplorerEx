@@ -708,6 +708,7 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="TrayCmn.h" />
     <ClInclude Include="TrayItem.h" />
     <ClInclude Include="TrayNot.h" />
+    <ClInclude Include="TrayIcon16.h" />
     <ClInclude Include="TrayReg.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="..\Inc\WTL\atltheme.h" />
@@ -803,6 +804,9 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="TrayCmn.cpp" />
     <ClCompile Include="TrayItem.cpp" />
     <ClCompile Include="TrayNot.cpp" />
+    <ClCompile Include="TrayIcon16.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="TrayProp.cpp" />
     <ClCompile Include="TrayReg.cpp" />
     <ClCompile Include="Util.cpp" />
