@@ -4111,16 +4111,18 @@ LRESULT CTaskBand::_HandleCustomDraw(LPNMTBCUSTOMDRAW ptbcd, PTASKITEM pti)
                 }
 
                 SaveDC(ptbcd->nmcd.hdc);
+                const bool fSunken = (ptbcd->nmcd.uItemState & (CDIS_SELECTED | CDIS_CHECKED)) != 0;
+                const UINT frameState = DFCS_BUTTONPUSH | (fSunken ? DFCS_PUSHED : 0);
 
                 if (fToolbarFlat)
                 {
-                    if (ptbcd->nmcd.uItemState & CDIS_CHECKED)
-                        DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, ((ptbcd->nmcd.uItemState & CDIS_CHECKED) << 7) | DFCS_BUTTONPUSH);
+                    if (fSunken)
+                        DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, frameState);
                     else if (ptbcd->nmcd.uItemState & CDIS_HOT)
                         DrawEdge(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, BDR_RAISEDINNER, BF_TOPLEFT | BF_BOTTOMRIGHT);
                 }
                 else
-                    DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, ((ptbcd->nmcd.uItemState & CDIS_CHECKED) << 7) | DFCS_BUTTONPUSH);
+                    DrawFrameControl(ptbcd->nmcd.hdc, &ptbcd->nmcd.rc, DFC_BUTTON, frameState);
 
                 RECT rcCap = ptbcd->nmcd.rc;
                 InflateRect(&rcCap, -2, -2);
