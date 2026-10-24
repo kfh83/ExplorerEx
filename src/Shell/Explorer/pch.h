@@ -54,7 +54,6 @@
 #include <ras.h>
 #include <dwmapi.h>
 #include <wtsapi32.h>
-#include <psapi.h>
 #include <ddraw.h>
 
 

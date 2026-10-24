@@ -56,8 +56,7 @@ CAPTION "Extra"
 FONT 8, "MS Shell Dlg"
 BEGIN
     CONTROL "&Windows 98 style", IDC_EXTRAOPTWIN98, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 9,9,194,10
-    CONTROL "&16 color tray icons", IDC_EXTRAOPT16COLOR, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 9,23,194,10
-    CONTROL "&Group similar taskbar buttons", IDC_GROUPITEMS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 9,37,194,10
+    CONTROL "&Group similar taskbar buttons", IDC_GROUPITEMS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 9,23,194,10
 END
 
 STRINGTABLE

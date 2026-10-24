@@ -209,7 +209,6 @@
 #define IDC_RENAME                      1006
 #define IDC_MSG                         1007
 #define IDC_EXTRAOPTWIN98               1008
-#define IDC_EXTRAOPT16COLOR             1009
 #define IDC_TRAYOPTONTOP                1101
 #define IDC_TRAYOPTAUTOHIDE             1102
 #define IDC_TRAYOPTSHOWCLOCK            1103
