@@ -6081,6 +6081,11 @@ LRESULT CTaskBand::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         return _HandleDestroy();
 
+    case WM_SETTINGCHANGE:
+        // The Extra page sends TraySettings directly to this HWND. Band-site
+        // notifications also reach this handler through OnWinEvent.
+        return _HandleWinIniChange(wParam, lParam, FALSE);
+
     case WM_WINDOWPOSCHANGED:
         {
             LRESULT lres = _HandleSize(wParam);

@@ -339,10 +339,16 @@ INT_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT msg, WPARAM wParam, 
     case WM_INITDIALOG:
         ::CheckDlgButton(hDlg, IDC_EXTRAOPTWIN98, c_tray._fWin98 ? BST_CHECKED : BST_UNCHECKED);
         ::CheckDlgButton(hDlg, IDC_EXTRAOPT16COLOR, c_tray._fTray16Color ? BST_CHECKED : BST_UNCHECKED);
+        ::CheckDlgButton(hDlg, IDC_GROUPITEMS,
+            !SHRestricted(REST_NOTASKGROUPING) &&
+            SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED, TEXT("TaskbarGlomming"), FALSE, TRUE)
+                ? BST_CHECKED : BST_UNCHECKED);
+        ::EnableWindow(::GetDlgItem(hDlg, IDC_GROUPITEMS), !SHRestricted(REST_NOTASKGROUPING));
         return TRUE;
 
     case WM_COMMAND:
-        if ((LOWORD(wParam) == IDC_EXTRAOPTWIN98 || LOWORD(wParam) == IDC_EXTRAOPT16COLOR) && HIWORD(wParam) == BN_CLICKED)
+        if ((LOWORD(wParam) == IDC_EXTRAOPTWIN98 || LOWORD(wParam) == IDC_EXTRAOPT16COLOR ||
+             LOWORD(wParam) == IDC_GROUPITEMS) && HIWORD(wParam) == BN_CLICKED)
         {
             ::SendMessage(::GetParent(hDlg), PSM_CHANGED, reinterpret_cast<WPARAM>(hDlg), 0);
             return TRUE;
@@ -354,6 +360,25 @@ INT_PTR CTaskBarPropertySheet::ExtraDlgProc(HWND hDlg, UINT msg, WPARAM wParam, 
         {
         case PSN_APPLY:
         {
+            // Reuse the task band's existing grouping preference and rebuild
+            // notification; changing this control takes effect on Apply, not click.
+            if (!SHRestricted(REST_NOTASKGROUPING))
+            {
+                DWORD grouping = ::IsDlgButtonChecked(hDlg, IDC_GROUPITEMS) == BST_CHECKED;
+                if (grouping != !!SHRegGetBoolUSValue(REGSTR_EXPLORER_ADVANCED,
+                    TEXT("TaskbarGlomming"), FALSE, TRUE))
+                {
+                    LSTATUS error = SHRegSetUSValue(REGSTR_EXPLORER_ADVANCED,
+                        TEXT("TaskbarGlomming"), REG_DWORD, &grouping, sizeof(grouping), SHREGSET_FORCE_HKCU);
+                    if (error != ERROR_SUCCESS)
+                    {
+                        ::SetWindowLongPtr(hDlg, DWLP_MSGRESULT, PSNRET_INVALID_NOCHANGEPAGE);
+                        return TRUE;
+                    }
+                    ::SendMessage(c_tray.GetTaskWindow(), WM_SETTINGCHANGE, 0,
+                        reinterpret_cast<LPARAM>(TEXT("TraySettings")));
+                }
+            }
             BOOL win98 = ::IsDlgButtonChecked(hDlg, IDC_EXTRAOPTWIN98) == BST_CHECKED;
             BOOL color16 = ::IsDlgButtonChecked(hDlg, IDC_EXTRAOPT16COLOR) == BST_CHECKED;
             BOOL fSave = FALSE;

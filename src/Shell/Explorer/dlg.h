@@ -213,6 +213,7 @@
 #define IDC_TRAYOPTONTOP                1101
 #define IDC_TRAYOPTAUTOHIDE             1102
 #define IDC_TRAYOPTSHOWCLOCK            1103
+#define IDC_GROUPITEMS                  1104
 #define IDC_VIEWOPTIONSICONSFIRST   1111
 #define IDC_VOBASE                  1111
 #define IDC_VOLARGEMENU             1112
