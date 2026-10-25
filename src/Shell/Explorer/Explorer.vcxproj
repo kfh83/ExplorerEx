@@ -666,7 +666,32 @@ del "$(IntermediateOutputPath)temp.res"
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\Inc\*.h" />
+    <!-- Keep shared items explicit and unique for Visual Studio's VC project system. -->
+    <ClInclude Include="..\Inc\CoCreateInstanceHook.h" />
+    <ClInclude Include="..\Inc\COWSite.h" />
+    <ClInclude Include="..\Inc\CriticalSection.h" />
+    <ClInclude Include="..\Inc\CWndProc.h" />
+    <ClInclude Include="..\Inc\dbg.h" />
+    <ClInclude Include="..\Inc\debug.h" />
+    <ClInclude Include="..\Inc\DesktopP.h" />
+    <ClInclude Include="..\Inc\DPA.h" />
+    <ClInclude Include="..\Inc\IEGuidP.h" />
+    <ClInclude Include="..\Inc\NtPerf.h" />
+    <ClInclude Include="..\Inc\NtWmi.h" />
+    <ClInclude Include="..\Inc\Path.h" />
+    <ClInclude Include="..\Inc\Port32.h" />
+    <ClInclude Include="..\Inc\Shell32Util.h" />
+    <ClInclude Include="..\Inc\ShDGuid.h" />
+    <ClInclude Include="..\Inc\ShGuidP.h" />
+    <ClInclude Include="..\Inc\ShUndoc.h" />
+    <ClInclude Include="..\Inc\StartIds.h" />
+    <ClInclude Include="..\Inc\TrayP.h" />
+    <ClInclude Include="..\Inc\UEMApp.h" />
+    <ClInclude Include="..\Inc\UEMEvt.h" />
+    <ClInclude Include="..\Inc\w4warn.h" />
+    <ClInclude Include="..\Inc\Winter.h" />
+    <ClInclude Include="..\Inc\WinUserP.h" />
+    <ClInclude Include="..\Inc\wmiumkm.h" />
     <ClInclude Include="immersive\ImmersiveDefs.h" />
     <ClInclude Include="immersive\ImmersiveInit.h" />
     <ClInclude Include="immersive\Touchpad.h" />
@@ -774,7 +799,18 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="BandSite.cpp" />
     <ClCompile Include="ClassFac.cpp" />
     <ClCompile Include="CfgStart.cpp" />
-    <ClCompile Include="..\Inc\*.cpp" Exclude="..\Inc\SHFusion.cpp" />
+    <ClCompile Include="..\Inc\CoCreateInstanceHook.cpp" />
+    <ClCompile Include="..\Inc\COWSite.cpp" />
+    <ClCompile Include="..\Inc\CWndProc.cpp" />
+    <ClCompile Include="..\Inc\debug.cpp" />
+    <ClCompile Include="..\Inc\DesktopP.cpp" />
+    <ClCompile Include="..\Inc\DllLoad.cpp" />
+    <ClCompile Include="..\Inc\IEGuidP.cpp" />
+    <ClCompile Include="..\Inc\Path.cpp" />
+    <ClCompile Include="..\Inc\RunTask.cpp" />
+    <ClCompile Include="..\Inc\Shell32Util.cpp" />
+    <ClCompile Include="..\Inc\ShUndoc.cpp" />
+    <ClCompile Include="..\Inc\UEMApp.cpp" />
     <ClCompile Include="immersive\ImmersiveInit.cpp" />
     <ClCompile Include="immersive\Touchpad.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
