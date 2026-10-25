@@ -798,6 +798,8 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="SSOMgr.cpp" />
     <ClCompile Include="StartMnu.cpp" />
     <ClCompile Include="TaskBand.cpp" />
+    <ClCompile Include="TaskBandOrder.cpp" />
+    <ClCompile Include="TaskBandDrag.cpp" />
     <ClCompile Include="TaskBar.cpp" />
     <ClCompile Include="Tray.cpp" />
     <ClCompile Include="TrayClok.cpp" />
