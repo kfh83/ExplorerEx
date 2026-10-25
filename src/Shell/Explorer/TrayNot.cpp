@@ -182,6 +182,41 @@ LRESULT CTrayNotify::TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT 
     return (TRUE);
 }
 
+LRESULT CTrayNotify::TrayNotifyInfo(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds)
+{
+    // #98: medal checks these bounds immediately after creating its icon and deletes
+    // the icon if the shell returns an empty rectangle.
+    if (!hwndNotify || !pcds || !pcds->lpData || pcds->cbData < sizeof(TRAYNOTIFYINFO))
+        return 0;
+    const TRAYNOTIFYINFO* info = static_cast<const TRAYNOTIFYINFO*>(pcds->lpData);
+    if (info->dwSignature != NI_SIGNATURE || info->nii.cbSize < sizeof(NOTIFYICONINFO32) ||
+        (info->dwMessage != 1 && info->dwMessage != 2))
+        return 0;
+    CTrayNotify* notify = reinterpret_cast<CTrayNotify*>(GetWindowLongPtr(hwndNotify, 0));
+    if (!notify || !IsWindowVisible(notify->_hwndToolbar))
+        return 0;
+
+    const BOOL byGuid = !IsEqualGUID(info->nii.guidItem, GUID_NULL);
+    const HWND owner = static_cast<HWND>(ULongToPtr(info->nii.dwWnd));
+    for (INT_PTR i = notify->_GetCount() - 1; i >= 0; --i)
+    {
+        PTNPRIVICON item = notify->_GetData(i, TRUE);
+        if (!item || (byGuid ? !IsEqualGUID(item->guidItem, info->nii.guidItem) :
+            item->hWnd != owner || item->uID != info->nii.uID))
+            continue;
+        if ((item->dwState & NIS_HIDDEN) || notify->_GetImage(i) < 0)
+            return 0;
+        RECT rect = {};
+        if (!SendMessage(notify->_hwndToolbar, TB_GETITEMRECT, i, reinterpret_cast<LPARAM>(&rect)))
+            return 0;
+        MapWindowPoints(notify->_hwndToolbar, NULL, reinterpret_cast<POINT*>(&rect), 2);
+        if (info->dwMessage == 1)
+            return MAKELRESULT(rect.left, rect.top);
+        return MAKELRESULT(rect.right - rect.left, rect.bottom - rect.top);
+    }
+    return 0;
+}
+
 WPARAM CTrayNotify::_CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex)
 {
     if (inputType == TRAYITEM_ANCHORPOINT_INPUTTYPE_MOUSE)
@@ -342,12 +377,14 @@ INT_PTR CTrayNotify::_FindNotify(PNOTIFYICONDATA32 pnid)
 {
     INT_PTR i;
     INT_PTR nCount = _GetCount();
+    const BOOL byGuid = (pnid->uFlags & NIF_GUID) && !IsEqualGUID(pnid->guidItem, GUID_NULL);
 
     for (i = nCount - 1; i >= 0; --i)
     {
         PTNPRIVICON ptnpi = _GetDataByIndex(i);
         ASSERT(ptnpi);
-        if (ptnpi->hWnd == GetHWnd(pnid) && ptnpi->uID == pnid->uID)
+        if (byGuid ? IsEqualGUID(ptnpi->guidItem, pnid->guidItem) :
+            ptnpi->hWnd == GetHWnd(pnid) && ptnpi->uID == pnid->uID)
         {
             break;
         }
@@ -958,8 +995,14 @@ INT_PTR CTrayNotify::_DeleteNotify(INT_PTR nIcon)
 
 BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
 {
-    TBBUTTON tbb;
+    TBBUTTON tbb = {};
     static int s_iNextID = 0;
+
+    // XP consumes this private placement hint before validating icon state.
+    // 2k has no auto-tray promotion policy; do not reject an otherwise valid
+    // first registration because it requests promotion (issue #98).
+    // Keep NIS_HIDDEN and all other state bits subject to normal validation.
+    pnid->dwStateMask &= ~NIS_SHOWALWAYS;
 
     // First insert a totally "default" icon
     PTNPRIVICON ptnpi = (PTNPRIVICON)LocalAlloc(LPTR, sizeof(TNPRIVICON));
@@ -970,6 +1013,8 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
 
     ptnpi->hWnd = GetHWnd(pnid);
     ptnpi->uID = pnid->uID;
+    if (pnid->uFlags & NIF_GUID)
+        ptnpi->guidItem = pnid->guidItem;
     
     tbb.dwData = (DWORD_PTR)ptnpi;
     tbb.iBitmap = -1;
@@ -988,6 +1033,11 @@ BOOL CTrayNotify::_InsertNotify(PNOTIFYICONDATA32 pnid)
             // Note that we do not go to the LocalFree
             return FALSE;
         }
+    }
+    else
+    {
+        LocalFree(ptnpi);
+        return FALSE;
     }
     return TRUE;
 }

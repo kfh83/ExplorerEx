@@ -340,6 +340,21 @@ typedef struct _TRAYNOTIFYDATAW {
 typedef TRAYNOTIFYDATAW TRAYNOTIFYDATA;
 typedef PTRAYNOTIFYDATAW PTRAYNOTIFYDATA;
 
+// Fixed-width WM_COPYDATA payload used by Shell_NotifyIconGetRect.
+typedef struct _NOTIFYICONINFO32 {
+    DWORD cbSize;
+    UINT uFlags;
+    DWORD dwWnd;
+    UINT uID;
+    GUID guidItem;
+} NOTIFYICONINFO32, *PNOTIFYICONINFO32;
+
+typedef struct _TRAYNOTIFYINFO {
+    DWORD dwSignature;
+    DWORD dwMessage; // 1: packed screen position; 2: packed width and height
+    NOTIFYICONINFO32 nii;
+} TRAYNOTIFYINFO, *PTRAYNOTIFYINFO;
+
 typedef struct tagSHCNF_INSTRUMENT {
     USHORT uOffset;
     USHORT uAlign;
@@ -766,6 +781,7 @@ typedef LPNMVIEWFOLDERA LPNMVIEWFOLDER;
 #define TCDM_APPBAR     0x00000000
 #define TCDM_NOTIFY     0x00000001
 #define TCDM_LOADINPROC 0x00000002
+#define TCMD_NOTIFYINFO 0x00000003
 
 
 

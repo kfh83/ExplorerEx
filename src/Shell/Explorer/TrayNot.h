@@ -89,6 +89,7 @@ typedef struct _TNPRIVICON
     HICON hBalloonIcon;
     HICON hIconOriginal; // owned snapshot: app handles may be destroyed or recycled
     TrayIconResource iconResource;
+    GUID guidItem;
 } TNPRIVICON, *PTNPRIVICON;
 
 #if XXX_RENIM
@@ -133,6 +134,7 @@ public:
     
     HWND TrayNotifyCreate(HWND hwndParent, UINT uID, HINSTANCE hInst);
     LRESULT TrayNotify(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds, BOOL *pbRefresh);
+    LRESULT TrayNotifyInfo(HWND hwndNotify, HWND hwndFrom, PCOPYDATASTRUCT pcds);
 protected:
     // Used for notifications:
     WPARAM _CalculateAnchorPointWPARAMIfNecessary(DWORD inputType, HWND const hwnd, int itemIndex);

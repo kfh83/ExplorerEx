@@ -6100,6 +6100,9 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             case TCDM_LOADINPROC:
                 return (UINT)_LoadInProc((PCOPYDATASTRUCT)lParam);
+
+            case TCMD_NOTIFYINFO:
+                return _trayNotify.TrayNotifyInfo(_hwndNotify, (HWND)wParam, (PCOPYDATASTRUCT)lParam);
             }
         }
         return FALSE;
