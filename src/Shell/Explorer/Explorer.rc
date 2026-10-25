@@ -183,15 +183,15 @@ BEGIN
             MENUITEM "", -1, MFT_SEPARATOR
 #ifdef WINNT
             MENUITEM "&Windows Security...",        IDM_MU_SECURITY
-            MENUITEM "&Network Connections", IDM_NETCONNECT
+            MENUITEM "&Network and Dial-up Connections", IDM_NETCONNECT
 #else
             MENUITEM "Dial-up &Networking",             IDM_NETCONNECT
 #endif
             // MENUITEM "&Start Menu",                  IDM_PROGRAMSFOLDER
-            MENUITEM "&Printers and Faxes",             IDM_PRINTERS
+            MENUITEM "&Printers",             IDM_PRINTERS
             // MENUITEM "&Fonts",                       IDM_FONTS
             // MENUITEM "", -1, MFT_SEPARATOR
-            MENUITEM "&Taskbar and Start Menu",       IDM_TRAYPROPERTIES
+            MENUITEM "&Taskbar && Start Menu...",       IDM_TRAYPROPERTIES
 
         END
         POPUP "Sear&ch",                          IDM_MENU_FIND
