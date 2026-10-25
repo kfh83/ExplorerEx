@@ -108,18 +108,6 @@ public:
 
 int GetDarwinIndex(LPCITEMIDLIST pidlFull, CDarwinAd** ppda);
 
-HRESULT GetMyPicsDisplayName(LPTSTR pszBuffer, UINT cchBuffer)
-{
-    LPITEMIDLIST pidlMyPics = SHCloneSpecialIDList(NULL, CSIDL_MYPICTURES, FALSE);
-    if (pidlMyPics)
-    {
-        HRESULT hRet = SHGetNameAndFlags(pidlMyPics, SHGDN_NORMAL, pszBuffer, cchBuffer, NULL);
-        ILFree(pidlMyPics);
-        return hRet;
-    }
-    return E_FAIL;
-}
-
 #define RESTOPT_INTELLIMENUS_USER       0
 #define RESTOPT_INTELLIMENUS_DISABLED   1       // Match Restriction assumption: 1 == Off
 #define RESTOPT_INTELLIMENUS_ENABLED    2
@@ -643,7 +631,6 @@ private:
     BITBOOL         _fCascadeMyPictures : 1;
 
     BITBOOL         _fHasMyDocuments : 1;
-    BITBOOL         _fHasMyPictures : 1;
 
     TCHAR           _szFindMnemonic[2];
 
@@ -1882,7 +1869,8 @@ HMENU SHLoadMenuPopup(HINSTANCE hinst, UINT id)
 
 void CStartMenuCallback::_UpdateDocumentsShellMenu(IShellMenu* psm)
 {
-    // Add/Remove My Documents and My Pictures items of menu
+    // The 2k Documents submenu contains My Documents and recent documents,
+    // not the My Pictures shortcut supplied by the host shell's menu resource.
 
     BOOL fMyDocs = !SHRestricted(REST_NOSMMYDOCS);
     if (fMyDocs)
@@ -1893,15 +1881,6 @@ void CStartMenuCallback::_UpdateDocumentsShellMenu(IShellMenu* psm)
             ILFree(pidl);
     }
 
-    BOOL fMyPics = !SHRestricted(REST_NOSMMYPICS);
-    if (fMyPics)
-    {
-        LPITEMIDLIST pidl;
-        fMyPics = SUCCEEDED(SHGetFolderLocation(NULL, CSIDL_MYPICTURES, NULL, 0, &pidl));
-        if (fMyPics)
-            ILFree(pidl);
-    }
-
     HMENU hMenu = SHLoadMenuPopup(LoadLibraryW(L"shell32.dll"), MENU_STARTMENU_MYDOCS);
     if (hMenu)
     {
@@ -1909,15 +1888,13 @@ void CStartMenuCallback::_UpdateDocumentsShellMenu(IShellMenu* psm)
         DeleteMenu(hMenu, IDM_BLANKITEM, MF_BYCOMMAND);
         if (!fMyDocs)
             DeleteMenu(hMenu, IDM_MYDOCUMENTS, MF_BYCOMMAND);
-        if (!fMyPics)
-            DeleteMenu(hMenu, IDM_MYPICTURES, MF_BYCOMMAND);
+        DeleteMenu(hMenu, IDM_MYPICTURES, MF_BYCOMMAND);
         // Reset section of menu
         psm->SetMenu(hMenu, _hwnd, SMSET_TOP);
     }
 
     // Cache what folders are available
     _fHasMyDocuments = fMyDocs;
-    _fHasMyPictures = fMyPics;
 }
 
 STDAPI GetMyDocumentsDisplayName(LPWSTR pszPath, UINT cch)
@@ -1940,12 +1917,6 @@ void CStartMenuCallback::_UpdateDocsMenuItemNames(IShellMenu* psm)
     {
         if (SUCCEEDED(GetMyDocumentsDisplayName(szBuffer, ARRAYSIZE(szBuffer))))
             _FixMenuItemName(psm, IDM_MYDOCUMENTS, szBuffer);
-    }
-
-    if (_fHasMyPictures)
-    {
-        if (SUCCEEDED(GetMyPicsDisplayName(szBuffer, ARRAYSIZE(szBuffer))))
-            _FixMenuItemName(psm, IDM_MYPICTURES, szBuffer);
     }
 }
 
@@ -2863,7 +2834,6 @@ HRESULT CStartMenuCallback::InitializeDocumentsShellMenu(IShellMenu* psm)
 
     // Initializing, reset cache bits for top part of menu
     _fHasMyDocuments = FALSE;
-    _fHasMyPictures = FALSE;
 
     return hr;
 }
