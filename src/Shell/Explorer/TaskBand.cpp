@@ -791,6 +791,8 @@ BOOL CTaskBand::_AnimateItems(int iIndex, BOOL fExpand, BOOL fGlomAnimation)
             // NOTE: HWND_TOPMOST is used here to indicate that the deleted 
             // button is being animated. This allows the button to stay 
             // around after its hwnd becomes invalid 
+            if (aii.pti->hwnd != HWND_TOPMOST)
+                aii.pti->hwndPendingDelete = aii.pti->hwnd;
             aii.pti->hwnd = HWND_TOPMOST;
             aii.pti->dwFlags |= TIF_TRANSPARENT;
         }
@@ -1115,10 +1117,17 @@ int CTaskBand::_GetAnimationDistLeft(PANIMATIONITEMINFO paii, int iNormalWidth)
 //-----------------------------------------------------------------------------
 void CTaskBand::_FinishAnimation(PANIMATIONITEMINFO paii)
 {
+    // A replacement or another completed animation can invalidate cached indices.
+    // Resolve identity before touching an item, and ignore removed records.
+    paii->iIndex = _FindItem(paii->pti);
+    if (paii->iIndex < 0)
+        return;
+
     switch (paii->fState)
     {
     case ANIMATE_DELETE:
-        _DeleteItem(NULL, paii->iIndex);
+        if (paii->pti->hwnd == HWND_TOPMOST)
+            _DeleteItem(NULL, paii->iIndex);
         break;
 
     case ANIMATE_GLOM:
@@ -1135,7 +1144,8 @@ void CTaskBand::_FinishAnimation(PANIMATIONITEMINFO paii)
             // NOTE: HWND_TOPMOST is used to indicate that the deleted button 
             // is being animated. This allows the button to stay around after 
             // its real hwnd becomes invalid
-            if (paii->pti->hwnd == HWND_TOPMOST)
+            paii->iIndex = _FindItem(paii->pti);
+            if (paii->iIndex >= 0 && paii->pti->hwnd == HWND_TOPMOST)
             {
                 // The button was deleting before it was glommed
                 // Now that the glomming is done, delete it.
@@ -1210,10 +1220,6 @@ void CTaskBand::_UpdateAnimationIndices()
 
 void CTaskBand::_UpdateAnimationIndicesSlow()
 {
-#ifdef DEBUG
-    int cAnimatingItems = _dsaAII.GetItemCount();
-#endif
-
     for (int i = _dsaAII.GetItemCount() - 1; i >= 0; i--)
     {
         PANIMATIONITEMINFO paii = _dsaAII.GetItemPtr(i);
@@ -1224,20 +1230,23 @@ void CTaskBand::_UpdateAnimationIndicesSlow()
         }
         else
         {
-            paii->iIndex = i;
+            paii->iIndex = iIndex;
         }
     }
 
-#ifdef DEBUG
-    // Being in this function means that either an animating item is no longer in the
-    // toolbar, or that the animating items are in a different order than the toolbar.
-    // If the animating items are only in a different order (bad), the number of animating
-    // items will remain the same.
-    if (cAnimatingItems == _dsaAII.GetItemCount())
+    // The fast updater and insertion logic expect left-to-right toolbar order.
+    // Animation lists are small; sort in place without allocating during redraw.
+    for (int i = 1; i < _dsaAII.GetItemCount(); ++i)
     {
+        ANIMATIONITEMINFO item = *_dsaAII.GetItemPtr(i);
+        int position = i;
+        while (position > 0 && _dsaAII.GetItemPtr(position - 1)->iIndex > item.iIndex)
+        {
+            *_dsaAII.GetItemPtr(position) = *_dsaAII.GetItemPtr(position - 1);
+            --position;
+        }
+        *_dsaAII.GetItemPtr(position) = item;
     }
-#endif
-    
 }
 
 int CTaskBand::_FindItem(PTASKITEM pti)
@@ -2026,6 +2035,7 @@ BOOL TaskShortcut::_HandleShortcutInvoke(LPSHShortcutInvokeAsIDList psidl)
 TASKITEM::TASKITEM(TASKITEM* pti)
 {
     hwnd = pti->hwnd;
+    hwndPendingDelete = pti->hwndPendingDelete;
     dwFlags = pti->dwFlags;
     ptsh = NULL;
     dwTimeLastClicked = pti->dwTimeLastClicked;
@@ -5584,6 +5594,77 @@ void CTaskBand::_OnWindowActivated(HWND hwnd, BOOL fSuspectFullscreen)
     _ptray->HandleFullScreenApp(hwndRude);
 }
 
+// A ghost handoff need not activate either window. Keep a represented task
+// throughout the transition, including when a destroy animation started first.
+// Issue #65: inactive windows cannot rely on activation to repair a lost button.
+void CTaskBand::_ReplaceTaskWindow(HWND outgoing, HWND incoming)
+{
+    if (!incoming || incoming == outgoing || !_IsWindowNormal(incoming))
+        return;
+
+    _CancelTaskReorder();
+    const auto findReplacementItem = [this](HWND window) -> int
+    {
+        int index = _FindIndexByHwnd(window);
+        if (index >= 0 || !window)
+            return index;
+        for (int i = 0; i < _tb.GetButtonCount(); ++i)
+        {
+            PTASKITEM item = _GetItem(i);
+            if (item && item->hwnd == HWND_TOPMOST && item->hwndPendingDelete == window)
+                return i;
+        }
+        return -1;
+    };
+
+    int oldIndex = findReplacementItem(outgoing);
+    int newIndex = findReplacementItem(incoming);
+    PTASKITEM item = oldIndex >= 0 ? _GetItem(oldIndex) :
+        (newIndex >= 0 ? _GetItem(newIndex) : NULL);
+    if (item)
+    {
+        _RemoveItemFromAnimationList(item);
+        item->hwnd = incoming;
+        item->hwndPendingDelete = NULL;
+        item->dwFlags &= ~TIF_TRANSPARENT;
+        item->iIconPref = 0;
+
+        // Bind the surviving item first. Never delete the incoming task before
+        // we know that an outgoing item exists to take over its identity.
+        if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
+            _DeleteItem(NULL, newIndex);
+    }
+    else
+    {
+        // The incoming ghost can be invisible until after the pair is posted.
+        // An eligible outgoing application's identity authorizes that handoff.
+        // Do not broadly admit tool windows or unrelated shell-managed windows.
+        BOOL outgoingTask = _IsWindowNormal(outgoing) &&
+            IsValidDesktopZOrderBand(outgoing, TRUE) && ShouldAddWindowToTrayHelper(outgoing);
+        if (!ShouldAddWindowToTray(incoming) && !outgoingTask)
+            return;
+        int index = _InsertItem(incoming);
+        item = index >= 0 ? _GetItem(index) : NULL;
+        if (!item)
+            return;
+    }
+
+    int index = _FindItem(item);
+    if (index < 0)
+        return;
+    int groupIndex = _GetGroupIndex(index);
+    PTASKITEM group = _GetItem(groupIndex);
+    WCHAR executable[MAX_PATH] = {};
+    SHExeNameFromHWND(incoming, executable, ARRAYSIZE(executable));
+    item->fHungApp = group && group->pszExeName &&
+        lstrcmpi(group->pszExeName, executable) != 0;
+
+    _CheckSize();
+    index = _FindItem(item); // Layout/group notifications can reenter the band.
+    if (index >= 0)
+        _RedrawItem(incoming, HSHELL_REDRAW, index);
+}
+
 // We get notification about activation etc here. This saves having
 // a fine-grained timer.
 LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
@@ -5609,27 +5690,10 @@ LRESULT CTaskBand::_HandleShellHook(int iCode, LPARAM lParam)
         break;
 
     case HSHELL_WINDOWREPLACED:
-        if (_hwndReplacing)
         {
-            // If we already created a button for this dude, remove it now.
-            // We might have one if user sent an HSHELL_WINDOWACTIVATED before
-            // the HSHELL_WINDOWREPLACING/HSHELL_WINDOWREPLACED pair.
-            _DeleteItem(_hwndReplacing, -1);
-
-            // Swap in _hwndReplacing for hwnd in hwnd's button
-            int iItem = _FindIndexByHwnd(hwnd);
-            if (iItem != -1)
-            {
-                PTASKITEM pti = _GetItem(iItem);
-                pti->hwnd = _hwndReplacing;
-
-                WCHAR szExeName[MAX_PATH];
-                SHExeNameFromHWND(_hwndReplacing, szExeName, ARRAYSIZE(szExeName));
-                int iIndexGroup = _GetGroupIndex(iItem);
-                PTASKITEM ptiGroup = _GetItem(iIndexGroup);
-                pti->fHungApp = (lstrcmpi(ptiGroup->pszExeName, szExeName) != 0);
-            }
-            _hwndReplacing = NULL;
+            HWND incoming = _hwndReplacing;
+            _hwndReplacing = NULL; // Clear before layout/icon callbacks can reenter.
+            _ReplaceTaskWindow(hwnd, incoming);
         }
         break;
 

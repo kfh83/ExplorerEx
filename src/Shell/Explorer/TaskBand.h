@@ -22,6 +22,7 @@ public:
     TASKITEM(TASKITEM* pti);
     ~TASKITEM();
     HWND hwnd;  // NULL if this item is a group of application entries
+    HWND hwndPendingDelete; // original identity while hwnd is HWND_TOPMOST for animation
     DWORD dwFlags;
     class TaskShortcut *ptsh;
     DWORD dwTimeLastClicked;
@@ -137,6 +138,7 @@ protected:
 
     void _RealityCheck();
     int  _FindIndexByHwnd(HWND hwnd);
+    void _ReplaceTaskWindow(HWND outgoing, HWND incoming);
     void _CheckNeedScrollbars(int cyRow, int cItems, int iCols, int iRows,
                                      int iItemWidth, LPRECT lprcView);
     void _NukeScrollbar(int fnBar);
