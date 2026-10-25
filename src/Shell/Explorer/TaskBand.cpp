@@ -156,10 +156,15 @@ private:
 STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     ASSERT(_ptb);
+    if (uMsg == SMC_MOUSEFILTER)
+        return _ptb->_FilterPopupTaskReorder((MSG*)lParam, (BOOL)wParam);
+    if (uMsg == SMC_EXEC && _ptb->_fReorderMoved)
+        return S_OK;
+    const int iTask = _ptb->_tb.CommandToIndex(psmd->uId);
 
     HRESULT hres = S_FALSE;
 
-    if (!_ptb->_IsButtonChecked(_ptb->_iIndexPopup) && (SMC_EXITMENU != uMsg))
+    if (_ptb->_iIndexPopup >= 0 && !_ptb->_IsButtonChecked(_ptb->_iIndexPopup) && (SMC_EXITMENU != uMsg))
     {
         _ptb->_SetCurSel(_ptb->_iIndexPopup, TRUE);
     }
@@ -168,11 +173,11 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
     {
     case SMC_EXEC:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            PTASKITEM pti = _ptb->_GetItem(iTask);
             if (pti)
             {
-                _ptb->_SetCurSel(psmd->uId, FALSE);
-                _ptb->_OnButtonPressed(psmd->uId, pti, lParam);
+                _ptb->_SetCurSel(iTask, FALSE);
+                _ptb->_OnButtonPressed(iTask, pti, lParam);
                 hres = S_OK;
             }
         }
@@ -197,11 +202,11 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
             {
                 TBBUTTONINFO tbbi;
                 tbbi.iImage = I_IMAGENONE;
-                PTASKITEM pti = _ptb->_GetItem(psmd->uId, &tbbi);
+                PTASKITEM pti = _ptb->_GetItem(iTask, &tbbi);
                 if (pti && tbbi.iImage == I_IMAGECALLBACK)
                 {
-                    _ptb->_UpdateItemIcon(psmd->uId);
-                    _ptb->_GetItem(psmd->uId, &tbbi);
+                    _ptb->_UpdateItemIcon(iTask);
+                    _ptb->_GetItem(iTask, &tbbi);
                 }
                 psminfo->iIcon = tbbi.iImage;
             }
@@ -210,7 +215,7 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
 
     case SMC_CUSTOMDRAW:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            PTASKITEM pti = _ptb->_GetItem(iTask);
             if (pti)
             {
                 *(LRESULT*)wParam = _ptb->_HandleCustomDraw((NMTBCUSTOMDRAW*)lParam, pti);
@@ -221,7 +226,7 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
 
     case SMC_SELECTITEM:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            PTASKITEM pti = _ptb->_GetItem(iTask);
             _hwndSelected = pti ? pti->hwnd : NULL;
         }
         break;
@@ -242,10 +247,10 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
 
     case SMC_GETINFOTIP:
         {
-            PTASKITEM pti = _ptb->_GetItem(psmd->uId);
+            PTASKITEM pti = _ptb->_GetItem(iTask);
             if (pti)
             {
-                _ptb->_GetItemTitle(psmd->uId, (TCHAR*)wParam, (int)lParam, TRUE);
+                _ptb->_GetItemTitle(iTask, (TCHAR*)wParam, (int)lParam, TRUE);
                 hres = S_OK;
             }
         }
@@ -264,6 +269,10 @@ STDMETHODIMP CTaskBandSMC::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wParam, L
 
     case SMC_EXITMENU:
         {
+            _ptb->_CancelTaskReorder();
+            if (_ptb->_hwndPopupReorderToolbar)
+                RemoveWindowSubclass(_ptb->_hwndPopupReorderToolbar, CTaskBand::s_TaskReorderSubclass, 1);
+            _ptb->_hwndPopupReorderToolbar = NULL;
             _hwndSelected = NULL;
             CToolTipCtrl ttc = _ptb->_tb.GetToolTips();
             ttc.Activate(TRUE);
@@ -2940,6 +2949,7 @@ void CTaskBand::_SetWindowIcon(HWND hwnd, HICON hicon, int iPref)
 
 void CTaskBand::_Glom(int iIndexGroup, BOOL fGlom)
 {
+    _CancelTaskReorder();
     BOOL fRedraw = (BOOL)_tb.SendMessage(WM_SETREDRAW, FALSE, 0);
 
     if ((!fGlom) && (iIndexGroup == _iIndexPopup))
@@ -3108,6 +3118,7 @@ void CTaskBand::_GetItemTitle(int iIndex, WCHAR* pszTitle, int cchTitle, BOOL fC
 int CTaskBand::_AddToTaskbar(PTASKITEM pti, int iIndexTaskbar, BOOL fVisible, BOOL fForceGetIcon)
 {
     ASSERT(IS_VALID_WRITE_PTR(pti, TASKITEM));
+    _CancelTaskReorder();
 
     int iIndex = -1;
     TBBUTTON tbb = {0};
@@ -3152,6 +3163,7 @@ int CTaskBand::_AddToTaskbar(PTASKITEM pti, int iIndexTaskbar, BOOL fVisible, BO
 
 void CTaskBand::_DeleteTaskItem(int iIndex, BOOL fDeletePTI)
 {
+    _CancelTaskReorder();
     if (iIndex >= 0 && iIndex < _tb.GetButtonCount())
     {
         TBBUTTONINFO tbbi;
@@ -4278,6 +4290,8 @@ LRESULT CTaskBand::_HandleNotify(LPNMHDR lpnm)
     {
     case NM_LDOWN:
         {
+            if (_fReorderReplay)
+                break; // Keep the active task recorded at the original mouse-down.
             int iIndex = _tb.CommandToIndex(((LPNMTOOLBAR)lpnm)->iItem);
             PTASKITEM pti = _GetItem(iIndex);
             if (pti && pti->hwnd)
@@ -4339,7 +4353,8 @@ LRESULT CTaskBand::_HandleNotify(LPNMHDR lpnm)
         {
             int iIndex = _tb.CommandToIndex(((LPNMTOOLBAR)lpnm)->iItem);
             int iCurIndex = _GetCurSel();
-            _iIndexActiveAtLDown = iCurIndex;
+            if (!_fReorderReplay)
+                _iIndexActiveAtLDown = iCurIndex;
 
             if ((iCurIndex == -1) || (_GetGroupIndex(iCurIndex) != iIndex) || (GetKeyState(VK_CONTROL) < 0))
             {
@@ -4448,47 +4463,6 @@ BOOL WINAPI CTaskBand::BuildEnumProc(HWND hwnd, LPARAM lParam)
     return TRUE;
 }
 
-//---------------------------------------------------------------------------
-// Work around a toolbar bug where it goes wacko if you press both mouse
-// buttons.   The reason is that the second mouse button doing down tries
-// to reassert capture.  This causes the toolbar to receive WM_CAPTURECHANGED
-// with its own hwnd as lParam.  Toolbar doesn't realize that it's being told
-// that it is stealing capture from itself and thinks somebody else is
-// trying to steal capture, so it posts a message to itself to clean up.
-// The posted message arrives, and toolbar cleans up the capture, thinking
-// it's cleaning up the old capture that it lost, but in fact it's cleaning
-// up the NEW capture it just finished setting!
-//
-// So filter out WM_CAPTURECHANGED messages that are effectively NOPs.
-//
-
-LRESULT CALLBACK s_FilterCaptureSubclassProc(
-    HWND hwnd,
-    UINT uMsg,
-    WPARAM wParam,
-    LPARAM lParam,
-    UINT_PTR uIdSubclass,
-    DWORD_PTR dwRefData)
-{
-    switch (uMsg)
-    {
-
-    case WM_CAPTURECHANGED:
-        if (hwnd == (HWND)lParam)
-        {
-            // Don't let toolbar be fooled into cleaning up capture
-            // when it shouldn't.
-            return 0;
-        }
-        break;
-
-    case WM_NCDESTROY:
-        RemoveWindowSubclass(hwnd, s_FilterCaptureSubclassProc, uIdSubclass);
-        break;
-    }
-
-    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-}
 
 
 //---------------------------------------------------------------------------
@@ -4509,7 +4483,7 @@ LRESULT CTaskBand::_HandleCreate()
         _OpenTheme();
         SendMessage(_tb, TB_SETWINDOWTHEME, 0, (LPARAM)(_IsHorizontal() ? c_wzTaskBandTheme : c_wzTaskBandThemeVert));
         
-        SetWindowSubclass(_tb, s_FilterCaptureSubclassProc, 0, 0);
+        SetWindowSubclass(_tb, s_TaskReorderSubclass, 0, (DWORD_PTR)this);
 
         _tb.SetButtonStructSize();
 
@@ -4569,6 +4543,10 @@ LRESULT CTaskBand::_HandleCreate()
 
 void CTaskBand::_FreePopupMenu()
 {
+    _CancelTaskReorder();
+    if (_hwndPopupReorderToolbar)
+        RemoveWindowSubclass(_hwndPopupReorderToolbar, s_TaskReorderSubclass, 1);
+    _hwndPopupReorderToolbar = NULL;
     _iIndexPopup = -1;
 
     ATOMICRELEASE(_psmPopup);
@@ -4648,14 +4626,17 @@ HRESULT CTaskBand::_CreatePopupMenu(POINTL* ppt, RECTL* prcl)
 
 void CTaskBand::_AddItemToDropDown(int iIndex)
 {
-    PTASKITEM pti = _GetItem(iIndex);
+    TBBUTTONINFO button = {};
+    PTASKITEM pti = _GetItem(iIndex, &button);
+    if (!pti)
+        return;
 
     WCHAR szWndText[MAX_WNDTEXT];
     _GetItemTitle(iIndex, szWndText, ARRAYSIZE(szWndText), TRUE);
 
     if ((HMENU)_menuPopup)
     {
-        _menuPopup.InsertMenu(0, MF_BYCOMMAND, iIndex, szWndText);
+        _menuPopup.InsertMenu(0, MF_BYPOSITION | MF_STRING, button.idCommand, szWndText);
     }
 
     if (_psmPopup)
@@ -4666,13 +4647,10 @@ void CTaskBand::_AddItemToDropDown(int iIndex)
 
 void CTaskBand::_RemoveItemFromDropDown(int iIndex)
 {
-    _menuPopup.DeleteMenu(iIndex, MF_BYCOMMAND);
-    int iGroupSize = _GetGroupSize(_iIndexPopup);
-
-    for (int i = iIndex + 1; i <= _iIndexPopup + iGroupSize + 1; i++)
-    {
-        _RefreshItemFromDropDown(i, i - 1, FALSE);
-    }
+    TBBUTTONINFO button = {};
+    if (!_GetItem(iIndex, &button))
+        return;
+    _menuPopup.DeleteMenu(button.idCommand, MF_BYCOMMAND);
 
     if (_psmPopup)
     {
@@ -4682,22 +4660,63 @@ void CTaskBand::_RemoveItemFromDropDown(int iIndex)
 
 void CTaskBand::_RefreshItemFromDropDown(int iIndex, int iNewIndex, BOOL fRefresh)
 {
-    PTASKITEM pti = _GetItem(iNewIndex);
+    TBBUTTONINFO oldButton = {}, newButton = {};
+    if (!_GetItem(iIndex, &oldButton) || !_GetItem(iNewIndex, &newButton))
+        return;
     WCHAR szWndText[MAX_WNDTEXT];
     _GetItemTitle(iNewIndex, szWndText, ARRAYSIZE(szWndText), TRUE);
-    _menuPopup.ModifyMenu(iIndex, MF_BYCOMMAND, iNewIndex, szWndText);
+    _menuPopup.ModifyMenu(oldButton.idCommand, MF_BYCOMMAND, newButton.idCommand, szWndText);
 
     if (fRefresh && _psmPopup)
     {
         if (iIndex == iNewIndex)
         {
-            SMDATA smd;
-            smd.uId = iIndex;
+            SMDATA smd = {};
+            smd.uId = newButton.idCommand;
             _psmPopup->InvalidateItem(&smd, SMINV_REFRESH | SMINV_POSITION);
         }
         else
             _psmPopup->InvalidateItem(NULL, SMINV_REFRESH);
     }
+}
+
+// Menu commands are stable toolbar IDs, not array positions. Rebuild only the
+// visible order after a popup-member move, keeping callbacks bound to each task.
+void CTaskBand::_RefreshReorderPopup()
+{
+    if (_iIndexPopup < 0 || !_psmPopup || !(HMENU)_menuPopup)
+        return;
+    while (_menuPopup.GetMenuItemCount() > 0)
+        _menuPopup.DeleteMenu(0, MF_BYPOSITION);
+    for (int i = _iIndexPopup + _GetGroupSize(_iIndexPopup); i > _iIndexPopup; --i)
+    {
+        TBBUTTONINFO button = {};
+        if (!_GetItem(i, &button))
+            continue;
+        WCHAR title[MAX_WNDTEXT];
+        _GetItemTitle(i, title, ARRAYSIZE(title), TRUE);
+        _menuPopup.InsertMenu(0, MF_BYPOSITION | MF_STRING, button.idCommand, title);
+    }
+    // Refreshing the menuband wholesale releases its captured press. Taskix
+    // instead moves the live popup buttons, retaining the active drag.
+    HWND popupToolbar = _hwndPopupReorderToolbar;
+    if (IsWindow(popupToolbar))
+    {
+        int position = 0;
+        const int end = _iIndexPopup + _GetGroupSize(_iIndexPopup);
+        for (int i = _iIndexPopup + 1; i <= end; ++i, ++position)
+        {
+            TBBUTTONINFO button = {};
+            if (!_GetItem(i, &button))
+                break;
+            int oldPosition = (int)SendMessage(popupToolbar, TB_COMMANDTOINDEX, button.idCommand, 0);
+            if (oldPosition >= 0 && oldPosition != position)
+                SendMessage(popupToolbar, TB_MOVEBUTTON, oldPosition, position);
+        }
+        InvalidateRect(popupToolbar, NULL, TRUE);
+    }
+    else
+        _psmPopup->InvalidateItem(NULL, SMINV_REFRESH);
 }
 
 void CTaskBand::_ClosePopupMenus()
@@ -4738,6 +4757,10 @@ void CTaskBand::_HandleDropDown(int iIndex)
 
 LRESULT CTaskBand::_HandleDestroy()
 {
+    _CancelTaskReorder();
+    if (_hwndPopupReorderToolbar)
+        RemoveWindowSubclass(_hwndPopupReorderToolbar, s_TaskReorderSubclass, 1);
+    _hwndPopupReorderToolbar = NULL;
     _UnregisterNotify(_uShortcutInvokeNotify);
 
     RevokeDragDrop(_hwnd);
@@ -6344,13 +6367,6 @@ BOOL CTaskBand::_RegisterWindowClass()
     return RegisterClassEx(&wc);
 }
 
-int TimeSortCB(PTASKITEM p1, PTASKITEM p2, LPARAM lParam)
-{
-    if (p1->dwTimeFirstOpened > p2->dwTimeFirstOpened)
-        return -1;
-    else
-        return 1;
-}
 
 int DestroyCB(PTASKITEM pti, LPVOID pData)
 {
@@ -6362,6 +6378,7 @@ int DestroyCB(PTASKITEM pti, LPVOID pData)
 
 void CTaskBand::_RefreshSettings()
 {
+    _CancelTaskReorder();
     BOOL fOldGlom = _fGlom;
     int iOldGroupSize = _iGroupSize;
     _LoadSettings();
@@ -6375,7 +6392,8 @@ void CTaskBand::_RefreshSettings()
         {
             int i;
 
-            dpa.Sort(TimeSortCB, 0);
+            // _BuildTaskList collects in reverse toolbar order; the reverse
+            // insertion below preserves manual ordering across grouping changes.
             
             BOOL fRedraw = (BOOL)_tb.SendMessage(WM_SETREDRAW, FALSE, 0);
             BOOL fAnimate = _fAnimate;

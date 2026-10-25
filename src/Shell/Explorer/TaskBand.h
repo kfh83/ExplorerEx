@@ -125,6 +125,14 @@ protected:
     BOOL _CanMinimizeAll();
     BOOL _MinimizeAll(HWND hwndTray, BOOL fPostRaiseDesktop);
     int _HitTest(POINTL ptl);
+    // Taskix-style toolbar reordering; command IDs plus live item identity,
+    // never cached indices, identify the dragged task across moves.
+    static LRESULT CALLBACK s_TaskReorderSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+    LRESULT _TaskReorderMessage(HWND, UINT, WPARAM, LPARAM);
+    HRESULT _FilterPopupTaskReorder(MSG* message, BOOL remove);
+    void _CancelTaskReorder();
+    BOOL _MoveTaskButton(UINT sourceCommand, UINT targetCommand, BOOL fromPopup);
+    void _RefreshReorderPopup();
     void _FreePopupMenu();
 
     void _RealityCheck();
@@ -277,6 +285,18 @@ protected:
     BOOL _fGlom;
     int _iGroupSize;
     CToolBarCtrl _tb;
+    HWND _hwndReorderToolbar = NULL;
+    HWND _hwndPopupReorderToolbar = NULL;
+    UINT _idReorderSource = 0;
+    PTASKITEM _ptiReorderSource = NULL;
+    POINT _ptReorderDown = {};
+    WPARAM _wParamReorderDown = 0;
+    UINT _uReorderDownMessage = WM_LBUTTONDOWN;
+    BOOL _fReorderStarted = FALSE;
+    BOOL _fReorderMoved = FALSE;
+    BOOL _fReorderSuppressUp = FALSE;
+    BOOL _fReorderReplay = FALSE;
+    HCURSOR _hcurBeforeReorder = NULL;
     UINT WM_ShellHook;
     int _iSysMenuCount;
     int _iIndexActiveAtLDown;

@@ -449,6 +449,12 @@
     <ClCompile Include="TaskBand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TaskBandOrder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskBandDrag.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="TaskBar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
