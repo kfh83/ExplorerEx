@@ -311,12 +311,7 @@ BEGIN
     IDS_STARTMENUPROP   "P&roperties"
 
 #ifdef WINNT
-    //IDS_HELP_CMD            "hh.exe>%systemroot%\\help\\windows.chm"
-	// on Whistler, we use Help and Support
-    IDS_HELP_CMD            "helpctr.exe>-FromStartHelp"
-#else
-    //  on millennium, we use the Help AC
-    IDS_HELP_CMD            "helpctr.exe"
+    IDS_HELP_CMD            "hh.exe>%systemroot%\\help\\windows.chm"
 #endif
     IDS_FIXSCREENRES_TITLE  "Display Settings"
     IDS_FIXSCREENRES_TEXT   "Your computer's screen resolution and color depth are currently set to a very low level. You can get a better picture by increasing these settings. To do this, click this balloon."
