@@ -286,6 +286,7 @@ public:
     BOOL _fWin98;
     BOOL _fTray16Color;
     BOOL _bMainMenuInit;
+    BOOL _fStartMenuRebuildPending = FALSE;
     BOOL _fFlashing;    // currently flashing (HSHELL_FLASH)
     BOOL _fStuckRudeApp;
     BOOL _fDeferedPosRectChange;
