@@ -4577,6 +4577,30 @@ LRESULT CTaskBand::_HandleCreate()
                     TBC_CHANGENOTIFY,
                     1, &fsne);
 
+        // Native merged-folder updates can leave cached hover submenus unusable.
+        // Watch both physical trees so the tray can discard that cache.
+        const int startMenuFolders[] = { CSIDL_STARTMENU | CSIDL_FLAG_CREATE, CSIDL_COMMON_STARTMENU };
+        SHChangeNotifyEntry startMenuEntries[ARRAYSIZE(startMenuFolders)] = {};
+        UINT startMenuEntryCount = 0;
+        for (int csidl : startMenuFolders)
+        {
+            PIDLIST_ABSOLUTE pidl;
+            if (SUCCEEDED(SHGetFolderLocation(NULL, csidl, NULL, 0, &pidl)))
+            {
+                startMenuEntries[startMenuEntryCount].pidl = pidl;
+                startMenuEntries[startMenuEntryCount++].fRecursive = TRUE;
+            }
+        }
+        if (startMenuEntryCount)
+        {
+            _uStartMenuNotify = SHChangeNotifyRegister(_hwnd,
+                SHCNRF_NewDelivery | SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_RecursiveInterrupt,
+                SHCNE_MKDIR | SHCNE_RMDIR | SHCNE_RENAMEFOLDER | SHCNE_UPDATEDIR,
+                TBC_CHANGENOTIFY, startMenuEntryCount, startMenuEntries);
+        }
+        for (UINT i = 0; i < startMenuEntryCount; ++i)
+            ILFree(const_cast<PIDLIST_ABSOLUTE>(startMenuEntries[i].pidl));
+
         // set window text to give accessibility apps something to read
         TCHAR szTitle[80];
         LoadString(hinstCabinet, IDS_TASKBANDTITLE, szTitle, ARRAYSIZE(szTitle));
@@ -4811,6 +4835,8 @@ LRESULT CTaskBand::_HandleDestroy()
         RemoveWindowSubclass(_hwndPopupReorderToolbar, s_TaskReorderSubclass, 1);
     _hwndPopupReorderToolbar = NULL;
     _UnregisterNotify(_uShortcutInvokeNotify);
+    _UnregisterNotify(_uStartMenuNotify);
+    _uStartMenuNotify = 0;
 
     RevokeDragDrop(_hwnd);
 
@@ -5912,6 +5938,9 @@ void CTaskBand::_HandleChangeNotify(WPARAM wParam, LPARAM lParam)
 
     if (pshcnl)
     {
+        if (lEvent & (SHCNE_MKDIR | SHCNE_RMDIR | SHCNE_RENAMEFOLDER | SHCNE_UPDATEDIR))
+            PostMessage(v_hwndTray, SBM_REBUILDMENU, TRUE, 0);
+
         switch (lEvent)
         {
         case SHCNE_EXTENDED_EVENT:

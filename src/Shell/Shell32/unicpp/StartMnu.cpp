@@ -1322,9 +1322,10 @@ STDMETHODIMP CStartMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg, WPARAM wPa
         break;
 
     case SMC_DUMPONUPDATE:
-        // Re-enumerate after shell changes so merged-folder items do not keep
-        // stale submenu state from the incremental update path.
-        hr = S_OK;
+        if (psmd->uIdParent == IDM_RECENT)
+        {
+            hr = S_OK;
+        }
         break;
 
     case SMC_FILTERPIDL:
@@ -3462,10 +3463,6 @@ STDMETHODIMP CPersonalProgramsMenuCallback::CallbackSM(LPSMDATA psmd, UINT uMsg,
 
     case SMC_INITMENU:
         _UpdateTrayPriv();
-        break;
-
-    case SMC_DUMPONUPDATE:
-        hr = S_OK;
         break;
 
     case SMC_GETSFINFO:

@@ -2191,6 +2191,7 @@ BOOL CTray::_HotkeyCreate(void)
 void CTray::_BuildStartMenu()
 {
     HRESULT hr;
+    _fStartMenuRebuildPending = FALSE;
 
     ClosePopupMenus();
 
@@ -2282,6 +2283,8 @@ void Tray_OnStartMenuDismissed()
 
     // Now tell it to be in the up position
     c_tray.ForceStartButtonUp();
+    if (c_tray._fStartMenuRebuildPending)
+        PostMessage(v_hwndTray, SBM_REBUILDMENU, TRUE, 0);
 
     PostMessage(v_hwndTray, TM_SHOWTRAYBALLOON, TRUE, 0);
 }
@@ -2314,6 +2317,9 @@ int CTray::_TrackMenu(HMENU hmenu)
 **------------------------------------------------------------------*/
 void CTray::_ToolbarMenu()
 {
+    if (_fStartMenuRebuildPending)
+        _BuildStartMenu();
+
     RECTL    rcExclude;
     POINTL   ptPop;
     DWORD dwFlags = MPPF_KEYBOARD;      // Assume that we're popuping
@@ -6762,7 +6768,11 @@ LRESULT CTray::v_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     case SBM_REBUILDMENU:
-        _BuildStartMenu();
+        // Folder changes must not destroy a popup inside its active menu loop.
+        if (wParam && _bMainMenuInit)
+            _fStartMenuRebuildPending = TRUE;
+        else
+            _BuildStartMenu();
         break;
 
     case WM_WINDOWPOSCHANGED:

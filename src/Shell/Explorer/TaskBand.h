@@ -337,6 +337,7 @@ protected:
 
     // Rarely-used stuff
     ULONG       _uShortcutInvokeNotify;
+    ULONG       _uStartMenuNotify = 0;
     UINT        _uCDHardError;
 
 #ifdef EXEX_DLL
