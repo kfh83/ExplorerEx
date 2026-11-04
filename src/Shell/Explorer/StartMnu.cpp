@@ -58,17 +58,102 @@ STDMETHODIMP CStartMenuHost::ExecItem (IShellFolder* psf, LPCITEMIDLIST pidl)
 }
 
 
+static void RemoveSearchSeparators(HMENU menu)
+{
+    for (int i = GetMenuItemCount(menu) - 1; i >= 0; --i)
+    {
+        MENUITEMINFO mii = { sizeof(mii) };
+        mii.fMask = MIIM_FTYPE;
+        if (GetMenuItemInfo(menu, i, TRUE, &mii) && (mii.fType & MFT_SEPARATOR))
+            DeleteMenu(menu, i, MF_BYPOSITION);
+    }
+}
+
+// The system Start menu populates Search lazily through IContextMenu2.
+class CSearchContextMenu : public IContextMenu3
+{
+public:
+    CSearchContextMenu(IContextMenu* menu) : _refs(1), _menu(menu), _menu2(NULL), _menu3(NULL)
+    {
+        _menu->QueryInterface(IID_PPV_ARGS(&_menu2));
+        _menu->QueryInterface(IID_PPV_ARGS(&_menu3));
+    }
+    STDMETHODIMP QueryInterface(REFIID iid, void** result)
+    {
+        if (!result) return E_POINTER;
+        *result = NULL;
+        if (iid != IID_IUnknown && iid != IID_IContextMenu &&
+            !(iid == IID_IContextMenu2 && _menu2) &&
+            !(iid == IID_IContextMenu3 && _menu3))
+            return E_NOINTERFACE;
+        *result = static_cast<IContextMenu3*>(this);
+        AddRef();
+        return S_OK;
+    }
+    STDMETHODIMP_(ULONG) AddRef() { return InterlockedIncrement(&_refs); }
+    STDMETHODIMP_(ULONG) Release()
+    {
+        ULONG refs = InterlockedDecrement(&_refs);
+        if (!refs) delete this;
+        return refs;
+    }
+    STDMETHODIMP QueryContextMenu(HMENU menu, UINT index, UINT first, UINT last, UINT flags)
+    {
+        HRESULT hr = _menu->QueryContextMenu(menu, index, first, last, flags);
+        RemoveSearchSeparators(menu);
+        return hr;
+    }
+    STDMETHODIMP InvokeCommand(LPCMINVOKECOMMANDINFO info) { return _menu->InvokeCommand(info); }
+    STDMETHODIMP GetCommandString(UINT_PTR id, UINT flags, UINT* reserved, LPSTR text, UINT count)
+    {
+        return _menu->GetCommandString(id, flags, reserved, text, count);
+    }
+    STDMETHODIMP HandleMenuMsg(UINT msg, WPARAM wp, LPARAM lp)
+    {
+        HRESULT hr = _menu2 ? _menu2->HandleMenuMsg(msg, wp, lp) : E_NOTIMPL;
+        if (msg == WM_INITMENUPOPUP)
+            RemoveSearchSeparators(reinterpret_cast<HMENU>(wp));
+        return hr;
+    }
+    STDMETHODIMP HandleMenuMsg2(UINT msg, WPARAM wp, LPARAM lp, LRESULT* result)
+    {
+        HRESULT hr = _menu3 ? _menu3->HandleMenuMsg2(msg, wp, lp, result) : E_NOTIMPL;
+        if (msg == WM_INITMENUPOPUP)
+            RemoveSearchSeparators(reinterpret_cast<HMENU>(wp));
+        return hr;
+    }
+private:
+    ~CSearchContextMenu()
+    {
+        if (_menu3) _menu3->Release();
+        if (_menu2) _menu2->Release();
+        _menu->Release();
+    }
+    LONG _refs;
+    IContextMenu* _menu;
+    IContextMenu2* _menu2;
+    IContextMenu3* _menu3;
+};
+
 /*----------------------------------------------------------
 Purpose: ITrayPriv::GetFindCM method
 
 */
 STDMETHODIMP CStartMenuHost::GetFindCM(HMENU hmenu, UINT idFirst, UINT idLast, IContextMenu** ppcmFind)
 {
-    *ppcmFind = SHFind_InitMenuPopup(hmenu, v_hwndTray, TRAY_IDM_FINDFIRST, TRAY_IDM_FINDLAST);
-    if(*ppcmFind)
-        return NOERROR;
-    else
+    *ppcmFind = NULL;
+    IContextMenu* menu = SHFind_InitMenuPopup(hmenu, v_hwndTray, TRAY_IDM_FINDFIRST, TRAY_IDM_FINDLAST);
+    if (!menu)
         return E_FAIL;
+    CSearchContextMenu* wrapper = new CSearchContextMenu(menu);
+    if (!wrapper)
+    {
+        menu->Release();
+        return E_OUTOFMEMORY;
+    }
+    RemoveSearchSeparators(hmenu);
+    *ppcmFind = wrapper;
+    return S_OK;
 }
 
 
