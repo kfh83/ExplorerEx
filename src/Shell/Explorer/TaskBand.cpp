@@ -5675,7 +5675,7 @@ LRESULT CTaskBand::_HandleActivate(HWND hwndActive)
     //
     _RealityCheck();
 
-    if (hwndActive && _IsWindowNormal(hwndActive))
+    if (hwndActive && _IsWindowNormal(hwndActive) && IsValidDesktopZOrderBand(hwndActive, FALSE))
     {
         _RaiseDesktop(FALSE);
 
