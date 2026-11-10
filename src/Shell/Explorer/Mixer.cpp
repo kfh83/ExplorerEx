@@ -134,9 +134,9 @@ MMRESULT CSystemMixer::ToggleBassBoost()
     mxcd.cMultipleItems = 0;
     mxcd.dwControlID = _rgControl[6].dwControlID;
     mxcd.paDetails = &fEnabled;
-    mxcd.cbStruct = 24;
+    mxcd.cbStruct = sizeof(mxcd);
     mxcd.cChannels = 1;
-    mxcd.cbDetails = 4;
+    mxcd.cbDetails = sizeof(fEnabled);
     MMRESULT mmr = mixerGetControlDetailsW((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
     if (mmr == 0)
     {
@@ -183,10 +183,10 @@ MMRESULT CSystemMixer::AdjustBass(BOOL bUp)
         MIXERCONTROLDETAILS mxcd;
         mxcd.cMultipleItems = 0;
         mxcd.paDetails = &lLevel;
-        mxcd.cbStruct = 0x18;
+        mxcd.cbStruct = sizeof(mxcd);
         mxcd.dwControlID = _rgControl[1].dwControlID;
         mxcd.cChannels = 1;
-        mxcd.cbDetails = 4;
+        mxcd.cbDetails = sizeof(lLevel);
         mmr = mixerGetControlDetailsW((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
         if (!mmr)
         {
@@ -198,7 +198,7 @@ MMRESULT CSystemMixer::AdjustBass(BOOL bUp)
             mxcd.paDetails = &lLevel;
             mxcd.cChannels = 1;
             mxcd.cMultipleItems = 0;
-            mxcd.cbDetails = 4;
+            mxcd.cbDetails = sizeof(lLevel);
             mmr = mixerSetControlDetails((HMIXEROBJ)_hMixer, &mxcd, 0x80000000);
         }
     }
@@ -350,7 +350,7 @@ void CSystemMixer::_Close()
 
     if (_hMixer)
     {
-        _ASSERTE(MMSYSERR_NOERROR == mixerClose(_hMixer)); // 552
+        EVAL(MMSYSERR_NOERROR == mixerClose(_hMixer)); // 552
         _hMixer = nullptr;
     }
     if (_hdevnotify)

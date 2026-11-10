@@ -622,7 +622,7 @@ void CTray::_GetWindowSizes(UINT uStuckPlace, const RECT* prcClient, RECT* prcVi
         prcNotify->bottom = prcClient->bottom;
         prcNotify->right = LOWORD(dwNotifySize);
         prcView->left = 0;
-        prcView->top = g_cyTabSpace + this->_stb._sizeStart.cy;
+        prcView->top = g_cyTabSpace + _stb._sizeStart.cy;
         prcView->right = prcClient->right;
         prcView->bottom = prcNotify->top;
     }

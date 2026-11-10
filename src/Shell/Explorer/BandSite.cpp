@@ -341,7 +341,7 @@ HRESULT CTrayBandSite::AddBand(IUnknown* punk)
         hr = IUnknown_GetClassID(punk, &clsid);
         if (SUCCEEDED(hr))
         {
-            IsEqualGUID(clsid, CLSID_TaskBand) ? S_OK : E_FAIL;
+            hr = IsEqualGUID(clsid, CLSID_TaskBand) ? S_OK : E_FAIL;
         }
     }
 

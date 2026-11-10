@@ -134,7 +134,7 @@ public:
 private:
     BOOL OnMouseClick(HWND hwnd, LPARAM lParam);
     void _CalcExcludeRect(LPRECT prcExclude);
-    BOOL _CalcStartButtonPos(POINT* a2, HRGN* a3);
+    BOOL _CalcStartButtonPos(POINT* pPoint, HRGN* a3);
     HFONT _CreateStartFont();
     void _ExploreCommonStartMenu(BOOL bExplore);
 

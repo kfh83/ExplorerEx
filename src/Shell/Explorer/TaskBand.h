@@ -313,7 +313,7 @@ protected:
 
 	// Vista thumbnail related
 #define MAX_THUMBSTACK 4
-    HWND _hwndThumbStack[MAX_THUMBSTACK];
+    HWND _aHwndThumbStack[MAX_THUMBSTACK];
     int  _cThumbnails;
     SIZE _sizeThumbnailImage;
     SIZE _sizeThumbnailMargin;

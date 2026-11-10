@@ -376,7 +376,7 @@ HRESULT CNotificationsDlg::_AddItem(CNotificationItem& ni, int iIndex)
     }
     else
     {
-        ni = _saItems[iIndex];
+        _saItems[iIndex] = ni;
     }
 
     return S_OK;

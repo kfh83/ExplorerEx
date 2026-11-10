@@ -141,13 +141,12 @@ Purpose: IMenuPopup::SetSubMenu method
 STDMETHODIMP CStartMenuHost::SetSubMenu(IMenuPopup* pmp, BOOL fSet)
 {
     IStartButton* pstb;
-    HRESULT hr = IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb));
-    if (!fSet && SUCCEEDED(hr))
+    if (!fSet && SUCCEEDED(IUnknown_QueryService(_punkSite, __uuidof(IStartButton), IID_PPV_ARGS(&pstb))))
     {
         pstb->OnStartMenuDismissed();
         pstb->Release();
     }
-    return NOERROR;
+    return S_OK;
 }
 
 

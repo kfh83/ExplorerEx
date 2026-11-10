@@ -229,7 +229,7 @@ HRESULT COpenBoxHost::InitMenuPopup(HMENU hhenu)
 const struct
 {
     WCHAR ch;
-    const WCHAR* pszEscaped;
+    LPCWSTR pszEscaped;
 } c_rgEscapeCharacters[] =
 {
     { L' ', L"%20" },

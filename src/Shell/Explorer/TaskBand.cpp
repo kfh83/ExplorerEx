@@ -4759,16 +4759,16 @@ void CTaskBand::_CreateThumbnailWindows()
     wc.lpszClassName = L"ThumbnailStackClass";
     RegisterClassW(&wc);
 
-    _hwndThumbStack[0] = SHFusionCreateWindowEx(
+    _aHwndThumbStack[0] = SHFusionCreateWindowEx(
         WS_EX_TOPMOST, L"ThumbnailClass", L"", WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0, _hwnd, nullptr,
         g_hinstCabinet, nullptr);
 
     for (int i = 0; i < _cThumbnails; ++i)
     {
-        _hwndThumbStack[1 + i] = SHFusionCreateWindowEx(
+        _aHwndThumbStack[1 + i] = SHFusionCreateWindowEx(
             WS_EX_TOPMOST, L"ThumbnailStackClass", L"", WS_POPUP | WS_DISABLED | WS_SIZEBOX, 0, 0, 0, 0,
             _hwnd, nullptr, g_hinstCabinet, nullptr);
-        wprintf(L"CTaskBand::_CreateThumbnailWindows: hwndThumbStack[%d] = %p\n", i, _hwndThumbStack[1 + i]);
+        wprintf(L"CTaskBand::_CreateThumbnailWindows: hwndThumbStack[%d] = %p\n", i, _aHwndThumbStack[1 + i]);
     }
 }
 
@@ -4830,12 +4830,12 @@ void CTaskBand::_HideThumbnailWindows()
         for (int i = _cThumbnails - 1; i >= 0; --i)
         {
             DeferWindowPos(
-                hdwp, _hwndThumbStack[i + 1], HWND_TOP, 0, 0, 0, 0,
+                hdwp, _aHwndThumbStack[i + 1], HWND_TOP, 0, 0, 0, 0,
                 SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
         }
 
         DeferWindowPos(
-            hdwp, _hwndThumbStack[0], HWND_TOP, 0, 0, 0, 0,
+            hdwp, _aHwndThumbStack[0], HWND_TOP, 0, 0, 0, 0,
             SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
         EndDeferWindowPos(hdwp);
     }
@@ -4907,7 +4907,7 @@ void CTaskBand::_RegisterThumbnail(HWND hwnd, HTHUMBNAIL* phThumbnail)
     {
         DwmUnregisterThumbnail(*phThumbnail);
     }
-    if (IsWindow(hwnd) && SUCCEEDED(DwmRegisterThumbnail(_hwndThumbStack[0], hwnd, phThumbnail)))
+    if (IsWindow(hwnd) && SUCCEEDED(DwmRegisterThumbnail(_aHwndThumbStack[0], hwnd, phThumbnail)))
     {
         DWM_THUMBNAIL_PROPERTIES tnp;
         tnp.dwFlags = DWM_TNP_OPACITY | DWM_TNP_SOURCECLIENTAREAONLY;
@@ -4930,7 +4930,7 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
 {
     (void)id, (void)fGlom; // Skipped telemetry ShellTraceId_Taskbar_ShowThumbnail_Start
 
-    if (_hwndThumbStack[0] && SendMessageW(hwnd, TB_GETHOTITEM, 0, 0) != -1)
+    if (_aHwndThumbStack[0] && SendMessageW(hwnd, TB_GETHOTITEM, 0, 0) != -1)
     {
         int iButton = id;
         int iIndex = SendMessageW(hwnd, TB_COMMANDTOINDEX, id, 0);
@@ -4983,8 +4983,8 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
 
                     RECT rcMargins;
                     SetRectEmpty(&rcMargins);
-                    DWORD dwExStyle = GetWindowLongPtrW(_hwndThumbStack[0], GWL_EXSTYLE);
-                    DWORD dwStyle = GetWindowLongPtrW(_hwndThumbStack[0], GWL_STYLE);
+                    DWORD dwExStyle = GetWindowLongPtrW(_aHwndThumbStack[0], GWL_EXSTYLE);
+                    DWORD dwStyle = GetWindowLongPtrW(_aHwndThumbStack[0], GWL_STYLE);
                     AdjustWindowRectEx(&rcMargins, dwStyle, 0, dwExStyle);
 
                     double cxScaled;
@@ -5085,7 +5085,7 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
                     yPos = std::max<int>(yPos, cyToolTip + rcMonitor.top + _sizeThumbnailTooltipMargin.cy); // @MOD Don't use macro
 
                     _UpdateThumbnailBackgroundBrush(0, true);
-                    SetWindowPos(_hwndThumbStack[0], nullptr, xPos, yPos, cxWnd, cyWnd, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+                    SetWindowPos(_aHwndThumbStack[0], nullptr, xPos, yPos, cxWnd, cyWnd, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
 
                     rcClient.right = cxThumb;
                     rcClient.left = 0;
@@ -5105,13 +5105,13 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
                             if (hdwp)
                             {
                                 DeferWindowPos(
-                                    hdwp, _hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0,
+                                    hdwp, _aHwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0,
                                     SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
 
                                 for (int iThumbnail = cThumbnails; iThumbnail >= 1; --iThumbnail)
                                 {
                                     DeferWindowPos(
-                                        hdwp, _hwndThumbStack[iThumbnail], _hwndThumbStack[0],
+                                        hdwp, _aHwndThumbStack[iThumbnail], _aHwndThumbStack[0],
                                         xPos - (iThumbnail * _sizeThumbnailGroupOffset.cx),
                                         yPos - (iThumbnail * _sizeThumbnailGroupOffset.cy),
                                         cxWnd, cyWnd, SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
@@ -5122,7 +5122,7 @@ void CTaskBand::_ShowThumbnail(HWND hwnd, int id, bool fGlom)
                         else
                         {
                             SetWindowPos(
-                                _hwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0,
+                                _aHwndThumbStack[0], HWND_TOPMOST, 0, 0, 0, 0,
                                 SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER);
                         }
                     }
@@ -5163,7 +5163,7 @@ void CTaskBand::_UpdateThumbnailBackgroundBrush(COLORREF clrBackground, bool a3)
             if (hbrBackground)
             {
                 HBRUSH hbrOld = (HBRUSH)SetClassLongPtrW(
-                    _hwndThumbStack[0], GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(hbrBackground));
+                    _aHwndThumbStack[0], GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(hbrBackground));
                 if (hbrOld)
                 {
                     DeleteObject(hbrOld);
@@ -5193,13 +5193,13 @@ void CTaskBand::_UpdateThumbnailTitle(const HWND hwnd, WPARAM wParam, int cThumb
     if (SendMessage(hwnd, TB_GETBUTTONINFO, wParam, (LPARAM)&tbbi) != -1)
     {
 		wprintf(L"CTaskBand::_UpdateThumbnailTitle: szTitle = %s\n", szTitle);
-        SetWindowText(_hwndThumbStack[0], szTitle);
+        SetWindowText(_aHwndThumbStack[0], szTitle);
         if (cThumbnails >= 1)
         {
             for (int i = cThumbnails; i; --i)
             {
                 wprintf(L"CTaskBand::_UpdateThumbnailTitle: szTitle = %s\n", szTitle);
-                SetWindowText(_hwndThumbStack[i], szTitle);
+                SetWindowText(_aHwndThumbStack[i], szTitle);
             }
         }
     }
@@ -5259,10 +5259,10 @@ BOOL CTaskBand::_ShowTooltip(const HWND hwnd)
     }
     if (_dwInitialTooltipDelayTime + _dwInitialThumbDelayTime <= GetTickCount() - _dwTick)
     {
-        if (IsWindowVisible(_hwndThumbStack[0]))
+        if (IsWindowVisible(_aHwndThumbStack[0]))
         {
             RECT rcThumbnail;
-            GetWindowRect(_hwndThumbStack[0], &rcThumbnail);
+            GetWindowRect(_aHwndThumbStack[0], &rcThumbnail);
 
             RECT rc;
             GetWindowRect(hwnd, &rc);

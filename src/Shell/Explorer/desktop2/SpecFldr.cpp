@@ -149,7 +149,7 @@ public:
 
     REFKNOWNFOLDERID GetMenuFolderID() const
     {
-        _ASSERTE(HasMenuFolderID); // 179
+        _ASSERTE(HasMenuFolderID()); // 179
         return _kfMenuId;
     }
 
