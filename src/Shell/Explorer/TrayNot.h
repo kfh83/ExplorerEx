@@ -6,7 +6,6 @@
 #include "traycmn.h"
 #include "trayitem.h"
 #include "trayreg.h"
-#include "TrayIcon16.h"
 
 #define TNM_GETCLOCK (WM_USER + 1)
 #define TNM_HIDECLOCK (WM_USER + 2)
@@ -88,7 +87,7 @@ typedef struct _TNPRIVICON
     HICON hIcon;
     HICON hBalloonIcon;
     HICON hIconOriginal; // owned snapshot: app handles may be destroyed or recycled
-    TrayIconResource iconResource;
+    HICON hIconUnscaled; // owned native resource, only for low-color rendering
     GUID guidItem;
 } TNPRIVICON, *PTNPRIVICON;
 
