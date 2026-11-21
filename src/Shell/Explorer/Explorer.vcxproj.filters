@@ -213,6 +213,9 @@
     <ClInclude Include="TrayItem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TrayIconLegacy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TrayNot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -453,6 +456,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TrayItem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayIconLegacy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrayIconResource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TrayNot.cpp">

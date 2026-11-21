@@ -732,6 +732,7 @@ del "$(IntermediateOutputPath)temp.res"
     <ClInclude Include="TrayClok.h" />
     <ClInclude Include="TrayCmn.h" />
     <ClInclude Include="TrayItem.h" />
+    <ClInclude Include="TrayIconLegacy.h" />
     <ClInclude Include="TrayNot.h" />
     <ClInclude Include="TrayReg.h" />
     <ClInclude Include="Util.h" />
@@ -840,6 +841,12 @@ del "$(IntermediateOutputPath)temp.res"
     <ClCompile Include="TrayClok.cpp" />
     <ClCompile Include="TrayCmn.cpp" />
     <ClCompile Include="TrayItem.cpp" />
+    <ClCompile Include="TrayIconLegacy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="TrayIconResource.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="TrayNot.cpp" />
     <ClCompile Include="TrayProp.cpp" />
     <ClCompile Include="TrayReg.cpp" />
