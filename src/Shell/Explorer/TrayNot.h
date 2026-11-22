@@ -87,7 +87,7 @@ typedef struct _TNPRIVICON
     HICON hIcon;
     HICON hBalloonIcon;
     HICON hIconOriginal; // owned snapshot: app handles may be destroyed or recycled
-    HICON hIconUnscaled; // owned native resource, only for low-color rendering
+    HICON hIconLegacy; // owned resource-aware 16x16 snapshot; binary mask, no alpha
     GUID guidItem;
 } TNPRIVICON, *PTNPRIVICON;
 

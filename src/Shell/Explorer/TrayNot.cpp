@@ -7,79 +7,132 @@
 #include "shellapi.h"
 #include "shundoc.h"
 #include "cocreateinstancehook.h"
+#include "TrayIconLegacy.h"
 
 const WCHAR CTrayNotify::c_szTrayNotify[]                   = L"TrayNotifyWnd";
 
-// Modern USER32 can deliver a small icon already resized from a larger resource.
-// Reduce from the native artwork instead: scaling before 4-bit conversion changes
-// the sampled colors. Do not select a low-color resource or alter dynamic icons.
-static HICON CopyUnscaledTrayIcon(HICON source)
+// Keep USER32's Win2k bitmap and resource resize paths local to the tray.
+// Modern CopyImage/LoadImage do not reproduce their captured pixels.
+static HICON CreateLegacyTrayIcon(HICON source)
 {
-    typedef BOOL (WINAPI* GetIconInfoExProc)(HICON, PICONINFOEXW);
-    static GetIconInfoExProc getInfo = reinterpret_cast<GetIconInfoExProc>(
-        GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetIconInfoExW"));
-    ICONINFOEXW info = {};
-    info.cbSize = sizeof(info);
-    if (!getInfo || !getInfo(source, &info))
-        return NULL;
+    HICON resource = TrayIconLegacy::CopyResource(source);
+    return resource ? resource : TrayIconLegacy::ResizeSnapshot(source);
+}
 
-    BITMAP bitmap = {};
-    const bool haveColor = info.fIcon && info.hbmColor &&
-        GetObject(info.hbmColor, sizeof(bitmap), &bitmap) == sizeof(bitmap);
-    if (info.hbmColor)
-        DeleteObject(info.hbmColor);
-    if (info.hbmMask)
-        DeleteObject(info.hbmMask);
-    if (!haveColor || !info.szModName[0] || PathIsRelativeW(info.szModName) ||
-        (!info.wResID && !info.szResName[0]))
-        return NULL;
+// Tray-only adaptation of Win2k comctl32/image.c::ImageList_CreateBitmap and
+// ImageList_ReplaceIconHelper. Keep conversion out of modern ReplaceIcon:
+// explicitly render into the original 4-bit palette and a separate mono mask.
+// All callers run on the tray UI thread; reuse the two conversion surfaces.
+class CTrayLegacyIconSurface
+{
+public:
+    CTrayLegacyIconSurface() : _colorDC(NULL), _maskDC(NULL),
+        _color(NULL), _mask(NULL), _oldColor(NULL), _oldMask(NULL) {}
+    ~CTrayLegacyIconSurface() { _Release(); }
 
-    HMODULE module = LoadLibraryExW(info.szModName, NULL,
-        LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
-    if (!module)
-        return NULL;
-
-    HICON result = NULL;
-    HRSRC groupResource = FindResourceW(module,
-        info.wResID ? MAKEINTRESOURCEW(info.wResID) : info.szResName,
-        MAKEINTRESOURCEW(14));
-    const DWORD groupSize = groupResource ? SizeofResource(module, groupResource) : 0;
-    const BYTE* group = groupResource ?
-        static_cast<const BYTE*>(LockResource(LoadResource(module, groupResource))) : NULL;
-    if (group && groupSize >= 6)
+    int Replace(HIMAGELIST images, int index, HICON icon)
     {
-        WORD header[3];
-        memcpy(header, group, sizeof(header));
-        if (header[0] == 0 && header[1] == 1 && header[2] &&
-            header[2] <= (groupSize - 6) / 14)
-        {
-            const int id = LookupIconIdFromDirectoryEx(const_cast<PBYTE>(group),
-                TRUE, bitmap.bmWidth, bitmap.bmHeight, LR_DEFAULTCOLOR);
-            for (unsigned i = 0; id && i < header[2]; ++i)
-            {
-                const BYTE* entry = group + 6 + i * 14;
-                WORD entryId;
-                memcpy(&entryId, entry + 12, sizeof(entryId));
-                if (entryId != id)
-                    continue;
-                const int width = entry[0] ? entry[0] : 256;
-                const int height = entry[1] ? entry[1] : 256;
-                if (width > bitmap.bmWidth || height > bitmap.bmHeight)
-                {
-                    HRSRC resource = FindResourceW(module, MAKEINTRESOURCEW(id),
-                        MAKEINTRESOURCEW(3));
-                    PBYTE bytes = resource ?
-                        static_cast<PBYTE>(LockResource(LoadResource(module, resource))) : NULL;
-                    if (bytes)
-                        result = CreateIconFromResourceEx(bytes, SizeofResource(module, resource),
-                            TRUE, 0x00030000, 0, 0, LR_DEFAULTCOLOR);
-                }
-                break;
-            }
-        }
+        if (index < -1 || !icon || !_Initialize())
+            return -1;
+        if (index >= ImageList_GetImageCount(images))
+            return -1;
+
+        RECT rect = { 0, 0, 16, 16 };
+        if (!FillRect(_colorDC, &rect, (HBRUSH)GetStockObject(BLACK_BRUSH)) ||
+            !DrawIconEx(_colorDC, 0, 0, icon, 0, 0, 0, NULL, DI_NORMAL) ||
+            !DrawIconEx(_maskDC, 0, 0, icon, 0, 0, 0, NULL, DI_MASK))
+            return -1;
+        // Do not use ImageList_Add/Replace(bitmap, mask): those APIs clear
+        // color bits under the mask, unlike Win2k's ReplaceIconHelper.
+        // This resource-free 16x16 icon is already quantized, so host insertion
+        // cannot choose different artwork or perform another color reduction.
+        ICONINFO info = {};
+        info.fIcon = TRUE;
+        info.hbmColor = _color;
+        info.hbmMask = _mask;
+        // USER32 temporarily selects these bitmaps while copying them.
+        SelectObject(_colorDC, _oldColor);
+        SelectObject(_maskDC, _oldMask);
+        HICON quantized = CreateIconIndirect(&info);
+        SelectObject(_colorDC, _color);
+        SelectObject(_maskDC, _mask);
+        if (!quantized)
+            return -1;
+        const int result = ImageList_ReplaceIcon(images, index, quantized);
+        DestroyIcon(quantized);
+        return result;
     }
-    FreeLibrary(module);
-    return result; // Owned; NULL means use the supplied pixel snapshot.
+
+private:
+    CTrayLegacyIconSurface(const CTrayLegacyIconSurface&) = delete;
+    CTrayLegacyIconSurface& operator=(const CTrayLegacyIconSurface&) = delete;
+
+    bool _Initialize()
+    {
+        if (_colorDC)
+            return true;
+        // DWORDs are RGBQUAD bytes, not COLORREFs. In particular, Win2k's
+        // palette has light gray at index 7 and dark gray at index 8.
+        struct ColorInfo { BITMAPINFOHEADER header; DWORD colors[16]; };
+        ColorInfo info = {};
+        info.header.biSize = sizeof(BITMAPINFOHEADER);
+        info.header.biWidth = 16;
+        info.header.biHeight = 16;
+        info.header.biPlanes = 1;
+        info.header.biBitCount = 4;
+        info.header.biClrUsed = 16;
+        const DWORD colors[16] = {
+            0x00000000, 0x00800000, 0x00008000, 0x00808000,
+            0x00000080, 0x00800080, 0x00008080, 0x00C0C0C0,
+            0x00808080, 0x00FF0000, 0x0000FF00, 0x00FFFF00,
+            0x000000FF, 0x00FF00FF, 0x0000FFFF, 0x00FFFFFF
+        };
+        CopyMemory(info.colors, colors, sizeof(colors));
+        void* bits = NULL;
+        _colorDC = CreateCompatibleDC(NULL);
+        _maskDC = CreateCompatibleDC(NULL);
+        _color = CreateDIBSection(NULL, reinterpret_cast<BITMAPINFO*>(&info),
+            DIB_RGB_COLORS, &bits, NULL, 0);
+        _mask = CreateBitmap(16, 16, 1, 1, NULL);
+        if (_colorDC && _maskDC && _color && _mask)
+        {
+            _oldColor = SelectObject(_colorDC, _color);
+            _oldMask = SelectObject(_maskDC, _mask);
+            if (_oldColor && _oldColor != HGDI_ERROR &&
+                _oldMask && _oldMask != HGDI_ERROR)
+                return true;
+        }
+        _Release();
+        return false;
+    }
+
+    void _Release()
+    {
+        if (_oldColor && _oldColor != HGDI_ERROR) SelectObject(_colorDC, _oldColor);
+        if (_oldMask && _oldMask != HGDI_ERROR) SelectObject(_maskDC, _oldMask);
+        if (_color) DeleteObject(_color);
+        if (_mask) DeleteObject(_mask);
+        if (_colorDC) DeleteDC(_colorDC);
+        if (_maskDC) DeleteDC(_maskDC);
+        _colorDC = _maskDC = NULL;
+        _color = _mask = NULL;
+        _oldColor = _oldMask = NULL;
+    }
+
+    HDC _colorDC, _maskDC;
+    HBITMAP _color, _mask;
+    HGDIOBJ _oldColor, _oldMask;
+};
+
+static int ReplaceTrayIcon(HIMAGELIST images, int index, HICON original, HICON legacy)
+{
+    if (!c_tray._fTray16Color)
+        return ImageList_ReplaceIcon(images, index, original);
+    static CTrayLegacyIconSurface surface;
+    HICON temporary = legacy ? NULL : CreateLegacyTrayIcon(original);
+    const int result = surface.Replace(images, index, legacy ? legacy : temporary);
+    if (temporary) DestroyIcon(temporary);
+    return result;
 }
 
 void ExplorerPlaySound(LPCTSTR pszSound)
@@ -467,10 +520,7 @@ INT_PTR CTrayNotify::_FindNotify(PNOTIFYICONDATA32 pnid)
 
 static UINT TrayIconImageListFlags(HWND toolbar)
 {
-    UINT flags = SHGetImageListFlags(toolbar);
-    // Convert native artwork directly in the destination, as Windows 2000 does.
-    // A separate 4-bit resource can contain different artwork.
-    return c_tray._fTray16Color ? (flags & ~0xFEu) | ILC_COLOR4 : flags;
+    return c_tray._fTray16Color ? ILC_COLOR4 | ILC_MASK : SHGetImageListFlags(toolbar);
 }
 
 BOOL CTrayNotify::_CheckAndResizeImages(BOOL force)
@@ -481,8 +531,8 @@ BOOL CTrayNotify::_CheckAndResizeImages(BOOL force)
     HIMAGELIST himlOld = _himlIcons;
 
     // Do dimensions match current icons?
-    int cxSmIconNew = GetSystemMetrics(SM_CXSMICON);
-    int cySmIconNew = GetSystemMetrics(SM_CYSMICON);
+    int cxSmIconNew = c_tray._fTray16Color ? 16 : GetSystemMetrics(SM_CXSMICON);
+    int cySmIconNew = c_tray._fTray16Color ? 16 : GetSystemMetrics(SM_CYSMICON);
     ImageList_GetIconSize(himlOld, &cxSmIconOld, &cySmIconOld);
     if (force || cxSmIconNew != cxSmIconOld || cySmIconNew != cySmIconOld)
     {
@@ -498,7 +548,7 @@ BOOL CTrayNotify::_CheckAndResizeImages(BOOL force)
                 HICON hicon = ImageList_GetIcon(himlOld, i, ILD_NORMAL);
                 if (hicon)
                 {
-                    if (ImageList_AddIcon(himlNew, hicon) == -1)
+                    if (ReplaceTrayIcon(himlNew, -1, hicon, NULL) == -1)
                     {
                         // Couldn't copy image so bail.
                         fOK = FALSE;
@@ -778,8 +828,8 @@ void CTrayNotify::_SetInfoTip(INT_PTR nIcon, PNOTIFYICONDATA32 pnid, BOOL bAsync
 }
 
 // Rebuild existing image slots from retained originals; shared users of a slot
-// update together. The 4-bit destination performs Windows 2000-style color
-// reduction; retained originals restore full color when disabled.
+// update together. The Win2k conversion surface performs color reduction;
+// retained originals restore full color when disabled.
 void CTrayNotify::_RefreshIconDepth()
 {
     for (INT_PTR i = 0; i < _GetCount(); ++i)
@@ -788,9 +838,7 @@ void CTrayNotify::_RefreshIconDepth()
         const int image = _GetImage(i);
         if (!icon || !icon->hIconOriginal || (icon->dwState & NIS_SHAREDICON) || image < 0)
             continue;
-        ImageList_ReplaceIcon(_himlIcons, image,
-            c_tray._fTray16Color && icon->hIconUnscaled ?
-                icon->hIconUnscaled : icon->hIconOriginal);
+        ReplaceTrayIcon(_himlIcons, image, icon->hIconOriginal, icon->hIconLegacy);
     }
     InvalidateRect(_hwndToolbar, NULL, TRUE);
 }
@@ -866,23 +914,26 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbR
                 HICON original = CopyIcon(GetHIcon(pnid));
                 if (!original)
                     return FALSE;
-                HICON unscaled = CopyUnscaledTrayIcon(GetHIcon(pnid));
-                iImageNew = ImageList_ReplaceIcon(_himlIcons, iImageOld,
-                    c_tray._fTray16Color && unscaled ? unscaled : original);
+                HICON legacy = CreateLegacyTrayIcon(GetHIcon(pnid));
+                if (!legacy)
+                {
+                    DestroyIcon(original);
+                    return FALSE;
+                }
+                iImageNew = ReplaceTrayIcon(_himlIcons, iImageOld, original, legacy);
                 if (iImageNew < 0)
                 {
                     DestroyIcon(original);
-                    if (unscaled)
-                        DestroyIcon(unscaled);
+                    DestroyIcon(legacy);
                 }
                 else
                 {
                     if (ptnpi->hIconOriginal)
                         DestroyIcon(ptnpi->hIconOriginal);
-                    if (ptnpi->hIconUnscaled)
-                        DestroyIcon(ptnpi->hIconUnscaled);
+                    if (ptnpi->hIconLegacy)
+                        DestroyIcon(ptnpi->hIconLegacy);
                     ptnpi->hIconOriginal = original;
-                    ptnpi->hIconUnscaled = unscaled;
+                    ptnpi->hIconLegacy = legacy;
                 }
                 if (iImageNew < 0)
                 {
@@ -919,9 +970,9 @@ BOOL CTrayNotify::_ModifyNotify(PNOTIFYICONDATA32 pnid, INT_PTR nIcon, BOOL* pbR
             if (ptnpi->hIconOriginal)
                 DestroyIcon(ptnpi->hIconOriginal);
             ptnpi->hIconOriginal = NULL;
-            if (ptnpi->hIconUnscaled)
-                DestroyIcon(ptnpi->hIconUnscaled);
-            ptnpi->hIconUnscaled = NULL;
+            if (ptnpi->hIconLegacy)
+                DestroyIcon(ptnpi->hIconLegacy);
+            ptnpi->hIconLegacy = NULL;
         }
         ptnpi->hIcon = GetHIcon(pnid);
         _SetImage(nIcon, iImageNew);
@@ -1008,8 +1059,8 @@ void CTrayNotify::_FreeNotify(PTNPRIVICON ptnpi, int iImage)
     }
     if (ptnpi->hIconOriginal)
         DestroyIcon(ptnpi->hIconOriginal);
-    if (ptnpi->hIconUnscaled)
-        DestroyIcon(ptnpi->hIconUnscaled);
+    if (ptnpi->hIconLegacy)
+        DestroyIcon(ptnpi->hIconLegacy);
     LocalFree(ptnpi);
 }
 
@@ -1250,7 +1301,8 @@ LRESULT CTrayNotify::_Create(HWND hWnd)
     SendMessage(_hwndToolbar, CCM_SETVERSION, COMCTL32_VERSION, 0);
     SendMessage(_hwndToolbar, TB_SETEXTENDEDSTYLE,
                 TBSTYLE_EX_INVERTIBLEIMAGELIST, TBSTYLE_EX_INVERTIBLEIMAGELIST);
-    _himlIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+    _himlIcons = ImageList_Create(c_tray._fTray16Color ? 16 : GetSystemMetrics(SM_CXSMICON),
+        c_tray._fTray16Color ? 16 : GetSystemMetrics(SM_CYSMICON),
         TrayIconImageListFlags(_hwndToolbar), 0, 1);
     if (!_himlIcons)
     {
@@ -1812,6 +1864,22 @@ LRESULT CTrayNotify::_OnCDNotify(LPNMTBCUSTOMDRAW pnm)
         case CDDS_ITEMPREPAINT:
         {
             LRESULT lRet = TBCDRF_NOOFFSET;
+            if (c_tray._fTray16Color)
+            {
+                TBBUTTONINFO button = {};
+                button.cbSize = sizeof(button);
+                button.dwMask = TBIF_IMAGE;
+                if (SendMessage(_hwndToolbar, TB_GETBUTTONINFO,
+                    pnm->nmcd.dwItemSpec, (LPARAM)&button) != -1 && button.iImage >= 0)
+                    ImageList_Draw(_himlIcons, button.iImage, pnm->nmcd.hdc,
+                        (pnm->nmcd.rc.left + pnm->nmcd.rc.right - 16) / 2,
+                        (pnm->nmcd.rc.top + pnm->nmcd.rc.bottom - 16) / 2, ILD_NORMAL);
+                if ((pnm->nmcd.uItemState & CDIS_HOT) &&
+                    !(SendMessage(_hwndNotify, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS) &&
+                    _hwndToolbar == GetFocus())
+                    DrawFocusRect(pnm->nmcd.hdc, &pnm->nmcd.rc);
+                return CDRF_SKIPDEFAULT;
+            }
 
             // notify us for the hot tracked item please
             if (pnm->nmcd.uItemState & CDIS_HOT)
